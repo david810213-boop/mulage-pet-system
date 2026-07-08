@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.PetRequest;
+import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.PetService;
@@ -53,6 +54,7 @@ public class PetMvcController {
         model.addAttribute("user", user);
         model.addAttribute("petRequest", new PetRequest());
         model.addAttribute("petTypes", PetType.values());
+        model.addAttribute("coatTypes", CoatType.values());
         return "pets/form";
     }
 
@@ -69,6 +71,7 @@ public class PetMvcController {
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
             model.addAttribute("petTypes", PetType.values());
+            model.addAttribute("coatTypes", CoatType.values());
             return "pets/form";
         }
 
@@ -79,6 +82,7 @@ public class PetMvcController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
             model.addAttribute("petTypes", PetType.values());
+            model.addAttribute("coatTypes", CoatType.values());
             model.addAttribute("errorMsg", e.getMessage());
             return "pets/form";
         }

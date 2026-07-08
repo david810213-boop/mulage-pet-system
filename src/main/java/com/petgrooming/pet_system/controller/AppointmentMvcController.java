@@ -124,7 +124,7 @@ public class AppointmentMvcController {
     }
 
     // ── 💡 額外加碼練習：管理員專用後台 ─────────────────────────────────────────
-    // 🛡️ 啪！貼上你的自訂防偽貼紙。一般會員（CUSTOMER）如果敢打這個網址，直接在 RoleInterceptor 就會被彈飛！
+    // 🛡️ 一般會員（CUSTOMER）如果敢打這個網址，直接在 RoleInterceptor 就會被彈飛！
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/admin/dashboard")
     public String adminDashboard(Model model) {
