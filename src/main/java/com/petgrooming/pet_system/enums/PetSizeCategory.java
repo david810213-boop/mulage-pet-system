@@ -36,9 +36,9 @@ public enum PetSizeCategory {
      */
     public static PetSizeCategory determine(PetType petType, double weight) {
         if (petType == PetType.DOG) {
-            return weight <= 15.0 ? SMALL_DOG : LARGE_DOG;
+            return weight <= 16.0 ? SMALL_DOG : LARGE_DOG;
         } else if (petType == PetType.CAT) {
-            return weight <= 5.0 ? SMALL_CAT : LARGE_CAT;
+            return weight <= 5.9 ? SMALL_CAT : LARGE_CAT;
         }
         return OTHER;
     }
