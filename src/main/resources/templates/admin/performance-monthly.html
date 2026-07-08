@@ -79,9 +79,8 @@
                 <td style="font-weight:700; color:#43a047;"
                     th:text="${mp.bonusAmount > 0 ? '$' + mp.bonusAmount : '未達門檻'}">獎金</td>
                 <td>
-                  <!-- 將 mp.settled 改為 mp.isSettled -->
-                  <span th:if="${mp.isSettled}" style="color:#43a047; font-size:13px;">✅ 已結算</span>
-                  <span th:unless="${mp.isSettled}" style="color:#e53935; font-size:13px;">⏳ 未結算</span>
+                  <span th:if="${mp.settled}" style="color:#43a047; font-size:13px;">✅ 已結算</span>
+                  <span th:unless="${mp.settled}" style="color:#e53935; font-size:13px;">⏳ 未結算</span>
                 </td>
                 <td>
                   <a th:href="@{/admin/performance/staff/{id}(id=${mp.staff.id}, year=${ym.year}, month=${ym.monthValue})}"

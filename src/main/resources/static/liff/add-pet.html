@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>慕沐村 新增毛孩</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f5f0;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+    .header {
+      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      color: #f5d49a;
+      padding: 20px 16px 24px;
+      text-align: center;
+    }
+    .header .logo { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 2px; }
+
+    .notice {
+      margin: 16px;
+      background: #fff8f0;
+      border: 1px solid #f0e0c0;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      color: #5c3d2e;
+      line-height: 1.8;
+    }
+    .notice .title {
+      font-weight: 700;
+      color: #2c1810;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-card {
+      margin: 0 16px 16px;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .form-card h3 {
+      font-size: 15px;
+      color: #2c1810;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0e8dc;
+    }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: #5c3d2e;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .field label .req { color: #e53935; margin-left: 2px; }
+    .field label .hint { color: #999; font-size: 11px; font-weight: 400; margin-left: 6px; }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e0d5c8;
+      border-radius: 8px;
+      font-size: 15px;
+      color: #2c1810;
+      background: #fdfaf7;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: #c9a84c;
+    }
+    .field textarea { resize: vertical; min-height: 80px; }
+
+    .radio-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .radio-btn {
+      flex: 1;
+      min-width: 80px;
+      padding: 10px;
+      border: 1.5px solid #e0d5c8;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #666;
+    }
+    .radio-btn.selected {
+      border-color: #c9a84c;
+      background: #fff8f0;
+      color: #2c1810;
+      font-weight: 700;
+    }
+
+    /* 體型自動判斷顯示區 */
+    .auto-result {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f0f9f0;
+      border: 1px solid #c8e6c9;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #2e7d32;
+      display: none;
+    }
+    .auto-result.show { display: block; }
+    .auto-result .label { font-weight: 700; margin-bottom: 4px; }
+    .auto-result .items { color: #555; }
+
+    .submit-btn {
+      display: block;
+      width: calc(100% - 32px);
+      margin: 0 16px;
+      padding: 14px;
+      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      color: #f5d49a;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .submit-btn:active { opacity: 0.8; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { background: #2e7d32; }
+    .toast.error { background: #c62828; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">慕沐村 Mulage pet</div>
+  <h1>新增毛孩資料</h1>
+</div>
+
+<!-- 預約須知 -->
+<div class="notice">
+  <div class="title">⚠️ 預約前請閱讀</div>
+  請填寫以下基本資料，讓小編為您的毛孩預約六星級美容初體驗✰<br>
+  填寫完成後，系統將自動判斷毛孩體型，預約時自動帶入適合的洗澡與吹毛項目。
+</div>
+
+<!-- 毛孩資料 -->
+<div class="form-card">
+  <h3>𖥸 毛孩基本資料</h3>
+
+  <div class="field">
+    <label>毛孩類型 <span class="req">*</span></label>
+    <div class="radio-group" id="petTypeGroup">
+      <div class="radio-btn" data-value="DOG" onclick="selectRadio('petType', 'DOG', this)">🐶 狗</div>
+      <div class="radio-btn" data-value="CAT" onclick="selectRadio('petType', 'CAT', this)">🐱 貓</div>
+      <div class="radio-btn" data-value="OTHER" onclick="selectRadio('petType', 'OTHER', this)">其他</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>毛孩名字 <span class="req">*</span></label>
+    <input type="text" id="petName" placeholder="請輸入毛孩的名字" />
+  </div>
+
+  <div class="field">
+    <label>毛孩品種 <span class="req">*</span></label>
+    <input type="text" id="breed" placeholder="例如：柴犬、貴賓、英短" />
+  </div>
+
+  <div class="field">
+    <label>毛孩體重（kg）<span class="req">*</span>
+      <span class="hint">狗 ≤ 15kg 為小型，貓 ≤ 5kg 為小貓</span>
+    </label>
+    <input type="number" id="weight" step="0.1" min="0.1" placeholder="例如：8.5"
+           oninput="updateSizePreview()" />
+  </div>
+
+  <div class="field">
+    <label>毛孩年齡 <span class="req">*</span></label>
+    <input type="number" id="age" min="0" placeholder="例如：3（歲）" />
+  </div>
+
+  <div class="field">
+    <label>毛長 <span class="req">*</span></label>
+    <div class="radio-group" id="coatTypeGroup">
+      <div class="radio-btn" data-value="SHORT" onclick="selectRadio('coatType', 'SHORT', this)">短毛</div>
+      <div class="radio-btn" data-value="MEDIUM" onclick="selectRadio('coatType', 'MEDIUM', this)">中長毛</div>
+      <div class="radio-btn" data-value="LONG" onclick="selectRadio('coatType', 'LONG', this)">長毛</div>
+    </div>
+  </div>
+
+  <!-- 自動判斷體型結果 -->
+  <div class="auto-result" id="sizeResult">
+    <div class="label">🤖 系統自動判斷</div>
+    <div id="sizeLabel"></div>
+    <div class="items" id="sizeItems"></div>
+  </div>
+</div>
+
+<!-- 家長資料 -->
+<div class="form-card">
+  <h3>𖥸 家長資料</h3>
+
+  <div class="field">
+    <label>家長手機 <span class="req">*</span></label>
+    <input type="tel" id="ownerPhone" placeholder="例如：0912-345-678" />
+  </div>
+
+  <div class="field">
+    <label>毛孩有無分離焦慮 <span class="req">*</span></label>
+    <div class="radio-group" id="anxietyGroup">
+      <div class="radio-btn" data-value="false" onclick="selectRadio('anxiety', 'false', this)">無</div>
+      <div class="radio-btn" data-value="true" onclick="selectRadio('anxiety', 'true', this)">有</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>注意事項 <span class="hint">（選填）</span></label>
+    <textarea id="notes" placeholder="例如：不喜歡吹風機聲音、對特定洗劑過敏等..."></textarea>
+  </div>
+</div>
+
+<button class="submit-btn" id="submitBtn" onclick="submitForm()">確認新增毛孩</button>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const LIFF_ID = "2010567973-ygHvpq7X";
+  let jwtToken = null;
+  const formData = { petType: null, coatType: null, anxiety: null };
+
+  async function init() {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      const idToken = liff.getIDToken();
+      const res = await fetch('/api/line/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast('登入失敗', 'error'); return; }
+      jwtToken = data.token;
+    } catch (e) {
+      showToast('初始化失敗', 'error');
+    }
+  }
+
+  function selectRadio(field, value, el) {
+    formData[field] = value;
+    const group = el.parentElement;
+    group.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    if (field === 'petType' || field === 'anxiety') updateSizePreview();
+  }
+
+  function updateSizePreview() {
+    const petType = formData.petType;
+    const weight  = parseFloat(document.getElementById('weight').value);
+    const result  = document.getElementById('sizeResult');
+
+    if (!petType || !weight || petType === 'OTHER') {
+      result.classList.remove('show'); return;
+    }
+
+    let sizeLabel, bathCode, blowCode;
+    if (petType === 'DOG') {
+      if (weight <= 15) { sizeLabel = '小型犬'; bathCode = 'BATH_S'; blowCode = 'BLOW_S'; }
+      else              { sizeLabel = '大型犬'; bathCode = 'BATH_L'; blowCode = 'BLOW_L'; }
+    } else {
+      if (weight <= 5)  { sizeLabel = '小貓';   bathCode = 'BATH_CS'; blowCode = 'BLOW_CS'; }
+      else              { sizeLabel = '大貓';   bathCode = 'BATH_CL'; blowCode = 'BLOW_CL'; }
+    }
+
+    document.getElementById('sizeLabel').textContent = `體型：${sizeLabel}`;
+    document.getElementById('sizeItems').textContent  =
+      `預約時將自動帶入：洗澡（${bathCode}）＋ 吹毛（${blowCode}）`;
+    result.classList.add('show');
+  }
+
+  async function submitForm() {
+    if (!jwtToken) { showToast('請先登入', 'error'); return; }
+
+    const name     = document.getElementById('petName').value.trim();
+    const breed    = document.getElementById('breed').value.trim();
+    const weight   = parseFloat(document.getElementById('weight').value);
+    const age      = parseInt(document.getElementById('age').value);
+    const phone    = document.getElementById('ownerPhone').value.trim();
+    const notes    = document.getElementById('notes').value.trim();
+
+    if (!formData.petType) { showToast('請選擇毛孩類型', 'error'); return; }
+    if (!name)             { showToast('請填寫毛孩名字', 'error'); return; }
+    if (!breed)            { showToast('請填寫品種', 'error'); return; }
+    if (!weight || weight <= 0) { showToast('請填寫正確體重', 'error'); return; }
+    if (age === null || isNaN(age)) { showToast('請填寫年齡', 'error'); return; }
+    if (!formData.coatType) { showToast('請選擇毛長', 'error'); return; }
+    if (!phone)            { showToast('請填寫家長手機', 'error'); return; }
+    if (formData.anxiety === null) { showToast('請選擇是否有分離焦慮', 'error'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '新增中...';
+
+    try {
+      const res = await fetch('/api/pets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + jwtToken
+        },
+        body: JSON.stringify({
+          name, breed, weight, age,
+          petType: formData.petType,
+          coatType: formData.coatType,
+          hasSeparationAnxiety: formData.anxiety === 'true',
+          ownerPhone: phone,
+          notes: notes || null
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showToast('新增失敗：' + (data.message || res.status), 'error');
+        return;
+      }
+
+      showToast('✅ ' + data.name + ' 已成功新增！體型判斷：' + data.sizeCategoryLabel, 'success');
+      setTimeout(() => {
+        // 新增成功後清空表單
+        document.getElementById('petName').value = '';
+        document.getElementById('breed').value = '';
+        document.getElementById('weight').value = '';
+        document.getElementById('age').value = '';
+        document.getElementById('ownerPhone').value = '';
+        document.getElementById('notes').value = '';
+        document.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('selected'));
+        Object.keys(formData).forEach(k => formData[k] = null);
+        document.getElementById('sizeResult').classList.remove('show');
+      }, 2000);
+
+    } catch (e) {
+      showToast('網路錯誤，請重試', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '確認新增毛孩';
+    }
+  }
+
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  init();
+</script>
+</body>
+</html>

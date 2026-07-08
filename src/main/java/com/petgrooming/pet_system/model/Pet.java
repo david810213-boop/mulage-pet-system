@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.CoatType;
+import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,22 +18,46 @@ public class Pet {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ── 基本資料 ──────────────────────────────────────────────────────────
     @Column(nullable = false)
-    private String name;
+    private String name;                // 毛孩名字
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PetType petType;
+    private PetType petType;            // DOG / CAT / OTHER
 
     @Column(nullable = false)
-    private String breed;
+    private String breed;               // 品種
 
     @Column(nullable = false)
-    private Double weight;
+    private Double weight;              // 體重（kg）
 
     @Column(nullable = false)
-    private Integer age;
+    private Integer age;                // 年齡
 
+    // ── 自動判斷欄位（新增寵物時系統自動計算）────────────────────────────
+    @Enumerated(EnumType.STRING)
+    @Column(name = "size_category", nullable = false)
+    @Builder.Default
+    private PetSizeCategory sizeCategory = PetSizeCategory.OTHER; // 體型（小型犬/大型犬/小貓/大貓）
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "coat_type", nullable = false)
+    @Builder.Default
+    private CoatType coatType = CoatType.SHORT;                    // 毛長（短/中長/長）
+
+    // ── 預約須知相關欄位 ──────────────────────────────────────────────────
+    @Column(name = "has_separation_anxiety", nullable = false)
+    @Builder.Default
+    private Boolean hasSeparationAnxiety = false;                  // 是否有分離焦慮
+
+    @Column(name = "owner_phone", length = 20)
+    private String ownerPhone;                                      // 家長手機
+
+    @Column(length = 500)
+    private String notes;                                           // 注意事項
+
+    // ── 關聯 ──────────────────────────────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @ToString.Exclude

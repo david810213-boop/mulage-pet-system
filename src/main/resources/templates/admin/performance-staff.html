@@ -31,14 +31,11 @@
         <!-- 本月統計卡片 -->
         <div style="display:flex; gap:12px; margin-bottom:1.5rem; flex-wrap:wrap;">
           <div style="flex:1; min-width:180px; background:white; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center;">
-          <div style="font-size:13px; color:#666; margin-bottom:4px;">本月主要積分</div>
-          <div style="font-size:28px; font-weight:700; color:#c9a84c;">
-            <!-- 如果 records 為空，直接顯示 0 分 -->
-            <span th:if="${#lists.isEmpty(records)}">0</span>
-            <!-- 如果有資料，才進行統計 -->
-            <span th:unless="${#lists.isEmpty(records)}" th:text="${#aggregates.sum(records.![points])}">0</span> 分
+            <div style="font-size:13px; color:#666; margin-bottom:4px;">本月主要積分</div>
+            <div style="font-size:28px; font-weight:700; color:#c9a84c;">
+              <span th:text="${#aggregates.sum(records.![points])}">0</span> 分
+            </div>
           </div>
-        </div>
           <div style="flex:1; min-width:180px; background:white; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center;">
             <div style="font-size:13px; color:#666; margin-bottom:4px;">本月紀錄筆數</div>
             <div style="font-size:28px; font-weight:700; color:#2c1810;" th:text="${#lists.size(records)}">0</div>
@@ -99,9 +96,8 @@
                 <td style="color:#43a047; font-weight:700;"
                     th:text="${h.bonusAmount > 0 ? '$' + h.bonusAmount : '未達門檻'}">獎金</td>
                 <td>
-                  <!-- 修正欄位名稱為 h.isSettled -->
-                  <span th:if="${h.isSettled}" style="color:#43a047; font-size:13px;">✅ 已結算</span>
-                  <span th:unless="${h.isSettled}" style="color:#e53935; font-size:13px;">⏳ 未結算</span>
+                  <span th:if="${h.settled}" style="color:#43a047; font-size:13px;">✅ 已結算</span>
+                  <span th:unless="${h.settled}" style="color:#e53935; font-size:13px;">⏳ 未結算</span>
                 </td>
               </tr>
             </tbody>

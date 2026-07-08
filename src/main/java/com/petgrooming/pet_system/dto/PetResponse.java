@@ -1,32 +1,62 @@
 package com.petgrooming.pet_system.dto;
 
+import com.petgrooming.pet_system.enums.CoatType;
+import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.Pet;
 import lombok.Data;
 
-// 專門控制 API 回傳格式，不直接回傳 entity
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 public class PetResponse {
     private Long id;
     private String name;
-    private PetType petType;        // String → PetType enum，與 PetRequest 對齊
-    private String petTypeLabel;    // 中文顯示名稱，例如「狗」，方便前端直接顯示
+    private PetType petType;
+    private String petTypeLabel;
     private String breed;
     private Double weight;
     private Integer age;
-    private String ownerName;       // 只回傳名字，不回傳整個 User 物件
+    private String ownerName;
 
-    // 從 Pet entity 轉換成 DTO 的靜態工廠方法
+    // 新增欄位
+    private PetSizeCategory sizeCategory;       // 體型（系統自動判斷）
+    private String sizeCategoryLabel;           // 體型中文顯示
+    private CoatType coatType;                  // 毛長
+    private String coatTypeLabel;               // 毛長中文
+    private Boolean hasSeparationAnxiety;       // 分離焦慮
+    private String ownerPhone;                  // 家長手機
+    private String notes;                       // 注意事項
+
+    // 系統根據體型自動推薦的服務 itemCode（預約時直接帶入）
+    private List<String> recommendedItemCodes;
+
     public static PetResponse from(Pet pet) {
         PetResponse res = new PetResponse();
         res.setId(pet.getId());
         res.setName(pet.getName());
         res.setPetType(pet.getPetType());
-        res.setPetTypeLabel(pet.getPetType().getDescription()); // 中文說明一起帶出
+        res.setPetTypeLabel(pet.getPetType().getDescription());
         res.setBreed(pet.getBreed());
         res.setWeight(pet.getWeight());
         res.setAge(pet.getAge());
         res.setOwnerName(pet.getOwner().getName());
+        res.setSizeCategory(pet.getSizeCategory());
+        res.setSizeCategoryLabel(pet.getSizeCategory().getLabel());
+        res.setCoatType(pet.getCoatType());
+        res.setCoatTypeLabel(pet.getCoatType().getLabel());
+        res.setHasSeparationAnxiety(pet.getHasSeparationAnxiety());
+        res.setOwnerPhone(pet.getOwnerPhone());
+        res.setNotes(pet.getNotes());
+
+        // 自動推薦項目：依體型帶入洗澡+吹毛 itemCode
+        List<String> recommended = new ArrayList<>();
+        PetSizeCategory size = pet.getSizeCategory();
+        if (size.getBathItemCode() != null) recommended.add(size.getBathItemCode());
+        if (size.getBlowItemCode() != null) recommended.add(size.getBlowItemCode());
+        res.setRecommendedItemCodes(recommended);
+
         return res;
     }
 }
