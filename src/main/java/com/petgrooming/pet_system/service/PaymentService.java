@@ -3,19 +3,23 @@ package com.petgrooming.pet_system.service;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.model.Appointment;
+import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -23,9 +27,10 @@ public class PaymentService {
     private final AppointmentRepository appointmentRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final PerformanceService performanceService;
 
-    // ── 1. 結帳 ────────────────────────────────
-    @Transactional  //確保完成交易跟建立交易紀錄是一併完成的
+    // ── 1. 結帳 ────────────────────────────────────────────────────────────
+    @Transactional
     public TransactionResponse checkout(Long appointmentId,
                                         CheckoutRequest req,
                                         String username) {
@@ -33,13 +38,12 @@ public class PaymentService {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
 
-        // 1b. 確認預約屬於此使用者（CUSTOMER 只能付自己的帳）
+        // 1b. 確認使用者與權限
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
 
-        boolean isOwner = appointment.getUser().getId().equals(user.getId());
-        boolean isStaffOrAdmin = user.getRole().name().equals("ADMIN")
-                              || user.getRole().name().equals("STAFF");
+        boolean isOwner       = appointment.getUser().getId().equals(user.getId());
+        boolean isStaffOrAdmin = user.isStaffOrAdmin();
 
         if (!isOwner && !isStaffOrAdmin) {
             throw new IllegalArgumentException("權限不足：只能結自己的帳");
@@ -55,19 +59,19 @@ public class PaymentService {
             throw new IllegalArgumentException("此預約已有交易紀錄");
         }
 
-        // 1e. 計算最終金額（對應原本各 PaymentSystem.calculateTotal 策略）
+        // 1e. 計算最終金額
         int baseAmount  = appointment.getTotalAmount();
         int finalAmount = req.getPaymentMethod().calculateFinalAmount(baseAmount);
 
-        // 1f. 決定經手人（對應原本 staffInfo 判斷）
+        // 1f. 決定經手人
         String handledBy = isOwner
                 ? "會員自助（" + user.getName() + "）"
                 : "員工：" + user.getName();
 
-        // 1g. 建立交易紀錄並儲存
+        // 1g. 建立交易紀錄
         Transaction transaction = Transaction.builder()
                 .appointment(appointment)
-                .user(appointment.getUser())        // 交易歸屬預約的飼主
+                .user(appointment.getUser())
                 .paymentMethod(req.getPaymentMethod())
                 .baseAmount(baseAmount)
                 .finalAmount(finalAmount)
@@ -82,44 +86,89 @@ public class PaymentService {
         appointment.setPaid(true);
         appointmentRepository.save(appointment);
 
+        // 1i. 自動建立績效紀錄（依預約選擇的服務項目 + 負責員工）
+        autoCreatePerformanceRecords(appointment, user, isStaffOrAdmin);
+
         return TransactionResponse.from(transaction);
     }
 
-    // ── 2. 查詢自己的交易紀錄（對應原本 queryTransactions）──────────────
+    /**
+     * 結帳後自動依 selectedItems 建立績效紀錄
+     * - 如果預約有指定 staff，用該員工
+     * - 如果是 STAFF/ADMIN 操作結帳，且預約沒有指定員工，用操作結帳的人
+     * - 同時自動記錄「完成」積分
+     */
+    private void autoCreatePerformanceRecords(Appointment appointment,
+                                              User checkoutUser,
+                                              boolean isStaffOrAdmin) {
+        // 決定績效歸屬的員工
+        User staff = appointment.getStaff();
+        if (staff == null && isStaffOrAdmin) {
+            staff = checkoutUser;
+        }
+        if (staff == null) {
+            log.warn("預約 #{} 無指定員工，跳過自動績效建立", appointment.getId());
+            return;
+        }
+
+        List<GroomingItem> items = appointment.getSelectedItems();
+        if (items == null || items.isEmpty()) {
+            log.warn("預約 #{} 無服務項目，跳過績效建立", appointment.getId());
+            return;
+        }
+
+        // 依每個服務項目建立一筆績效紀錄（OTHER 類別跳過）
+        for (GroomingItem item : items) {
+            if (item.getPerformanceCategory() == PerformanceCategory.OTHER) continue;
+            if (item.getPoints() <= 0) continue;
+
+            performanceService.addRecord(
+                    staff.getId(),
+                    appointment.getId(),
+                    item.getPerformanceCategory(),
+                    item.getPoints(),
+                    appointment.getDate(),
+                    "自動計算：" + item.getName()
+            );
+        }
+
+        // 自動補一筆「完成」積分（整筆預約完成）
+        performanceService.addRecord(
+                staff.getId(),
+                appointment.getId(),
+                PerformanceCategory.COMPLETE,
+                PerformanceCategory.COMPLETE.getDefaultPoints(),
+                appointment.getDate(),
+                "預約 #" + appointment.getId() + " 完成"
+        );
+
+        log.info("預約 #{} 結帳後自動建立 {} 筆績效紀錄（員工：{}）",
+                appointment.getId(), items.size() + 1, staff.getName());
+    }
+
+    // ── 2. 查詢自己的交易紀錄 ──────────────────────────────────────────────
     public List<TransactionResponse> getMyTransactions(String username) {
         return transactionRepository.findByUserUsername(username)
-                .stream()
-                .map(TransactionResponse::from)
-                .toList();
+                .stream().map(TransactionResponse::from).toList();
     }
 
-    // ── 3. 查詢所有交易（STAFF/ADMIN）────────────────────────────────────
+    // ── 3. 查詢所有交易（STAFF/ADMIN）──────────────────────────────────────
     public List<TransactionResponse> getAllTransactions() {
         return transactionRepository.findAll()
-                .stream()
-                .map(TransactionResponse::from)
-                .toList();
+                .stream().map(TransactionResponse::from).toList();
     }
 
-    // ── 4. 財務報告（ADMIN，對應原本 generateFinancialReport）────────────
+    // ── 4. 財務報告（ADMIN）────────────────────────────────────────────────
     public FinancialReportResponse getFinancialReport() {
         List<Transaction> all = transactionRepository.findAll();
-
         List<TransactionResponse> details = all.stream()
-                .map(TransactionResponse::from)
-                .toList();
+                .map(TransactionResponse::from).toList();
 
-        int paidCount     = (int) all.stream().filter(Transaction::isPaid).count();
-        double revenue    = transactionRepository.calculateTotalRevenue();
-        double average    = paidCount > 0 ? revenue / paidCount : 0;
+        int paidCount  = (int) all.stream().filter(Transaction::isPaid).count();
+        double revenue = transactionRepository.calculateTotalRevenue();
+        double average = paidCount > 0 ? revenue / paidCount : 0;
 
         return new FinancialReportResponse(
-                LocalDateTime.now(),
-                all.size(),
-                paidCount,
-                revenue,
-                average,
-                details
-        );
+                LocalDateTime.now(), all.size(), paidCount, revenue, average, details);
     }
 }

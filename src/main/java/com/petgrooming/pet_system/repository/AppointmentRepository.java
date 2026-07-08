@@ -17,6 +17,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 查某天的所有預約（用來計算已佔用時段）
     List<Appointment> findByDate(LocalDate date);
 
+    // 查某天已結帳的預約（績效日報下拉選單用）
+    List<Appointment> findByDateAndPaidTrue(LocalDate date);
+
     // 查未付款的預約（結帳用）
     List<Appointment> findByUserUsernameAndPaidFalse(String username);
 

@@ -90,13 +90,18 @@ public class WalletService {
         walletRepository.save(wallet);
     }
 
-    // ── 取得或建立錢包（顧客第一次查詢時自動建立）──────────────────────
+    // ── 取得或建立錢包（加 @Transactional 防止並發重複建立）──────────────
+    @Transactional
     public Wallet getOrCreateWallet(String username) {
         User user = userService.getUserEntityByUsername(username);
         return walletRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
-                    Wallet newWallet = Wallet.builder().user(user).build();
-                    return walletRepository.save(newWallet);
+                    // 再查一次，避免並發時重複 insert（double-checked）
+                    return walletRepository.findByUserId(user.getId())
+                            .orElseGet(() -> {
+                                Wallet newWallet = Wallet.builder().user(user).build();
+                                return walletRepository.save(newWallet);
+                            });
                 });
     }
 

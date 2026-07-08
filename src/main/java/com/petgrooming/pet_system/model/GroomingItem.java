@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +19,6 @@ public class GroomingItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 保留原本 Enum 的編號（如 GS001, GS002），方便與舊代碼相容
     @Column(unique = true, nullable = false)
     private String itemCode;
 
@@ -30,6 +30,17 @@ public class GroomingItem {
     @Column(nullable = false)
     private Double price;
 
-    // 用一個布林值做「邏輯刪除」，避免直接刪除會導致以前的預約歷史紀錄找不到項目
+    // 邏輯刪除
     private boolean isDeleted = false;
+
+    // 績效大項分類（決定完成此項目時員工獲得哪個類別的積分）
+    @Enumerated(EnumType.STRING)
+    @Column(name = "performance_category", nullable = false)
+    @Builder.Default
+    private PerformanceCategory performanceCategory = PerformanceCategory.OTHER;
+
+    // 積分數（預設從 PerformanceCategory 取，可在後台針對單一項目覆寫）
+    @Column(name = "points", nullable = false)
+    @Builder.Default
+    private Double points = 0.0;
 }

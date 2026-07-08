@@ -98,10 +98,15 @@ public class AppointmentService {
                 .date(req.getDate())
                 .startTime(req.getStartTime())
                 .endTime(req.getEndTime())
-                .selectedItems(actualItems) // ⚡ 5. 這裡塞入的是真正從資料庫查出來的 List<GroomingItem>
+                .selectedItems(actualItems)
                 .totalAmount(total)
                 .paid(false)
                 .build();
+
+        // 若有指派員工，設入（選填）
+        if (req.getStaffId() != null) {
+            userRepository.findById(req.getStaffId()).ifPresent(appointment::setStaff);
+        }
 
         Appointment saved = appointmentRepository.save(appointment);
 

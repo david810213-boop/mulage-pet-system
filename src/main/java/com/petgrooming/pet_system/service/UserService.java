@@ -69,6 +69,15 @@ public class UserService {
         return userRepository.findByRole(UserRole.CUSTOMER);
     }
 
+    public List<User> getAllStaffEntities() {
+        return userRepository.findByRole(UserRole.STAFF);
+    }
+
+    public User getUserEntityById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + id));
+    }
+
     // ── 8. LINE 登入：依 lineUserId 查找會員，找不到就自動建立（CUSTOMER）──
     // 回傳 [User, isNewMember]
     public AbstractMap.SimpleEntry<User, Boolean> findOrCreateByLine(String lineUserId, String displayName) {

@@ -22,8 +22,18 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.AbstractMap;
-import java.util.Map;
 
+/**
+ * 顧客端 LINE 登入入口。
+ * 給 LIFF 前端呼叫：帶 idToken 換取本系統自己的 JWT。
+ *
+ * 流程：
+ * 1. LIFF 前端用 liff.getIDToken() 取得 idToken
+ * 2. 呼叫本 controller 的 /api/line/login，帶上 idToken
+ * 3. 後端打 LINE 官方 verify API 驗證 idToken 合法性，拿到 sub（LINE userId）
+ * 4. 依 sub 查找 / 自動建立 CUSTOMER 會員
+ * 5. 簽發本系統 JWT，回傳給前端（同時也寫進 Cookie，方便日後切到一般瀏覽器頁面）
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/line")
@@ -43,43 +53,39 @@ public class LineAuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LineLoginRequest req,
             HttpServletResponse response) {
 
-        // 1. 向 LINE 官方驗證 idToken
+        // 1. 向 LINE 官方驗證 idToken（不可信任前端自己宣稱的 userId）
         LineVerifyResponse verified;
         try {
             verified = verifyIdToken(req.getIdToken());
         } catch (RestClientResponseException e) {
             log.warn("LINE idToken 驗證失敗: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "LINE_AUTH_FAILED", "message", "idToken 無效或已過期"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("idToken 無效或已過期");
         }
 
-        // 2. 確認 token 是發給本系統的 LINE Login Channel
-        if (verified == null || !channelId.equals(verified.getAud())) {
-            log.warn("idToken aud 不符，預期: {}，實際: {}", channelId, verified != null ? verified.getAud() : "null");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "AUD_MISMATCH", "message", "idToken 不屬於本系統"));
+        // 2. 確認 token 是發給「我們的」LINE Login Channel，避免被其他應用程式的 token 冒用
+        if (!channelId.equals(verified.getAud())) {
+            log.warn("idToken aud 不符，預期: {}，實際: {}", channelId, verified.getAud());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("idToken 不屬於本系統");
         }
 
-        // 3. 依 LINE userId 查找或建立會員
-        AbstractMap.SimpleEntry<User, Boolean> result = userService.findOrCreateByLine(verified.getSub(), verified.getName());
+        // 3. 依 LINE userId 查找會員，找不到就自動建立
+        AbstractMap.SimpleEntry<User, Boolean> result =
+                userService.findOrCreateByLine(verified.getSub(), verified.getName());
         User user = result.getKey();
         boolean isNewMember = result.getValue();
 
         // 4. 簽發本系統的 JWT（標記 source=LINE）
         String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "LINE");
 
-        // 5. 同時將 Token 寫入 Cookie，方便 Thymeleaf 頁面直刷讀取
+        // 5. 同時寫入 Cookie，方便之後若有需要轉跳一般網頁版時沿用登入狀態
         Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
         jwtCookie.setHttpOnly(true);
         jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(86400); // 1 天
+        jwtCookie.setMaxAge(86400);
         response.addCookie(jwtCookie);
 
-        // 6. ★ 使用你原本專案定義的建構子傳參，完美解決 setUsername 紅字問題
-        LineLoginResponse loginResponse = new LineLoginResponse(token, UserResponse.from(user), isNewMember);
-
-        log.info("LINE 用戶登入成功: {}, 是否為新會員: {}", user.getUsername(), isNewMember);
-        return ResponseEntity.ok(loginResponse);
+        LineLoginResponse body = new LineLoginResponse(token, UserResponse.from(user), isNewMember);
+        return ResponseEntity.ok(body);
     }
 
     private LineVerifyResponse verifyIdToken(String idToken) {

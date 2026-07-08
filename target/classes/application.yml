@@ -27,15 +27,12 @@ spring:
 # 日誌配置（開發環境輸出較多細節）
 logging:
   level:
-    "[com.petgrooming.pet_system]": DEBUG
+    "[com.example.parking]": DEBUG
     "[org.springframework.web]": INFO
     "[org.hibernate]": INFO
 
 server:
   port: 8081
-  tomcat:
-    relaxed-path-chars: [':']
-    relaxed-query-chars: [':']
 
 # LINE Login 設定（在 LINE Developers Console 建立 LINE Login Channel 後取得）
 line:

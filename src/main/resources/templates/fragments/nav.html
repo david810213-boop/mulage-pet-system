@@ -75,6 +75,18 @@
           >儲值管理</a
         >
         <a
+          href="/admin/performance"
+          style="
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--brown-mid);
+            text-decoration: none;
+            transition: var(--transition-fast);
+          "
+          th:if="${user != null and user.staffOrAdmin}"
+          >績效管理</a
+        >
+        <a
           href="/admin"
           style="
             font-size: 14px;

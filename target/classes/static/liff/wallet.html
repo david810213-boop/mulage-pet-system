@@ -136,10 +136,6 @@
     }
     .toast.show { opacity: 1; }
   </style>
-  <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-  <script>
-    var vConsole = new window.VConsole();
-  </script>
 </head>
 <body>
 
@@ -165,16 +161,21 @@
 
       // LINE 登入 → 換發本系統 JWT
       const idToken = liff.getIDToken();
+      if (!idToken) {
+        showError('取得 idToken 失敗（idToken 為 null），請確認 LIFF scope 有勾選 openid');
+        return;
+      }
+
       const res = await fetch('/api/line/login', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true' // 🚀 繞過 ngrok 阻擋
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken })
       });
-      if (!res.ok) { showError('登入失敗，請重試'); return; }
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        showError('登入失敗（HTTP ' + res.status + '）：' + (data?.message || JSON.stringify(data)));
+        return;
+      }
       jwtToken = data.token;
 
       await loadWallet();
@@ -185,10 +186,7 @@
 
   async function api(path) {
     const res = await fetch(path, {
-      headers: { 
-        'Authorization': 'Bearer ' + jwtToken,
-        'ngrok-skip-browser-warning': 'true' // 🚀 繞過 ngrok 阻擋
-      }
+      headers: { 'Authorization': 'Bearer ' + jwtToken }
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
@@ -196,10 +194,9 @@
 
   async function loadWallet() {
     try {
-      const [wallet, txList] = await Promise.all([
-        api('/api/wallet'),
-        api('/api/wallet/transactions')
-      ]);
+      // 循序呼叫，先建立錢包再查紀錄，避免並發時重複建立錢包
+      const wallet = await api('/api/wallet');
+      const txList = await api('/api/wallet/transactions');
       render(wallet, txList);
     } catch (e) {
       showError('載入失敗，請重新整理');
@@ -261,7 +258,7 @@
               <div class="tx-icon ${isPlus ? 'deposit' : 'deduct'}">${icon}</div>
               <div class="tx-body">
                 <div class="tx-note">${tx.note || tx.typeLabel}</div>
-                <div class="tx-date">${date} 餘額 $${tx.balanceAfter.toLocaleString()}</div>
+                <div class="tx-date">${date}　餘額 $${tx.balanceAfter.toLocaleString()}</div>
               </div>
               <div class="tx-amount ${isPlus ? 'plus' : 'minus'}">
                 ${isPlus ? '+' : ''}$${Math.abs(tx.amount).toLocaleString()}
@@ -297,13 +294,8 @@
   }
 
   function showError(msg) {
-    // 修改這裡：除了 msg，把具體的錯誤細節或是 Error 物件內容也印出來
     document.getElementById('app').innerHTML =
-      `<div class="loading" style="color:#e53935; padding:20px; font-size:14px; word-break:break-all; text-align:left;">
-        ${msg} <br><br>
-        <span style="color:#666;">除錯資訊：</span><br>
-        URL: ${window.location.href}
-      </div>`;
+      `<div class="loading" style="color:#e53935">${msg}</div>`;
   }
 
   function showToast(msg) {

@@ -55,4 +55,10 @@ public class Appointment {
     @Column(nullable = false)
     @Builder.Default
     private boolean paid = false;       // 是否已付款
+
+    // 負責美容的員工（STAFF），結帳後自動計算績效用
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "staff_id")
+    @ToString.Exclude
+    private User staff;
 }
