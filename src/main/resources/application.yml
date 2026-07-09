@@ -36,4 +36,4 @@ server:
 
 # LINE Login 設定（在 LINE Developers Console 建立 LINE Login Channel 後取得）
 line:
-  channel-id: ${LINE_CHANNEL_ID:your-line-login-channel-id}
+  channel-id: ${LINE_CHANNEL_ID:2010567973}

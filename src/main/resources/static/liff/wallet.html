@@ -1,324 +1,489 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>慕沐村 會員錢包</title>
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8f5f0;
-      min-height: 100vh;
-    }
-
-    /* 頂部 Header */
-    .header {
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
-      padding: 20px 16px 28px;
-      text-align: center;
-    }
-    .header .logo { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
-    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
-
-    /* 會員卡區塊 */
-    .card-section {
-      margin: -16px 16px 0;
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
-    .card-tier {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .tier-badge {
-      background: linear-gradient(135deg, #c9a84c, #f5d49a);
-      color: #2c1810;
-      font-weight: 700;
-      font-size: 13px;
-      padding: 4px 12px;
-      border-radius: 20px;
-    }
-    .tier-badge.none { background: #e0e0e0; color: #666; }
-    .tier-badge.village { background: linear-gradient(135deg, #8bc34a, #c5e1a5); color: #33691e; }
-    .tier-badge.normal { background: linear-gradient(135deg, #90a4ae, #cfd8dc); color: #37474f; }
-    .tier-badge.gold { background: linear-gradient(135deg, #c9a84c, #f5d49a); color: #5d4037; }
-    .tier-badge.diamond { background: linear-gradient(135deg, #7986cb, #c5cae9); color: #1a237e; }
-    .tier-badge.vip { background: linear-gradient(135deg, #2c1810, #5c3d2e); color: #f5d49a; }
-
-    .card-info { flex: 1; }
-    .card-info .discount { font-size: 18px; font-weight: 700; color: #c9a84c; }
-    .card-info .expire { font-size: 12px; color: #999; margin-top: 2px; }
-
-    .balance-row {
-      border-top: 1px solid #f0e8dc;
-      padding-top: 16px;
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-    }
-    .balance-label { font-size: 13px; color: #666; }
-    .balance-amount { font-size: 32px; font-weight: 700; color: #2c1810; }
-    .balance-unit { font-size: 14px; color: #666; }
-
-    /* 會員等級進度 */
-    .tier-progress {
-      margin: 16px 16px 0;
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .tier-progress h3 { font-size: 14px; color: #666; margin-bottom: 12px; }
-    .tier-item {
-      display: flex;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid #f5f5f5;
-      gap: 10px;
-    }
-    .tier-item:last-child { border-bottom: none; }
-    .tier-item .dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #e0e0e0; flex-shrink: 0;
-    }
-    .tier-item.active .dot { background: #c9a84c; }
-    .tier-item .name { flex: 1; font-size: 14px; }
-    .tier-item.active .name { font-weight: 700; color: #2c1810; }
-    .tier-item .amount { font-size: 12px; color: #999; }
-    .tier-item .perk { font-size: 12px; color: #c9a84c; font-weight: 600; }
-
-    /* 交易紀錄 */
-    .transactions {
-      margin: 16px 16px 80px;
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .transactions h3 { font-size: 14px; color: #666; margin-bottom: 12px; }
-    .tx-item {
-      display: flex;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #f5f5f5;
-    }
-    .tx-item:last-child { border-bottom: none; }
-    .tx-icon {
-      width: 36px; height: 36px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; margin-right: 10px; flex-shrink: 0;
-    }
-    .tx-icon.deposit { background: #e8f5e9; }
-    .tx-icon.deduct { background: #fce4ec; }
-    .tx-body { flex: 1; }
-    .tx-note { font-size: 14px; color: #333; }
-    .tx-date { font-size: 11px; color: #bbb; margin-top: 2px; }
-    .tx-amount { font-size: 15px; font-weight: 700; }
-    .tx-amount.plus { color: #43a047; }
-    .tx-amount.minus { color: #e53935; }
-
-    .empty { text-align: center; padding: 24px; color: #bbb; font-size: 14px; }
-    .loading { text-align: center; padding: 40px; color: #bbb; }
-
-    /* 錯誤/提示訊息 */
-    .toast {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-      background: #333; color: white; padding: 10px 20px;
-      border-radius: 20px; font-size: 13px; opacity: 0;
-      transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
-    }
-    .toast.show { opacity: 1; }
-  </style>
-</head>
-<body>
-
-<div class="header">
-  <div class="logo">慕沐村 Mulage pet</div>
-  <h1>會員錢包</h1>
-</div>
-
-<div id="app">
-  <div class="loading">載入中...</div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-  const LIFF_ID = "2010567973-ygHvpq7X"; // ← 你的 LIFF ID
-  let jwtToken = null;
-
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-
-      // LINE 登入 → 換發本系統 JWT
-      const idToken = liff.getIDToken();
-      if (!idToken) {
-        showError('取得 idToken 失敗（idToken 為 null），請確認 LIFF scope 有勾選 openid');
-        return;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>慕沐村 會員錢包</title>
+    <script
+      charset="utf-8"
+      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+    ></script>
+    <style>
+      /* 基本重置 */
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f8f5f0;
+        min-height: 100vh;
       }
 
-      const res = await fetch('/api/line/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken })
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        showError('登入失敗（HTTP ' + res.status + '）：' + (data?.message || JSON.stringify(data)));
-        return;
+      /* 頂部 Header */
+      .header {
+        background: linear-gradient(135deg, #2c1810, #5c3d2e);
+        color: #f5d49a;
+        padding: 20px 16px 28px;
+        text-align: center;
       }
-      jwtToken = data.token;
+      .header .logo {
+        font-size: 13px;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      .header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
 
-      await loadWallet();
-    } catch (e) {
-      showError('初始化失敗：' + e.message);
-    }
-  }
+      /* 會員卡區塊 */
+      .card-section {
+        margin: -16px 16px 0;
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+      .card-tier {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .tier-badge {
+        background: linear-gradient(135deg, #c9a84c, #f5d49a);
+        color: #2c1810;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 4px 12px;
+        border-radius: 20px;
+      }
+      .tier-badge.none {
+        background: #e0e0e0;
+        color: #666;
+      }
+      .tier-badge.village {
+        background: linear-gradient(135deg, #8bc34a, #c5e1a5);
+        color: #33691e;
+      }
+      .tier-badge.normal {
+        background: linear-gradient(135deg, #90a4ae, #cfd8dc);
+        color: #37474f;
+      }
+      .tier-badge.gold {
+        background: linear-gradient(135deg, #c9a84c, #f5d49a);
+        color: #5d4037;
+      }
+      .tier-badge.diamond {
+        background: linear-gradient(135deg, #7986cb, #c5cae9);
+        color: #1a237e;
+      }
+      .tier-badge.vip {
+        background: linear-gradient(135deg, #2c1810, #5c3d2e);
+        color: #f5d49a;
+      }
 
-  async function api(path) {
-    const res = await fetch(path, {
-      headers: { 'Authorization': 'Bearer ' + jwtToken }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  }
+      .card-info {
+        flex: 1;
+      }
+      .card-info .discount {
+        font-size: 18px;
+        font-weight: 700;
+        color: #c9a84c;
+      }
+      .card-info .expire {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+      }
 
-  async function loadWallet() {
-    try {
-      // 循序呼叫，先建立錢包再查紀錄，避免並發時重複建立錢包
-      const wallet = await api('/api/wallet');
-      const txList = await api('/api/wallet/transactions');
-      render(wallet, txList);
-    } catch (e) {
-      showError('載入失敗，請重新整理');
-    }
-  }
+      .balance-row {
+        border-top: 1px solid #f0e8dc;
+        padding-top: 16px;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .balance-label {
+        font-size: 13px;
+        color: #666;
+      }
+      .balance-amount {
+        font-size: 32px;
+        font-weight: 700;
+        color: #2c1810;
+      }
+      .balance-unit {
+        font-size: 14px;
+        color: #666;
+      }
 
-  function tierClass(tier) {
-    const map = {
-      NONE: 'none', VILLAGE: 'village', NORMAL: 'normal',
-      GOLD: 'gold', DIAMOND: 'diamond', VIP: 'vip'
-    };
-    return map[tier] || 'none';
-  }
+      /* 會員等級進度 */
+      .tier-progress {
+        margin: 16px 16px 0;
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .tier-progress h3 {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 12px;
+      }
+      .tier-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f5f5f5;
+        gap: 10px;
+      }
+      .tier-item:last-child {
+        border-bottom: none;
+      }
+      .tier-item .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        flex-shrink: 0;
+      }
+      .tier-item.active .dot {
+        background: #c9a84c;
+      }
+      .tier-item .name {
+        flex: 1;
+        font-size: 14px;
+      }
+      .tier-item.active .name {
+        font-weight: 700;
+        color: #2c1810;
+      }
+      .tier-item .amount {
+        font-size: 12px;
+        color: #999;
+      }
+      .tier-item .perk {
+        font-size: 12px;
+        color: #c9a84c;
+        font-weight: 600;
+      }
 
-  function discountLabel(discount) {
-    if (discount >= 1.0) return '無折扣';
-    return Math.round(discount * 100) + '折';
-  }
+      /* 交易紀錄 */
+      .transactions {
+        margin: 16px 16px 80px;
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .transactions h3 {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 12px;
+      }
+      .tx-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f5f5f5;
+      }
+      .tx-item:last-child {
+        border-bottom: none;
+      }
+      .tx-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        margin-right: 10px;
+        flex-shrink: 0;
+      }
+      .tx-icon.deposit {
+        background: #e8f5e9;
+      }
+      .tx-icon.deduct {
+        background: #fce4ec;
+      }
+      .tx-body {
+        flex: 1;
+      }
+      .tx-note {
+        font-size: 14px;
+        color: #333;
+      }
+      .tx-date {
+        font-size: 11px;
+        color: #bbb;
+        margin-top: 2px;
+      }
+      .tx-amount {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .tx-amount.plus {
+        color: #43a047;
+      }
+      .tx-amount.minus {
+        color: #e53935;
+      }
 
-  function render(wallet, txList) {
-    const tiers = [
-      { key: 'VILLAGE', label: '村民優惠方案', amount: '$5,000', perk: '贈$200' },
-      { key: 'NORMAL',  label: '普卡',          amount: '$8,000', perk: '95折' },
-      { key: 'GOLD',    label: '金卡',           amount: '$15,000', perk: '9折' },
-      { key: 'DIAMOND', label: '鑽石卡',         amount: '$30,000', perk: '88折' },
-      { key: 'VIP',     label: '慕沐村VIP',      amount: '$50,000', perk: '85折' },
-    ];
-    const tierOrder = ['NONE','VILLAGE','NORMAL','GOLD','DIAMOND','VIP'];
-    const currentRank = tierOrder.indexOf(wallet.cardTier);
+      .empty {
+        text-align: center;
+        padding: 24px;
+        color: #bbb;
+        font-size: 14px;
+      }
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #bbb;
+      }
 
-    const expireText = wallet.cardActive
-      ? `有效期限至 ${wallet.cardExpiresAt}`
-      : (wallet.cardActivatedAt ? '會員資格已到期' : '尚未開卡');
+      /* 錯誤/提示訊息 */
+      .toast {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">慕沐村 Mulage pet</div>
+      <h1>會員錢包</h1>
+    </div>
 
-    const discText = wallet.cardActive
-      ? discountLabel(wallet.discount)
-      : '—';
+    <div id="app">
+      <div class="loading">載入中...</div>
+    </div>
 
-    const tierHTML = tiers.map(t => {
-      const rank = tierOrder.indexOf(t.key);
-      const active = rank <= currentRank && currentRank > 0;
-      return `
-        <div class="tier-item ${active ? 'active' : ''}">
-          <div class="dot"></div>
-          <div class="name">${t.label}</div>
-          <div class="amount">${t.amount}</div>
-          <div class="perk">${t.perk}</div>
-        </div>`;
-    }).join('');
+    <div class="toast" id="toast"></div>
 
-    const txHTML = txList.length === 0
-      ? '<div class="empty">暫無消費紀錄</div>'
-      : txList.map(tx => {
-          const isPlus = tx.amount > 0;
-          const icon = isPlus ? '💰' : '🛍️';
-          const date = new Date(tx.createdAt).toLocaleDateString('zh-TW');
-          return `
-            <div class="tx-item">
-              <div class="tx-icon ${isPlus ? 'deposit' : 'deduct'}">${icon}</div>
-              <div class="tx-body">
-                <div class="tx-note">${tx.note || tx.typeLabel}</div>
-                <div class="tx-date">${date}　餘額 $${tx.balanceAfter.toLocaleString()}</div>
-              </div>
-              <div class="tx-amount ${isPlus ? 'plus' : 'minus'}">
-                ${isPlus ? '+' : ''}$${Math.abs(tx.amount).toLocaleString()}
-              </div>
-            </div>`;
-        }).join('');
+    <script>
+      const LIFF_ID = "2010567973-ygHvpq7X";
+      let jwtToken = null;
 
-    document.getElementById('app').innerHTML = `
-      <div class="card-section">
-        <div class="card-tier">
-          <div class="tier-badge ${tierClass(wallet.cardTier)}">${wallet.cardTierLabel}</div>
-          <div class="card-info">
-            <div class="discount">${discText}</div>
-            <div class="expire">${expireText}</div>
-          </div>
-        </div>
-        <div class="balance-row">
-          <div class="balance-label">儲值餘額</div>
-          <div class="balance-amount">$${wallet.balance.toLocaleString()}</div>
-          <div class="balance-unit">元</div>
-        </div>
-      </div>
+      // --- 初始化流程 ---
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
 
-      <div class="tier-progress">
-        <h3>會員等級說明</h3>
-        ${tierHTML}
-      </div>
+          const idToken = liff.getIDToken();
+          if (!idToken) {
+            showError("取得 idToken 失敗，請確認 LIFF 設定");
+            return;
+          }
 
-      <div class="transactions">
-        <h3>消費與儲值紀錄</h3>
-        ${txHTML}
-      </div>
+          const res = await fetch("/api/line/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true", // ← 加這行
+            },
+            body: JSON.stringify({ idToken }),
+          });
 
-      <div style="display:flex; gap:8px; margin:16px 0 8px; justify-content:center;">
-        <a href="/liff/my-pets.html"
-           style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center;
-                  font-size:13px; color:#5c3d2e; text-decoration:none;">
-          🐾 我的毛孩
-        </a>
-        <a href="/liff/add-pet.html"
-           style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center;
-                  font-size:13px; color:#5c3d2e; text-decoration:none;">
-          ➕ 新增毛孩
-        </a>
-      </div>`;
-  }
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            showError("登入失敗：" + (data?.message || res.status));
+            return;
+          }
 
-  function showError(msg) {
-    document.getElementById('app').innerHTML =
-      `<div class="loading" style="color:#e53935">${msg}</div>`;
-  }
+          // 同時嘗試讀取 token 或 jwtToken，避免後端欄位沒對齊
+          jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+          await loadWallet();
+        } catch (e) {
+          showError("初始化失敗：" + e.message);
+        }
+      }
 
-  function showToast(msg) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 2500);
-  }
+      // --- API 請求助手 ---
+      async function api(path) {
+        const res = await fetch(path, {
+          headers: {
+            Authorization: "Bearer " + jwtToken,
+            "ngrok-skip-browser-warning": "true", // ← 加這行
+          },
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      }
 
-  init();
-</script>
-</body>
+      async function loadWallet() {
+        try {
+          // 1. 檢查 Token 是否存在
+          if (!jwtToken) {
+            showError("載入失敗：未取得有效的登入憑證");
+            return;
+          }
+
+          // 2. 真正向後端發送請求（循序呼叫，獲取錢包與交易紀錄）
+          const wallet = await api("/api/wallet");
+          const txList = await api("/api/wallet/transactions");
+
+          // 3. 成功拿到資料後，渲染畫面
+          render(wallet, txList);
+        } catch (e) {
+          // 這裡保留 e.message，如果後端真的噴 401/500，畫面上會顯示具體的 HTTP 狀態碼
+          showError("載入失敗：" + (e.message || "未知錯誤"));
+        }
+      }
+
+      // --- UI 渲染邏輯 ---
+      function tierClass(tier) {
+        const map = {
+          NONE: "none",
+          VILLAGE: "village",
+          NORMAL: "normal",
+          GOLD: "gold",
+          DIAMOND: "diamond",
+          VIP: "vip",
+        };
+        return map[tier] || "none";
+      }
+
+      function discountLabel(discount) {
+        if (discount >= 1.0) return "無折扣";
+        return Math.round(discount * 100) + "折";
+      }
+
+      function render(wallet, txList) {
+        const tiers = [
+          {
+            key: "VILLAGE",
+            label: "村民優惠方案",
+            amount: "$5,000",
+            perk: "贈$200",
+          },
+          { key: "NORMAL", label: "普卡", amount: "$8,000", perk: "95折" },
+          { key: "GOLD", label: "金卡", amount: "$15,000", perk: "9折" },
+          { key: "DIAMOND", label: "鑽石卡", amount: "$30,000", perk: "88折" },
+          { key: "VIP", label: "慕沐村VIP", amount: "$50,000", perk: "85折" },
+        ];
+
+        const tierOrder = [
+          "NONE",
+          "VILLAGE",
+          "NORMAL",
+          "GOLD",
+          "DIAMOND",
+          "VIP",
+        ];
+        const currentRank = tierOrder.indexOf(wallet.cardTier);
+
+        const expireText = wallet.cardActive
+          ? `有效期限至 ${wallet.cardExpiresAt}`
+          : wallet.cardActivatedAt
+            ? "會員資格已到期"
+            : "尚未開卡";
+
+        const discText = wallet.cardActive
+          ? discountLabel(wallet.discount)
+          : "—";
+
+        // 等級進度 HTML
+        const tierHTML = tiers
+          .map((t) => {
+            const rank = tierOrder.indexOf(t.key);
+            const active = rank <= currentRank && currentRank > 0;
+            return `
+                <div class="tier-item ${active ? "active" : ""}">
+                    <div class="dot"></div>
+                    <div class="name">${t.label}</div>
+                    <div class="amount">${t.amount}</div>
+                    <div class="perk">${t.perk}</div>
+                </div>`;
+          })
+          .join("");
+
+        // 交易紀錄 HTML
+        const txHTML =
+          txList.length === 0
+            ? '<div class="empty">暫無消費紀錄</div>'
+            : txList
+                .map((tx) => {
+                  const isPlus = tx.amount > 0;
+                  const icon = isPlus ? "💰" : "🛍️";
+                  const date = new Date(tx.createdAt).toLocaleDateString(
+                    "zh-TW",
+                  );
+                  return `
+                    <div class="tx-item">
+                        <div class="tx-icon ${isPlus ? "deposit" : "deduct"}">${icon}</div>
+                        <div class="tx-body">
+                            <div class="tx-note">${tx.note || tx.typeLabel}</div>
+                            <div class="tx-date">${date} 餘額 $${tx.balanceAfter.toLocaleString()}</div>
+                        </div>
+                        <div class="tx-amount ${isPlus ? "plus" : "minus"}">
+                            ${isPlus ? "+" : ""}$${Math.abs(tx.amount).toLocaleString()}
+                        </div>
+                    </div>`;
+                })
+                .join("");
+
+        // 最終組合頁面
+        document.getElementById("app").innerHTML = `
+                <div class="card-section">
+                    <div class="card-tier">
+                        <div class="tier-badge ${tierClass(wallet.cardTier)}">${wallet.cardTierLabel}</div>
+                        <div class="card-info">
+                            <div class="discount">${discText}</div>
+                            <div class="expire">${expireText}</div>
+                        </div>
+                    </div>
+                    <div class="balance-row">
+                        <div class="balance-label">儲值餘額</div>
+                        <div class="balance-amount">$${wallet.balance.toLocaleString()}</div>
+                        <div class="balance-unit">元</div>
+                    </div>
+                </div>
+
+                <div class="tier-progress">
+                    <h3>會員等級說明</h3>
+                    ${tierHTML}
+                </div>
+
+                <div class="transactions">
+                    <h3>消費與儲值紀錄</h3>
+                    ${txHTML}
+                </div>
+
+                <div style="display:flex; gap:8px; margin:16px 0 8px; justify-content:center;">
+                    <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">🐾 我的毛孩</a>
+                    <a href="/liff/add-pet.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">➕ 新增毛孩</a>
+                </div>`;
+      }
+
+      function showError(msg) {
+        document.getElementById("app").innerHTML =
+          `<div class="loading" style="color:#e53935">${msg}</div>`;
+      }
+
+      init();
+    </script>
+  </body>
 </html>

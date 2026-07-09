@@ -3,9 +3,11 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
+import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
@@ -30,6 +32,7 @@ public class AppointmentMvcController {
     private final AppointmentService appointmentService;
     private final GroomingService groomingItemService;
     private final UserService userService;
+    private final PetService petService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -68,7 +71,8 @@ public class AppointmentMvcController {
     public String newForm(HttpServletRequest request, Model model) {
         User user = getLoginUser(request);
 
-        var myPets = appointmentService.getMyPetsForBooking(user.getUsername());
+        // 改用 PetResponse，前端才能讀到 sizeCategory、recommendedItemCodes
+        List<PetResponse> myPets = petService.getMyPets(user.getUsername());
         List<GroomingItemResponse> availableServices = groomingItemService.getAllItems();
 
         model.addAttribute("user", user);
@@ -104,7 +108,7 @@ public class AppointmentMvcController {
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
-            model.addAttribute("myPets", appointmentService.getMyPetsForBooking(user.getUsername()));
+            model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
             return "appointments/form";
         }
@@ -116,7 +120,7 @@ public class AppointmentMvcController {
 
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
-            model.addAttribute("myPets", appointmentService.getMyPetsForBooking(user.getUsername()));
+            model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
             model.addAttribute("errorMsg", e.getMessage());
             return "appointments/form";
@@ -124,7 +128,7 @@ public class AppointmentMvcController {
     }
 
     // ── 💡 額外加碼練習：管理員專用後台 ─────────────────────────────────────────
-    // 🛡️ 一般會員（CUSTOMER）如果敢打這個網址，直接在 RoleInterceptor 就會被彈飛！
+    // 🛡️ 啪！貼上你的自訂防偽貼紙。一般會員（CUSTOMER）如果敢打這個網址，直接在 RoleInterceptor 就會被彈飛！
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/admin/dashboard")
     public String adminDashboard(Model model) {

@@ -25,14 +25,24 @@
             
             <div class="field">
               <label>選擇寵物 *</label>
-              <select name="petId" required>
+              <select name="petId" id="petSelect" required onchange="autoCheckItems()">
                 <option value="" disabled selected>請選擇您的寵物</option>
-                <option th:each="pet : ${myPets}" th:value="${pet.id}" th:text="${pet.name}"></option>
+                <option th:each="pet : ${myPets}"
+                        th:value="${pet.id}"
+                        th:text="${pet.name + '（' + pet.sizeCategoryLabel + '・' + pet.coatTypeLabel + '）'}"
+                        th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')}">
+                </option>
               </select>
               <p style="font-size: 12px; color: var(--brown-light); margin-top: 6px;">
                 沒看到您的寶貝？
                 <a href="/pets/new" style="color: var(--brown-dark); font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--brown-light);">前往新增寵物</a>
               </p>
+              <!-- 自動勾選提示 -->
+              <div id="autoHint" style="display:none; margin-top:8px; padding:8px 12px;
+                   background:#f0f9f0; border:1px solid #c8e6c9; border-radius:6px;
+                   font-size:13px; color:#2e7d32;">
+                🤖 已依體型自動勾選洗澡＋吹毛項目，您可再自行加選其他服務。
+              </div>
             </div>
 
             <div class="field">
@@ -100,5 +110,43 @@
 
       </div>
     </div>
+    <script>
+      function autoCheckItems() {
+        const select = document.getElementById('petSelect');
+        const selected = select.options[select.selectedIndex];
+        const recommend = selected.dataset.recommend || '';
+
+        // 先全部取消勾選
+        document.querySelectorAll('input[name="selectedItems"]').forEach(cb => {
+          cb.checked = false;
+          cb.closest('label').style.background = '#ffffff';
+          cb.closest('label').style.borderColor = 'var(--cream-200)';
+        });
+
+        // 依推薦 itemCode 自動勾選
+        if (recommend) {
+          const codes = recommend.split(',').map(c => c.trim()).filter(Boolean);
+          codes.forEach(code => {
+            const cb = document.querySelector(`input[name="selectedItems"][value="${code}"]`);
+            if (cb) {
+              cb.checked = true;
+              cb.closest('label').style.background = '#fff8f0';
+              cb.closest('label').style.borderColor = '#c9a84c';
+            }
+          });
+          document.getElementById('autoHint').style.display = codes.length ? 'block' : 'none';
+        } else {
+          document.getElementById('autoHint').style.display = 'none';
+        }
+      }
+
+      // 讓已勾選的 checkbox 視覺上高亮
+      document.querySelectorAll('input[name="selectedItems"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+          this.closest('label').style.background = this.checked ? '#fff8f0' : '#ffffff';
+          this.closest('label').style.borderColor = this.checked ? '#c9a84c' : 'var(--cream-200)';
+        });
+      });
+    </script>
   </body>
 </html>

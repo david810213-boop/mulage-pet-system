@@ -1,165 +1,272 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>慕沐村 我的毛孩</title>
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, sans-serif; background: #f8f5f0; min-height: 100vh; }
-    .header {
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
-      padding: 20px 16px 24px;
-      text-align: center;
-    }
-    .header .logo { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
-    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 2px; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>慕沐村 我的毛孩</title>
+    <script
+      charset="utf-8"
+      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+    ></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, sans-serif;
+        background: #f8f5f0;
+        min-height: 100vh;
+      }
+      .header {
+        background: linear-gradient(135deg, #2c1810, #5c3d2e);
+        color: #f5d49a;
+        padding: 20px 16px 24px;
+        text-align: center;
+      }
+      .header .logo {
+        font-size: 13px;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      .header h1 {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
 
-    .add-btn {
-      display: block;
-      margin: 16px;
-      padding: 12px;
-      background: white;
-      border: 2px dashed #c9a84c;
-      border-radius: 12px;
-      text-align: center;
-      color: #c9a84c;
-      font-size: 15px;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-    }
+      .add-btn {
+        display: block;
+        margin: 16px;
+        padding: 12px;
+        background: white;
+        border: 2px dashed #c9a84c;
+        border-radius: 12px;
+        text-align: center;
+        color: #c9a84c;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+      }
 
-    .pet-card {
-      margin: 0 16px 16px;
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .pet-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    .pet-icon {
-      width: 48px; height: 48px;
-      border-radius: 50%;
-      background: #f0e8dc;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px; flex-shrink: 0;
-    }
-    .pet-name { font-size: 18px; font-weight: 700; color: #2c1810; }
-    .pet-breed { font-size: 13px; color: #999; margin-top: 2px; }
+      .pet-card {
+        margin: 0 16px 16px;
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .pet-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .pet-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #f0e8dc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+      }
+      .pet-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #2c1810;
+      }
+      .pet-breed {
+        font-size: 13px;
+        color: #999;
+        margin-top: 2px;
+      }
 
-    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-    .tag {
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .tag.size  { background: #fff3e0; color: #e65100; }
-    .tag.coat  { background: #e8f5e9; color: #2e7d32; }
-    .tag.anxiety-yes { background: #fce4ec; color: #c62828; }
-    .tag.anxiety-no  { background: #e3f2fd; color: #1565c0; }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .tag {
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .tag.size {
+        background: #fff3e0;
+        color: #e65100;
+      }
+      .tag.coat {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      .tag.anxiety-yes {
+        background: #fce4ec;
+        color: #c62828;
+      }
+      .tag.anxiety-no {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
 
-    .pet-info { font-size: 13px; color: #666; line-height: 2; }
-    .pet-info span { color: #2c1810; font-weight: 500; }
+      .pet-info {
+        font-size: 13px;
+        color: #666;
+        line-height: 2;
+      }
+      .pet-info span {
+        color: #2c1810;
+        font-weight: 500;
+      }
 
-    .recommended {
-      margin-top: 12px;
-      padding: 10px 12px;
-      background: #f0f9f0;
-      border-radius: 8px;
-      font-size: 12px;
-      color: #2e7d32;
-    }
-    .recommended .label { font-weight: 700; margin-bottom: 4px; }
+      .recommended {
+        margin-top: 12px;
+        padding: 10px 12px;
+        background: #f0f9f0;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #2e7d32;
+      }
+      .recommended .label {
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
 
-    .loading { text-align: center; padding: 60px; color: #bbb; }
-    .empty { text-align: center; padding: 40px; color: #bbb; font-size: 14px; }
-  </style>
-</head>
-<body>
+      .loading {
+        text-align: center;
+        padding: 60px;
+        color: #bbb;
+      }
+      .empty {
+        text-align: center;
+        padding: 40px;
+        color: #bbb;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">慕沐村 Mulage pet</div>
+      <h1>我的毛孩</h1>
+    </div>
 
-<div class="header">
-  <div class="logo">慕沐村 Mulage pet</div>
-  <h1>我的毛孩</h1>
-</div>
+    <a class="add-btn" href="/liff/add-pet.html">＋ 新增毛孩</a>
 
-<a class="add-btn" href="/liff/add-pet.html">＋ 新增毛孩</a>
+    <div id="app"><div class="loading">載入中...</div></div>
 
-<div id="app"><div class="loading">載入中...</div></div>
+    <script>
+      const LIFF_ID = "2010567973-ygHvpq7X";
+      let jwtToken = null;
 
-<script>
-  const LIFF_ID = "2010567973-ygHvpq7X";
-  let jwtToken = null;
+      // --- 初始化流程 ---
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
 
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      const res = await fetch('/api/line/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: liff.getIDToken() })
-      });
-      const data = await res.json();
-      if (!res.ok) { document.getElementById('app').innerHTML = '<div class="loading" style="color:red">登入失敗</div>'; return; }
-      jwtToken = data.token;
-      await loadPets();
-    } catch (e) {
-      document.getElementById('app').innerHTML = '<div class="loading" style="color:red">初始化失敗</div>';
-    }
-  }
+          const res = await fetch("/api/line/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true", // 防止 ngrok 阻擋
+            },
+            body: JSON.stringify({ idToken: liff.getIDToken() }),
+          });
 
-  async function loadPets() {
-    const res = await fetch('/api/pets/my', {
-      headers: { 'Authorization': 'Bearer ' + jwtToken }
-    });
-    const pets = await res.json();
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            document.getElementById("app").innerHTML =
+              '<div class="loading" style="color:red">登入失敗</div>';
+            return;
+          }
 
-    if (!pets.length) {
-      document.getElementById('app').innerHTML =
-        '<div class="empty">尚無毛孩資料<br>點上方按鈕新增您的第一隻毛孩</div>';
-      return;
-    }
+          // 多欄位聯集相容，完美對齊後端
+          jwtToken = data?.token || data?.jwtToken || data?.accessToken;
 
-    document.getElementById('app').innerHTML = pets.map(p => `
-      <div class="pet-card">
-        <div class="pet-header">
-          <div class="pet-icon">${p.petType === 'DOG' ? '🐶' : p.petType === 'CAT' ? '🐱' : '🐾'}</div>
-          <div>
-            <div class="pet-name">${p.name}</div>
-            <div class="pet-breed">${p.breed}</div>
+          await loadPets();
+        } catch (e) {
+          // 印出具體錯誤訊息，方便 debug
+          document.getElementById("app").innerHTML =
+            '<div class="loading" style="color:red">初始化失敗：' +
+            e.message +
+            "</div>";
+        }
+      }
+
+      // --- 載入毛孩資料 ---
+      async function loadPets() {
+        try {
+          const res = await fetch("/api/pets/my", {
+            headers: {
+              Authorization: "Bearer " + jwtToken,
+              "ngrok-skip-browser-warning": "true", // 防止 ngrok 阻擋
+            },
+          });
+
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const pets = await res.json();
+
+          if (!pets || !pets.length) {
+            document.getElementById("app").innerHTML =
+              '<div class="empty">尚無毛孩資料<br>點上方按鈕新增您的第一隻毛孩</div>';
+            return;
+          }
+
+          document.getElementById("app").innerHTML = pets
+            .map(
+              (p) => `
+        <div class="pet-card">
+          <div class="pet-header">
+            <div class="pet-icon">${p.petType === "DOG" ? "🐶" : p.petType === "CAT" ? "🐱" : "🐾"}</div>
+            <div>
+              <div class="pet-name">${p.name}</div>
+              <div class="pet-breed">${p.breed}</div>
+            </div>
           </div>
+          <div class="tags">
+            <span class="tag size">${p.sizeCategoryLabel}</span>
+            <span class="tag coat">${p.coatTypeLabel}</span>
+            <span class="tag ${p.hasSeparationAnxiety ? "anxiety-yes" : "anxiety-no"}">
+              ${p.hasSeparationAnxiety ? "⚠️ 有分離焦慮" : "分離焦慮：無"}
+            </span>
+          </div>
+          <div class="pet-info">
+            體重：<span>${p.weight} kg</span> 
+            年齡：<span>${p.age} 歲</span>
+            ${p.notes ? "<br>注意事項：<span>" + p.notes + "</span>" : ""}
+          </div>
+          ${
+            p.recommendedItemCodes && p.recommendedItemCodes.length
+              ? `
+          <div class="recommended">
+            <div class="label">🤖 預約時自動帶入項目</div>
+            ${p.recommendedItemCodes.join("、")}
+          </div>`
+              : ""
+          }
         </div>
-        <div class="tags">
-          <span class="tag size">${p.sizeCategoryLabel}</span>
-          <span class="tag coat">${p.coatTypeLabel}</span>
-          <span class="tag ${p.hasSeparationAnxiety ? 'anxiety-yes' : 'anxiety-no'}">
-            ${p.hasSeparationAnxiety ? '⚠️ 有分離焦慮' : '分離焦慮：無'}
-          </span>
-        </div>
-        <div class="pet-info">
-          體重：<span>${p.weight} kg</span>　
-          年齡：<span>${p.age} 歲</span>
-          ${p.notes ? '<br>注意事項：<span>' + p.notes + '</span>' : ''}
-        </div>
-        ${p.recommendedItemCodes && p.recommendedItemCodes.length ? `
-        <div class="recommended">
-          <div class="label">🤖 預約時自動帶入項目</div>
-          ${p.recommendedItemCodes.join('、')}
-        </div>` : ''}
-      </div>
-    `).join('');
-  }
+      `,
+            )
+            .join("");
+        } catch (e) {
+          document.getElementById("app").innerHTML =
+            '<div class="loading" style="color:red">載入毛孩失敗：' +
+            e.message +
+            "</div>";
+        }
+      }
 
-  init();
-</script>
-</body>
+      init();
+    </script>
+  </body>
 </html>
