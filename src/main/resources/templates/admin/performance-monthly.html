@@ -1,54 +1,202 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
-  <head th:replace="~{fragments/header :: common-head('績效月報 | 寵物美容系統')}"></head>
+  <head
+    th:replace="~{fragments/header :: common-head('績效月報 | 慕沐村 Mulage pet')}"
+  ></head>
   <body>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h2 style="margin:0">🏆 員工績效月報</h2>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2 style="margin: 0">🏆 員工績效月報</h2>
           <a href="/admin/performance" class="btn btn-outline">← 回日報</a>
         </div>
 
-        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
-        <div class="alert alert-danger"  th:if="${errorMsg}"   th:text="${errorMsg}"></div>
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
+        <div
+          class="alert alert-danger"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
 
         <!-- 月份選擇 -->
-        <form method="get" action="/admin/performance/monthly"
-              style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center;">
-          <select name="year" style="padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
-            <option th:each="y : ${#numbers.sequence(2024, 2030)}"
-                    th:value="${y}" th:text="${y}"
-                    th:selected="${y == ym.year}">年</option>
+        <form
+          method="get"
+          action="/admin/performance/monthly"
+          style="
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            align-items: center;
+          "
+        >
+          <select
+            name="year"
+            style="
+              padding: 8px;
+              border: 1px solid var(--cream-300);
+              border-radius: var(--radius-sm);
+            "
+          >
+            <option
+              th:each="y : ${#numbers.sequence(2024, 2030)}"
+              th:value="${y}"
+              th:text="${y}"
+              th:selected="${y == ym.year}"
+            >
+              年
+            </option>
           </select>
-          <select name="month" style="padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
-            <option th:each="m : ${#numbers.sequence(1, 12)}"
-                    th:value="${m}" th:text="${m + '月'}"
-                    th:selected="${m == ym.monthValue}">月</option>
+          <select
+            name="month"
+            style="
+              padding: 8px;
+              border: 1px solid var(--cream-300);
+              border-radius: var(--radius-sm);
+            "
+          >
+            <option
+              th:each="m : ${#numbers.sequence(1, 12)}"
+              th:value="${m}"
+              th:text="${m + '月'}"
+              th:selected="${m == ym.monthValue}"
+            >
+              月
+            </option>
           </select>
           <button type="submit" class="btn">查詢</button>
         </form>
 
         <!-- 積分獎勵金對照表 -->
-        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:1.5rem;">
-          <h3 style="font-size:15px; margin-bottom:12px;">💰 積分獎勵金對照表（不含接待）</h3>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <div style="background:#fff8f0; border:1px solid #f0e8dc; border-radius:8px; padding:8px 12px; font-size:13px;">3001–3350 → <strong>$1,200</strong></div>
-            <div style="background:#fff4e8; border:1px solid #f0e8dc; border-radius:8px; padding:8px 12px; font-size:13px;">3351–3700 → <strong>$1,600</strong></div>
-            <div style="background:#ffeed8; border:1px solid #f0e8dc; border-radius:8px; padding:8px 12px; font-size:13px;">3701–4000 → <strong>$2,200</strong></div>
-            <div style="background:#ffe8c8; border:1px solid #f0d8c0; border-radius:8px; padding:8px 12px; font-size:13px;">4001–4300 → <strong>$2,800</strong></div>
-            <div style="background:#ffddb8; border:1px solid #f0c8a8; border-radius:8px; padding:8px 12px; font-size:13px;">4301–4600 → <strong>$3,600</strong></div>
-            <div style="background:#ffd0a0; border:1px solid #f0b888; border-radius:8px; padding:8px 12px; font-size:13px;">4601–5000 → <strong>$4,400</strong></div>
-            <div style="background:#ffc088; border:1px solid #f0a070; border-radius:8px; padding:8px 12px; font-size:13px;">5001–5300 → <strong>$5,600</strong></div>
-            <div style="background:#ffb070; border:1px solid #f09060; border-radius:8px; padding:8px 12px; font-size:13px;">5301–5600 → <strong>$6,600</strong></div>
+        <div
+          style="
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h3 style="font-size: 15px; margin-bottom: 12px">
+            💰 積分獎勵金對照表（不含接待）
+          </h3>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <div
+              style="
+                background: #fff8f0;
+                border: 1px solid #f0e8dc;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              3001–3350 → <strong>$1,200</strong>
+            </div>
+            <div
+              style="
+                background: #fff4e8;
+                border: 1px solid #f0e8dc;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              3351–3700 → <strong>$1,600</strong>
+            </div>
+            <div
+              style="
+                background: #ffeed8;
+                border: 1px solid #f0e8dc;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              3701–4000 → <strong>$2,200</strong>
+            </div>
+            <div
+              style="
+                background: #ffe8c8;
+                border: 1px solid #f0d8c0;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              4001–4300 → <strong>$2,800</strong>
+            </div>
+            <div
+              style="
+                background: #ffddb8;
+                border: 1px solid #f0c8a8;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              4301–4600 → <strong>$3,600</strong>
+            </div>
+            <div
+              style="
+                background: #ffd0a0;
+                border: 1px solid #f0b888;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              4601–5000 → <strong>$4,400</strong>
+            </div>
+            <div
+              style="
+                background: #ffc088;
+                border: 1px solid #f0a070;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              5001–5300 → <strong>$5,600</strong>
+            </div>
+            <div
+              style="
+                background: #ffb070;
+                border: 1px solid #f09060;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+              "
+            >
+              5301–5600 → <strong>$6,600</strong>
+            </div>
           </div>
         </div>
 
         <!-- 月度排行 -->
-        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:1.5rem;">
-          <h3 style="font-size:15px; margin-bottom:12px;">
-            📊 <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span> 績效排行
+        <div
+          style="
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h3 style="font-size: 15px; margin-bottom: 12px">
+            📊
+            <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span>
+            績效排行
           </h3>
           <table>
             <thead>
@@ -64,27 +212,58 @@
             </thead>
             <tbody>
               <tr th:if="${#lists.isEmpty(ranking)}">
-                <td colspan="7" style="text-align:center; color:#aaa;">尚未結算，或本月無績效資料</td>
+                <td colspan="7" style="text-align: center; color: #aaa">
+                  尚未結算，或本月無績效資料
+                </td>
               </tr>
               <tr th:each="mp,stat : ${ranking}">
                 <td>
-                  <span th:if="${stat.index == 0}" style="font-size:20px;">🥇</span>
-                  <span th:if="${stat.index == 1}" style="font-size:20px;">🥈</span>
-                  <span th:if="${stat.index == 2}" style="font-size:20px;">🥉</span>
-                  <span th:if="${stat.index >= 3}" th:text="${stat.index + 1}">4</span>
+                  <span th:if="${stat.index == 0}" style="font-size: 20px"
+                    >🥇</span
+                  >
+                  <span th:if="${stat.index == 1}" style="font-size: 20px"
+                    >🥈</span
+                  >
+                  <span th:if="${stat.index == 2}" style="font-size: 20px"
+                    >🥉</span
+                  >
+                  <span th:if="${stat.index >= 3}" th:text="${stat.index + 1}"
+                    >4</span
+                  >
                 </td>
                 <td th:text="${mp.staff.name}">員工</td>
-                <td style="font-weight:700; color:#c9a84c;" th:text="${mp.totalPoints + ' 分'}">分</td>
+                <td
+                  style="font-weight: 700; color: #c9a84c"
+                  th:text="${mp.totalPoints + ' 分'}"
+                >
+                  分
+                </td>
                 <td th:text="${mp.receptionPoints + ' 分'}">分</td>
-                <td style="font-weight:700; color:#43a047;"
-                    th:text="${mp.bonusAmount > 0 ? '$' + mp.bonusAmount : '未達門檻'}">獎金</td>
-                <td>
-                  <span th:if="${mp.settled}" style="color:#43a047; font-size:13px;">✅ 已結算</span>
-                  <span th:unless="${mp.settled}" style="color:#e53935; font-size:13px;">⏳ 未結算</span>
+                <td
+                  style="font-weight: 700; color: #43a047"
+                  th:text="${mp.bonusAmount > 0 ? '$' + mp.bonusAmount : '未達門檻'}"
+                >
+                  獎金
                 </td>
                 <td>
-                  <a th:href="@{/admin/performance/staff/{id}(id=${mp.staff.id}, year=${ym.year}, month=${ym.monthValue})}"
-                     class="btn btn-outline" style="padding:4px 10px; font-size:12px;">明細</a>
+                  <span
+                    th:if="${mp.settled}"
+                    style="color: #43a047; font-size: 13px"
+                    >✅ 已結算</span
+                  >
+                  <span
+                    th:unless="${mp.settled}"
+                    style="color: #e53935; font-size: 13px"
+                    >⏳ 未結算</span
+                  >
+                </td>
+                <td>
+                  <a
+                    th:href="@{/admin/performance/staff/{id}(id=${mp.staff.id}, year=${ym.year}, month=${ym.monthValue})}"
+                    class="btn btn-outline"
+                    style="padding: 4px 10px; font-size: 12px"
+                    >明細</a
+                  >
                 </td>
               </tr>
             </tbody>
@@ -92,22 +271,56 @@
         </div>
 
         <!-- 月底結算按鈕（ADMIN 限定） -->
-        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-          <h3 style="font-size:15px; margin-bottom:12px;">⚙️ 月底結算</h3>
-          <p style="font-size:13px; color:#666; margin-bottom:12px;">
+        <div
+          style="
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          "
+        >
+          <h3 style="font-size: 15px; margin-bottom: 12px">⚙️ 月底結算</h3>
+          <p style="font-size: 13px; color: #666; margin-bottom: 12px">
             結算後將統計本月所有績效紀錄，計算每位員工的積分與獎勵金。
           </p>
-          <form method="post" action="/admin/performance/settle"
-                onsubmit="return confirm('確定要結算 ' + document.getElementById('settleYear').value + '年' + document.getElementById('settleMonth').value + '月的績效嗎？')">
-            <input type="hidden" id="settleYear"  name="year"  th:value="${ym.year}" />
-            <input type="hidden" id="settleMonth" name="month" th:value="${ym.monthValue}" />
-            <button type="submit" class="btn"
-                    style="background:#c9a84c; border-color:#c9a84c;">
-              執行 <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span> 結算
+          <form
+            method="post"
+            action="/admin/performance/settle"
+            onsubmit="
+              return confirm(
+                '確定要結算 ' +
+                  document.getElementById('settleYear').value +
+                  '年' +
+                  document.getElementById('settleMonth').value +
+                  '月的績效嗎？',
+              );
+            "
+          >
+            <input
+              type="hidden"
+              id="settleYear"
+              name="year"
+              th:value="${ym.year}"
+            />
+            <input
+              type="hidden"
+              id="settleMonth"
+              name="month"
+              th:value="${ym.monthValue}"
+            />
+            <button
+              type="submit"
+              class="btn"
+              style="background: #c9a84c; border-color: #c9a84c"
+            >
+              執行
+              <span th:text="${ym.year + '年' + ym.monthValue + '月'}"
+                >月份</span
+              >
+              結算
             </button>
           </form>
         </div>
-
       </div>
     </div>
   </body>

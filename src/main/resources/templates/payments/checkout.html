@@ -1,7 +1,7 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
   <head
-    th:replace="~{fragments/header :: common-head('結帳 | 寵物美容系統')}"
+    th:replace="~{fragments/header :: common-head('結帳 | 慕沐村 Mulage pet')}"
   ></head>
   <body>
     <div class="page-wrapper">
@@ -13,6 +13,47 @@
           th:if="${errorMsg}"
           th:text="${errorMsg}"
         ></div>
+
+        <div
+          class="card"
+          th:if="${walletBalance != null}"
+          th:style="${walletLowBalance}
+               ? 'border:1px solid #e53935;background:#fdecec;margin-bottom:1rem;'
+               : 'border:1px solid #e0e0e0;background:#f8f9fa;margin-bottom:1rem;'"
+        >
+          <p style="margin: 0; font-size: 14px">
+            會員儲值金餘額：
+            <strong th:text="'$' + ${walletBalance}"></strong>
+          </p>
+          <p
+            th:if="${walletLowBalance}"
+            style="
+              margin: 6px 0 0;
+              color: #c62828;
+              font-size: 13px;
+              font-weight: 600;
+            "
+          >
+            ⚠ 餘額低於 $2,000，建議提醒會員儲值
+          </p>
+          <p style="margin: 8px 0 0; font-size: 13px; color: #666">
+            若使用「儲值金」付款：原價 $<span th:text="${baseAmount}"></span>
+            <span th:if="${walletDiscountActive}">
+              → 會員折扣後 $<strong
+                th:text="${walletFinalAmount}"
+                style="color: #2e7d32"
+              ></strong>
+              <span style="color: #2e7d32"
+                >（享
+                <span
+                  th:text="${#numbers.formatDecimal(walletDiscount * 10, 1, 1)}"
+                ></span>
+                折）</span
+              >
+            </span>
+            <span th:unless="${walletDiscountActive}">（無會員折扣）</span>
+          </p>
+        </div>
 
         <div class="card">
           <form
@@ -26,12 +67,12 @@
                 <option
                   th:each="m : ${paymentMethods}"
                   th:value="${m.name()}"
-                  th:text="${m.name() == 'CASH' ? '現金' : m.name() == 'CREDIT_CARD' ? '信用卡（加收 2%）' : 'Line Pay'}"
+                  th:text="${m.name() == 'CASH' ? '現金' : m.name() == 'CREDIT_CARD' ? '信用卡（加收 2%）' : m.name() == 'LINE_PAY' ? 'Line Pay' : '儲值金（套用會員折扣）'}"
                   th:selected="${checkoutRequest?.paymentMethod?.name() == m.name()}"
                 ></option>
               </select>
               <p class="method-hint">
-                不同付款方式手續費不同，結帳後可於交易紀錄查看實付金額。
+                不同付款方式手續費不同，結帳後可於交易紀錄查看實付金額。選擇「儲值金」將依會員等級套用折扣後，直接從會員儲值餘額中扣除，餘額不足將無法結帳。
               </p>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 0.5rem">

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村 會員錢包</title>
+    <title>慕沐村Mulage pet</title>
     <script
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
@@ -19,6 +19,7 @@
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         background: #f8f5f0;
         min-height: 100vh;
+        padding-bottom: 90px;
       }
 
       /* 頂部 Header */
@@ -265,6 +266,29 @@
       .toast.show {
         opacity: 1;
       }
+
+      /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變 */
+      .fab-home {
+        position: fixed;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2c1810, #5c3d2e);
+        box-shadow: 0 4px 14px rgba(44,24,16,0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        z-index: 500;
+      }
+      .fab-home-icon {
+        font-size: 22px;
+        line-height: 1;
+      }
+      .fab-home:active { opacity: 0.8; }
     </style>
   </head>
   <body>
@@ -272,6 +296,10 @@
       <div class="logo">慕沐村 Mulage pet</div>
       <h1>會員錢包</h1>
     </div>
+
+    <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
+      <span class="fab-home-icon">🏠</span>
+    </a>
 
     <div id="app">
       <div class="loading">載入中...</div>
@@ -474,7 +502,7 @@
 
                 <div style="display:flex; gap:8px; margin:16px 0 8px; justify-content:center;">
                     <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">🐾 我的毛孩</a>
-                    <a href="/liff/add-pet.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">➕ 新增毛孩</a>
+                    <a href="/liff/my-appointments.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">📋 我的預約</a>
                 </div>`;
       }
 

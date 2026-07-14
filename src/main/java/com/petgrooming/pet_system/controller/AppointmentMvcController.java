@@ -51,18 +51,67 @@ public class AppointmentMvcController {
 
     // ── GET /appointments ──────────────────────────────────────────────────
     // 💡 作用：查看預約清單。不貼貼紙，因為一般會員與員工登入後都能看（各自看不同範圍）
+    // 支援篩選：日期區間、狀態（已確認/已取消）、付款狀態、關鍵字（預約編號/飼主姓名/寵物名稱）
     @GetMapping
-    public String list(HttpServletRequest request, Model model) {
+    public String list(HttpServletRequest request, Model model,
+                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+                       @RequestParam(required = false) String status,
+                       @RequestParam(required = false) String paidStatus,
+                       @RequestParam(required = false) String keyword) {
         // 🛡️ 攔截器已經保證絕對有登入，直接從 JWT 解析出來的資訊取得使用者
         User user = getLoginUser(request);
 
         model.addAttribute("user", user);
-        if (user.isStaffOrAdmin()) {
-            model.addAttribute("appointments", appointmentService.getAllAppointments());
-        } else {
-            model.addAttribute("appointments", appointmentService.getMyAppointments(user.getUsername()));
-        }
+
+        List<com.petgrooming.pet_system.dto.AppointmentResponse> all = user.isStaffOrAdmin()
+                ? appointmentService.getAllAppointments()
+                : appointmentService.getMyAppointments(user.getUsername());
+
+        List<com.petgrooming.pet_system.dto.AppointmentResponse> filtered = all.stream()
+                .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
+                .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
+                .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
+                .filter(a -> paidStatus == null || paidStatus.isBlank()
+                        || (paidStatus.equals("PAID") == a.isPaid()))
+                .filter(a -> keyword == null || keyword.isBlank() || matchesKeyword(a, keyword))
+                .toList();
+
+        model.addAttribute("appointments", filtered);
+        model.addAttribute("dateFrom", dateFrom);
+        model.addAttribute("dateTo", dateTo);
+        model.addAttribute("status", status);
+        model.addAttribute("paidStatus", paidStatus);
+        model.addAttribute("keyword", keyword);
         return "appointments/list";
+    }
+
+    // 關鍵字比對：預約編號（AP001 或純數字）、飼主姓名、寵物名稱
+    private boolean matchesKeyword(com.petgrooming.pet_system.dto.AppointmentResponse a, String keyword) {
+        String kw = keyword.trim().toLowerCase();
+        return a.getAppointmentCode().toLowerCase().contains(kw)
+                || String.valueOf(a.getId()).equals(kw)
+                || a.getOwnerName().toLowerCase().contains(kw)
+                || a.getPetName().toLowerCase().contains(kw);
+    }
+
+    // ── POST /appointments/{id}/cancel ─────────────────────────────────────
+    // 💡 作用：取消預約（後台版本，表單提交）
+    @PostMapping("/{id}/cancel")
+    public String cancel(@PathVariable Long id,
+                         @RequestParam(required = false) String reason,
+                         HttpServletRequest request,
+                         RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            var req = new com.petgrooming.pet_system.dto.CancelAppointmentRequest();
+            req.setReason(reason);
+            appointmentService.cancel(id, req, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "預約已取消");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "取消失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments";
     }
 
     // ── GET /appointments/new ──────────────────────────────────────────────

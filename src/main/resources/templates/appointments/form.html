@@ -1,6 +1,8 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
-  <head th:replace="~{fragments/header :: common-head('新增預約 | 寵物美容系統')}"></head>
+  <head
+    th:replace="~{fragments/header :: common-head('新增預約 | 慕沐村 Mulage pet')}"
+  ></head>
 
   <body>
     <div class="page-wrapper">
@@ -9,142 +11,292 @@
       <div class="content">
         <h2>新增預約</h2>
 
-        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+        <div
+          class="alert alert-error"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
 
-        <div class="card" th:if="${myPets == null or myPets.isEmpty()}" style="text-align: center; padding: 3rem 2rem">
+        <div
+          class="card"
+          th:if="${myPets == null or myPets.isEmpty()}"
+          style="text-align: center; padding: 3rem 2rem"
+        >
           <div style="font-size: 3rem; margin-bottom: 1rem">🐾</div>
-          <h3 style="color: var(--brown-dark); margin-bottom: 8px">您名下尚未登記任何寵物</h3>
-          <p style="color: var(--brown-light); font-size: 14px; margin-bottom: 1.5rem;">
+          <h3 style="color: var(--brown-dark); margin-bottom: 8px">
+            您名下尚未登記任何寵物
+          </h3>
+          <p
+            style="
+              color: var(--brown-light);
+              font-size: 14px;
+              margin-bottom: 1.5rem;
+            "
+          >
             需要先有寵物資料，才能為牠預約美容服務喔！
           </p>
-          <a href="/pets/new" class="btn btn-primary" style="display: inline-block; text-decoration: none">✨ 立即前往新增寵物</a>
+          <a
+            href="/pets/new"
+            class="btn btn-primary"
+            style="display: inline-block; text-decoration: none"
+            >✨ 立即前往新增寵物</a
+          >
         </div>
 
         <div class="card" th:unless="${myPets == null or myPets.isEmpty()}">
           <form method="post" th:action="@{/appointments/submit}">
-            
             <div class="field">
               <label>選擇寵物 *</label>
-              <select name="petId" id="petSelect" required onchange="autoCheckItems()">
+              <select
+                name="petId"
+                id="petSelect"
+                required
+                onchange="autoCheckItems()"
+              >
                 <option value="" disabled selected>請選擇您的寵物</option>
-                <option th:each="pet : ${myPets}"
-                        th:value="${pet.id}"
-                        th:text="${pet.name + '（' + pet.sizeCategoryLabel + '・' + pet.coatTypeLabel + '）'}"
-                        th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')}">
-                </option>
+                <option
+                  th:each="pet : ${myPets}"
+                  th:value="${pet.id}"
+                  th:text="${pet.name + '（' + pet.sizeCategoryLabel + '・' + pet.coatTypeLabel + '）'}"
+                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')}"
+                ></option>
               </select>
-              <p style="font-size: 12px; color: var(--brown-light); margin-top: 6px;">
+              <p
+                style="
+                  font-size: 12px;
+                  color: var(--brown-light);
+                  margin-top: 6px;
+                "
+              >
                 沒看到您的寶貝？
-                <a href="/pets/new" style="color: var(--brown-dark); font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--brown-light);">前往新增寵物</a>
+                <a
+                  href="/pets/new"
+                  style="
+                    color: var(--brown-dark);
+                    font-weight: 600;
+                    text-decoration: none;
+                    border-bottom: 1px dashed var(--brown-light);
+                  "
+                  >前往新增寵物</a
+                >
               </p>
               <!-- 自動勾選提示 -->
-              <div id="autoHint" style="display:none; margin-top:8px; padding:8px 12px;
-                   background:#f0f9f0; border:1px solid #c8e6c9; border-radius:6px;
-                   font-size:13px; color:#2e7d32;">
+              <div
+                id="autoHint"
+                style="
+                  display: none;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: #f0f9f0;
+                  border: 1px solid #c8e6c9;
+                  border-radius: 6px;
+                  font-size: 13px;
+                  color: #2e7d32;
+                "
+              >
                 🤖 已依體型自動勾選洗澡＋吹毛項目，您可再自行加選其他服務。
               </div>
             </div>
 
             <div class="field">
               <label>預約日期 *</label>
-              <input type="date" name="date" th:value="${appointmentRequest?.date}" th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}" required />
+              <input
+                type="date"
+                name="date"
+                th:value="${appointmentRequest?.date}"
+                th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
+                required
+              />
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem;">
-              
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                margin-bottom: 1.5rem;
+              "
+            >
               <div class="field">
-                <label>開始時間 * <span style="font-size: 11px; color: var(--brown-light); font-weight: normal;">（11:00～19:00）</span></label>
-                <input type="time" name="startTime" th:value="${appointmentRequest?.startTime}" min="11:00" max="19:00" required />
+                <label
+                  >開始時間 *
+                  <span
+                    style="
+                      font-size: 11px;
+                      color: var(--brown-light);
+                      font-weight: normal;
+                    "
+                    >（11:00～19:00）</span
+                  ></label
+                >
+                <input
+                  type="time"
+                  name="startTime"
+                  th:value="${appointmentRequest?.startTime}"
+                  min="11:00"
+                  max="19:00"
+                  required
+                />
               </div>
-              
+
               <div class="field">
                 <label>結束時間 *</label>
-                <input type="time" name="endTime" th:value="${appointmentRequest?.endTime}" min="11:00" max="19:00" required />
-              </div> </div> <div class="field" style="margin-bottom: 1.5rem;">
-              <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--brown-dark);">
+                <input
+                  type="time"
+                  name="endTime"
+                  th:value="${appointmentRequest?.endTime}"
+                  min="11:00"
+                  max="19:00"
+                  required
+                />
+              </div>
+            </div>
+            <div class="field" style="margin-bottom: 1.5rem">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 0.8rem;
+                  font-weight: 600;
+                  color: var(--brown-dark);
+                "
+              >
                 美容服務項目 *（可多選）
               </label>
-              
-              <div style="
-                display: grid; 
-                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-                gap: 12px; 
-                padding: 0.8rem;
-                background-color: var(--cream-100);
-                border: 1px solid var(--cream-300);
-                border-radius: 8px;
-                box-sizing: border-box;
-              ">
-                <label th:each="item : ${groomingItems}" 
-                       style="
-                         display: flex; 
-                         align-items: center; 
-                         justify-content: space-between;
-                         padding: 10px 14px; 
-                         background-color: #ffffff; 
-                         border: 1px solid var(--cream-200); 
-                         border-radius: 6px; 
-                         cursor: pointer;
-                         transition: all 0.2s;
-                       ">
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" name="selectedItems" th:value="${item.itemCode}" style="width: 16px; height: 16px; accent-color: var(--brown-dark); cursor: pointer;" />
-                    <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark);">項目名稱</span>
+
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                  gap: 12px;
+                  padding: 0.8rem;
+                  background-color: var(--cream-100);
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  box-sizing: border-box;
+                "
+              >
+                <label
+                  th:each="item : ${groomingItems}"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 10px 14px;
+                    background-color: #ffffff;
+                    border: 1px solid var(--cream-200);
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                  "
+                >
+                  <div style="display: flex; align-items: center; gap: 10px">
+                    <input
+                      type="checkbox"
+                      name="selectedItems"
+                      th:value="${item.itemCode}"
+                      style="
+                        width: 16px;
+                        height: 16px;
+                        accent-color: var(--brown-dark);
+                        cursor: pointer;
+                      "
+                    />
+                    <span
+                      th:text="${item.name}"
+                      style="font-weight: 500; color: var(--brown-dark)"
+                      >項目名稱</span
+                    >
                   </div>
-                  <span th:text="'$' + ${#numbers.formatDecimal(item.price, 1, 0)}" style="color: #2e7d32; font-weight: 600;">$150</span>
+                  <span
+                    th:text="'$' + ${#numbers.formatDecimal(item.price, 1, 0)}"
+                    style="color: #2e7d32; font-weight: 600"
+                    >$150</span
+                  >
                 </label>
               </div>
             </div>
 
-            <div style="display: flex; gap: 12px; align-items: center; margin-top: 1.5rem;">
-              <button type="submit" class="btn btn-primary" style="padding: 10px 24px; min-width: auto; height: auto;">
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-top: 1.5rem;
+              "
+            >
+              <button
+                type="submit"
+                class="btn btn-primary"
+                style="padding: 10px 24px; min-width: auto; height: auto"
+              >
                 確認送出預約
               </button>
-              <a href="/appointments" class="btn btn-secondary" style="padding: 10px 24px; min-width: auto; height: auto; text-decoration: none; text-align: center;">
+              <a
+                href="/appointments"
+                class="btn btn-secondary"
+                style="
+                  padding: 10px 24px;
+                  min-width: auto;
+                  height: auto;
+                  text-decoration: none;
+                  text-align: center;
+                "
+              >
                 取消
               </a>
             </div>
-
           </form>
         </div>
-
       </div>
     </div>
     <script>
       function autoCheckItems() {
-        const select = document.getElementById('petSelect');
+        const select = document.getElementById("petSelect");
         const selected = select.options[select.selectedIndex];
-        const recommend = selected.dataset.recommend || '';
+        const recommend = selected.dataset.recommend || "";
 
         // 先全部取消勾選
-        document.querySelectorAll('input[name="selectedItems"]').forEach(cb => {
-          cb.checked = false;
-          cb.closest('label').style.background = '#ffffff';
-          cb.closest('label').style.borderColor = 'var(--cream-200)';
-        });
+        document
+          .querySelectorAll('input[name="selectedItems"]')
+          .forEach((cb) => {
+            cb.checked = false;
+            cb.closest("label").style.background = "#ffffff";
+            cb.closest("label").style.borderColor = "var(--cream-200)";
+          });
 
         // 依推薦 itemCode 自動勾選
         if (recommend) {
-          const codes = recommend.split(',').map(c => c.trim()).filter(Boolean);
-          codes.forEach(code => {
-            const cb = document.querySelector(`input[name="selectedItems"][value="${code}"]`);
+          const codes = recommend
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+          codes.forEach((code) => {
+            const cb = document.querySelector(
+              `input[name="selectedItems"][value="${code}"]`,
+            );
             if (cb) {
               cb.checked = true;
-              cb.closest('label').style.background = '#fff8f0';
-              cb.closest('label').style.borderColor = '#c9a84c';
+              cb.closest("label").style.background = "#fff8f0";
+              cb.closest("label").style.borderColor = "#c9a84c";
             }
           });
-          document.getElementById('autoHint').style.display = codes.length ? 'block' : 'none';
+          document.getElementById("autoHint").style.display = codes.length
+            ? "block"
+            : "none";
         } else {
-          document.getElementById('autoHint').style.display = 'none';
+          document.getElementById("autoHint").style.display = "none";
         }
       }
 
       // 讓已勾選的 checkbox 視覺上高亮
-      document.querySelectorAll('input[name="selectedItems"]').forEach(cb => {
-        cb.addEventListener('change', function() {
-          this.closest('label').style.background = this.checked ? '#fff8f0' : '#ffffff';
-          this.closest('label').style.borderColor = this.checked ? '#c9a84c' : 'var(--cream-200)';
+      document.querySelectorAll('input[name="selectedItems"]').forEach((cb) => {
+        cb.addEventListener("change", function () {
+          this.closest("label").style.background = this.checked
+            ? "#fff8f0"
+            : "#ffffff";
+          this.closest("label").style.borderColor = this.checked
+            ? "#c9a84c"
+            : "var(--cream-200)";
         });
       });
     </script>

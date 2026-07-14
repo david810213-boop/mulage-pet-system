@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
+import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.AppointmentService;
@@ -55,6 +56,21 @@ public class AppointmentController {
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> getAllAppointments() {
         return ResponseEntity.ok(appointmentService.getAllAppointments());
+    }
+
+    // ── POST /api/appointments/{id}/cancel ─────────────────────────────────
+    // 取消預約：顧客可取消自己的未結帳預約，店家/員工可取消任何人的未結帳預約
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancel(
+            @PathVariable Long id,
+            @RequestBody(required = false) CancelAppointmentRequest req,
+            HttpServletRequest request) {
+        try {
+            AppointmentResponse res = appointmentService.cancel(id, req, currentUsername(request));
+            return ResponseEntity.ok(res);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     // ── GET /api/appointments/slots?date=2025-06-01 ────────────────────────

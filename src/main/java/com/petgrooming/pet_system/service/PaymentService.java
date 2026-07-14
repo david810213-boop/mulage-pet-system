@@ -28,6 +28,10 @@ public class PaymentService {
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
+    private final WalletService walletService;
+
+    // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
+    public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
 
     // ── 1. 結帳 ────────────────────────────────────────────────────────────
     @Transactional
@@ -62,6 +66,19 @@ public class PaymentService {
         // 1e. 計算最終金額
         int baseAmount  = appointment.getTotalAmount();
         int finalAmount = req.getPaymentMethod().calculateFinalAmount(baseAmount);
+
+        // 1e-1. 若選擇「儲值金」付款：
+        //   - 僅限店家/員工於後台操作（顧客不可自行使用此付款方式）
+        //   - 套用會員等級折扣（現金/信用卡/LinePay 不套用會員折扣）
+        //   - 折扣後金額才是實際扣款與交易紀錄的最終金額
+        if (req.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET) {
+            if (!isStaffOrAdmin) {
+                throw new IllegalArgumentException("儲值金結帳僅限店家/員工於後台操作");
+            }
+            double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
+            finalAmount = (int) Math.round(finalAmount * discount);
+            walletService.deduct(appointment.getUser().getUsername(), finalAmount, appointment.getId());
+        }
 
         // 1f. 決定經手人
         String handledBy = isOwner

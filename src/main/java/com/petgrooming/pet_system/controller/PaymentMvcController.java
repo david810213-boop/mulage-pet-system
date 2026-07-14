@@ -2,9 +2,12 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -19,6 +22,8 @@ public class PaymentMvcController {
 
     private final PaymentService paymentService;
     private final UserService userService;
+    private final WalletService walletService;
+    private final AppointmentRepository appointmentRepository;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -60,6 +65,20 @@ public class PaymentMvcController {
         model.addAttribute("appointmentId", appointmentId);
         model.addAttribute("paymentMethods", PaymentMethod.values());
         model.addAttribute("checkoutRequest", new CheckoutRequest());
+
+        // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
+        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+        if (appointment != null && appointment.getUser() != null) {
+            var wallet = walletService.getWallet(appointment.getUser().getUsername());
+            model.addAttribute("walletBalance", wallet.getBalance());
+            model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
+            model.addAttribute("walletDiscount", wallet.getDiscount());
+            model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
+            model.addAttribute("baseAmount", appointment.getTotalAmount());
+            model.addAttribute("walletFinalAmount",
+                    (int) Math.round(appointment.getTotalAmount() * wallet.getDiscount()));
+        }
+
         return "payments/checkout";
     }
 
@@ -83,6 +102,19 @@ public class PaymentMvcController {
             model.addAttribute("appointmentId", appointmentId);
             model.addAttribute("paymentMethods", PaymentMethod.values());
             model.addAttribute("errorMsg", e.getMessage());
+
+            Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+            if (appointment != null && appointment.getUser() != null) {
+                var wallet = walletService.getWallet(appointment.getUser().getUsername());
+                model.addAttribute("walletBalance", wallet.getBalance());
+                model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
+                model.addAttribute("walletDiscount", wallet.getDiscount());
+                model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
+                model.addAttribute("baseAmount", appointment.getTotalAmount());
+                model.addAttribute("walletFinalAmount",
+                        (int) Math.round(appointment.getTotalAmount() * wallet.getDiscount()));
+            }
+
             return "payments/checkout";
         }
     }

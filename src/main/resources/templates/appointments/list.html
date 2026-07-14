@@ -1,7 +1,7 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
   <head
-    th:replace="~{fragments/header :: common-head('預約管理 | 寵物美容系統')}"
+    th:replace="~{fragments/header :: common-head('預約管理 | 慕沐村 Mulage pet')}"
   ></head>
   <body>
     <div class="page-wrapper">
@@ -12,6 +12,11 @@
           th:if="${successMsg}"
           th:text="${successMsg}"
         ></div>
+        <div
+          class="alert alert-error"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
         <div class="alert alert-error" th:if="${param.error}">
           您沒有權限執行此操作
         </div>
@@ -21,6 +26,162 @@
             >＋ 新增預約</a
           >
         </div>
+
+        <!-- 篩選表單 -->
+        <form
+          method="get"
+          action="/appointments"
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+            margin-bottom: 1.2rem;
+            background: #f8f9fa;
+            padding: 14px;
+            border-radius: 10px;
+          "
+        >
+          <div>
+            <label
+              style="
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+              "
+              >日期從</label
+            >
+            <input
+              type="date"
+              name="dateFrom"
+              th:value="${dateFrom}"
+              style="
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+              "
+            />
+          </div>
+          <div>
+            <label
+              style="
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+              "
+              >日期到</label
+            >
+            <input
+              type="date"
+              name="dateTo"
+              th:value="${dateTo}"
+              style="
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+              "
+            />
+          </div>
+          <div>
+            <label
+              style="
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+              "
+              >預約狀態</label
+            >
+            <select
+              name="status"
+              style="
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+              "
+            >
+              <option value="" th:selected="${status == null or status == ''}">
+                全部
+              </option>
+              <option value="CONFIRMED" th:selected="${status == 'CONFIRMED'}">
+                已確認
+              </option>
+              <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">
+                已取消
+              </option>
+            </select>
+          </div>
+          <div>
+            <label
+              style="
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+              "
+              >付款狀態</label
+            >
+            <select
+              name="paidStatus"
+              style="
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+              "
+            >
+              <option
+                value=""
+                th:selected="${paidStatus == null or paidStatus == ''}"
+              >
+                全部
+              </option>
+              <option value="PAID" th:selected="${paidStatus == 'PAID'}">
+                已結帳
+              </option>
+              <option value="UNPAID" th:selected="${paidStatus == 'UNPAID'}">
+                未結帳
+              </option>
+            </select>
+          </div>
+          <div style="flex: 1; min-width: 160px">
+            <label
+              style="
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+              "
+              >關鍵字（編號/飼主/寵物）</label
+            >
+            <input
+              type="text"
+              name="keyword"
+              th:value="${keyword}"
+              placeholder="例：AP001、Hedy、王小美"
+              style="
+                width: 100%;
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                box-sizing: border-box;
+              "
+            />
+          </div>
+          <div style="display: flex; gap: 8px">
+            <button type="submit" class="btn" style="padding: 7px 16px">
+              篩選
+            </button>
+            <a
+              href="/appointments"
+              class="btn btn-outline"
+              style="padding: 7px 16px"
+              >重置</a
+            >
+          </div>
+        </form>
+
         <table>
           <thead>
             <tr>
@@ -44,7 +205,10 @@
                 目前沒有預約紀錄
               </td>
             </tr>
-            <tr th:each="a : ${appointments}">
+            <tr
+              th:each="a : ${appointments}"
+              th:style="${a.cancelled} ? 'opacity:0.55;' : ''"
+            >
               <td th:text="${a.appointmentCode}"></td>
               <td th:text="${a.ownerName}"></td>
               <td th:text="${a.petName + ' (' + a.petType + ')'}"></td>
@@ -63,20 +227,75 @@
 
               <td th:text="${'$' + a.totalAmount}"></td>
               <td>
-                <span class="badge paid" th:if="${a.paid}">已結帳</span>
-                <span class="badge unpaid" th:unless="${a.paid}">未結帳</span>
+                <span
+                  class="badge"
+                  style="background: #eee; color: #999"
+                  th:if="${a.cancelled}"
+                  >已取消</span
+                >
+                <span class="badge paid" th:if="${!a.cancelled and a.paid}"
+                  >已結帳</span
+                >
+                <span class="badge unpaid" th:if="${!a.cancelled and !a.paid}"
+                  >未結帳</span
+                >
               </td>
               <td>
-                <a
-                  th:unless="${a.paid}"
-                  th:href="@{/payments/checkout/{id}(id=${a.id})}"
-                  style="
-                    font-size: 12px;
-                    color: #555;
-                    text-decoration: underline;
-                  "
-                  >結帳</a
+                <div
+                  th:if="${!a.cancelled}"
+                  style="display: flex; flex-direction: column; gap: 4px"
                 >
+                  <a
+                    th:unless="${a.paid}"
+                    th:href="@{/payments/checkout/{id}(id=${a.id})}"
+                    style="
+                      font-size: 12px;
+                      color: #555;
+                      text-decoration: underline;
+                    "
+                    >結帳</a
+                  >
+                  <form
+                    th:unless="${a.paid}"
+                    th:action="@{/appointments/{id}/cancel(id=${a.id})}"
+                    method="post"
+                    onsubmit="
+                      return confirm(
+                        '確定要取消這筆預約嗎？（' + this.dataset.code + '）',
+                      );
+                    "
+                    th:data-code="${a.appointmentCode}"
+                  >
+                    <input type="hidden" name="reason" value="店家後台取消" />
+                    <button
+                      type="submit"
+                      style="
+                        font-size: 12px;
+                        color: #c62828;
+                        background: none;
+                        border: none;
+                        text-decoration: underline;
+                        cursor: pointer;
+                        padding: 0;
+                      "
+                    >
+                      取消預約
+                    </button>
+                  </form>
+                  <span th:if="${a.paid}" style="font-size: 11px; color: #bbb"
+                    >已結帳，需先退款才能取消</span
+                  >
+                </div>
+                <div
+                  th:if="${a.cancelled}"
+                  style="font-size: 11px; color: #999"
+                >
+                  <div th:text="${a.cancelledBy}"></div>
+                  <div
+                    th:if="${a.cancelReason}"
+                    th:text="'原因：' + ${a.cancelReason}"
+                  ></div>
+                </div>
               </td>
             </tr>
           </tbody>

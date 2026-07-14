@@ -45,8 +45,15 @@ public class WalletMvcController {
                             || u.getUsername().toLowerCase().contains(kw))
                     .toList();
         }
+        // 帶入每位顧客的錢包資料，讓列表可直接標示低餘額（< $2,000）會員
+        var walletsByUsername = new java.util.HashMap<String, com.petgrooming.pet_system.dto.WalletResponse>();
+        for (var c : customers) {
+            walletsByUsername.put(c.getUsername(), walletService.getWallet(c.getUsername()));
+        }
+
         model.addAttribute("customers", customers);
         model.addAttribute("keyword", keyword);
+        model.addAttribute("walletsByUsername", walletsByUsername);
         return "admin/wallets";
     }
 

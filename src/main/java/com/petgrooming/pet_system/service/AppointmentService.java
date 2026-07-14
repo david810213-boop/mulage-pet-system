@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
+import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem; // ⚡ 確保引入的是你動態管理的 Entity 類別
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,10 +66,12 @@ public class AppointmentService {
             throw new IllegalArgumentException("結束時間必須晚於開始時間");
         }
 
-        // 1f. 確認時段沒有重疊
+        // 1f. 確認時段沒有重疊（已取消的預約不算佔用）
         boolean overlap = appointmentRepository
-                .existsByDateAndStartTimeLessThanAndEndTimeGreaterThan(
-                        req.getDate(), req.getEndTime(), req.getStartTime());
+                .findByDate(req.getDate()).stream()
+                .filter(a -> !a.isCancelled())
+                .anyMatch(a -> a.getStartTime().isBefore(req.getEndTime())
+                        && a.getEndTime().isAfter(req.getStartTime()));
         if (overlap) {
             throw new IllegalArgumentException("該時段已被預約，請選擇其他時段");
         }
@@ -119,6 +123,48 @@ public class AppointmentService {
         return AppointmentResponse.from(saved);
     }
 
+    // ── 取消預約 ──────────────────────────────────────────────────────────
+    @Transactional
+    public AppointmentResponse cancel(Long appointmentId, CancelAppointmentRequest req, String username) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+
+        boolean isOwner        = appointment.getUser().getId().equals(user.getId());
+        boolean isStaffOrAdmin = user.isStaffOrAdmin();
+
+        if (!isOwner && !isStaffOrAdmin) {
+            throw new IllegalArgumentException("權限不足：只能取消自己的預約");
+        }
+
+        if (appointment.isCancelled()) {
+            throw new IllegalArgumentException("此預約已經是取消狀態");
+        }
+
+        // 已結帳的預約需先走退款流程，暫不開放直接取消，避免金流/績效資料不一致
+        if (appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約已完成結帳，無法直接取消，請先處理退款");
+        }
+
+        appointment.setStatus(com.petgrooming.pet_system.enums.AppointmentStatus.CANCELLED);
+        appointment.setCancelledAt(LocalDateTime.now());
+        appointment.setCancelReason(req != null ? req.getReason() : null);
+        appointment.setCancelledBy(isOwner
+                ? "會員自行取消（" + user.getName() + "）"
+                : "員工取消：" + user.getName());
+
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // 通知顧客預約已取消（目前為系統 log 模擬，之後可接真實推播）
+        System.out.println("[系統通知] 預約 #" + appointment.getId() + "（" + appointment.getPetName()
+                + "，" + appointment.getDate() + " " + appointment.getStartTime()
+                + "）已取消。取消人：" + appointment.getCancelledBy());
+
+        return AppointmentResponse.from(saved);
+    }
+
     // ── 查詢自己的預約 ────────────────────────────────────────────────────
     public List<AppointmentResponse> getMyAppointments(String username) {
         return appointmentRepository.findByUserUsername(username)
@@ -146,7 +192,8 @@ public class AppointmentService {
             current = next;
         }
 
-        List<Appointment> booked = appointmentRepository.findByDate(date);
+        List<Appointment> booked = appointmentRepository.findByDate(date)
+                .stream().filter(a -> !a.isCancelled()).toList();
         for (TimeSlotResponse slot : allSlots) {
             for (Appointment a : booked) {
                 boolean overlap =

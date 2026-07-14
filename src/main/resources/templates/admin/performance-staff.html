@@ -1,51 +1,141 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
-  <head th:replace="~{fragments/header :: common-head('員工績效明細 | 寵物美容系統')}"></head>
+  <head
+    th:replace="~{fragments/header :: common-head('員工績效明細 | 慕沐村 Mulage pet')}"
+  ></head>
   <body>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h2 style="margin:0">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2 style="margin: 0">
             👤 <span th:text="${staff.name}">員工</span> 績效明細
           </h2>
-          <a th:href="@{/admin/performance/monthly(year=${ym.year}, month=${ym.monthValue})}"
-             class="btn btn-outline">← 回月報</a>
+          <a
+            th:href="@{/admin/performance/monthly(year=${ym.year}, month=${ym.monthValue})}"
+            class="btn btn-outline"
+            >← 回月報</a
+          >
         </div>
 
         <!-- 月份選擇 -->
-        <form th:action="@{/admin/performance/staff/{id}(id=${staff.id})}"
-              method="get" style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center;">
-          <select name="year" style="padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
-            <option th:each="y : ${#numbers.sequence(2024, 2030)}"
-                    th:value="${y}" th:text="${y}" th:selected="${y == ym.year}">年</option>
+        <form
+          th:action="@{/admin/performance/staff/{id}(id=${staff.id})}"
+          method="get"
+          style="
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            align-items: center;
+          "
+        >
+          <select
+            name="year"
+            style="
+              padding: 8px;
+              border: 1px solid var(--cream-300);
+              border-radius: var(--radius-sm);
+            "
+          >
+            <option
+              th:each="y : ${#numbers.sequence(2024, 2030)}"
+              th:value="${y}"
+              th:text="${y}"
+              th:selected="${y == ym.year}"
+            >
+              年
+            </option>
           </select>
-          <select name="month" style="padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
-            <option th:each="m : ${#numbers.sequence(1, 12)}"
-                    th:value="${m}" th:text="${m + '月'}" th:selected="${m == ym.monthValue}">月</option>
+          <select
+            name="month"
+            style="
+              padding: 8px;
+              border: 1px solid var(--cream-300);
+              border-radius: var(--radius-sm);
+            "
+          >
+            <option
+              th:each="m : ${#numbers.sequence(1, 12)}"
+              th:value="${m}"
+              th:text="${m + '月'}"
+              th:selected="${m == ym.monthValue}"
+            >
+              月
+            </option>
           </select>
           <button type="submit" class="btn">查詢</button>
         </form>
 
         <!-- 本月統計卡片 -->
-        <div style="display:flex; gap:12px; margin-bottom:1.5rem; flex-wrap:wrap;">
-          <div style="flex:1; min-width:180px; background:white; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center;">
-            <div style="font-size:13px; color:#666; margin-bottom:4px;">本月主要積分</div>
-            <div style="font-size:28px; font-weight:700; color:#c9a84c;">
+        <div
+          style="
+            display: flex;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+          "
+        >
+          <div
+            style="
+              flex: 1;
+              min-width: 180px;
+              background: white;
+              border-radius: 12px;
+              padding: 16px;
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+              text-align: center;
+            "
+          >
+            <div style="font-size: 13px; color: #666; margin-bottom: 4px">
+              本月主要積分
+            </div>
+            <div style="font-size: 28px; font-weight: 700; color: #c9a84c">
               <span th:text="${#aggregates.sum(records.![points])}">0</span> 分
             </div>
           </div>
-          <div style="flex:1; min-width:180px; background:white; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center;">
-            <div style="font-size:13px; color:#666; margin-bottom:4px;">本月紀錄筆數</div>
-            <div style="font-size:28px; font-weight:700; color:#2c1810;" th:text="${#lists.size(records)}">0</div>
+          <div
+            style="
+              flex: 1;
+              min-width: 180px;
+              background: white;
+              border-radius: 12px;
+              padding: 16px;
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+              text-align: center;
+            "
+          >
+            <div style="font-size: 13px; color: #666; margin-bottom: 4px">
+              本月紀錄筆數
+            </div>
+            <div
+              style="font-size: 28px; font-weight: 700; color: #2c1810"
+              th:text="${#lists.size(records)}"
+            >
+              0
+            </div>
           </div>
         </div>
 
         <!-- 本月明細 -->
-        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:1.5rem;">
-          <h3 style="font-size:15px; margin-bottom:12px;">
-            <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span> 績效明細
+        <div
+          style="
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h3 style="font-size: 15px; margin-bottom: 12px">
+            <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span>
+            績效明細
           </h3>
           <table>
             <thead>
@@ -59,13 +149,20 @@
             </thead>
             <tbody>
               <tr th:if="${#lists.isEmpty(records)}">
-                <td colspan="5" style="text-align:center; color:#aaa;">本月尚無績效紀錄</td>
+                <td colspan="5" style="text-align: center; color: #aaa">
+                  本月尚無績效紀錄
+                </td>
               </tr>
               <tr th:each="r : ${records}">
                 <td th:text="${r.serviceDate}">日期</td>
                 <td th:text="'#' + ${r.appointmentId}">編號</td>
                 <td th:text="${r.category.label}">大項</td>
-                <td style="font-weight:700; color:#c9a84c;" th:text="${r.points}">分</td>
+                <td
+                  style="font-weight: 700; color: #c9a84c"
+                  th:text="${r.points}"
+                >
+                  分
+                </td>
                 <td th:text="${r.note}">備註</td>
               </tr>
             </tbody>
@@ -73,8 +170,15 @@
         </div>
 
         <!-- 歷史月度紀錄 -->
-        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-          <h3 style="font-size:15px; margin-bottom:12px;">📜 歷史月度紀錄</h3>
+        <div
+          style="
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          "
+        >
+          <h3 style="font-size: 15px; margin-bottom: 12px">📜 歷史月度紀錄</h3>
           <table>
             <thead>
               <tr>
@@ -87,23 +191,45 @@
             </thead>
             <tbody>
               <tr th:if="${#lists.isEmpty(history)}">
-                <td colspan="5" style="text-align:center; color:#aaa;">尚無歷史紀錄</td>
+                <td colspan="5" style="text-align: center; color: #aaa">
+                  尚無歷史紀錄
+                </td>
               </tr>
               <tr th:each="h : ${history}">
-                <td th:text="${h.yearMonth.year + '年' + h.yearMonth.monthValue + '月'}">月份</td>
-                <td style="font-weight:700; color:#c9a84c;" th:text="${h.totalPoints + ' 分'}">分</td>
+                <td
+                  th:text="${h.yearMonth.year + '年' + h.yearMonth.monthValue + '月'}"
+                >
+                  月份
+                </td>
+                <td
+                  style="font-weight: 700; color: #c9a84c"
+                  th:text="${h.totalPoints + ' 分'}"
+                >
+                  分
+                </td>
                 <td th:text="${h.receptionPoints + ' 分'}">分</td>
-                <td style="color:#43a047; font-weight:700;"
-                    th:text="${h.bonusAmount > 0 ? '$' + h.bonusAmount : '未達門檻'}">獎金</td>
+                <td
+                  style="color: #43a047; font-weight: 700"
+                  th:text="${h.bonusAmount > 0 ? '$' + h.bonusAmount : '未達門檻'}"
+                >
+                  獎金
+                </td>
                 <td>
-                  <span th:if="${h.settled}" style="color:#43a047; font-size:13px;">✅ 已結算</span>
-                  <span th:unless="${h.settled}" style="color:#e53935; font-size:13px;">⏳ 未結算</span>
+                  <span
+                    th:if="${h.settled}"
+                    style="color: #43a047; font-size: 13px"
+                    >✅ 已結算</span
+                  >
+                  <span
+                    th:unless="${h.settled}"
+                    style="color: #e53935; font-size: 13px"
+                    >⏳ 未結算</span
+                  >
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-
       </div>
     </div>
   </body>

@@ -1,9 +1,11 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.AppointmentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -61,4 +63,24 @@ public class Appointment {
     @JoinColumn(name = "staff_id")
     @ToString.Exclude
     private User staff;
+
+    // ── 取消預約相關 ─────────────────────────────────────────────────────
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private AppointmentStatus status = AppointmentStatus.CONFIRMED;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+
+    // 記錄由誰取消（顯示用文字，例如「會員自行取消」「員工：王小美」）
+    @Column(name = "cancelled_by")
+    private String cancelledBy;
+
+    public boolean isCancelled() {
+        return status == AppointmentStatus.CANCELLED;
+    }
 }

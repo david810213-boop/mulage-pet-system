@@ -1,113 +1,216 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
-  <head th:replace="~{fragments/header :: common-head('新增寵物 | 寵物美容系統')}"></head>
+  <head
+    th:replace="~{fragments/header :: common-head('新增寵物 | 慕沐村 Mulage pet')}"
+  ></head>
   <body>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
-
         <h2>🐾 新增毛孩資料</h2>
 
-        <div class="alert alert-danger" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+        <div
+          class="alert alert-danger"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
 
         <!-- 預約須知提醒 -->
-        <div style="background:#fff8f0; border:1px solid #f0e0c0; border-radius:12px; padding:16px; margin-bottom:1.5rem; font-size:14px; color:#5c3d2e; line-height:1.9;">
-          <strong>⚠️ 預約前請閱讀</strong><br>
-          請填寫以下基本資料，讓小編為您的毛孩預約六星級美容初體驗✰<br>
-          系統將依照毛孩類型與體重 <strong>自動判斷體型</strong>，預約時自動帶入洗澡與吹毛項目，無需手動選擇。
+        <div
+          style="
+            background: #fff8f0;
+            border: 1px solid #f0e0c0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 1.5rem;
+            font-size: 14px;
+            color: #5c3d2e;
+            line-height: 1.9;
+          "
+        >
+          <strong>⚠️ 預約前請閱讀</strong><br />
+          請填寫以下基本資料，讓小編為您的毛孩預約六星級美容初體驗✰<br />
+          系統將依照毛孩類型與體重
+          <strong>自動判斷體型</strong
+          >，預約時自動帶入洗澡與吹毛項目，無需手動選擇。
         </div>
 
         <form method="post" action="/pets/submit">
           <!-- ── 毛孩基本資料 ── -->
-          <div class="card" style="margin-bottom:1rem;">
-            <h3 style="font-size:15px; color:#5c3d2e; margin-bottom:16px;">𖥸 毛孩基本資料</h3>
+          <div class="card" style="margin-bottom: 1rem">
+            <h3 style="font-size: 15px; color: #5c3d2e; margin-bottom: 16px">
+              𖥸 毛孩基本資料
+            </h3>
 
             <!-- 毛孩類型 -->
             <div class="field">
-              <label>毛孩類型 <span style="color:#e53935">*</span></label>
-              <select name="petType" id="petType" required onchange="updateSizeHint()">
+              <label>毛孩類型 <span style="color: #e53935">*</span></label>
+              <select
+                name="petType"
+                id="petType"
+                required
+                onchange="updateSizeHint()"
+              >
                 <option value="" disabled selected>請選擇</option>
-                <option th:each="t : ${petTypes}"
-                        th:value="${t.name()}"
-                        th:text="${t.description}"
-                        th:selected="${petRequest?.petType?.name() == t.name()}"></option>
+                <option
+                  th:each="t : ${petTypes}"
+                  th:value="${t.name()}"
+                  th:text="${t.description}"
+                  th:selected="${petRequest?.petType?.name() == t.name()}"
+                ></option>
               </select>
             </div>
 
             <!-- 毛孩名字 -->
             <div class="field">
-              <label>毛孩名字 <span style="color:#e53935">*</span></label>
-              <input type="text" name="name" th:value="${petRequest?.name}"
-                     placeholder="例如：小白、咪咪" required />
+              <label>毛孩名字 <span style="color: #e53935">*</span></label>
+              <input
+                type="text"
+                name="name"
+                th:value="${petRequest?.name}"
+                placeholder="例如：小白、咪咪"
+                required
+              />
             </div>
 
             <!-- 品種 -->
             <div class="field">
-              <label>毛孩品種 <span style="color:#e53935">*</span></label>
-              <input type="text" name="breed" th:value="${petRequest?.breed}"
-                     placeholder="例如：柴犬、貴賓、英短" required />
+              <label>毛孩品種 <span style="color: #e53935">*</span></label>
+              <input
+                type="text"
+                name="breed"
+                th:value="${petRequest?.breed}"
+                placeholder="例如：柴犬、貴賓、英短"
+                required
+              />
             </div>
 
             <!-- 體重 + 年齡 -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            >
               <div class="field">
-                <label>毛孩體重（kg）<span style="color:#e53935">*</span></label>
-                <input type="number" name="weight" id="weight"
-                       th:value="${petRequest?.weight}"
-                       step="0.1" min="0.1" placeholder="例如：8.5"
-                       required oninput="updateSizeHint()" />
+                <label
+                  >毛孩體重（kg）<span style="color: #e53935">*</span></label
+                >
+                <input
+                  type="number"
+                  name="weight"
+                  id="weight"
+                  th:value="${petRequest?.weight}"
+                  step="0.1"
+                  min="0.1"
+                  placeholder="例如：8.5"
+                  required
+                  oninput="updateSizeHint()"
+                />
               </div>
               <div class="field">
-                <label>毛孩年齡（歲）<span style="color:#e53935">*</span></label>
-                <input type="number" name="age" th:value="${petRequest?.age}"
-                       min="0" placeholder="例如：3" required />
+                <label
+                  >毛孩年齡（歲）<span style="color: #e53935">*</span></label
+                >
+                <input
+                  type="number"
+                  name="age"
+                  th:value="${petRequest?.age}"
+                  min="0"
+                  placeholder="例如：3"
+                  required
+                />
               </div>
             </div>
 
             <!-- 自動體型判斷結果 -->
-            <div id="sizeHint" style="display:none; background:#f0f9f0; border:1px solid #c8e6c9;
-                 border-radius:8px; padding:12px; margin-top:-8px; margin-bottom:16px; font-size:13px; color:#2e7d32;">
+            <div
+              id="sizeHint"
+              style="
+                display: none;
+                background: #f0f9f0;
+                border: 1px solid #c8e6c9;
+                border-radius: 8px;
+                padding: 12px;
+                margin-top: -8px;
+                margin-bottom: 16px;
+                font-size: 13px;
+                color: #2e7d32;
+              "
+            >
               <strong>🤖 系統自動判斷：</strong>
               <span id="sizeHintText"></span>
             </div>
 
             <!-- 毛長 -->
             <div class="field">
-              <label>毛髮長度 <span style="color:#e53935">*</span></label>
+              <label>毛髮長度 <span style="color: #e53935">*</span></label>
               <select name="coatType" required>
                 <option value="" disabled selected>請選擇毛長</option>
-                <option th:each="c : ${coatTypes}"
-                        th:value="${c.name()}"
-                        th:text="${c.label}"
-                        th:selected="${petRequest?.coatType?.name() == c.name()}"></option>
+                <option
+                  th:each="c : ${coatTypes}"
+                  th:value="${c.name()}"
+                  th:text="${c.label}"
+                  th:selected="${petRequest?.coatType?.name() == c.name()}"
+                ></option>
               </select>
             </div>
           </div>
 
           <!-- ── 家長資料 ── -->
-          <div class="card" style="margin-bottom:1rem;">
-            <h3 style="font-size:15px; color:#5c3d2e; margin-bottom:16px;">𖥸 家長資料</h3>
+          <div class="card" style="margin-bottom: 1rem">
+            <h3 style="font-size: 15px; color: #5c3d2e; margin-bottom: 16px">
+              𖥸 家長資料
+            </h3>
 
             <!-- 家長手機 -->
             <div class="field">
-              <label>家長手機 <span style="color:#e53935">*</span></label>
-              <input type="tel" name="ownerPhone" th:value="${petRequest?.ownerPhone}"
-                     placeholder="例如：0912-345-678" required />
+              <label>家長手機 <span style="color: #e53935">*</span></label>
+              <input
+                type="tel"
+                name="ownerPhone"
+                th:value="${petRequest?.ownerPhone}"
+                placeholder="例如：0912-345-678"
+                required
+              />
             </div>
 
             <!-- 分離焦慮 -->
             <div class="field">
-              <label>毛孩有無分離焦慮 <span style="color:#e53935">*</span></label>
-              <div style="display:flex; gap:12px; margin-top:4px;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:400; cursor:pointer;">
-                  <input type="radio" name="hasSeparationAnxiety" value="false"
-                         th:checked="${petRequest?.hasSeparationAnxiety == false or petRequest?.hasSeparationAnxiety == null}"
-                         required />
+              <label
+                >毛孩有無分離焦慮 <span style="color: #e53935">*</span></label
+              >
+              <div style="display: flex; gap: 12px; margin-top: 4px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-weight: 400;
+                    cursor: pointer;
+                  "
+                >
+                  <input
+                    type="radio"
+                    name="hasSeparationAnxiety"
+                    value="false"
+                    th:checked="${petRequest?.hasSeparationAnxiety == false or petRequest?.hasSeparationAnxiety == null}"
+                    required
+                  />
                   無
                 </label>
-                <label style="display:flex; align-items:center; gap:6px; font-weight:400; cursor:pointer;">
-                  <input type="radio" name="hasSeparationAnxiety" value="true"
-                         th:checked="${petRequest?.hasSeparationAnxiety == true}" />
+                <label
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-weight: 400;
+                    cursor: pointer;
+                  "
+                >
+                  <input
+                    type="radio"
+                    name="hasSeparationAnxiety"
+                    value="true"
+                    th:checked="${petRequest?.hasSeparationAnxiety == true}"
+                  />
                   有
                 </label>
               </div>
@@ -115,15 +218,23 @@
 
             <!-- 注意事項 -->
             <div class="field">
-              <label>注意事項 <span style="font-size:12px; color:#999; font-weight:400;">（選填）</span></label>
-              <textarea name="notes" rows="3"
-                        placeholder="例如：不喜歡吹風機聲音、對特定洗劑過敏、有心臟病需特別注意..."
-                        th:text="${petRequest?.notes}"></textarea>
+              <label
+                >注意事項
+                <span style="font-size: 12px; color: #999; font-weight: 400"
+                  >（選填）</span
+                ></label
+              >
+              <textarea
+                name="notes"
+                rows="3"
+                placeholder="例如：不喜歡吹風機聲音、對特定洗劑過敏、有心臟病需特別注意..."
+                th:text="${petRequest?.notes}"
+              ></textarea>
             </div>
           </div>
 
           <!-- 送出 -->
-          <div style="display:flex; gap:10px;">
+          <div style="display: flex; gap: 10px">
             <button type="submit" class="btn">✅ 新增毛孩</button>
             <a href="/pets" class="btn btn-outline">取消</a>
           </div>
@@ -133,28 +244,44 @@
 
     <script>
       function updateSizeHint() {
-        const petType = document.getElementById('petType').value;
-        const weight  = parseFloat(document.getElementById('weight').value);
-        const hint    = document.getElementById('sizeHint');
-        const text    = document.getElementById('sizeHintText');
+        const petType = document.getElementById("petType").value;
+        const weight = parseFloat(document.getElementById("weight").value);
+        const hint = document.getElementById("sizeHint");
+        const text = document.getElementById("sizeHintText");
 
-        if (!petType || !weight || petType === 'OTHER') {
-          hint.style.display = 'none'; return;
+        if (!petType || !weight || petType === "OTHER") {
+          hint.style.display = "none";
+          return;
         }
 
         let sizeLabel, bathCode, blowCode;
-        if (petType === 'DOG') {
-          if (weight <= 15) { sizeLabel = '小型犬'; bathCode = 'BATH_S'; blowCode = 'BLOW_S'; }
-          else              { sizeLabel = '大型犬'; bathCode = 'BATH_L'; blowCode = 'BLOW_L'; }
-        } else if (petType === 'CAT') {
-          if (weight <= 5)  { sizeLabel = '小貓'; bathCode = 'BATH_CS'; blowCode = 'BLOW_CS'; }
-          else              { sizeLabel = '大貓'; bathCode = 'BATH_CL'; blowCode = 'BLOW_CL'; }
+        if (petType === "DOG") {
+          if (weight <= 15) {
+            sizeLabel = "小型犬";
+            bathCode = "BATH_S";
+            blowCode = "BLOW_S";
+          } else {
+            sizeLabel = "大型犬";
+            bathCode = "BATH_L";
+            blowCode = "BLOW_L";
+          }
+        } else if (petType === "CAT") {
+          if (weight <= 5) {
+            sizeLabel = "小貓";
+            bathCode = "BATH_CS";
+            blowCode = "BLOW_CS";
+          } else {
+            sizeLabel = "大貓";
+            bathCode = "BATH_CL";
+            blowCode = "BLOW_CL";
+          }
         } else {
-          hint.style.display = 'none'; return;
+          hint.style.display = "none";
+          return;
         }
 
         text.textContent = `體型：${sizeLabel}　→　預約時自動帶入：洗澡（${bathCode}）＋ 吹毛（${blowCode}）`;
-        hint.style.display = 'block';
+        hint.style.display = "block";
       }
     </script>
   </body>

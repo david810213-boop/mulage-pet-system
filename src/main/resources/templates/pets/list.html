@@ -1,12 +1,17 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
-  <head th:replace="~{fragments/header :: common-head('我的毛孩 | 寵物美容系統')}"></head>
+  <head
+    th:replace="~{fragments/header :: common-head('我的毛孩 | 慕沐村 Mulage pet')}"
+  ></head>
   <body>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
-
-        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
 
         <div class="action-bar">
           <h2>🐾 我的毛孩</h2>
@@ -19,18 +24,53 @@
 
         <div class="cards" th:unless="${pets == null or pets.isEmpty()}">
           <div class="pet-card" th:each="p : ${pets}">
-
             <!-- 類型 + 體型標籤 -->
-            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+            <div
+              style="
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+              "
+            >
               <span class="type-tag" th:text="${p.petTypeLabel}">狗</span>
-              <span th:if="${p.sizeCategory != null and p.sizeCategory.name() != 'OTHER'}"
-                    style="background:#fff3e0; color:#e65100; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600;"
-                    th:text="${p.sizeCategoryLabel}">小型犬</span>
-              <span th:if="${p.coatType != null}"
-                    style="background:#e8f5e9; color:#2e7d32; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600;"
-                    th:text="${p.coatTypeLabel}">短毛</span>
-              <span th:if="${p.hasSeparationAnxiety}"
-                    style="background:#fce4ec; color:#c62828; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600;">
+              <span
+                th:if="${p.sizeCategory != null and p.sizeCategory.name() != 'OTHER'}"
+                style="
+                  background: #fff3e0;
+                  color: #e65100;
+                  padding: 2px 10px;
+                  border-radius: 20px;
+                  font-size: 12px;
+                  font-weight: 600;
+                "
+                th:text="${p.sizeCategoryLabel}"
+                >小型犬</span
+              >
+              <span
+                th:if="${p.coatType != null}"
+                style="
+                  background: #e8f5e9;
+                  color: #2e7d32;
+                  padding: 2px 10px;
+                  border-radius: 20px;
+                  font-size: 12px;
+                  font-weight: 600;
+                "
+                th:text="${p.coatTypeLabel}"
+                >短毛</span
+              >
+              <span
+                th:if="${p.hasSeparationAnxiety}"
+                style="
+                  background: #fce4ec;
+                  color: #c62828;
+                  padding: 2px 10px;
+                  border-radius: 20px;
+                  font-size: 12px;
+                  font-weight: 600;
+                "
+              >
                 ⚠️ 分離焦慮
               </span>
             </div>
@@ -39,22 +79,35 @@
             <p>品種：<span th:text="${p.breed}"></span></p>
             <p>體重：<span th:text="${p.weight + ' kg'}"></span></p>
             <p>年齡：<span th:text="${p.age + ' 歲'}"></span></p>
-            <p th:if="${p.ownerPhone}">手機：<span th:text="${p.ownerPhone}"></span></p>
-            <p th:if="${p.notes}" style="color:#888; font-size:13px; margin-top:4px;"
-               th:text="'備註：' + ${p.notes}"></p>
+            <p th:if="${p.ownerPhone}">
+              手機：<span th:text="${p.ownerPhone}"></span>
+            </p>
+            <p
+              th:if="${p.notes}"
+              style="color: #888; font-size: 13px; margin-top: 4px"
+              th:text="'備註：' + ${p.notes}"
+            ></p>
 
             <!-- 自動推薦項目 -->
-            <div th:if="${p.recommendedItemCodes != null and !p.recommendedItemCodes.isEmpty()}"
-                 style="margin-top:10px; padding:8px 10px; background:#f0f9f0;
-                        border-radius:6px; font-size:12px; color:#2e7d32;">
+            <div
+              th:if="${p.recommendedItemCodes != null and !p.recommendedItemCodes.isEmpty()}"
+              style="
+                margin-top: 10px;
+                padding: 8px 10px;
+                background: #f0f9f0;
+                border-radius: 6px;
+                font-size: 12px;
+                color: #2e7d32;
+              "
+            >
               🤖 預約自動帶入：
               <span th:each="code,stat : ${p.recommendedItemCodes}">
-                <span th:text="${code}"></span><span th:unless="${stat.last}">、</span>
+                <span th:text="${code}"></span
+                ><span th:unless="${stat.last}">、</span>
               </span>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </body>

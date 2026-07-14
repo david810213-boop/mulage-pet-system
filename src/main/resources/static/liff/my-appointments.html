@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>慕沐村Mulage pet</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f5f0;
+      min-height: 100vh;
+      padding-bottom: 90px;
+    }
+    .header {
+      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      color: #f5d49a;
+      padding: 20px 16px 24px;
+      text-align: center;
+    }
+    .header .logo { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 2px; }
+
+    .add-btn {
+      display: block;
+      margin: 16px;
+      padding: 12px;
+      background: white;
+      border: 2px dashed #c9a84c;
+      border-radius: 12px;
+      text-align: center;
+      color: #c9a84c;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    /* 分類 tab */
+    .tabs {
+      display: flex;
+      margin: 0 16px 16px;
+      background: white;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .tab-btn {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #999;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      color: #f5d49a;
+    }
+
+    /* 歷史預約篩選面板 */
+    .filter-panel {
+      margin: 0 16px 16px;
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: none;
+    }
+    .filter-panel.show { display: block; }
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .filter-row:last-child { margin-bottom: 0; }
+    .filter-field { flex: 1; }
+    .filter-field label {
+      display: block;
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+    .filter-field input[type="date"],
+    .filter-field input[type="number"],
+    .filter-field select {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid #e0d5c8;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #2c1810;
+      background: #fdfaf7;
+      box-sizing: border-box;
+    }
+    .filter-checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .filter-checkbox-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #5c3d2e;
+    }
+    .filter-checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #c9a84c;
+    }
+    .filter-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .filter-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    .filter-btn.apply {
+      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      color: #f5d49a;
+    }
+    .filter-btn.reset {
+      background: #f0e8dc;
+      color: #5c3d2e;
+    }
+
+    .appt-card {
+      margin: 0 16px 16px;
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .appt-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .appt-code {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+    .appt-pet {
+      font-size: 18px;
+      font-weight: 700;
+      color: #2c1810;
+    }
+    .appt-pet .pet-type-icon { margin-right: 4px; }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .status-badge.upcoming { background: #e3f2fd; color: #1565c0; }
+    .status-badge.paid { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.unpaid { background: #fff3e0; color: #e65100; }
+    .status-badge.past { background: #f2f2f2; color: #999; }
+    .status-badge.cancelled { background: #fdecec; color: #c62828; }
+
+    .appt-card.cancelled { opacity: 0.6; }
+
+    .cancel-btn {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      background: white;
+      border: 1.5px solid #e53935;
+      color: #e53935;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .cancel-btn:active { opacity: 0.7; }
+    .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .cancel-note {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .appt-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #5c3d2e;
+      margin-bottom: 8px;
+    }
+    .appt-row .icon { width: 18px; flex-shrink: 0; text-align: center; }
+
+    .appt-items {
+      margin-top: 12px;
+      padding: 12px;
+      background: #fdfaf7;
+      border-radius: 8px;
+    }
+    .appt-items .label {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .item-chip {
+      display: inline-block;
+      padding: 3px 10px;
+      margin: 0 6px 6px 0;
+      background: #f0e8dc;
+      color: #5c3d2e;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+
+    .appt-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #f0e8dc;
+    }
+    .appt-total { font-size: 13px; color: #999; }
+    .appt-total .amount {
+      font-size: 18px;
+      font-weight: 700;
+      color: #2c1810;
+      margin-left: 4px;
+    }
+
+    .loading, .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #bbb;
+      font-size: 14px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: 90vw;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { background: #2e7d32; }
+    .toast.error { background: #c62828; }
+
+    /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變 */
+    .fab-home {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      box-shadow: 0 4px 14px rgba(44,24,16,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      z-index: 500;
+    }
+    .fab-home-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+    .fab-home:active { opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">慕沐村 Mulage pet</div>
+  <h1>我的預約</h1>
+</div>
+
+<a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
+  <span class="fab-home-icon">🏠</span>
+</a>
+
+<a class="add-btn" href="/liff/booking.html">📅 新增預約</a>
+
+<div class="tabs">
+  <div class="tab-btn active" data-tab="upcoming" onclick="switchTab('upcoming')">即將到來</div>
+  <div class="tab-btn" data-tab="past" onclick="switchTab('past')">歷史預約</div>
+</div>
+
+<div class="filter-panel" id="filterPanel">
+  <div class="filter-row">
+    <div class="filter-field">
+      <label>日期從</label>
+      <input type="date" id="filterDateFrom" onchange="applyFilter()" />
+    </div>
+    <div class="filter-field">
+      <label>日期到</label>
+      <input type="date" id="filterDateTo" onchange="applyFilter()" />
+    </div>
+  </div>
+  <div class="filter-row">
+    <div class="filter-field">
+      <label>金額排序</label>
+      <select id="filterAmountSort" onchange="applyFilter()">
+        <option value="">預設（日期新到舊）</option>
+        <option value="desc">金額高到低</option>
+        <option value="asc">金額低到高</option>
+      </select>
+    </div>
+  </div>
+  <div class="filter-checkbox-row">
+    <label><input type="checkbox" id="filterCancelledOnly" onchange="applyFilter()" /> 只顯示已取消</label>
+  </div>
+  <div class="filter-actions">
+    <button class="filter-btn reset" onclick="resetFilter()">重置篩選</button>
+  </div>
+</div>
+
+<div id="app"><div class="loading">載入中...</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const LIFF_ID = "2010567973-ygHvpq7X";
+  let jwtToken = null;
+  let allAppointments = [];
+  let currentTab = 'upcoming';
+
+  async function init() {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const res = await fetch('/api/line/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ idToken: liff.getIDToken() })
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        document.getElementById('app').innerHTML =
+          '<div class="loading" style="color:red">登入失敗</div>';
+        return;
+      }
+
+      jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+
+      await loadAppointments();
+    } catch (e) {
+      document.getElementById('app').innerHTML =
+        '<div class="loading" style="color:red">初始化失敗：' + e.message + '</div>';
+    }
+  }
+
+  async function loadAppointments() {
+    try {
+      const res = await fetch('/api/appointments/my', {
+        headers: {
+          'Authorization': 'Bearer ' + jwtToken,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      allAppointments = await res.json();
+
+      // 依日期時間新到舊排序（即將到來的用近到遠、歷史的用遠到近會在 render 時各自排序）
+      renderList();
+    } catch (e) {
+      document.getElementById('app').innerHTML =
+        '<div class="loading" style="color:red">載入預約失敗：' + e.message + '</div>';
+    }
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
+
+    const panel = document.getElementById('filterPanel');
+    if (tab === 'past') {
+      panel.classList.add('show');
+    } else {
+      panel.classList.remove('show');
+    }
+
+    renderList();
+  }
+
+  function applyFilter() {
+    renderList();
+  }
+
+  function resetFilter() {
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterAmountSort').value = '';
+    document.getElementById('filterCancelledOnly').checked = false;
+    renderList();
+  }
+
+  function todayStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function isPastAppointment(a) {
+    // 已取消的預約一律歸入「歷史預約」分頁（不算即將到來）
+    if (a.cancelled) return true;
+    // 日期早於今天 → 過去；日期是今天但結束時間已過 → 也算過去
+    const today = todayStr();
+    if (a.date < today) return true;
+    if (a.date > today) return false;
+    const now = new Date();
+    const nowStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':00';
+    return a.endTime <= nowStr;
+  }
+
+  function petIcon(type) {
+    if (type === 'DOG') return '🐶';
+    if (type === 'CAT') return '🐱';
+    return '🐾';
+  }
+
+  function renderList() {
+    const app = document.getElementById('app');
+
+    if (!allAppointments.length) {
+      app.innerHTML = '<div class="empty">尚無任何預約紀錄<br>點上方按鈕立即預約</div>';
+      return;
+    }
+
+    let list = allAppointments.filter(a => currentTab === 'past' ? isPastAppointment(a) : !isPastAppointment(a));
+
+    if (currentTab === 'past') {
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+      const amountSort = document.getElementById('filterAmountSort').value;
+      const cancelledOnly = document.getElementById('filterCancelledOnly').checked;
+
+      if (dateFrom) list = list.filter(a => a.date >= dateFrom);
+      if (dateTo) list = list.filter(a => a.date <= dateTo);
+      if (cancelledOnly) list = list.filter(a => a.cancelled);
+
+      if (amountSort === 'desc') {
+        list.sort((a, b) => b.totalAmount - a.totalAmount);
+      } else if (amountSort === 'asc') {
+        list.sort((a, b) => a.totalAmount - b.totalAmount);
+      } else {
+        // 預設：時間遠到近（最新的在最上面）
+        list.sort((a, b) => (b.date + 'T' + b.startTime).localeCompare(a.date + 'T' + a.startTime));
+      }
+    } else {
+      // 即將到來：時間近到遠
+      list.sort((a, b) => (a.date + 'T' + a.startTime).localeCompare(b.date + 'T' + b.startTime));
+    }
+
+    if (!list.length) {
+      app.innerHTML = currentTab === 'past'
+        ? '<div class="empty">找不到符合篩選條件的預約紀錄</div>'
+        : '<div class="empty">目前沒有即將到來的預約</div>';
+      return;
+    }
+
+    app.innerHTML = list.map(a => appointmentCardHtml(a)).join('');
+  }
+
+  function appointmentCardHtml(a) {
+    const past = isPastAppointment(a);
+    let badge;
+    if (a.cancelled) {
+      badge = '<span class="status-badge cancelled">已取消</span>';
+    } else if (past) {
+      badge = '<span class="status-badge past">已完成</span>';
+    } else if (a.paid) {
+      badge = '<span class="status-badge paid">已付款</span>';
+    } else {
+      badge = '<span class="status-badge unpaid">未付款</span>';
+    }
+
+    const itemsHtml = (a.selectedItems || []).map(it =>
+      `<span class="item-chip">${it.name}</span>`
+    ).join('');
+
+    // 可取消條件：尚未取消、尚未付款、且預約時間還沒到（過去的不給取消）
+    const isFuture = !isPastOrCancelledForCancelCheck(a);
+    const canCancel = !a.cancelled && !a.paid && isFuture;
+
+    let footerHtml = `<div class="appt-total">總金額<span class="amount">$${a.totalAmount}</span></div>`;
+
+    return `
+      <div class="appt-card ${a.cancelled ? 'cancelled' : ''}">
+        <div class="appt-top">
+          <div>
+            <div class="appt-code">${a.appointmentCode}</div>
+            <div class="appt-pet"><span class="pet-type-icon">${petIcon(a.petType)}</span>${a.petName}</div>
+          </div>
+          ${badge}
+        </div>
+        <div class="appt-row"><span class="icon">📅</span>${a.date}</div>
+        <div class="appt-row"><span class="icon">⏰</span>${a.startTime.substring(0,5)} - ${a.endTime.substring(0,5)}</div>
+        ${itemsHtml ? `
+        <div class="appt-items">
+          <div class="label">預約項目</div>
+          ${itemsHtml}
+        </div>` : ''}
+        <div class="appt-footer">
+          ${footerHtml}
+        </div>
+        ${canCancel ? `<button class="cancel-btn" onclick="cancelAppointment(${a.id}, '${a.appointmentCode}')">取消預約</button>` : ''}
+        ${a.cancelled && a.cancelledBy ? `<div class="cancel-note">取消人：${a.cancelledBy}${a.cancelReason ? '　原因：' + a.cancelReason : ''}</div>` : ''}
+        ${!canCancel && !a.cancelled && a.paid ? `<div class="cancel-note">已付款，如需取消請聯繫店家處理退款</div>` : ''}
+      </div>
+    `;
+  }
+
+  // 判斷是否為「已過去或已取消」（用於決定是否還能取消，避免取消歷史預約）
+  function isPastOrCancelledForCancelCheck(a) {
+    if (a.cancelled) return true;
+    const today = todayStr();
+    if (a.date < today) return true;
+    if (a.date > today) return false;
+    const now = new Date();
+    const nowStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':00';
+    return a.endTime <= nowStr;
+  }
+
+  async function cancelAppointment(id, code) {
+    if (!confirm(`確定要取消預約 ${code} 嗎？此動作無法復原。`)) return;
+
+    try {
+      const res = await fetch(`/api/appointments/${id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + jwtToken,
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ reason: '會員於 LIFF 自行取消' })
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        showToast('取消失敗：' + (typeof data === 'string' ? data : (data && data.message) || res.status), 'error');
+        return;
+      }
+
+      showToast('✅ 已取消預約 ' + code, 'success');
+      await loadAppointments();
+    } catch (e) {
+      showToast('網路錯誤，請重試', 'error');
+    }
+  }
+
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  init();
+</script>
+</body>
+</html>
