@@ -39,13 +39,9 @@
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-h2console</artifactId>
 		</dependency>
 		<!-- 
 		<dependency>
@@ -53,6 +49,13 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency> 
 		-->
+		<!-- 只取 Spring Security 的密碼雜湊工具（BCryptPasswordEncoder），
+		     不引入完整的 spring-boot-starter-security，避免觸發自動安全設定，
+		     跟現有的 JWT + Interceptor 認證機制衝突 -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>

@@ -70,9 +70,25 @@ public class WalletService {
     }
 
     // ── 消費扣款（結帳時由 PaymentService 呼叫）──────────────────────────
+    // 以悲觀鎖鎖住錢包列，杜絕並發超扣（餘額存於 Wallet.balance 欄位）。
     @Transactional
     public void deduct(String username, int amount, Long appointmentId) {
-        Wallet wallet = getOrCreateWallet(username);
+        deduct(username, amount, appointmentId, "預約 #" + appointmentId + " 消費扣款");
+    }
+
+    // 需求：現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
+    // （例如「現場單 #5 消費扣款」），避免顯示成看起來像 bug 的「預約 #null」。
+    @Transactional
+    public void deduct(String username, int amount, Long appointmentId, String note) {
+        User user = userService.getUserEntityByUsername(username);
+
+        // 先確保錢包存在（首次消費者可能還沒錢包）
+        getOrCreateWallet(username);
+
+        // 加鎖重新讀取，鎖持有到本交易 commit
+        Wallet wallet = walletRepository.lockByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("找不到錢包"));
+
         if (wallet.getBalance() < amount) {
             throw new IllegalArgumentException("儲值金餘額不足，目前餘額：$" + wallet.getBalance());
         }
@@ -83,7 +99,7 @@ public class WalletService {
                 .type(WalletTransactionType.DEDUCT)
                 .amount(-amount)
                 .balanceAfter(wallet.getBalance())
-                .note("預約 #" + appointmentId + " 消費扣款")
+                .note(note)
                 .appointmentId(appointmentId)
                 .build();
         txRepository.save(tx);

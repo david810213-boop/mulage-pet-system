@@ -490,12 +490,15 @@
                 <th style="padding: 12px 16px; font-weight: 600; width: 120px">
                   角色
                 </th>
+                <th style="padding: 12px 16px; font-weight: 600; width: 220px">
+                  密碼管理
+                </th>
               </tr>
             </thead>
             <tbody style="color: var(--brown-mid)">
               <tr th:if="${allStaff == null or allStaff.isEmpty()}">
                 <td
-                  colspan="4"
+                  colspan="5"
                   style="
                     text-align: center;
                     color: var(--brown-light);
@@ -534,6 +537,40 @@
                     "
                     th:text="${s.role}"
                   ></span>
+                </td>
+                <td style="padding: 10px 16px">
+                  <form
+                    th:action="@{/admin/staff/{id}/reset-password(id=${s.id})}"
+                    method="post"
+                    style="display: flex; gap: 6px"
+                    onsubmit="return confirm('確定要重設這位員工的密碼嗎？');"
+                  >
+                    <input
+                      type="text"
+                      name="newPassword"
+                      required
+                      minlength="4"
+                      placeholder="輸入新密碼"
+                      style="
+                        padding: 4px 8px;
+                        font-size: 13px;
+                        border: 1px solid var(--cream-300);
+                        border-radius: 4px;
+                        width: 120px;
+                      "
+                    />
+                    <button
+                      type="submit"
+                      class="btn btn-outline"
+                      style="
+                        padding: 4px 10px;
+                        font-size: 12px;
+                        white-space: nowrap;
+                      "
+                    >
+                      重設密碼
+                    </button>
+                  </form>
                 </td>
               </tr>
             </tbody>

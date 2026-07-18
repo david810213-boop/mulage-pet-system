@@ -1,76 +1,34 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
-  <head
-    th:replace="~{fragments/header :: common-head('績效日報 | 慕沐村 Mulage pet')}"
-  ></head>
+  <head th:replace="~{fragments/header :: common-head('績效日報 | 慕沐村 Mulage pet')}"></head>
   <body>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-          "
-        >
-          <h2 style="margin: 0">📊 員工績效日報</h2>
-          <a href="/admin/performance/monthly" class="btn btn-outline"
-            >月報 / 結算 →</a
-          >
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin:0">📊 員工績效日報</h2>
+          <a href="/admin/performance/monthly" class="btn btn-outline">月報 / 結算 →</a>
         </div>
 
-        <div
-          class="alert alert-success"
-          th:if="${successMsg}"
-          th:text="${successMsg}"
-        ></div>
-        <div
-          class="alert alert-danger"
-          th:if="${errorMsg}"
-          th:text="${errorMsg}"
-        ></div>
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-danger"  th:if="${errorMsg}"   th:text="${errorMsg}"></div>
 
         <!-- 日期選擇 -->
-        <form
-          method="get"
-          action="/admin/performance"
-          style="
-            display: flex;
-            gap: 8px;
-            margin-bottom: 1.5rem;
-            align-items: center;
-          "
-        >
-          <input
-            type="date"
-            name="date"
-            th:value="${date}"
-            style="
-              padding: 8px;
-              border: 1px solid var(--cream-300);
-              border-radius: var(--radius-sm);
-            "
-          />
+        <form method="get" action="/admin/performance"
+              style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center;">
+          <input type="date" name="date" th:value="${date}"
+                 style="padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);" />
           <button type="submit" class="btn">查詢</button>
           <a th:href="@{/admin/performance}" class="btn btn-outline">今天</a>
         </form>
 
         <!-- 當日績效紀錄（自動從結帳產生） -->
-        <div
-          style="
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            margin-bottom: 1.5rem;
-          "
-        >
-          <h3 style="font-size: 15px; margin-bottom: 4px">
+        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:1.5rem;">
+          <h3 style="font-size:15px; margin-bottom:4px;">
             📅 <span th:text="${date}">日期</span> 績效紀錄
           </h3>
-          <p style="font-size: 13px; color: #999; margin-bottom: 12px">
+          <p style="font-size:13px; color:#999; margin-bottom:12px;">
             結帳完成後自動從服務項目計算，無需手動輸入。
           </p>
           <table>
@@ -85,20 +43,13 @@
             </thead>
             <tbody>
               <tr th:if="${#lists.isEmpty(records)}">
-                <td colspan="5" style="text-align: center; color: #aaa">
-                  當日尚無績效紀錄（請先完成結帳）
-                </td>
+                <td colspan="5" style="text-align:center; color:#aaa;">當日尚無績效紀錄（請先完成結帳）</td>
               </tr>
               <tr th:each="r : ${records}">
                 <td th:text="${r.staff.name}">員工</td>
                 <td th:text="'#' + ${r.appointmentId}">編號</td>
                 <td th:text="${r.category.label}">大項</td>
-                <td
-                  style="font-weight: 700; color: #c9a84c"
-                  th:text="${r.points}"
-                >
-                  分
-                </td>
+                <td style="font-weight:700; color:#c9a84c;" th:text="${r.points}">分</td>
                 <td th:text="${r.note}">備註</td>
               </tr>
             </tbody>
@@ -106,212 +57,64 @@
         </div>
 
         <!-- 拆分積分（兩人共同完成同一項目時使用） -->
-        <div
-          style="
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-          "
-        >
-          <h3 style="font-size: 15px; margin-bottom: 4px">✂️ 拆分積分</h3>
-          <p style="font-size: 13px; color: #999; margin-bottom: 16px">
-            僅在兩位員工共同完成同一項目（例如各洗一半）時使用，手動補登拆分的積分。
+        <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <h3 style="font-size:15px; margin-bottom:4px;">✂️ 拆分積分</h3>
+          <p style="font-size:13px; color:#999; margin-bottom:16px;">
+            僅在兩位員工共同完成同一項目（例如各洗一半）時使用。選擇下方「原始紀錄」後，
+            系統會從該筆紀錄扣除指定積分，改分給另一位員工，<strong>積分總和不會改變</strong>。
           </p>
-          <form
-            method="post"
-            action="/admin/performance/add"
-            style="
-              display: grid;
-              grid-template-columns: 1fr 1fr 1fr;
-              gap: 12px;
-              align-items: end;
-            "
-          >
+          <form method="post" action="/admin/performance/split"
+                style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:16px; align-items:start;">
+
+            <input type="hidden" name="date" th:value="${date}" />
+
+            <div style="grid-column:1 / -1;">
+              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">原始績效紀錄（要從中拆分的紀錄）</label>
+              <select name="sourceRecordId" required id="sourceRecordSelect"
+                      style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;">
+                <option value="">請選擇原始紀錄</option>
+                <option th:each="r : ${splittableRecords}" th:value="${r.id}"
+                        th:text="'#' + ${r.id} + ' 預約#' + ${r.appointmentId} + '　' + ${r.staff.name} + '　' + ${r.category.label} + '　目前 ' + ${r.points} + ' 分'">
+                  紀錄
+                </option>
+              </select>
+              <p th:if="${#lists.isEmpty(splittableRecords)}"
+                 style="font-size:12px; color:#e53935; margin:4px 0 0; line-height:1.4;">當日尚無可拆分的績效紀錄（請先完成結帳）</p>
+            </div>
+
             <div>
-              <label
-                style="
-                  font-size: 13px;
-                  color: #666;
-                  display: block;
-                  margin-bottom: 4px;
-                "
-                >員工</label
-              >
-              <select
-                name="staffId"
-                required
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  border: 1px solid var(--cream-300);
-                  border-radius: var(--radius-sm);
-                "
-              >
+              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">拆分給（另一位員工）</label>
+              <select name="toStaffId" required
+                      style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;">
                 <option value="">請選擇員工</option>
-                <option
-                  th:each="s : ${staffList}"
-                  th:value="${s.id}"
-                  th:text="${s.name}"
-                >
-                  員工
-                </option>
+                <option th:each="s : ${staffList}" th:value="${s.id}" th:text="${s.name}">員工</option>
               </select>
             </div>
 
             <div>
-              <label
-                style="
-                  font-size: 13px;
-                  color: #666;
-                  display: block;
-                  margin-bottom: 4px;
-                "
-                >當日已結帳預約</label
-              >
-              <select
-                name="appointmentId"
-                required
-                id="apptSelect"
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  border: 1px solid var(--cream-300);
-                  border-radius: var(--radius-sm);
-                "
-              >
-                <option value="">請選擇預約</option>
-                <option
-                  th:each="a : ${paidAppointments}"
-                  th:value="${a.id}"
-                  th:text="'#' + ${a.id} + ' ' + ${a.petName} + '（' + ${a.user.name} + '）'"
-                >
-                  預約
-                </option>
-              </select>
-              <p
-                th:if="${#lists.isEmpty(paidAppointments)}"
-                style="font-size: 12px; color: #e53935; margin-top: 4px"
-              >
-                當日尚無已結帳預約
-              </p>
+              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">拆分積分（可填 0.5）</label>
+              <input type="number" name="splitPoints" step="0.5" min="0.5"
+                     placeholder="例如：5 或 10.5"
+                     style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;"
+                     required />
+              <p style="font-size:11px; color:#999; margin:4px 0 0;">須小於原始紀錄目前積分</p>
             </div>
 
-            <div>
-              <label
-                style="
-                  font-size: 13px;
-                  color: #666;
-                  display: block;
-                  margin-bottom: 4px;
-                "
-                >拆分項目</label
-              >
-              <select
-                name="category"
-                required
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  border: 1px solid var(--cream-300);
-                  border-radius: var(--radius-sm);
-                "
-              >
-                <option value="">請選擇大項</option>
-                <option
-                  th:each="c : ${categories}"
-                  th:value="${c}"
-                  th:text="${c.label} + '（' + ${c.defaultPoints} + '分）'"
-                >
-                  類別
-                </option>
-              </select>
+            <div style="grid-column:1 / -1;">
+              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">備註（選填）</label>
+              <input type="text" name="note" placeholder="例如：與小王各分 0.5"
+                     style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
             </div>
 
-            <div>
-              <label
-                style="
-                  font-size: 13px;
-                  color: #666;
-                  display: block;
-                  margin-bottom: 4px;
-                "
-                >積分（可填 0.5）</label
-              >
-              <input
-                type="number"
-                name="points"
-                step="0.5"
-                min="0.5"
-                placeholder="例如：5 或 10.5"
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  border: 1px solid var(--cream-300);
-                  border-radius: var(--radius-sm);
-                "
-                required
-              />
-            </div>
-
-            <div>
-              <label
-                style="
-                  font-size: 13px;
-                  color: #666;
-                  display: block;
-                  margin-bottom: 4px;
-                "
-                >服務日期</label
-              >
-              <input
-                type="date"
-                name="serviceDate"
-                th:value="${date}"
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  border: 1px solid var(--cream-300);
-                  border-radius: var(--radius-sm);
-                "
-                required
-              />
-            </div>
-
-            <div>
-              <label
-                style="
-                  font-size: 13px;
-                  color: #666;
-                  display: block;
-                  margin-bottom: 4px;
-                "
-                >備註</label
-              >
-              <input
-                type="text"
-                name="note"
-                placeholder="例如：與小王各分 0.5"
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  border: 1px solid var(--cream-300);
-                  border-radius: var(--radius-sm);
-                "
-              />
-            </div>
-
-            <div style="grid-column: span 3">
-              <button
-                type="submit"
-                class="btn btn-outline"
-                style="border-color: #c9a84c; color: #c9a84c"
-              >
-                補登拆分積分
+            <div style="grid-column:1 / -1;">
+              <button type="submit" class="btn btn-outline"
+                      style="border-color:#c9a84c; color:#c9a84c;">
+                拆分積分
               </button>
             </div>
           </form>
         </div>
+
       </div>
     </div>
   </body>

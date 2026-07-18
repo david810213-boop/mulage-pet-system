@@ -1,6 +1,5 @@
 package com.petgrooming.pet_system.dto;
 
-import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,9 +27,8 @@ public class PetRequest {
     @PositiveOrZero(message = "年齡不能為負數")
     private Integer age;
 
-    // 新增欄位
-    @NotNull(message = "請選擇毛長")
-    private CoatType coatType;          // 由飼主填寫（短毛/中長毛/長毛）
+    // 需求 2：毛長不再由顧客填寫（改由店家後台定義），故此處移除 coatType 欄位。
+    // 前端即使誤傳此欄位，也會被忽略（Spring Boot 預設不因未知屬性報錯）。
 
     private Boolean hasSeparationAnxiety = false; // 是否有分離焦慮
 

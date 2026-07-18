@@ -28,6 +28,8 @@ public class AppointmentResponse {
     private boolean paid;
     private AppointmentStatus status;
     private String statusLabel;
+    private LocalDateTime confirmedTime; // 需求 3：店家敲定的最後時間
+    private String memberNote;           // 需求 7：會員可見備注（不含店家內部備注）
     private boolean cancelled;
     private LocalDateTime cancelledAt;
     private String cancelReason;
@@ -51,6 +53,9 @@ public class AppointmentResponse {
         res.setPaid(a.isPaid());
         res.setStatus(a.getStatus());
         res.setStatusLabel(a.getStatus().getLabel());
+        res.setConfirmedTime(a.getConfirmedTime());
+        // ⚠️ 需求 7：只放 memberNote，internalNote 絕不放進顧客可見的 DTO
+        res.setMemberNote(a.getMemberNote());
         res.setCancelled(a.isCancelled());
         res.setCancelledAt(a.getCancelledAt());
         res.setCancelReason(a.getCancelReason());

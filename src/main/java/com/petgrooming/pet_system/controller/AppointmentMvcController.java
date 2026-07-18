@@ -59,25 +59,36 @@ public class AppointmentMvcController {
                        @RequestParam(required = false) String status,
                        @RequestParam(required = false) String paidStatus,
                        @RequestParam(required = false) String keyword) {
-        // 🛡️ 攔截器已經保證絕對有登入，直接從 JWT 解析出來的資訊取得使用者
         User user = getLoginUser(request);
 
         model.addAttribute("user", user);
 
-        List<com.petgrooming.pet_system.dto.AppointmentResponse> all = user.isStaffOrAdmin()
-                ? appointmentService.getAllAppointments()
-                : appointmentService.getMyAppointments(user.getUsername());
-
-        List<com.petgrooming.pet_system.dto.AppointmentResponse> filtered = all.stream()
-                .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
-                .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
-                .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
-                .filter(a -> paidStatus == null || paidStatus.isBlank()
-                        || (paidStatus.equals("PAID") == a.isPaid()))
-                .filter(a -> keyword == null || keyword.isBlank() || matchesKeyword(a, keyword))
-                .toList();
-
-        model.addAttribute("appointments", filtered);
+        if (user.isStaffOrAdmin()) {
+            // 需求 3 / 7：店家後台看完整資訊（含內部備注、確認狀態）
+            List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> allAdmin =
+                    appointmentService.getAllForAdmin();
+            List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> filteredAdmin = allAdmin.stream()
+                    .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
+                    .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
+                    .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
+                    .filter(a -> paidStatus == null || paidStatus.isBlank()
+                            || (paidStatus.equals("PAID") == a.isPaid()))
+                    .filter(a -> keyword == null || keyword.isBlank() || matchesKeywordAdmin(a, keyword))
+                    .toList();
+            model.addAttribute("appointments", filteredAdmin);
+        } else {
+            List<com.petgrooming.pet_system.dto.AppointmentResponse> all =
+                    appointmentService.getMyAppointments(user.getUsername());
+            List<com.petgrooming.pet_system.dto.AppointmentResponse> filtered = all.stream()
+                    .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
+                    .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
+                    .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
+                    .filter(a -> paidStatus == null || paidStatus.isBlank()
+                            || (paidStatus.equals("PAID") == a.isPaid()))
+                    .filter(a -> keyword == null || keyword.isBlank() || matchesKeyword(a, keyword))
+                    .toList();
+            model.addAttribute("appointments", filtered);
+        }
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
         model.addAttribute("status", status);
@@ -93,6 +104,51 @@ public class AppointmentMvcController {
                 || String.valueOf(a.getId()).equals(kw)
                 || a.getOwnerName().toLowerCase().contains(kw)
                 || a.getPetName().toLowerCase().contains(kw);
+    }
+
+    private boolean matchesKeywordAdmin(com.petgrooming.pet_system.dto.AppointmentAdminResponse a, String keyword) {
+        String kw = keyword.trim().toLowerCase();
+        return a.getAppointmentCode().toLowerCase().contains(kw)
+                || String.valueOf(a.getId()).equals(kw)
+                || a.getOwnerName().toLowerCase().contains(kw)
+                || a.getPetName().toLowerCase().contains(kw);
+    }
+
+    // ── POST /appointments/{id}/confirm ────────────────────────────────────
+    // 需求 3：店家確認預約並敲定最後時間
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/confirm")
+    public String confirm(@PathVariable Long id,
+                          @RequestParam(required = false)
+                          @org.springframework.format.annotation.DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                          java.time.LocalDateTime confirmedTime,
+                          HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            appointmentService.confirm(id, confirmedTime, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "已確認預約");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "確認失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments";
+    }
+
+    // ── POST /appointments/{id}/notes ──────────────────────────────────────
+    // 需求 7：店家設定備注（雙可見性：internalNote 店家專用 / memberNote 會員可見）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/notes")
+    public String setNotes(@PathVariable Long id,
+                           @RequestParam(required = false) String internalNote,
+                           @RequestParam(required = false) String memberNote,
+                           HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            appointmentService.setNotes(id, internalNote, memberNote, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "備注已更新");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments";
     }
 
     // ── POST /appointments/{id}/cancel ─────────────────────────────────────

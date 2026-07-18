@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "monthly_performance",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"staff_id", "year_month"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"staff_id", "perf_month"}))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,7 +29,9 @@ public class MonthlyPerformance {
     private User staff;
 
     // 統計月份（格式：2026-06-01，取當月第一天代表整月）
-    @Column(name = "year_month", nullable = false)
+    // 欄位名不能叫 year_month：這是 MySQL 的保留字（INTERVAL ... YEAR_MONTH 語法用），
+    // 不加反引號跳脫直接當一般欄位名會導致 CREATE TABLE 語法錯誤。改名為 perf_month 避開。
+    @Column(name = "perf_month", nullable = false)
     private LocalDate yearMonth;
 
     // 當月總積分（不含接待）

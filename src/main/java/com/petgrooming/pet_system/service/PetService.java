@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
@@ -9,6 +10,7 @@ import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -36,7 +38,8 @@ public class PetService {
                 .weight(req.getWeight())
                 .age(req.getAge())
                 .sizeCategory(sizeCategory)
-                .coatType(req.getCoatType())
+                // 需求 2：毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
+                .coatType(CoatType.UNDEFINED)
                 .hasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety())
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
@@ -59,5 +62,18 @@ public class PetService {
                 .stream()
                 .map(PetResponse::from)
                 .toList();
+    }
+
+    // ── 3. 店家定義寵物毛長（需求 2）────────────────────────────────────────
+    // 僅供後台（STAFF / ADMIN）呼叫，由店家實際檢視毛況後設定短毛 / 中長毛 / 長毛。
+    @Transactional
+    public PetResponse setCoatType(Long petId, CoatType coatType) {
+        if (coatType == null) {
+            throw new IllegalArgumentException("毛長不能為空");
+        }
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setCoatType(coatType);
+        return PetResponse.from(petRepository.save(pet));
     }
 }

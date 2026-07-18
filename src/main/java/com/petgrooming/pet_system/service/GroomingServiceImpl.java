@@ -38,6 +38,7 @@ public class GroomingServiceImpl implements GroomingService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setDeleted(false); // 新增的項目預設就是直接上架使用
+        item.setBookable(request.getBookable() != null && request.getBookable()); // 需求 4
 
         // 3. 實質寫入資料庫
         groomingItemRepository.save(item);
@@ -56,6 +57,17 @@ public class GroomingServiceImpl implements GroomingService {
     }
 
     /**
+     * 1b. 需求 4：只撈可線上預約的項目（大美容 / 小美容 / 精緻洗 / 定製洗）
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<GroomingItemResponse> getBookableItems() {
+        return groomingItemRepository.findByBookableTrueAndIsDeletedFalse().stream()
+                .map(GroomingItemResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * 2. 修改指定的美容項目 
      */
     @Override
@@ -67,6 +79,7 @@ public class GroomingServiceImpl implements GroomingService {
         item.setName(request.getName());
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
+        if (request.getBookable() != null) item.setBookable(request.getBookable()); // 需求 4
         
         GroomingItem updatedItem = groomingItemRepository.save(item);
         return GroomingItemResponse.from(updatedItem);

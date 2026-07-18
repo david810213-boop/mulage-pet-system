@@ -58,6 +58,78 @@ public class PerformanceService {
         return recordRepo.save(record);
     }
 
+    // ── 現場開單專用：同一份積分邏輯，但對應現場單而非預約 ────────────
+    @Transactional
+    public PerformanceRecord addWalkInRecord(Long staffId, Long walkInOrderId,
+                                             PerformanceCategory category, Double points,
+                                             LocalDate serviceDate, String note) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + staffId));
+
+        PerformanceRecord record = PerformanceRecord.builder()
+                .staff(staff)
+                .walkInOrderId(walkInOrderId)
+                .category(category)
+                .points(points)
+                .serviceDate(serviceDate)
+                .note(note)
+                .build();
+
+        return recordRepo.save(record);
+    }
+
+    // ── 拆分積分：從既有紀錄中扣除一部分積分，改分給另一位員工 ──────────
+    // 用於兩位員工共同完成同一項目的情境（例如各洗一半）。
+    // 會直接修正原始紀錄的積分（而非單純疊加新紀錄），確保同一筆預約的積分總和不會憑空增加。
+    @Transactional
+    public PerformanceRecord splitRecord(Long sourceRecordId, Long toStaffId,
+                                         Double splitPoints, String note) {
+        PerformanceRecord source = recordRepo.findById(sourceRecordId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到原始績效紀錄：" + sourceRecordId));
+
+        if (splitPoints == null || splitPoints <= 0) {
+            throw new IllegalArgumentException("拆分積分必須大於 0");
+        }
+        if (splitPoints >= source.getPoints()) {
+            throw new IllegalArgumentException(
+                    "拆分積分（" + splitPoints + "）不可大於或等於原始紀錄積分（" + source.getPoints() + "），"
+                    + "若要全部轉移請直接修改原紀錄的負責員工");
+        }
+
+        User toStaff = userRepository.findById(toStaffId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + toStaffId));
+
+        if (source.getStaff().getId().equals(toStaffId)) {
+            throw new IllegalArgumentException("拆分對象不可與原負責員工相同");
+        }
+
+        // 1. 原始紀錄扣除拆分出去的積分
+        double remaining = source.getPoints() - splitPoints;
+        source.setPoints(remaining);
+        String originalStaffName = source.getStaff().getName();
+        source.setNote((source.getNote() == null ? "" : source.getNote() + "；")
+                + "已拆分 " + splitPoints + " 分給 " + toStaff.getName());
+        recordRepo.save(source);
+
+        // 2. 新增一筆屬於拆分對象的紀錄，積分總和與原本相同（不會憑空增加）
+        PerformanceRecord split = PerformanceRecord.builder()
+                .staff(toStaff)
+                .appointmentId(source.getAppointmentId())
+                .category(source.getCategory())
+                .points(splitPoints)
+                .serviceDate(source.getServiceDate())
+                .note((note == null || note.isBlank()
+                        ? "拆分自 " + originalStaffName
+                        : note) + "（原紀錄 #" + source.getId() + "）")
+                .build();
+
+        log.info("績效拆分：預約 #{} 的 {} 積分紀錄 #{}，{} 分從 {} 拆分 {} 分給 {}",
+                source.getAppointmentId(), source.getCategory().getLabel(), source.getId(),
+                remaining + splitPoints, originalStaffName, splitPoints, toStaff.getName());
+
+        return recordRepo.save(split);
+    }
+
     // ── 查詢某員工某月績效明細 ──────────────────────────────────────────
     public List<PerformanceRecord> getMonthlyRecords(Long staffId, int year, int month) {
         YearMonth ym = YearMonth.of(year, month);

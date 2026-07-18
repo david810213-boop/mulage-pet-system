@@ -1,0 +1,126 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('會員資料分析 | 慕沐村 Mulage pet')}"
+  ></head>
+
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content">
+        <a
+          href="/admin"
+          class="btn btn-outline"
+          style="margin-bottom: 1.5rem; text-decoration: none"
+          >← 返回後台</a
+        >
+
+        <h2>👥 會員資料分析</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-top: -4px;
+            margin-bottom: 1.5rem;
+          "
+        >
+          依會員填寫的年齡、職業、居住區域與得知來源，統計新客／回流客總覽
+        </p>
+
+        <!-- 新客／回流客總覽 -->
+        <div
+          class="stats"
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+            margin-bottom: 2rem;
+          "
+        >
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size:12px;color:var(--brown-light);font-weight:500;margin-bottom:6px;">
+              總會員數
+            </div>
+            <div style="font-size:28px;font-weight:700;color:var(--brown-dark);" th:text="${stats.totalCustomers}">0</div>
+          </div>
+
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color:#e8f5e9; border-color:#a5d6a7;">
+            <div style="font-size:12px;color:#2e7d32;font-weight:600;margin-bottom:6px;">
+              🔁 回流客（≥2 次預約）
+            </div>
+            <div style="font-size:28px;font-weight:800;color:#2e7d32;" th:text="${stats.returningCustomers}">0</div>
+          </div>
+
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color:#fff3e0; border-color:#ffcc80;">
+            <div style="font-size:12px;color:#e65100;font-weight:600;margin-bottom:6px;">
+              ✨ 新客（僅 1 次預約）
+            </div>
+            <div style="font-size:28px;font-weight:800;color:#e65100;" th:text="${stats.newCustomers}">0</div>
+          </div>
+
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size:12px;color:var(--brown-light);font-weight:500;margin-bottom:6px;">
+              尚未預約會員
+            </div>
+            <div style="font-size:28px;font-weight:700;color:var(--brown-dark);" th:text="${stats.neverBookedCustomers}">0</div>
+          </div>
+
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color: var(--cream-100); border-color: var(--brown-light);">
+            <div style="font-size:12px;color:var(--brown-mid);font-weight:600;margin-bottom:6px;">
+              📝 基本資料完整填寫率
+            </div>
+            <div style="font-size:28px;font-weight:800;color:var(--brown-dark);"
+                 th:text="${stats.profileCompletionRate + '%'}">0%</div>
+            <div style="font-size:11px;color:var(--brown-light);margin-top:4px;"
+                 th:text="${stats.profileCompletedCount + ' / ' + stats.totalCustomers + ' 人已完整填寫'}"></div>
+          </div>
+        </div>
+
+        <!-- 四維度分布 -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+          "
+        >
+          <div th:replace="~{::breakdownCard(title='📊 年齡分布', icon='🎂', map=${stats.ageBreakdown}, total=${stats.totalCustomers})}"></div>
+          <div th:replace="~{::breakdownCard(title='💼 職業分布', icon='💼', map=${stats.occupationBreakdown}, total=${stats.totalCustomers})}"></div>
+          <div th:replace="~{::breakdownCard(title='📍 居住區域分布', icon='📍', map=${stats.areaBreakdown}, total=${stats.totalCustomers})}"></div>
+          <div th:replace="~{::breakdownCard(title='🔎 得知來源分布', icon='🔎', map=${stats.sourceBreakdown}, total=${stats.totalCustomers})}"></div>
+        </div>
+
+        <!-- 可重複使用的分布卡片片段 -->
+        <div
+          th:fragment="breakdownCard(title, icon, map, total)"
+          class="card"
+          style="padding: 1.2rem 1.5rem"
+        >
+          <h3 style="font-size:15px;color:var(--brown-dark);margin-bottom:14px;" th:text="${title}">分布</h3>
+
+          <div th:if="${map == null or map.isEmpty()}" style="color:var(--brown-light);font-size:13px;">
+            📭 尚無資料
+          </div>
+
+          <div th:each="entry : ${map}" style="margin-bottom: 10px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--brown-mid);margin-bottom:4px;">
+              <span th:text="${entry.key}">項目</span>
+              <span>
+                <b th:text="${entry.value}">0</b>
+                <span style="color:var(--brown-light);"
+                      th:text="${' (' + (total > 0 ? #numbers.formatDecimal(entry.value * 100.0 / total, 1, 1) : 0) + '%)'}"></span>
+              </span>
+            </div>
+            <div style="height:8px;background:var(--cream-200);border-radius:4px;overflow:hidden;">
+              <div
+                style="height:100%;background:linear-gradient(90deg,#c9a84c,#5c3d2e);border-radius:4px;"
+                th:style="${'width:' + (total > 0 ? (entry.value * 100.0 / total) : 0) + '%'}"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

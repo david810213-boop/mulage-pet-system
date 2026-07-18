@@ -238,14 +238,7 @@
     <input type="number" id="age" min="0" placeholder="例如：3（歲）" />
   </div>
 
-  <div class="field">
-    <label>毛長 <span class="req">*</span></label>
-    <div class="radio-group" id="coatTypeGroup">
-      <div class="radio-btn" data-value="SHORT" onclick="selectRadio('coatType', 'SHORT', this)">短毛</div>
-      <div class="radio-btn" data-value="MEDIUM" onclick="selectRadio('coatType', 'MEDIUM', this)">中長毛</div>
-      <div class="radio-btn" data-value="LONG" onclick="selectRadio('coatType', 'LONG', this)">長毛</div>
-    </div>
-  </div>
+  <!-- 需求 2：毛長改由店家於後台檢視實際毛況後定義，此處不再讓顧客選擇 -->
 
   <!-- 自動判斷體型結果 -->
   <div class="auto-result" id="sizeResult">
@@ -285,7 +278,7 @@
 <script>
   const LIFF_ID = "2010567973-ygHvpq7X";
   let jwtToken = null;
-  const formData = { petType: null, coatType: null, anxiety: null };
+  const formData = { petType: null, anxiety: null }; // 需求 2：移除 coatType
 
   async function init() {
     try {
@@ -352,7 +345,6 @@
     if (!breed)            { showToast('請填寫品種', 'error'); return; }
     if (!weight || weight <= 0) { showToast('請填寫正確體重', 'error'); return; }
     if (age === null || isNaN(age)) { showToast('請填寫年齡', 'error'); return; }
-    if (!formData.coatType) { showToast('請選擇毛長', 'error'); return; }
     if (!phone)            { showToast('請填寫家長手機', 'error'); return; }
     if (formData.anxiety === null) { showToast('請選擇是否有分離焦慮', 'error'); return; }
 
@@ -370,7 +362,6 @@
         body: JSON.stringify({
           name, breed, weight, age,
           petType: formData.petType,
-          coatType: formData.coatType,
           hasSeparationAnxiety: formData.anxiety === 'true',
           ownerPhone: phone,
           notes: notes || null

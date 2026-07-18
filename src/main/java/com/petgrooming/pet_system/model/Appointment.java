@@ -64,6 +64,20 @@ public class Appointment {
     @ToString.Exclude
     private User staff;
 
+    // ── 需求 3：店家確認最後時間 ─────────────────────────────────────────
+    // 顧客送出預約後為 PENDING_CONFIRM，店家確認並敲定實際時間後填入 confirmedTime 並轉 CONFIRMED
+    @Column(name = "confirmed_time")
+    private LocalDateTime confirmedTime;
+
+    // ── 需求 7：預約備注（雙可見性）───────────────────────────────────────
+    // 店家內部備注：例如「耳朵加強去油」「造型需求」。絕不回傳給顧客端 API。
+    @Column(name = "internal_note", columnDefinition = "TEXT")
+    private String internalNote;
+
+    // 會員可見備注：店家想傳達給會員的訊息。會出現在 /api/appointments/my。
+    @Column(name = "member_note", columnDefinition = "TEXT")
+    private String memberNote;
+
     // ── 取消預約相關 ─────────────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

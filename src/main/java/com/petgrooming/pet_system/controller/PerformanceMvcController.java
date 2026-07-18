@@ -29,7 +29,6 @@ public class PerformanceMvcController {
 
     private final PerformanceService performanceService;
     private final UserService userService;
-    private final AppointmentRepository appointmentRepository;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -49,36 +48,40 @@ public class PerformanceMvcController {
         model.addAttribute("date", date);
         model.addAttribute("records", performanceService.getDailyRecords(date));
         model.addAttribute("staffList", userService.getAllStaffEntities());
-        // 今日已結帳預約（供拆分表單的下拉選單）
-        model.addAttribute("paidAppointments", appointmentRepository.findByDateAndPaidTrue(date));
+        // 供拆分表單選擇「要拆分哪一筆原始績效紀錄」（只能拆分積分 > 0 的紀錄）
+        model.addAttribute("splittableRecords", performanceService.getDailyRecords(date).stream()
+                .filter(r -> r.getPoints() != null && r.getPoints() > 0)
+                .toList());
         model.addAttribute("categories", Arrays.stream(PerformanceCategory.values())
                 .filter(c -> c != PerformanceCategory.OTHER).toList());
         return "admin/performance-daily";
     }
 
-    // ── POST /admin/performance/add ────────────────────────────────────────
-    // 新增一筆績效紀錄
+    // ── POST /admin/performance/split ────────────────────────────────────
+    // 拆分績效：從指定的原始紀錄扣除一部分積分，改分給另一位員工
+    // 修正舊版問題：原本的「補登拆分積分」只會單純新增一筆紀錄，導致同一筆服務的積分被重複計算；
+    // 現在改為直接修正原始紀錄的積分，確保拆分前後積分總和不變。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PostMapping("/add")
-    public String addRecord(@RequestParam Long staffId,
-                            @RequestParam Long appointmentId,
-                            @RequestParam PerformanceCategory category,
-                            @RequestParam Double points,
-                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceDate,
-                            @RequestParam(required = false) String note,
-                            RedirectAttributes ra) {
+    @PostMapping("/split")
+    public String splitRecord(@RequestParam Long sourceRecordId,
+                              @RequestParam Long toStaffId,
+                              @RequestParam Double splitPoints,
+                              @RequestParam(required = false) String note,
+                              @RequestParam(required = false)
+                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                              RedirectAttributes ra) {
         try {
-            performanceService.addRecord(staffId, appointmentId, category, points, serviceDate, note);
-            ra.addFlashAttribute("successMsg", "績效紀錄新增成功");
+            performanceService.splitRecord(sourceRecordId, toStaffId, splitPoints, note);
+            ra.addFlashAttribute("successMsg", "積分拆分成功");
         } catch (Exception e) {
-            ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
+            ra.addFlashAttribute("errorMsg", "拆分失敗：" + e.getMessage());
         }
-        return "redirect:/admin/performance?date=" + serviceDate;
+        return "redirect:/admin/performance" + (date != null ? "?date=" + date : "");
     }
 
     // ── GET /admin/performance/monthly ────────────────────────────────────
     // 月報：所有員工月度積分排行
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({UserRole.ADMIN})
     @GetMapping("/monthly")
     public String monthly(HttpServletRequest request, Model model,
                           @RequestParam(required = false) Integer year,

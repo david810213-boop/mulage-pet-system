@@ -9,7 +9,8 @@ import lombok.Getter;
 public enum CoatType {
     SHORT ("短毛"),
     LONG  ("長毛"),
-    MEDIUM("中長毛");
+    MEDIUM("中長毛"),
+    UNDEFINED("未定義");
 
     private final String label;
 

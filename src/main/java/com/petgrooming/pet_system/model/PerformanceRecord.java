@@ -29,9 +29,13 @@ public class PerformanceRecord {
     @ToString.Exclude
     private User staff;
 
-    // 對應的預約
-    @Column(name = "appointment_id", nullable = false)
+    // 對應的預約（若此筆績效來自現場開單，appointmentId 為 null，改看 walkInOrderId）
+    @Column(name = "appointment_id")
     private Long appointmentId;
+
+    // 對應的現場單（若此筆績效來自預約結帳，此欄位為 null）
+    @Column(name = "walk_in_order_id")
+    private Long walkInOrderId;
 
     // 績效大項分類
     @Enumerated(EnumType.STRING)

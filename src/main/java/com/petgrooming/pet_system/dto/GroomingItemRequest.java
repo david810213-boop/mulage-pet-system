@@ -22,4 +22,7 @@ public class GroomingItemRequest {
     @Positive(message = "價格必須大於 0")
     private Double price;
 
+    // 需求 4：是否可線上預約（大美容/小美容/精緻洗/定製洗 = true）
+    private Boolean bookable = false;
+
 }

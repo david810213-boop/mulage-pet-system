@@ -60,7 +60,6 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/js/**",
                                                 "/images/**",
                                                 "/static/**",
-                                                "/h2-console/**",
                                                 "/error",
                                                 "/favicon.ico")
                                 .order(1);
@@ -75,7 +74,7 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/test/**",
                                                 "/liff/**",
                                                 "/css/**", "/js/**", "/images/**", "/static/**",
-                                                "/h2-console/**", "/error", "/favicon.ico")
+                                                "/error", "/favicon.ico")
                                 .order(2);
         }
 }

@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;
+import com.petgrooming.pet_system.dto.ResetPasswordRequest;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.UserService;
@@ -96,6 +97,27 @@ public class AdminMvcController {
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
         }
+    }
+
+    /**
+     * 重設員工／管理員密碼（ADMIN 限定，不需驗證舊密碼）
+     */
+    @PostMapping("/staff/{id}/reset-password")
+    public String resetStaffPassword(@PathVariable Long id,
+                                     @RequestParam String newPassword,
+                                     HttpServletRequest request,
+                                     RedirectAttributes redirectAttributes) {
+        if (!isAdmin(request)) return "redirect:/dashboard";
+
+        try {
+            ResetPasswordRequest req = new ResetPasswordRequest();
+            req.setNewPassword(newPassword);
+            userService.resetPassword(id, req);
+            redirectAttributes.addFlashAttribute("successMsg", "密碼重設成功");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin";
     }
 
     /**

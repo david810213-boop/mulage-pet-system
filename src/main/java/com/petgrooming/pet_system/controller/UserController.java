@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
+import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.UserService;
@@ -28,6 +29,19 @@ public class UserController {
         try {
             String username = (String) request.getAttribute("tokenUsername");
             UserResponse res = userService.getMe(username);
+            return ResponseEntity.ok(res);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ── PUT /api/users/me ───────────────────────────────────────────────────
+    // 會員編輯自己的基本資料（年齡／職業／居住區域／得知來源），身分取自 JWT
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMe(@Valid @RequestBody UpdateProfileRequest req, HttpServletRequest request) {
+        try {
+            String username = (String) request.getAttribute("tokenUsername");
+            UserResponse res = userService.updateProfile(username, req);
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

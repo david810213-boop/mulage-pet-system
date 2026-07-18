@@ -375,6 +375,7 @@
 
           // 3. 成功拿到資料後，渲染畫面
           render(wallet, txList);
+          loadMyTopUps(); // 需求 1：載入儲值申請狀態
         } catch (e) {
           // 這裡保留 e.message，如果後端真的噴 401/500，畫面上會顯示具體的 HTTP 狀態碼
           showError("載入失敗：" + (e.message || "未知錯誤"));
@@ -490,6 +491,35 @@
                     </div>
                 </div>
 
+                <!-- 需求 1：線上儲值僅限轉帳 -->
+                <div class="topup-card" style="margin:16px; background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                    <h3 style="font-size:15px; color:#2c1810; margin-bottom:12px;">💳 線上儲值（限轉帳）</h3>
+                    <div style="background:#f8f5f0; border-radius:8px; padding:12px; font-size:13px; color:#5c3d2e; line-height:1.7; margin-bottom:14px;">
+                        轉帳資訊<br/>
+                        銀行：（822）中國信託<br/>
+                        帳號：<b>000-000-000000</b><br/>
+                        戶名：慕沐村寵物美容<br/>
+                        <span style="color:#999;">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>
+                    </div>
+                    <div class="field" style="margin-bottom:10px;">
+                        <input id="topupAmount" type="number" min="1" placeholder="儲值金額"
+                            style="width:100%; padding:10px 12px; border:1px solid #e0d5c8; border-radius:8px; font-size:15px;" />
+                    </div>
+                    <div class="field" style="margin-bottom:10px;">
+                        <input id="topupLast5" type="text" maxlength="5" placeholder="匯款帳號後五碼"
+                            style="width:100%; padding:10px 12px; border:1px solid #e0d5c8; border-radius:8px; font-size:15px;" />
+                    </div>
+                    <div class="field" style="margin-bottom:12px;">
+                        <input id="topupNote" type="text" placeholder="轉帳時間 / 備註（例：01/15 14:30）"
+                            style="width:100%; padding:10px 12px; border:1px solid #e0d5c8; border-radius:8px; font-size:15px;" />
+                    </div>
+                    <button onclick="submitTopUp()"
+                        style="width:100%; padding:12px; background:linear-gradient(135deg,#5c3d2e,#2c1810); color:#f5d49a; border:none; border-radius:8px; font-size:15px; font-weight:700;">
+                        送出儲值申請
+                    </button>
+                    <div id="topupList" style="margin-top:14px;"></div>
+                </div>
+
                 <div class="tier-progress">
                     <h3>會員等級說明</h3>
                     ${tierHTML}
@@ -504,6 +534,63 @@
                     <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">🐾 我的毛孩</a>
                     <a href="/liff/my-appointments.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">📋 我的預約</a>
                 </div>`;
+      }
+
+      // 需求 1：送出線上轉帳儲值申請（餘額不會立即變動，待店家核帳）
+      async function submitTopUp() {
+        const amount = parseInt(document.getElementById("topupAmount").value, 10);
+        const last5  = document.getElementById("topupLast5").value.trim();
+        const note   = document.getElementById("topupNote").value.trim();
+        if (!amount || amount <= 0) { showToast("請輸入正確的儲值金額"); return; }
+        try {
+          const res = await fetch("/api/topup", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + jwtToken,
+            },
+            body: JSON.stringify({ amount, lastFiveDigits: last5, remitNote: note }),
+          });
+          if (!res.ok) { showToast(await res.text() || "送出失敗"); return; }
+          document.getElementById("topupAmount").value = "";
+          document.getElementById("topupLast5").value = "";
+          document.getElementById("topupNote").value = "";
+          showToast("已送出，待店家核帳後入帳");
+          loadMyTopUps();
+        } catch (e) {
+          showToast("送出失敗，請稍後再試");
+        }
+      }
+
+      // 需求 1：載入自己的儲值申請狀態
+      async function loadMyTopUps() {
+        try {
+          const res = await fetch("/api/topup/my", {
+            headers: { Authorization: "Bearer " + jwtToken },
+          });
+          if (!res.ok) return;
+          const list = await res.json();
+          const box = document.getElementById("topupList");
+          if (!box) return;
+          if (!list.length) { box.innerHTML = ""; return; }
+          box.innerHTML =
+            '<div style="font-size:13px;color:#5c3d2e;margin-bottom:6px;">近期申請</div>' +
+            list.slice(0, 5).map(function (r) {
+              var color = r.status === "CONFIRMED" ? "#2e7d32"
+                        : r.status === "REJECTED" ? "#e53935" : "#b8860b";
+              return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f0e8dc;">'
+                   + '<span>$' + r.amount.toLocaleString() + '</span>'
+                   + '<span style="color:' + color + ';">' + r.statusLabel + '</span></div>';
+            }).join("");
+        } catch (e) { /* 靜默 */ }
+      }
+
+      function showToast(msg) {
+        const t = document.getElementById("toast");
+        if (!t) { return; }
+        t.textContent = msg;
+        t.classList.add("show");
+        setTimeout(function () { t.classList.remove("show"); }, 2500);
       }
 
       function showError(msg) {

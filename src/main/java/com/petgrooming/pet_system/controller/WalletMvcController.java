@@ -2,8 +2,10 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
+import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +23,7 @@ public class WalletMvcController {
 
     private final WalletService walletService;
     private final UserService userService;
+    private final PetService petService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -68,7 +71,43 @@ public class WalletMvcController {
         model.addAttribute("wallet", walletService.getWallet(username));
         model.addAttribute("transactions", walletService.getTransactions(username));
         model.addAttribute("depositRequest", new DepositRequest());
+        // 需求 2：該會員的寵物清單，供店家設定毛長
+        model.addAttribute("pets", petService.getMyPets(username));
+        model.addAttribute("coatTypes", CoatType.values());
+        // 需求 8：會員特殊備注（僅後台可見）
+        model.addAttribute("adminNote", userService.getAdminNote(username));
         return "admin/wallet-detail";
+    }
+
+    // ── POST /admin/wallets/{username}/pets/{petId}/coat-type ──────────────
+    // 需求 2：店家定義寵物毛長
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{username}/pets/{petId}/coat-type")
+    public String setCoatType(@PathVariable String username, @PathVariable Long petId,
+                              @RequestParam CoatType coatType, RedirectAttributes ra) {
+        try {
+            petService.setCoatType(petId, coatType);
+            ra.addFlashAttribute("successMsg", "毛長已更新");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/wallets/" + username;
+    }
+
+    // ── POST /admin/wallets/{username}/note ─────────────────────────────────
+    // 需求 8：店家後台備注會員特殊資訊
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{username}/note")
+    public String setAdminNote(@PathVariable String username,
+                               @RequestParam(required = false) String adminNote,
+                               RedirectAttributes ra) {
+        try {
+            userService.setAdminNote(username, adminNote);
+            ra.addFlashAttribute("successMsg", "會員備注已更新");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/wallets/" + username;
     }
 
     // ── POST /admin/wallets/{username}/deposit ─────────────────────────────

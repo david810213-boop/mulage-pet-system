@@ -75,6 +75,30 @@
           >儲值管理</a
         >
         <a
+          href="/admin/topup"
+          style="
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--brown-mid);
+            text-decoration: none;
+            transition: var(--transition-fast);
+          "
+          th:if="${user != null and user.staffOrAdmin}"
+          >儲值申請審核</a
+        >
+        <a
+          href="/admin/walk-in-orders"
+          style="
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--brown-mid);
+            text-decoration: none;
+            transition: var(--transition-fast);
+          "
+          th:if="${user != null and user.staffOrAdmin}"
+          >現場開單</a
+        >
+        <a
           href="/admin/performance"
           style="
             font-size: 14px;
@@ -85,6 +109,18 @@
           "
           th:if="${user != null and user.staffOrAdmin}"
           >績效管理</a
+        >
+        <a
+          href="/admin/customers"
+          style="
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--brown-mid);
+            text-decoration: none;
+            transition: var(--transition-fast);
+          "
+          th:if="${user != null and user.admin}"
+          >會員分析</a
         >
         <a
           href="/admin"
@@ -116,6 +152,20 @@
             >ROLE</span
           >
         </span>
+
+        <a
+          href="/account/password"
+          class="btn btn-outline"
+          style="
+            padding: 4px 12px;
+            font-size: 12px;
+            border-radius: var(--radius-sm);
+            box-shadow: none;
+          "
+          th:if="${user != null and user.staffOrAdmin}"
+        >
+          修改密碼
+        </a>
 
         <a
           href="/auth/logout"

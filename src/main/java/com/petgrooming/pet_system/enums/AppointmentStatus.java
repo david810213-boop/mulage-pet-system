@@ -6,7 +6,9 @@ import lombok.Getter;
 @Getter
 public enum AppointmentStatus {
     CONFIRMED("已確認"),
-    CANCELLED("已取消");
+    CANCELLED("已取消"),
+    PENDING_CONFIRM("待確認"),
+    COMPLETED("已完成");
 
     private final String label;
 
