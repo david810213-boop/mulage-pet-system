@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="zh-Hant">
   <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>慕沐村Mulage pet</title>
@@ -16,16 +19,16 @@
         padding: 0;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        background: #f8f5f0;
+        font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
+        background: #f6f2ea;
         min-height: 100vh;
         padding-bottom: 90px;
       }
 
       /* 頂部 Header */
       .header {
-        background: linear-gradient(135deg, #2c1810, #5c3d2e);
-        color: #f5d49a;
+        background: #2b2a28;
+        color: #d9be8f;
         padding: 20px 16px 28px;
         text-align: center;
       }
@@ -55,8 +58,8 @@
         margin-bottom: 16px;
       }
       .tier-badge {
-        background: linear-gradient(135deg, #c9a84c, #f5d49a);
-        color: #2c1810;
+        background: linear-gradient(135deg, #b8935a, #d9be8f);
+        color: #2b2a28;
         font-weight: 700;
         font-size: 13px;
         padding: 4px 12px;
@@ -75,7 +78,7 @@
         color: #37474f;
       }
       .tier-badge.gold {
-        background: linear-gradient(135deg, #c9a84c, #f5d49a);
+        background: linear-gradient(135deg, #b8935a, #d9be8f);
         color: #5d4037;
       }
       .tier-badge.diamond {
@@ -83,8 +86,8 @@
         color: #1a237e;
       }
       .tier-badge.vip {
-        background: linear-gradient(135deg, #2c1810, #5c3d2e);
-        color: #f5d49a;
+        background: #2b2a28;
+        color: #d9be8f;
       }
 
       .card-info {
@@ -93,16 +96,16 @@
       .card-info .discount {
         font-size: 18px;
         font-weight: 700;
-        color: #c9a84c;
+        color: #b8935a;
       }
       .card-info .expire {
         font-size: 12px;
-        color: #999;
+        color: #8a8072;
         margin-top: 2px;
       }
 
       .balance-row {
-        border-top: 1px solid #f0e8dc;
+        border-top: 1px solid #ede5d3;
         padding-top: 16px;
         display: flex;
         align-items: baseline;
@@ -115,7 +118,7 @@
       .balance-amount {
         font-size: 32px;
         font-weight: 700;
-        color: #2c1810;
+        color: #2b2a28;
       }
       .balance-unit {
         font-size: 14px;
@@ -153,7 +156,7 @@
         flex-shrink: 0;
       }
       .tier-item.active .dot {
-        background: #c9a84c;
+        background: #b8935a;
       }
       .tier-item .name {
         flex: 1;
@@ -161,15 +164,15 @@
       }
       .tier-item.active .name {
         font-weight: 700;
-        color: #2c1810;
+        color: #2b2a28;
       }
       .tier-item .amount {
         font-size: 12px;
-        color: #999;
+        color: #8a8072;
       }
       .tier-item .perk {
         font-size: 12px;
-        color: #c9a84c;
+        color: #b8935a;
         font-weight: 600;
       }
 
@@ -217,7 +220,7 @@
       }
       .tx-note {
         font-size: 14px;
-        color: #333;
+        color: #2b2a28;
       }
       .tx-date {
         font-size: 11px;
@@ -253,7 +256,7 @@
         bottom: 80px;
         left: 50%;
         transform: translateX(-50%);
-        background: #333;
+        background: #2b2a28;
         color: white;
         padding: 10px 20px;
         border-radius: 20px;
@@ -276,7 +279,7 @@
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #2c1810, #5c3d2e);
+        background: #2b2a28;
         box-shadow: 0 4px 14px rgba(44,24,16,0.35);
         display: flex;
         align-items: center;
@@ -493,28 +496,28 @@
 
                 <!-- 需求 1：線上儲值僅限轉帳 -->
                 <div class="topup-card" style="margin:16px; background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-                    <h3 style="font-size:15px; color:#2c1810; margin-bottom:12px;">💳 線上儲值（限轉帳）</h3>
-                    <div style="background:#f8f5f0; border-radius:8px; padding:12px; font-size:13px; color:#5c3d2e; line-height:1.7; margin-bottom:14px;">
+                    <h3 style="font-size:15px; color:#2b2a28; margin-bottom:12px;">💳 線上儲值（限轉帳）</h3>
+                    <div style="background:#f6f2ea; border-radius:8px; padding:12px; font-size:13px; color:#454340; line-height:1.7; margin-bottom:14px;">
                         轉帳資訊<br/>
                         銀行：（822）中國信託<br/>
                         帳號：<b>000-000-000000</b><br/>
                         戶名：慕沐村寵物美容<br/>
-                        <span style="color:#999;">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>
+                        <span style="color:#8a8072;">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>
                     </div>
                     <div class="field" style="margin-bottom:10px;">
                         <input id="topupAmount" type="number" min="1" placeholder="儲值金額"
-                            style="width:100%; padding:10px 12px; border:1px solid #e0d5c8; border-radius:8px; font-size:15px;" />
+                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px;" />
                     </div>
                     <div class="field" style="margin-bottom:10px;">
                         <input id="topupLast5" type="text" maxlength="5" placeholder="匯款帳號後五碼"
-                            style="width:100%; padding:10px 12px; border:1px solid #e0d5c8; border-radius:8px; font-size:15px;" />
+                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px;" />
                     </div>
                     <div class="field" style="margin-bottom:12px;">
                         <input id="topupNote" type="text" placeholder="轉帳時間 / 備註（例：01/15 14:30）"
-                            style="width:100%; padding:10px 12px; border:1px solid #e0d5c8; border-radius:8px; font-size:15px;" />
+                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px;" />
                     </div>
                     <button onclick="submitTopUp()"
-                        style="width:100%; padding:12px; background:linear-gradient(135deg,#5c3d2e,#2c1810); color:#f5d49a; border:none; border-radius:8px; font-size:15px; font-weight:700;">
+                        style="width:100%; padding:12px; background:linear-gradient(135deg,#454340,#2b2a28); color:#d9be8f; border:none; border-radius:8px; font-size:15px; font-weight:700;">
                         送出儲值申請
                     </button>
                     <div id="topupList" style="margin-top:14px;"></div>
@@ -531,8 +534,8 @@
                 </div>
 
                 <div style="display:flex; gap:8px; margin:16px 0 8px; justify-content:center;">
-                    <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">🐾 我的毛孩</a>
-                    <a href="/liff/my-appointments.html" style="flex:1; padding:12px; background:#f8f5f0; border-radius:12px; text-align:center; font-size:13px; color:#5c3d2e; text-decoration:none;">📋 我的預約</a>
+                    <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#f6f2ea; border-radius:12px; text-align:center; font-size:13px; color:#454340; text-decoration:none;">🐾 我的毛孩</a>
+                    <a href="/liff/my-appointments.html" style="flex:1; padding:12px; background:#f6f2ea; border-radius:12px; text-align:center; font-size:13px; color:#454340; text-decoration:none;">📋 我的預約</a>
                 </div>`;
       }
 
@@ -574,11 +577,11 @@
           if (!box) return;
           if (!list.length) { box.innerHTML = ""; return; }
           box.innerHTML =
-            '<div style="font-size:13px;color:#5c3d2e;margin-bottom:6px;">近期申請</div>' +
+            '<div style="font-size:13px;color:#454340;margin-bottom:6px;">近期申請</div>' +
             list.slice(0, 5).map(function (r) {
               var color = r.status === "CONFIRMED" ? "#2e7d32"
                         : r.status === "REJECTED" ? "#e53935" : "#b8860b";
-              return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f0e8dc;">'
+              return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #ede5d3;">'
                    + '<span>$' + r.amount.toLocaleString() + '</span>'
                    + '<span style="color:' + color + ';">' + r.statusLabel + '</span></div>';
             }).join("");

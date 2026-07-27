@@ -67,6 +67,29 @@ public class AppointmentMvcController {
             // 需求 3 / 7：店家後台看完整資訊（含內部備注、確認狀態）
             List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> allAdmin =
                     appointmentService.getAllForAdmin();
+
+            // 頂部統計卡片：一律以「今天」為基準計算，不受篩選條件影響
+            java.time.LocalDate today = java.time.LocalDate.now();
+            long todayCount = allAdmin.stream()
+                    .filter(a -> !a.isCancelled() && a.getDate().isEqual(today))
+                    .count();
+            long completedCount = allAdmin.stream()
+                    .filter(a -> !a.isCancelled() && a.getDate().isEqual(today)
+                            && a.getStatus().name().equals("COMPLETED"))
+                    .count();
+            int todayRevenue = allAdmin.stream()
+                    .filter(a -> !a.isCancelled() && a.getDate().isEqual(today) && a.isPaid())
+                    .mapToInt(com.petgrooming.pet_system.dto.AppointmentAdminResponse::getTotalAmount)
+                    .sum();
+            long pendingCount = allAdmin.stream()
+                    .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
+                    .count();
+            model.addAttribute("todayCount", todayCount);
+            model.addAttribute("completedCount", completedCount);
+            model.addAttribute("todayRevenue", todayRevenue);
+            model.addAttribute("pendingCount", pendingCount);
+            model.addAttribute("today", today);
+
             List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> filteredAdmin = allAdmin.stream()
                     .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
                     .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
@@ -151,6 +174,137 @@ public class AppointmentMvcController {
         return "redirect:/appointments";
     }
 
+    // ── GET /appointments/{id}/checkin-order ────────────────────────────────
+    // 現場開單（依預約編號）：家長到店後，店員依現場情況確認/調整服務項目
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/{id}/checkin-order")
+    public String checkinOrderForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        model.addAttribute("user", user);
+
+        var target = appointmentService.getAllForAdmin().stream()
+                .filter(a -> a.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+        if (target == null) {
+            return "redirect:/appointments?status=CONFIRMED";
+        }
+        model.addAttribute("appointment", target);
+        model.addAttribute("groomingItems", groomingItemService.getAllItems());
+        java.util.Set<String> selectedItemCodes = new java.util.HashSet<>();
+        if (target.getSelectedItems() != null) {
+            for (var gi : target.getSelectedItems()) {
+                selectedItemCodes.add(gi.getItemCode());
+            }
+        }
+        model.addAttribute("selectedItemCodes", selectedItemCodes);
+        return "appointments/checkin-order";
+    }
+
+    // ── POST /appointments/{id}/checkin-order ───────────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/checkin-order")
+    public String checkinOrderSubmit(@PathVariable Long id,
+                                     @RequestParam(required = false) List<String> itemCodes,
+                                     HttpServletRequest request,
+                                     RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            appointmentService.confirmCheckinOrder(id, itemCodes, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "已依現場情況開立服務項目，現在可以開始服務");
+            return "redirect:/appointments?status=CONFIRMED";
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "開單失敗：" + e.getMessage());
+            return "redirect:/appointments/" + id + "/checkin-order";
+        }
+    }
+
+    // ── POST /appointments/checkin-items/{itemId}/operator ──────────────────
+    // 補填「現場開單（依預約編號）」項目的經手人（同步寫入績效）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/checkin-items/{itemId}/operator")
+    public String fillCheckinItemOperator(@PathVariable Long itemId,
+                                          @RequestParam Long staffId,
+                                          RedirectAttributes redirectAttributes) {
+        try {
+            appointmentService.fillItemOperator(itemId, staffId);
+            redirectAttributes.addFlashAttribute("successMsg", "已補填經手人");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "補填失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
+
+    // ── POST /appointments/{id}/start ───────────────────────────────────────
+    // 店員開始服務：已確認 → 進行中（寵物到店開始施作）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/start")
+    public String start(@PathVariable Long id, HttpServletRequest request,
+                        RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            appointmentService.startProgress(id, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "已開始服務，狀態轉為進行中");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "操作失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments?status=IN_PROGRESS";
+    }
+
+    // ── GET /appointments/{id}/final-check ──────────────────────────────────
+    // 進行中核對頁面：店員與家長核對本次美容狀況，填備注 + 現場簽名
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/{id}/final-check")
+    public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        model.addAttribute("user", user);
+
+        var target = appointmentService.getAllForAdmin().stream()
+                .filter(a -> a.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+        if (target == null) {
+            return "redirect:/appointments?status=IN_PROGRESS";
+        }
+        model.addAttribute("appointment", target);
+        return "appointments/final-check";
+    }
+
+    // ── POST /appointments/{id}/final-check ─────────────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/final-check")
+    public String finalCheckSubmit(@PathVariable Long id,
+                                   @Valid @ModelAttribute com.petgrooming.pet_system.dto.FinalCheckRequest req,
+                                   BindingResult bindingResult,
+                                   HttpServletRequest request, Model model,
+                                   RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+
+        if (bindingResult.hasErrors()) {
+            var target = appointmentService.getAllForAdmin().stream()
+                    .filter(a -> a.getId().equals(id))
+                    .findFirst().orElse(null);
+            model.addAttribute("user", user);
+            model.addAttribute("appointment", target);
+            model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
+            return "appointments/final-check";
+        }
+
+        try {
+            appointmentService.finalCheck(id, req, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
+            return "redirect:/appointments?status=IN_PROGRESS";
+        } catch (IllegalArgumentException e) {
+            var target = appointmentService.getAllForAdmin().stream()
+                    .filter(a -> a.getId().equals(id))
+                    .findFirst().orElse(null);
+            model.addAttribute("user", user);
+            model.addAttribute("appointment", target);
+            model.addAttribute("errorMsg", e.getMessage());
+            return "appointments/final-check";
+        }
+    }
+
     // ── POST /appointments/{id}/cancel ─────────────────────────────────────
     // 💡 作用：取消預約（後台版本，表單提交）
     @PostMapping("/{id}/cancel")
@@ -215,6 +369,11 @@ public class AppointmentMvcController {
             model.addAttribute("user", user);
             model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            String firstError = bindingResult.getAllErrors().stream()
+                    .findFirst()
+                    .map(e -> e.getDefaultMessage())
+                    .orElse("表單資料有誤，請確認後再送出");
+            model.addAttribute("errorMsg", firstError);
             return "appointments/form";
         }
 

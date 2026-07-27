@@ -96,7 +96,50 @@
           </table>
         </div>
 
-        <!-- 經手人積分結算 -->
+        <!-- 預約現場開單（依預約編號）：待補經手人 -->
+        <div
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+        >
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 預約現場開單 — 待補經手人（積分尚未計算）</h3>
+          <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
+            這裡列出的是「已預約」的訂單、店員到店核對後依現場情況開立的服務項目，跟上面現場單是分開的兩套資料。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>預約編號</th>
+                <th>寵物</th>
+                <th>項目</th>
+                <th>價格</th>
+                <th>積分</th>
+                <th>補填經手人</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(appointmentPendingItems)}">
+                <td colspan="6" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
+              </tr>
+              <tr th:each="i : ${appointmentPendingItems}">
+                <td th:text="${i.appointmentCode}"></td>
+                <td th:text="${i.petName}"></td>
+                <td th:text="${i.itemName}"></td>
+                <td th:text="'$' + ${i.price}"></td>
+                <td th:text="${i.points}"></td>
+                <td>
+                  <form th:action="@{/appointments/checkin-items/{id}/operator(id=${i.id})}"
+                        method="post" style="display:flex; gap:6px;">
+                    <select name="staffId" required
+                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                            class="pending-staff-select">
+                      <option value="">請選擇員工</option>
+                    </select>
+                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
         >

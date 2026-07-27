@@ -38,7 +38,7 @@ public class TopUpMvcController {
     public String pending(HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("requests", topUpService.pending());
-        return "admin/topup";
+        return "redirect:/admin/wallets";
     }
 
     // ── POST /admin/topup/{id}/confirm ─────────────────────────────────────
@@ -55,7 +55,7 @@ public class TopUpMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "確認失敗：" + e.getMessage());
         }
-        return "redirect:/admin/topup";
+        return "redirect:/admin/wallets";
     }
 
     // ── POST /admin/topup/{id}/reject ──────────────────────────────────────
@@ -71,6 +71,6 @@ public class TopUpMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "駁回失敗：" + e.getMessage());
         }
-        return "redirect:/admin/topup";
+        return "redirect:/admin/wallets";
     }
 }

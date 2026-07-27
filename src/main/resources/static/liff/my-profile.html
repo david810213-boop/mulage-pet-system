@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>慕沐村Mulage pet</title>
@@ -8,14 +11,14 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8f5f0;
+      font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
+      background: #f6f2ea;
       min-height: 100vh;
       padding-bottom: 90px;
     }
     .header {
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
+      background: #2b2a28;
+      color: #d9be8f;
       padding: 20px 16px 24px;
       text-align: center;
     }
@@ -24,17 +27,17 @@
 
     .notice {
       margin: 16px;
-      background: #fff8f0;
-      border: 1px solid #f0e0c0;
+      background: #f6f2ea;
+      border: 1px solid #ede5d3;
       border-radius: 12px;
       padding: 16px;
       font-size: 13px;
-      color: #5c3d2e;
+      color: #454340;
       line-height: 1.8;
     }
     .notice .title {
       font-weight: 700;
-      color: #2c1810;
+      color: #2b2a28;
       margin-bottom: 8px;
       display: flex;
       align-items: center;
@@ -50,35 +53,35 @@
     }
     .form-card h3 {
       font-size: 15px;
-      color: #2c1810;
+      color: #2b2a28;
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #f0e8dc;
+      border-bottom: 1px solid #ede5d3;
     }
 
     .field { margin-bottom: 16px; }
     .field label {
       display: block;
       font-size: 13px;
-      color: #5c3d2e;
+      color: #454340;
       margin-bottom: 6px;
       font-weight: 500;
     }
-    .field label .hint { color: #999; font-size: 11px; font-weight: 400; margin-left: 6px; }
+    .field label .hint { color: #8a8072; font-size: 11px; font-weight: 400; margin-left: 6px; }
 
     .field input, .field select {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #e0d5c8;
+      border: 1px solid #e3dccc;
       border-radius: 8px;
       font-size: 15px;
-      color: #2c1810;
-      background: #fdfaf7;
+      color: #2b2a28;
+      background: #fffefb;
       outline: none;
       transition: border-color 0.2s;
     }
     .field input:focus, .field select:focus {
-      border-color: #c9a84c;
+      border-color: #b8935a;
     }
 
     .submit-btn {
@@ -86,8 +89,8 @@
       width: calc(100% - 32px);
       margin: 0 16px;
       padding: 14px;
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
+      background: #2b2a28;
+      color: #d9be8f;
       border: none;
       border-radius: 12px;
       font-size: 16px;
@@ -104,7 +107,7 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: #333;
+      background: #2b2a28;
       color: white;
       padding: 12px 24px;
       border-radius: 24px;
@@ -130,7 +133,7 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      background: #2b2a28;
       box-shadow: 0 4px 14px rgba(44,24,16,0.35);
       display: flex;
       align-items: center;

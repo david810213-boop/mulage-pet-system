@@ -32,11 +32,14 @@ public class AppointmentAdminResponse {
     private AppointmentStatus status;
     private String statusLabel;
     private LocalDateTime confirmedTime;
-    private String internalNote;  // ★ 店家內部備注（僅後台）
-    private String memberNote;    // 會員可見備注
+    private String internalNote; // ★ 店家內部備注（僅後台）
+    private String memberNote; // 會員可見備注
     private boolean cancelled;
     private String cancelledBy;
     private String cancelReason;
+    private boolean finalCheckDone;
+    private String finalCheckNote;
+    private boolean checkinOrderConfirmed;
 
     public static AppointmentAdminResponse from(Appointment a) {
         AppointmentAdminResponse res = new AppointmentAdminResponse();
@@ -60,6 +63,9 @@ public class AppointmentAdminResponse {
         res.setCancelled(a.isCancelled());
         res.setCancelledBy(a.getCancelledBy());
         res.setCancelReason(a.getCancelReason());
+        res.setFinalCheckDone(a.isFinalCheckDone());
+        res.setFinalCheckNote(a.getFinalCheckNote());
+        res.setCheckinOrderConfirmed(a.isCheckinOrderConfirmed());
         return res;
     }
 }

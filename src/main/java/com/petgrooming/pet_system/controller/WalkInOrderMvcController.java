@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -29,6 +30,7 @@ public class WalkInOrderMvcController {
     private final WalkInOrderService walkInOrderService;
     private final GroomingService groomingService;
     private final UserService userService;
+    private final AppointmentService appointmentService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -53,6 +55,7 @@ public class WalkInOrderMvcController {
                 .toList());
         model.addAttribute("orders", walkInOrderService.listAll());
         model.addAttribute("pendingOperatorItems", walkInOrderService.pendingOperatorItems());
+        model.addAttribute("appointmentPendingItems", appointmentService.pendingItemOperators());
         model.addAttribute("pointsReport", walkInOrderService.operatorPointsReport());
         return "admin/walk-in-orders";
     }
