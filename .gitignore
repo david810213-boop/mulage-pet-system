@@ -32,5 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### 專案自訂 ###
 ngrok.exe
-$null
+data/
+*.log
+.DS_Store
+Thumbs.db

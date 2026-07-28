@@ -1,0 +1,103 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('儲值申請審核 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content">
+        <div
+          class="page-header"
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;"
+        >
+          <h2 style="margin: 0">💳 儲值申請審核</h2>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <p style="font-size: 13px; color: #999; margin-bottom: 1rem;">
+          僅顯示待核帳（PENDING）的申請。核對銀行入帳後點「確認入帳」，金額才會真正加進會員錢包；查無此筆匯款請點「駁回」。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>申請時間</th>
+              <th>會員</th>
+              <th>帳號</th>
+              <th>金額</th>
+              <th>匯款後五碼</th>
+              <th>備註</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:if="${#lists.isEmpty(requests)}">
+              <td colspan="7" style="text-align: center; color: #aaa; padding: 2rem;">
+                目前沒有待核帳的儲值申請
+              </td>
+            </tr>
+            <tr th:each="r : ${requests}">
+              <td th:text="${#temporals.format(r.createdAt, 'yyyy/MM/dd HH:mm')}"></td>
+              <td th:text="${r.name}"></td>
+              <td th:text="${r.username}"></td>
+              <td>
+                <span
+                  style="font-weight: 700; color: #2c1810"
+                  th:text="'$' + ${#numbers.formatInteger(r.amount, 0, 'COMMA')}"
+                ></span>
+              </td>
+              <td th:text="${r.lastFiveDigits} ?: '—'"></td>
+              <td th:text="${r.remitNote} ?: '—'" style="font-size: 12px; color: #666;"></td>
+              <td style="white-space: nowrap;">
+                <form
+                  th:action="@{/admin/topup/{id}/confirm(id=${r.id})}"
+                  method="post"
+                  style="display: inline-block; margin-right: 6px;"
+                  onsubmit="return confirm('確認已收到匯款，要幫此會員加值嗎？');"
+                >
+                  <button
+                    type="submit"
+                    class="btn"
+                    style="padding: 5px 12px; font-size: 13px; background: #43a047;"
+                  >
+                    ✓ 確認入帳
+                  </button>
+                </form>
+                <button
+                  type="button"
+                  class="btn btn-outline"
+                  style="padding: 5px 12px; font-size: 13px; color: #c62828; border-color: #c62828;"
+                  th:onclick="'rejectPrompt(' + ${r.id} + ')'"
+                >
+                  ✕ 駁回
+                </button>
+                <form
+                  th:id="'reject-form-' + ${r.id}"
+                  th:action="@{/admin/topup/{id}/reject(id=${r.id})}"
+                  method="post"
+                  style="display: none;"
+                >
+                  <input type="hidden" name="reason" />
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      function rejectPrompt(id) {
+        const reason = prompt('請輸入駁回原因（選填）：');
+        if (reason === null) return; // 使用者按取消
+        const form = document.getElementById('reject-form-' + id);
+        form.querySelector('input[name=reason]').value = reason;
+        form.submit();
+      }
+    </script>
+  </body>
+</html>
