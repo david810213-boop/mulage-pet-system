@@ -1,0 +1,394 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('現場開單 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content">
+        <h2 style="margin-bottom: 1.5rem;">🧾 現場開單</h2>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <!-- 開單表單 -->
+        <div
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+        >
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 14px;">＋ 新增現場單</h3>
+          <form th:action="@{/admin/walk-in-orders/create}" method="post" id="orderForm">
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 220px; position: relative;">
+                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">會員（輸入姓名搜尋，非會員留空）</label>
+                <input type="text" id="memberSearchBox" placeholder="輸入姓名搜尋…" autocomplete="off"
+                       style="width:100%; padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
+                <div id="memberSuggestions"
+                     style="position:absolute; z-index:10; background:white; border:1px solid var(--cream-300); border-radius:var(--radius-sm); width:100%; max-height:200px; overflow-y:auto; display:none; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                <!-- 實際送出的欄位：選定會員後由 JS 填入帳號 -->
+                <input type="hidden" name="memberUsername" id="memberUsernameField" />
+                <div id="memberSelectedTag" style="margin-top:4px; font-size:12px; color:#43a047; display:none;"></div>
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">寵物（選會員後自動帶出，或手動輸入）</label>
+                <select id="petSelect"
+                        style="width:100%; padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box; display:none; margin-bottom:6px;"></select>
+                <!-- 唯一實際送出的欄位：無論用下拉選還是手打，值都同步進這裡 -->
+                <input type="text" id="petNameInput" name="petName" placeholder="寵物名稱（尚未選會員或非會員時手動輸入）"
+                       style="width:100%; padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
+              </div>
+              <div style="flex: 1; min-width: 160px;">
+                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">訂單備註（選填）</label>
+                <input type="text" name="note" placeholder="例：耳朵加強清潔"
+                       style="width:100%; padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
+              </div>
+            </div>
+
+            <label style="display:block; font-size:12px; color:#666; margin-bottom:6px;">項目（可加多筆）</label>
+            <div id="itemRows"></div>
+
+            <button type="button" class="btn btn-outline" onclick="addItemRow()" style="margin-top: 6px; padding: 6px 14px; font-size: 13px;">
+              ＋ 新增項目
+            </button>
+
+            <div style="margin-top: 16px;">
+              <button type="submit" class="btn" style="padding: 8px 24px;">確認開單</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 待補經手人 -->
+        <div
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+        >
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 14px;">⏳ 待補經手人（積分尚未計算）</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>價格</th>
+                <th>積分</th>
+                <th>補填經手人</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(pendingOperatorItems)}">
+                <td colspan="4" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
+              </tr>
+              <tr th:each="i : ${pendingOperatorItems}">
+                <td th:text="${i.itemName}"></td>
+                <td th:text="'$' + ${i.price}"></td>
+                <td th:text="${i.points}"></td>
+                <td>
+                  <form th:action="@{/admin/walk-in-orders/items/{id}/operator(id=${i.itemId})}"
+                        method="post" style="display:flex; gap:6px;">
+                    <select name="staffId" required
+                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                            class="pending-staff-select">
+                      <option value="">請選擇員工</option>
+                    </select>
+                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 預約現場開單（依預約編號）：待補經手人 -->
+        <div
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+        >
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 預約現場開單 — 待補經手人（積分尚未計算）</h3>
+          <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
+            這裡列出的是「已預約」的訂單、店員到店核對後依現場情況開立的服務項目，跟上面現場單是分開的兩套資料。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>預約編號</th>
+                <th>寵物</th>
+                <th>項目</th>
+                <th>價格</th>
+                <th>積分</th>
+                <th>補填經手人</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(appointmentPendingItems)}">
+                <td colspan="6" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
+              </tr>
+              <tr th:each="i : ${appointmentPendingItems}">
+                <td th:text="${i.appointmentCode}"></td>
+                <td th:text="${i.petName}"></td>
+                <td th:text="${i.itemName}"></td>
+                <td th:text="'$' + ${i.price}"></td>
+                <td th:text="${i.points}"></td>
+                <td>
+                  <form th:action="@{/appointments/checkin-items/{id}/operator(id=${i.id})}"
+                        method="post" style="display:flex; gap:6px;">
+                    <select name="staffId" required
+                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                            class="pending-staff-select">
+                      <option value="">請選擇員工</option>
+                    </select>
+                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+        >
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 14px;">📊 經手人積分結算（不含未填寫）</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>經手人</th>
+                <th>累計積分</th>
+                <th>累計金額</th>
+                <th>項目數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(pointsReport)}">
+                <td colspan="4" style="text-align:center; color:#aaa;">尚無資料</td>
+              </tr>
+              <tr th:each="p : ${pointsReport}">
+                <td th:text="${p.operator}"></td>
+                <td th:text="${p.totalPoints}"></td>
+                <td th:text="'$' + ${p.totalAmount}"></td>
+                <td th:text="${p.itemCount}"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 現場單交易紀錄 -->
+        <div
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);"
+        >
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 14px;">📜 現場單交易紀錄</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>單號</th>
+                <th>時間</th>
+                <th>會員</th>
+                <th>寵物</th>
+                <th>項目</th>
+                <th>總額</th>
+                <th>付款狀態</th>
+                <th>開單人</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(orders)}">
+                <td colspan="8" style="text-align:center; color:#aaa;">尚無現場單紀錄</td>
+              </tr>
+              <tr th:each="o : ${orders}">
+                <td th:text="'#' + ${o.id}"></td>
+                <td th:text="${#temporals.format(o.createdAt, 'MM/dd HH:mm')}"></td>
+                <td th:text="${o.memberName} ?: '（非會員）'"></td>
+                <td th:text="${o.petName} ?: '—'"></td>
+                <td>
+                  <div th:each="line : ${o.items}" style="font-size:12px;">
+                    <span th:text="${line.itemName}"></span>
+                    <span th:if="${!line.operatorFilled}" style="color:#e53935; font-size:11px;">（未填經手人）</span>
+                    <span th:if="${line.operatorFilled}" style="color:#999; font-size:11px;" th:text="'· ' + ${line.operator}"></span>
+                  </div>
+                </td>
+                <td th:text="'$' + ${o.totalAmount}"></td>
+                <td>
+                  <span th:if="${o.paid}" class="badge paid" th:text="'已' + ${o.paymentMethodLabel}"></span>
+                  <div th:unless="${o.paid}" style="display:flex; flex-direction:column; gap:4px;">
+                    <span class="badge unpaid">未結帳</span>
+                    <form th:action="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}" method="post"
+                          style="display:flex; gap:4px;"
+                          onsubmit="return confirm('確定要結帳嗎？');">
+                      <select name="paymentMethod" style="padding:3px 6px; font-size:12px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
+                        <option value="CASH">現金</option>
+                        <option value="CREDIT_CARD">信用卡</option>
+                        <option value="LINE_PAY">LinePay</option>
+                        <option value="WALLET" th:if="${o.memberName != null}">儲值金</option>
+                      </select>
+                      <button type="submit" class="btn" style="padding:3px 10px; font-size:12px;">結帳</button>
+                    </form>
+                  </div>
+                </td>
+                <td th:text="${o.createdBy}"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script th:inline="javascript">
+      // 從後端帶入可用項目清單（含不可線上預約的調理項目），JS 動態組出下拉選單
+      const GROOMING_ITEMS = /*[[${groomingItems}]]*/ [];
+      // 需求：經手人綁定員工帳號，只給 id + 姓名（不含密碼等敏感欄位）
+      const STAFF_LIST = /*[[${staffList}]]*/ [];
+
+      function buildStaffSelect(nameAttr) {
+        const select = document.createElement('select');
+        select.name = nameAttr;
+        select.style.cssText = 'flex:1; padding:7px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '經手人（未填寫）';
+        select.appendChild(emptyOpt);
+        STAFF_LIST.forEach(function (s) {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name;
+          select.appendChild(opt);
+        });
+        return select;
+      }
+
+      function addItemRow() {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
+
+        const select = document.createElement('select');
+        select.name = 'itemCodes';
+        select.required = true;
+        select.style.cssText = 'flex:2; padding:7px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '請選擇項目';
+        select.appendChild(emptyOpt);
+        GROOMING_ITEMS.forEach(function (item) {
+          const opt = document.createElement('option');
+          opt.value = item.itemCode;
+          opt.textContent = item.name + '（$' + item.price + '）';
+          select.appendChild(opt);
+        });
+
+        // 需求：經手人改成從員工清單選，不再自由輸入文字
+        const operatorSelect = buildStaffSelect('operatorStaffIds');
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '✕';
+        removeBtn.style.cssText = 'padding:6px 10px; border:none; background:#f5eee4; border-radius:var(--radius-sm); cursor:pointer; color:#c62828;';
+        removeBtn.onclick = function () { row.remove(); };
+
+        row.appendChild(select);
+        row.appendChild(operatorSelect);
+        row.appendChild(removeBtn);
+        document.getElementById('itemRows').appendChild(row);
+      }
+
+      // 表單一開始至少給一行
+      addItemRow();
+
+      // 待補經手人清單裡每一列的下拉選單，也用同一份員工資料填入
+      document.querySelectorAll('.pending-staff-select').forEach(function (sel) {
+        STAFF_LIST.forEach(function (s) {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name;
+          sel.appendChild(opt);
+        });
+      });
+
+      // ── 需求 1：會員搜尋（解決 LINE 會員帳號是 line_xxx 內碼，店家打不出來的問題）──
+      const memberSearchBox    = document.getElementById('memberSearchBox');
+      const memberSuggestions  = document.getElementById('memberSuggestions');
+      const memberUsernameField = document.getElementById('memberUsernameField');
+      const memberSelectedTag  = document.getElementById('memberSelectedTag');
+      const petSelect          = document.getElementById('petSelect');
+      const petNameInput       = document.getElementById('petNameInput');
+
+      let searchDebounce = null;
+
+      memberSearchBox.addEventListener('input', function () {
+        // 使用者重新打字，代表要重新選會員，先清掉先前選定的結果
+        memberUsernameField.value = '';
+        memberSelectedTag.style.display = 'none';
+        petSelect.style.display = 'none';
+        petSelect.innerHTML = '';
+
+        const keyword = this.value.trim();
+        clearTimeout(searchDebounce);
+        if (keyword.length === 0) {
+          memberSuggestions.style.display = 'none';
+          return;
+        }
+        // 防抖：停止打字 300ms 後才真的送出搜尋，避免每打一個字就打一次 API
+        searchDebounce = setTimeout(function () {
+          fetch('/api/admin/members/search?keyword=' + encodeURIComponent(keyword))
+            .then(function (res) { return res.ok ? res.json() : []; })
+            .then(function (list) { renderSuggestions(list); })
+            .catch(function () { memberSuggestions.style.display = 'none'; });
+        }, 300);
+      });
+
+      function renderSuggestions(list) {
+        memberSuggestions.innerHTML = '';
+        if (!list.length) {
+          memberSuggestions.style.display = 'none';
+          return;
+        }
+        list.forEach(function (u) {
+          const item = document.createElement('div');
+          item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
+          item.textContent = u.name + '（' + u.username + '）';
+          item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
+          item.onmouseleave = function () { item.style.background = 'white'; };
+          item.onclick = function () { selectMember(u); };
+          memberSuggestions.appendChild(item);
+        });
+        memberSuggestions.style.display = 'block';
+      }
+
+      function selectMember(u) {
+        memberSearchBox.value = u.name;
+        memberUsernameField.value = u.username;
+        memberSelectedTag.textContent = '✓ 已選定：' + u.name;
+        memberSelectedTag.style.display = 'block';
+        memberSuggestions.style.display = 'none';
+
+        // 需求 1：選定會員後自動抓出名下寵物
+        fetch('/api/admin/members/' + encodeURIComponent(u.username) + '/pets')
+          .then(function (res) { return res.ok ? res.json() : []; })
+          .then(function (pets) {
+            petSelect.innerHTML = '';
+            if (!pets.length) {
+              petSelect.style.display = 'none';
+              petNameInput.placeholder = '此會員尚未登記寵物，請手動輸入';
+              return;
+            }
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = '請選擇寵物';
+            petSelect.appendChild(emptyOpt);
+            pets.forEach(function (p) {
+              const opt = document.createElement('option');
+              opt.value = p.name;
+              opt.textContent = p.name + '（' + p.petTypeLabel + '）';
+              petSelect.appendChild(opt);
+            });
+            petSelect.style.display = 'block';
+          });
+      }
+
+      // 選了下拉選單裡的寵物後，同步進真正會送出的欄位
+      petSelect.addEventListener('change', function () {
+        if (this.value) petNameInput.value = this.value;
+      });
+
+      // 點選單外面時收起建議清單
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest('#memberSearchBox') && !e.target.closest('#memberSuggestions')) {
+          memberSuggestions.style.display = 'none';
+        }
+      });
+    </script>
+  </body>
+</html>

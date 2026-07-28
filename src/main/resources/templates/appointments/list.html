@@ -4,6 +4,85 @@
     th:replace="~{fragments/header :: common-head('預約管理 | 慕沐村 Mulage pet')}"
   ></head>
   <body>
+    <style>
+      /* 此頁表格內容較多，內容區加寬避免與側欄空間互相擠壓 */
+      .content {
+        max-width: 1400px;
+      }
+
+      /* 此頁表格：文字強制不換行，欄寬依內容自動調整 */
+      .appt-table {
+        width: auto;
+        max-width: 100%;
+        table-layout: auto;
+        font-size: 12.5px;
+      }
+      .appt-table th,
+      .appt-table td {
+        white-space: nowrap;
+        padding: 8px 12px;
+      }
+      /* 「項目」欄：多個服務名稱之間換行排列，但每個名稱本身不換行 */
+      .appt-table td.items-cell {
+        white-space: normal;
+      }
+      .appt-table td.items-cell div {
+        white-space: nowrap;
+        font-size: 12px;
+      }
+      /* 操作欄的提示文字較長，允許獨立換行但不擠壓其他欄位 */
+      .appt-table td.action-cell {
+        white-space: normal;
+      }
+
+      /* 若表格總寬度超過畫面，允許整頁橫向捲動，而不是壓縮欄位 */
+      .table-scroll {
+        overflow-x: auto;
+      }
+
+      /* 狀態篩選標籤 */
+      .status-pill {
+        font-size: 12.5px;
+        padding: 7px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--brown-mid);
+        background: var(--white-warm);
+        border: 0.5px solid var(--cream-300);
+        white-space: nowrap;
+      }
+      .status-pill.active {
+        background: var(--brown-dark);
+        color: var(--cream-100);
+        border-color: var(--brown-dark);
+      }
+      .stat-mini {
+        background: var(--white-warm);
+        border: 0.5px solid var(--cream-300);
+        border-radius: var(--radius-md);
+        padding: 12px 16px;
+      }
+      .stat-mini.accent {
+        background: var(--cream-500);
+        border-color: var(--cream-500);
+      }
+      .stat-mini .label {
+        font-size: 11.5px;
+        color: var(--brown-light);
+        margin-bottom: 4px;
+      }
+      .stat-mini.accent .label {
+        color: #4a3620;
+      }
+      .stat-mini .value {
+        font-size: 21px;
+        font-weight: 600;
+        color: var(--brown-dark);
+      }
+      .stat-mini.accent .value {
+        color: #3a2a16;
+      }
+    </style>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
@@ -20,169 +99,164 @@
         <div class="alert alert-error" th:if="${param.error}">
           您沒有權限執行此操作
         </div>
-        <div class="action-bar">
-          <h2>預約管理</h2>
-          <a href="/appointments/new" class="btn" th:if="${user.customer}"
-            >＋ 新增預約</a
-          >
-        </div>
-
-        <!-- 篩選表單 -->
-        <form
-          method="get"
-          action="/appointments"
+        <div
           style="
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            justify-content: space-between;
             align-items: flex-end;
-            margin-bottom: 1.2rem;
-            background: #f8f9fa;
-            padding: 14px;
-            border-radius: 10px;
+            margin-bottom: 1.25rem;
           "
         >
           <div>
-            <label
-              style="
-                display: block;
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-              "
-              >日期從</label
-            >
-            <input
-              type="date"
-              name="dateFrom"
-              th:value="${dateFrom}"
-              style="
-                padding: 6px 8px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-              "
-            />
-          </div>
-          <div>
-            <label
-              style="
-                display: block;
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-              "
-              >日期到</label
-            >
-            <input
-              type="date"
-              name="dateTo"
-              th:value="${dateTo}"
-              style="
-                padding: 6px 8px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-              "
-            />
-          </div>
-          <div>
-            <label
-              style="
-                display: block;
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-              "
-              >預約狀態</label
-            >
-            <select
-              name="status"
-              style="
-                padding: 6px 8px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-              "
-            >
-              <option value="" th:selected="${status == null or status == ''}">
-                全部
-              </option>
-              <option value="CONFIRMED" th:selected="${status == 'CONFIRMED'}">
-                已確認
-              </option>
-              <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">
-                已取消
-              </option>
-            </select>
-          </div>
-          <div>
-            <label
-              style="
-                display: block;
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-              "
-              >付款狀態</label
-            >
-            <select
-              name="paidStatus"
-              style="
-                padding: 6px 8px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-              "
-            >
-              <option
-                value=""
-                th:selected="${paidStatus == null or paidStatus == ''}"
-              >
-                全部
-              </option>
-              <option value="PAID" th:selected="${paidStatus == 'PAID'}">
-                已結帳
-              </option>
-              <option value="UNPAID" th:selected="${paidStatus == 'UNPAID'}">
-                未結帳
-              </option>
-            </select>
-          </div>
-          <div style="flex: 1; min-width: 160px">
-            <label
-              style="
-                display: block;
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-              "
-              >關鍵字（編號/飼主/寵物）</label
-            >
-            <input
-              type="text"
-              name="keyword"
-              th:value="${keyword}"
-              placeholder="例：AP001、Hedy、王小美"
-              style="
-                width: 100%;
-                padding: 6px 8px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                box-sizing: border-box;
-              "
-            />
+            <h2 style="margin: 0">預約管理</h2>
+            <p
+              style="margin: 4px 0 0; font-size: 13px; color: var(--brown-light)"
+              th:if="${today != null}"
+              th:text="${#temporals.format(today, 'yyyy年M月d日 · EEEE')}"
+            ></p>
           </div>
           <div style="display: flex; gap: 8px">
-            <button type="submit" class="btn" style="padding: 7px 16px">
-              篩選
-            </button>
             <a
-              href="/appointments"
-              class="btn btn-outline"
-              style="padding: 7px 16px"
-              >重置</a
+              href="/admin/walk-in-orders"
+              class="btn"
+              th:if="${user.staffOrAdmin}"
+              >＋ 現場加單</a
+            >
+            <a href="/appointments/new" class="btn" th:if="${user.customer}"
+              >＋ 新增預約</a
             >
           </div>
-        </form>
+        </div>
 
-        <table>
+        <!-- 統計卡片：僅店家/員工看得到 -->
+        <div
+          th:if="${user.staffOrAdmin}"
+          style="
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 1.25rem;
+          "
+        >
+          <div class="stat-mini">
+            <div class="label">今日預約</div>
+            <div class="value" th:text="${todayCount}">0</div>
+          </div>
+          <div class="stat-mini">
+            <div class="label">已完成</div>
+            <div class="value" th:text="${completedCount}">0</div>
+          </div>
+          <div class="stat-mini">
+            <div class="label">今日營收</div>
+            <div
+              class="value"
+              th:text="'$' + ${#numbers.formatInteger(todayRevenue, 0, 'COMMA')}"
+            >
+              $0
+            </div>
+          </div>
+          <div class="stat-mini accent">
+            <div class="label">待確認</div>
+            <div class="value" th:text="${pendingCount}">0</div>
+          </div>
+        </div>
+
+        <!-- 狀態快速篩選 -->
+        <div style="display: flex; gap: 6px; margin-bottom: 0.75rem; flex-wrap: wrap">
+          <a
+            href="/appointments"
+            class="status-pill"
+            th:classappend="${status == null or status == ''} ? 'active' : ''"
+            >全部</a
+          >
+          <a
+            href="/appointments?status=PENDING_CONFIRM"
+            class="status-pill"
+            th:classappend="${status == 'PENDING_CONFIRM'} ? 'active' : ''"
+            >待確認</a
+          >
+          <a
+            href="/appointments?status=CONFIRMED"
+            class="status-pill"
+            th:classappend="${status == 'CONFIRMED'} ? 'active' : ''"
+            >已確認</a
+          >
+          <a
+            href="/appointments?status=IN_PROGRESS"
+            class="status-pill"
+            th:classappend="${status == 'IN_PROGRESS'} ? 'active' : ''"
+            >進行中</a
+          >
+          <a
+            href="/appointments?status=COMPLETED"
+            class="status-pill"
+            th:classappend="${status == 'COMPLETED'} ? 'active' : ''"
+            >已完成</a
+          >
+          <a
+            href="/appointments?status=CANCELLED"
+            class="status-pill"
+            th:classappend="${status == 'CANCELLED'} ? 'active' : ''"
+            >已取消</a
+          >
+        </div>
+
+        <details style="margin-bottom: 1.25rem">
+          <summary
+            style="
+              cursor: pointer;
+              font-size: 13px;
+              color: var(--brown-mid);
+              padding: 6px 0;
+            "
+          >
+            進階篩選(日期區間 / 付款狀態 / 關鍵字搜尋)
+          </summary>
+          <form method="get" action="/appointments"
+                style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:0.75rem; background:var(--white-warm); border:0.5px solid var(--cream-300); padding:14px; border-radius:var(--radius-md);">
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">日期從</label>
+              <input type="date" name="dateFrom" th:value="${dateFrom}"
+                     style="padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">日期到</label>
+              <input type="date" name="dateTo" th:value="${dateTo}"
+                     style="padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">預約狀態</label>
+              <select name="status" style="padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px;">
+                <option value="" th:selected="${status == null or status == ''}">全部</option>
+                <option value="PENDING_CONFIRM" th:selected="${status == 'PENDING_CONFIRM'}">待確認</option>
+                <option value="CONFIRMED" th:selected="${status == 'CONFIRMED'}">已確認</option>
+                <option value="IN_PROGRESS" th:selected="${status == 'IN_PROGRESS'}">進行中</option>
+                <option value="COMPLETED" th:selected="${status == 'COMPLETED'}">已完成</option>
+                <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">已取消</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">付款狀態</label>
+              <select name="paidStatus" style="padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px;">
+                <option value="" th:selected="${paidStatus == null or paidStatus == ''}">全部</option>
+                <option value="PAID" th:selected="${paidStatus == 'PAID'}">已結帳</option>
+                <option value="UNPAID" th:selected="${paidStatus == 'UNPAID'}">未結帳</option>
+              </select>
+            </div>
+            <div style="flex:1; min-width:160px;">
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">關鍵字(編號/飼主/寵物)</label>
+              <input type="text" name="keyword" th:value="${keyword}" placeholder="例：AP001、Hedy、王小美"
+                     style="width:100%; padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px; box-sizing:border-box;" />
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="submit" class="btn" style="padding:7px 16px;">篩選</button>
+              <a href="/appointments" class="btn btn-outline" style="padding:7px 16px;">重置</a>
+            </div>
+          </form>
+        </details>
+
+        <div class="table-scroll">
+        <table class="appt-table">
           <thead>
             <tr>
               <th>預約編號</th>
@@ -200,22 +274,20 @@
             <tr th:if="${appointments == null or appointments.isEmpty()}">
               <td
                 colspan="9"
-                style="text-align: center; color: #aaa; padding: 2rem"
+                style="text-align: center; color: var(--brown-light); padding: 2rem"
               >
                 目前沒有預約紀錄
               </td>
             </tr>
-            <tr
-              th:each="a : ${appointments}"
-              th:style="${a.cancelled} ? 'opacity:0.55;' : ''"
-            >
+            <tr th:each="a : ${appointments}"
+                th:style="${a.cancelled} ? 'opacity:0.55;' : ''">
               <td th:text="${a.appointmentCode}"></td>
               <td th:text="${a.ownerName}"></td>
               <td th:text="${a.petName + ' (' + a.petType + ')'}"></td>
               <td th:text="${a.date}"></td>
               <td th:text="${a.startTime + ' ~ ' + a.endTime}"></td>
 
-              <td>
+              <td class="items-cell">
                 <div
                   th:each="item : ${a.selectedItems}"
                   th:text="${item.name}"
@@ -227,79 +299,103 @@
 
               <td th:text="${'$' + a.totalAmount}"></td>
               <td>
-                <span
-                  class="badge"
-                  style="background: #eee; color: #999"
-                  th:if="${a.cancelled}"
-                  >已取消</span
-                >
-                <span class="badge paid" th:if="${!a.cancelled and a.paid}"
-                  >已結帳</span
-                >
-                <span class="badge unpaid" th:if="${!a.cancelled and !a.paid}"
-                  >未結帳</span
-                >
+                <span class="badge" style="background:var(--cream-200); color:var(--brown-light);" th:if="${a.cancelled}">已取消</span>
+                <span class="badge" style="background:var(--cream-400); color:#4a3620;" th:if="${!a.cancelled and a.status.name() == 'PENDING_CONFIRM'}">待確認</span>
+                <span class="badge" style="background:#dce8dc; color:#3e6b47;" th:if="${!a.cancelled and a.status.name() == 'IN_PROGRESS'}">進行中</span>
+                <span class="badge" style="background:var(--brown-dark); color:#fff;" th:if="${!a.cancelled and a.status.name() == 'COMPLETED'}">已完成</span>
+                <span class="badge paid" th:if="${!a.cancelled and a.paid}">已結帳</span>
+                <span class="badge unpaid" th:if="${!a.cancelled and !a.paid}">未結帳</span>
+                <div th:if="${!a.cancelled and a.status.name() == 'IN_PROGRESS'}" style="font-size:11px; margin-top:2px;">
+                  <span th:if="${a.finalCheckDone}" style="color:#2e7d32;">✓ 已核對，可結帳</span>
+                  <span th:unless="${a.finalCheckDone}" style="color:#b8935a;">尚未核對</span>
+                </div>
+                <div th:if="${!a.cancelled and a.confirmedTime != null}" style="font-size:11px; color:var(--brown-light); margin-top:2px;">
+                  確認時間：<span th:text="${#temporals.format(a.confirmedTime, 'MM/dd HH:mm')}"></span>
+                </div>
+                <!-- 需求 7：會員可見備注，所有角色都能看到自己收到的備注 -->
+                <div th:if="${a.memberNote != null and !a.memberNote.isEmpty()}" style="font-size:11px; color:var(--cream-600); margin-top:2px; max-width:150px;">
+                  📌 <span th:text="${a.memberNote}"></span>
+                </div>
               </td>
-              <td>
-                <div
-                  th:if="${!a.cancelled}"
-                  style="display: flex; flex-direction: column; gap: 4px"
-                >
+              <td class="action-cell">
+                <div th:if="${!a.cancelled}" style="display:flex; flex-direction:column; gap:4px;">
+                  <!-- 需求 3：店家確認預約 -->
+                  <form th:if="${user.staffOrAdmin and a.status.name() == 'PENDING_CONFIRM'}"
+                        th:action="@{/appointments/{id}/confirm(id=${a.id})}"
+                        method="post" style="display:flex; gap:4px; align-items:center;">
+                    <button type="submit" class="btn" style="padding:3px 10px; font-size:12px;">✓ 確認預約</button>
+                  </form>
+                  <!-- 需求 7：店家編輯雙可見性備注（只有 STAFF/ADMIN 看得到這個表單，internalNote 只會出現在這裡） -->
+                  <details th:if="${user.staffOrAdmin}" style="font-size:12px;">
+                    <summary style="cursor:pointer; color:var(--brown-mid);">✏️ 編輯備注</summary>
+                    <form th:action="@{/appointments/{id}/notes(id=${a.id})}" method="post"
+                          style="display:flex; flex-direction:column; gap:4px; margin-top:6px; min-width:180px;">
+                      <label style="font-size:11px; color:var(--brown-light);">店家內部備注（僅後台看得到）</label>
+                      <textarea name="internalNote" rows="2"
+                                style="font-size:12px; padding:4px; border:1px solid var(--cream-300); border-radius:4px;"
+                                th:text="${a.internalNote}"></textarea>
+                      <label style="font-size:11px; color:var(--brown-light);">會員可見備注</label>
+                      <textarea name="memberNote" rows="2"
+                                style="font-size:12px; padding:4px; border:1px solid var(--cream-300); border-radius:4px;"
+                                th:text="${a.memberNote}"></textarea>
+                      <button type="submit" class="btn btn-outline" style="padding:3px 10px; font-size:12px;">儲存備注</button>
+                    </form>
+                  </details>
+                  <!-- 現場開單（依預約編號）：已確認但尚未開單 -->
                   <a
-                    th:unless="${a.paid}"
+                    th:if="${user.staffOrAdmin and a.status.name() == 'CONFIRMED' and !a.checkinOrderConfirmed}"
+                    th:href="@{/appointments/{id}/checkin-order(id=${a.id})}"
+                    class="btn btn-outline"
+                    style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;"
+                    >🧾 現場開單</a
+                  >
+                  <!-- 開始服務：已確認且已開單 → 進行中 -->
+                  <form th:if="${user.staffOrAdmin and a.status.name() == 'CONFIRMED' and a.checkinOrderConfirmed}"
+                        th:action="@{/appointments/{id}/start(id=${a.id})}"
+                        method="post">
+                    <button type="submit" class="btn btn-outline" style="padding:3px 10px; font-size:12px;">▶ 開始服務</button>
+                  </form>
+                  <!-- 進行中核對：填美容狀況備注 + 家長簽名 -->
+                  <a
+                    th:if="${user.staffOrAdmin and a.status.name() == 'IN_PROGRESS' and !a.finalCheckDone}"
+                    th:href="@{/appointments/{id}/final-check(id=${a.id})}"
+                    class="btn"
+                    style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;"
+                    >📝 核對</a
+                  >
+                  <a
+                    th:if="${!a.paid and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
                     th:href="@{/payments/checkout/{id}(id=${a.id})}"
-                    style="
-                      font-size: 12px;
-                      color: #555;
-                      text-decoration: underline;
-                    "
+                    style="font-size: 12px; color: var(--brown-mid); text-decoration: underline;"
                     >結帳</a
                   >
-                  <form
-                    th:unless="${a.paid}"
-                    th:action="@{/appointments/{id}/cancel(id=${a.id})}"
-                    method="post"
-                    onsubmit="
-                      return confirm(
-                        '確定要取消這筆預約嗎？（' + this.dataset.code + '）',
-                      );
-                    "
-                    th:data-code="${a.appointmentCode}"
+                  <span
+                    th:if="${!a.paid and a.status.name() == 'IN_PROGRESS' and !a.finalCheckDone}"
+                    style="font-size: 11px; color: var(--brown-light);"
+                    >請先完成核對才能結帳</span
                   >
+                  <form th:unless="${a.paid}"
+                        th:action="@{/appointments/{id}/cancel(id=${a.id})}"
+                        method="post"
+                        onsubmit="return confirm('確定要取消這筆預約嗎？（' + this.dataset.code + '）');"
+                        th:data-code="${a.appointmentCode}">
                     <input type="hidden" name="reason" value="店家後台取消" />
-                    <button
-                      type="submit"
-                      style="
-                        font-size: 12px;
-                        color: #c62828;
-                        background: none;
-                        border: none;
-                        text-decoration: underline;
-                        cursor: pointer;
-                        padding: 0;
-                      "
-                    >
+                    <button type="submit"
+                            style="font-size:12px; color:#c62828; background:none; border:none; text-decoration:underline; cursor:pointer; padding:0;">
                       取消預約
                     </button>
                   </form>
-                  <span th:if="${a.paid}" style="font-size: 11px; color: #bbb"
-                    >已結帳，需先退款才能取消</span
-                  >
+                  <span th:if="${a.paid}" style="font-size:11px; color:var(--brown-light); white-space:normal; display:block; max-width:130px;">已結帳，需先退款才能取消</span>
                 </div>
-                <div
-                  th:if="${a.cancelled}"
-                  style="font-size: 11px; color: #999"
-                >
+                <div th:if="${a.cancelled}" style="font-size:11px; color:var(--brown-light);">
                   <div th:text="${a.cancelledBy}"></div>
-                  <div
-                    th:if="${a.cancelReason}"
-                    th:text="'原因：' + ${a.cancelReason}"
-                  ></div>
+                  <div th:if="${a.cancelReason}" th:text="'原因：' + ${a.cancelReason}"></div>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </body>

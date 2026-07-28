@@ -19,8 +19,16 @@ public class GroomingItemController {
     private final GroomingService groomingService;
 
     // ── GET /api/grooming-items ─────────────────────────────────────────────
-    // 查詢所有上架中的美容服務項目（已下架的不會回傳）
+    // 需求 4：LIFF 預約頁只顯示「可線上預約」的主項目
+    // （大美容 / 小美容 / 精緻洗 / 定製洗），其餘調理項目留給現場開單。
     @GetMapping
+    public ResponseEntity<List<GroomingItemResponse>> getBookableItems() {
+        return ResponseEntity.ok(groomingService.getBookableItems());
+    }
+
+    // ── GET /api/grooming-items/all ─────────────────────────────────────────
+    // 後台 / 現場開單用：回傳所有上架項目（含不可預約的調理項目）
+    @GetMapping("/all")
     public ResponseEntity<List<GroomingItemResponse>> getAllItems() {
         return ResponseEntity.ok(groomingService.getAllItems());
     }

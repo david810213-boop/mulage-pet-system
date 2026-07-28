@@ -61,6 +61,8 @@ public class PetMvcController {
     @PostMapping("/submit")
     public String submit(@Valid @ModelAttribute PetRequest req,
                          BindingResult bindingResult,
+                         // 需求 2：毛長由店家（後台）定義；此 param 僅後台 Thymeleaf 表單使用
+                         @RequestParam(name = "coatType", required = false) CoatType coatType,
                          HttpServletRequest request,
                          RedirectAttributes redirectAttributes,
                          Model model) {
@@ -76,7 +78,11 @@ public class PetMvcController {
         }
 
         try {
-            petService.addPet(user.getUsername(), req);
+            var created = petService.addPet(user.getUsername(), req);
+            // 後台建立時若有選毛長，直接由店家定義寫入
+            if (coatType != null && created != null && created.getId() != null) {
+                petService.setCoatType(created.getId(), coatType);
+            }
             redirectAttributes.addFlashAttribute("successMsg", "寵物新增成功！");
             return "redirect:/pets";
         } catch (IllegalArgumentException e) {

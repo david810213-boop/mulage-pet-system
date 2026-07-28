@@ -64,6 +64,20 @@ public class Appointment {
     @ToString.Exclude
     private User staff;
 
+    // ── 需求 3：店家確認最後時間 ─────────────────────────────────────────
+    // 顧客送出預約後為 PENDING_CONFIRM，店家確認並敲定實際時間後填入 confirmedTime 並轉 CONFIRMED
+    @Column(name = "confirmed_time")
+    private LocalDateTime confirmedTime;
+
+    // ── 需求 7：預約備注（雙可見性）───────────────────────────────────────
+    // 店家內部備注：例如「耳朵加強去油」「造型需求」。絕不回傳給顧客端 API。
+    @Column(name = "internal_note", columnDefinition = "TEXT")
+    private String internalNote;
+
+    // 會員可見備注：店家想傳達給會員的訊息。會出現在 /api/appointments/my。
+    @Column(name = "member_note", columnDefinition = "TEXT")
+    private String memberNote;
+
     // ── 取消預約相關 ─────────────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -79,6 +93,44 @@ public class Appointment {
     // 記錄由誰取消（顯示用文字，例如「會員自行取消」「員工：王小美」）
     @Column(name = "cancelled_by")
     private String cancelledBy;
+
+    // ── 定型化契約簽署紀錄 ───────────────────────────────────────────────
+    // 顧客預約前必須詳閱契約，並在簽名板上親筆簽名，才能送出預約
+    @Column(name = "contract_signature_image", columnDefinition = "LONGTEXT")
+    private String contractSignatureImage;   // 手寫簽名圖片（base64 PNG dataURL）
+
+    @Column(name = "contract_agreed_at")
+    private LocalDateTime contractAgreedAt;
+
+    // ── 進行中核對（接待送出）相關紀錄 ─────────────────────────────────────
+    // 店員從「進行中」的預約選擇核對：記錄本次美容狀況備註 + 家長現場簽名確認，
+    // 核對完成才能進入結帳；同時把該店員記為「接待送出」積分。
+    @Column(name = "final_check_done", nullable = false)
+    @Builder.Default
+    private boolean finalCheckDone = false;
+
+    // 負責核對送出的員工
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "final_check_staff_id")
+    @ToString.Exclude
+    private User finalCheckStaff;
+
+    // 本次美容狀況備註（同時會另存一筆到 PetGroomingNote 累積毛孩歷史）
+    @Column(name = "final_check_note", columnDefinition = "TEXT")
+    private String finalCheckNote;
+
+    // 家長核對後的現場簽名（base64 PNG dataURL）
+    @Column(name = "final_check_signature_image", columnDefinition = "LONGTEXT")
+    private String finalCheckSignatureImage;
+
+    @Column(name = "final_check_at")
+    private LocalDateTime finalCheckAt;
+
+    // ── 現場開單（依預約編號開立訂單）─────────────────────────────────────
+    // 家長到店後，店員依現場情況確認/調整服務項目，確認後才能「開始服務」。
+    @Column(name = "checkin_order_confirmed", nullable = false)
+    @Builder.Default
+    private boolean checkinOrderConfirmed = false;
 
     public boolean isCancelled() {
         return status == AppointmentStatus.CANCELLED;

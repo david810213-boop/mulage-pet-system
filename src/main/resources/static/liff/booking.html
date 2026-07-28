@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>慕沐村Mulage pet</title>
@@ -8,14 +11,14 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8f5f0;
+      font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
+      background: #f6f2ea;
       min-height: 100vh;
       padding-bottom: 100px;
     }
     .header {
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
+      background: #2b2a28;
+      color: #d9be8f;
       padding: 20px 16px 24px;
       text-align: center;
     }
@@ -31,10 +34,10 @@
     }
     .form-card h3 {
       font-size: 15px;
-      color: #2c1810;
+      color: #2b2a28;
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #f0e8dc;
+      border-bottom: 1px solid #ede5d3;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -45,7 +48,7 @@
     .field label {
       display: block;
       font-size: 13px;
-      color: #5c3d2e;
+      color: #454340;
       margin-bottom: 6px;
       font-weight: 500;
     }
@@ -54,15 +57,15 @@
     .field select, .field input[type="date"] {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #e0d5c8;
+      border: 1px solid #e3dccc;
       border-radius: 8px;
       font-size: 15px;
-      color: #2c1810;
-      background: #fdfaf7;
+      color: #2b2a28;
+      background: #fffefb;
       outline: none;
       transition: border-color 0.2s;
     }
-    .field select:focus, .field input:focus { border-color: #c9a84c; }
+    .field select:focus, .field input:focus { border-color: #b8935a; }
 
     .pet-empty-hint {
       font-size: 13px;
@@ -81,7 +84,7 @@
     }
     .slot-btn {
       padding: 12px 8px;
-      border: 1.5px solid #e0d5c8;
+      border: 1.5px solid #e3dccc;
       border-radius: 8px;
       text-align: center;
       font-size: 14px;
@@ -91,9 +94,9 @@
       background: white;
     }
     .slot-btn.selected {
-      border-color: #c9a84c;
-      background: #fff8f0;
-      color: #2c1810;
+      border-color: #b8935a;
+      background: #f6f2ea;
+      color: #2b2a28;
       font-weight: 700;
     }
     .slot-btn.unavailable {
@@ -105,7 +108,7 @@
     }
     .slots-hint {
       font-size: 12px;
-      color: #999;
+      color: #8a8072;
       margin-top: 8px;
     }
     .slots-loading, .slots-empty {
@@ -134,12 +137,12 @@
     .item-check input[type="checkbox"] {
       width: 20px;
       height: 20px;
-      accent-color: #c9a84c;
+      accent-color: #b8935a;
       flex-shrink: 0;
     }
-    .item-name { font-size: 14px; color: #2c1810; font-weight: 500; }
-    .item-desc { font-size: 12px; color: #999; margin-top: 2px; }
-    .item-price { font-size: 14px; color: #c9a84c; font-weight: 700; white-space: nowrap; }
+    .item-name { font-size: 14px; color: #2b2a28; font-weight: 500; }
+    .item-desc { font-size: 12px; color: #8a8072; margin-top: 2px; }
+    .item-price { font-size: 14px; color: #b8935a; font-weight: 700; white-space: nowrap; }
     .item-recommend-tag {
       display: inline-block;
       margin-left: 6px;
@@ -168,18 +171,18 @@
     .summary-total {
       flex-shrink: 0;
       font-size: 13px;
-      color: #5c3d2e;
+      color: #454340;
     }
     .summary-total .amount {
       font-size: 20px;
       font-weight: 700;
-      color: #2c1810;
+      color: #2b2a28;
     }
     .submit-btn {
       flex: 1;
       padding: 14px;
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
+      background: #2b2a28;
+      color: #d9be8f;
       border: none;
       border-radius: 12px;
       font-size: 16px;
@@ -196,7 +199,7 @@
       bottom: 90px;
       left: 50%;
       transform: translateX(-50%);
-      background: #333;
+      background: #2b2a28;
       color: white;
       padding: 12px 24px;
       border-radius: 24px;
@@ -227,7 +230,7 @@
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      background: #2b2a28;
       box-shadow: 0 4px 14px rgba(44,24,16,0.35);
       display: flex;
       align-items: center;
@@ -266,6 +269,10 @@
   let selectedDate = null;
   let selectedSlot = null; // { startTime, endTime }
   let selectedItemCodes = new Set();
+  let hasSigned = false;
+  let signatureCanvas = null;
+  let signatureCtx = null;
+  let signatureDrawing = false;
 
   async function init() {
     try {
@@ -286,6 +293,7 @@
         return;
       }
       jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+      window.currentUserName = (data && data.user && data.user.name) || '';
 
       // 平行載入毛孩清單 + 美容項目清單
       const [pets, items] = await Promise.all([fetchMyPets(), fetchGroomingItems()]);
@@ -375,12 +383,55 @@
             : '<div class="slots-empty">目前無可預約的服務項目</div>'}
         </div>
       </div>
+
+      <div class="form-card">
+        <h3>𖥸 寵物美容定型化契約</h3>
+        <div id="contractBox" style="
+          background: #fffefb;
+          border: 1px solid #e3dccc;
+          border-radius: 8px;
+          padding: 14px 16px;
+          max-height: 180px;
+          overflow-y: auto;
+          font-size: 12px;
+          line-height: 1.8;
+          color: #5c574c;
+        ">
+          <p style="font-weight:700; color:#2b2a28; margin-bottom:6px;">慕沐村 Mulage pet 寵物美容服務定型化契約</p>
+          <p>一、服務內容：本次預約之美容項目、時間，以雙方於系統上確認之預約內容為準。若到店後經評估毛髮狀況（如嚴重打結、皮膚問題等）需調整項目或加收費用，店家將事先告知飼主，經同意後始得施作。</p>
+          <p>二、寵物健康告知義務：飼主應如實告知寵物之年齡、病史、過敏史、特殊行為（如攻擊性、分離焦慮）等資訊。因飼主未告知或告知不實，致美容過程發生意外者，店家不負賠償責任。</p>
+          <p>三、美容風險說明：寵物美容（含洗澡、剪毛、剃毛、指甲修剪、肛門腺護理等）可能因寵物緊張、躁動或體質特殊，產生剃傷、擦傷、緊迫反應或其他非店家故意或重大過失所致之意外。店家將以專業技術及合理注意義務施作，惟仍請飼主理解上述風險無法完全排除。</p>
+          <p>四、費用與付款：服務費用以現場結帳或預約系統顯示金額為準，得使用會員錢包餘額折抵。逾時未到或當日取消，依店家公告之取消政策處理。</p>
+          <p>五、寵物寄放期間：施作期間寵物寄放於店內，店家將善盡照顧及看管責任；惟寵物寄放期間如發生逃脫、走失等情事，店家於已盡合理注意義務之前提下，不負完全賠償責任，但將全力協助尋回。</p>
+          <p>六、個人資料使用：飼主與寵物之基本資料僅供預約管理、服務聯繫及會員權益使用，店家不會將資料提供予無關第三方。</p>
+          <p>七、爭議處理：雙方應本誠信原則協商解決；協商不成時，依中華民國法律及台灣新北市轄區之管轄法院處理。</p>
+          <p style="margin-bottom:0;">八、本契約經飼主詳閱並於下方簽名後即生效，飼主並確認已充分理解上述各項條款內容。</p>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#454340; cursor:pointer;">
+          <input type="checkbox" id="contractAgree" style="width:16px; height:16px; accent-color:#b8935a;" onchange="onContractAgreeChange()" />
+          我已詳細閱讀並同意上述定型化契約內容
+        </label>
+
+        <div class="field" style="margin-top:12px;">
+          <label>請在下方簽名板親筆簽上「${window.currentUserName || ''}」正楷簽名 <span class="req">*</span></label>
+          <div style="background:#fff; border:1.5px dashed #d9be8f; border-radius:8px; position:relative; touch-action:none;">
+            <canvas id="signaturePad" width="600" height="160" style="width:100%; height:160px; display:block; cursor:crosshair; border-radius:8px;"></canvas>
+            <span id="signaturePlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#d9be8f; font-size:13px; pointer-events:none;">請在此處簽名</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <p id="signatureHint" style="font-size:11.5px; color:#8a8072; margin:0;">簽名須為親筆手寫，系統才會受理此預約</p>
+            <button type="button" id="clearSignatureBtn" style="padding:5px 14px; font-size:12px; border:1px solid #d9be8f; border-radius:8px; background:#fff; color:#8a6a3a;" onclick="clearSignature()">清除重簽</button>
+          </div>
+        </div>
+      </div>
     `;
 
     document.getElementById('itemsContainer').querySelectorAll('input[type=checkbox]').forEach(cb => {
       cb.addEventListener('change', onItemToggle);
     });
 
+    setupSignaturePad();
     renderSummaryBar();
   }
 
@@ -467,6 +518,91 @@
     renderSummaryBar();
   }
 
+  function setupSignaturePad() {
+    signatureCanvas = document.getElementById('signaturePad');
+    if (!signatureCanvas) return;
+    signatureCtx = signatureCanvas.getContext('2d');
+    hasSigned = false;
+
+    function resize() {
+      const rect = signatureCanvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      signatureCanvas.width = rect.width * ratio;
+      signatureCanvas.height = rect.height * ratio;
+      signatureCtx.scale(ratio, ratio);
+      signatureCtx.lineWidth = 2.2;
+      signatureCtx.lineCap = 'round';
+      signatureCtx.lineJoin = 'round';
+      signatureCtx.strokeStyle = '#2b2a28';
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function getPos(evt) {
+      const rect = signatureCanvas.getBoundingClientRect();
+      if (evt.touches && evt.touches.length > 0) {
+        return { x: evt.touches[0].clientX - rect.left, y: evt.touches[0].clientY - rect.top };
+      }
+      return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+    }
+
+    function start(evt) {
+      evt.preventDefault();
+      signatureDrawing = true;
+      const ph = document.getElementById('signaturePlaceholder');
+      if (ph) ph.style.display = 'none';
+      const pos = getPos(evt);
+      signatureCtx.beginPath();
+      signatureCtx.moveTo(pos.x, pos.y);
+    }
+
+    function move(evt) {
+      if (!signatureDrawing) return;
+      evt.preventDefault();
+      const pos = getPos(evt);
+      signatureCtx.lineTo(pos.x, pos.y);
+      signatureCtx.stroke();
+      hasSigned = true;
+      updateSignatureHint();
+    }
+
+    function end() {
+      signatureDrawing = false;
+    }
+
+    signatureCanvas.addEventListener('mousedown', start);
+    signatureCanvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    signatureCanvas.addEventListener('touchstart', start, { passive: false });
+    signatureCanvas.addEventListener('touchmove', move, { passive: false });
+    signatureCanvas.addEventListener('touchend', end);
+  }
+
+  function clearSignature() {
+    if (!signatureCanvas || !signatureCtx) return;
+    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    const ph = document.getElementById('signaturePlaceholder');
+    if (ph) ph.style.display = 'block';
+    hasSigned = false;
+    updateSignatureHint();
+  }
+
+  function updateSignatureHint() {
+    const hint = document.getElementById('signatureHint');
+    if (!hint) return;
+    if (hasSigned) {
+      hint.style.color = '#2e7d32';
+      hint.textContent = '✓ 已完成簽名';
+    } else {
+      hint.style.color = '#8a8072';
+      hint.textContent = '簽名須為親筆手寫，系統才會受理此預約';
+    }
+  }
+
+  function onContractAgreeChange() {
+    // 目前無額外動作，送出時會統一檢查 checkbox 狀態
+  }
+
   function currentTotal() {
     let total = 0;
     document.querySelectorAll('#itemsContainer input[type=checkbox]:checked').forEach(cb => {
@@ -496,6 +632,12 @@
     if (!selectedSlot) { showToast('請選擇預約時段', 'error'); return; }
     if (!selectedItemCodes.size) { showToast('請至少選擇一項服務', 'error'); return; }
 
+    const agreeBox = document.getElementById('contractAgree');
+    if (!agreeBox || !agreeBox.checked) { showToast('請詳閱並同意定型化契約', 'error'); return; }
+    if (!hasSigned) { showToast('請在簽名板上完成簽名', 'error'); return; }
+
+    const contractSignatureData = signatureCanvas.toDataURL('image/png');
+
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.textContent = '送出中...';
@@ -509,7 +651,8 @@
           date: selectedDate,
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
-          selectedItems: Array.from(selectedItemCodes)
+          selectedItems: Array.from(selectedItemCodes),
+          contractSignatureData: contractSignatureData
         })
       });
 

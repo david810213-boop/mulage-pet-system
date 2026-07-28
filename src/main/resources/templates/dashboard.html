@@ -4,6 +4,74 @@
     th:replace="~{fragments/header :: common-head('首頁 | 慕沐村 Mulage pet')}"
   ></head>
   <body>
+    <style>
+      .dash-stat {
+        background: var(--white-warm);
+        border: 0.5px solid var(--cream-300);
+        border-radius: var(--radius-md);
+        padding: 14px 16px;
+      }
+      .dash-stat.accent {
+        background: var(--cream-500);
+        border-color: var(--cream-500);
+      }
+      .dash-stat .label {
+        font-size: 12px;
+        color: var(--brown-light);
+        margin-bottom: 4px;
+      }
+      .dash-stat.accent .label {
+        color: #4a3620;
+      }
+      .dash-stat .value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--brown-dark);
+      }
+      .dash-stat.accent .value {
+        color: #3a2a16;
+      }
+      .dash-panel {
+        background: var(--white-warm);
+        border: 0.5px solid var(--cream-300);
+        border-radius: var(--radius-lg);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1.25rem;
+      }
+      .dash-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.9rem;
+      }
+      .dash-panel-header h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+      .dash-panel-header a {
+        font-size: 12.5px;
+        color: var(--cream-600);
+        text-decoration: none;
+      }
+      .dash-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-top: 0.5px solid var(--cream-200);
+        font-size: 13px;
+      }
+      .dash-row:first-of-type {
+        border-top: none;
+      }
+      .dash-empty {
+        text-align: center;
+        color: var(--brown-light);
+        font-size: 13px;
+        padding: 1.5rem 0;
+      }
+    </style>
     <div class="page-wrapper">
       <!-- 共用導覽列 -->
       <div th:replace="~{fragments/nav :: nav}"></div>
@@ -15,15 +83,23 @@
           th:text="${successMsg}"
         ></div>
 
-        <p class="welcome">
-          歡迎回來，<strong th:text="${user.name}"></strong>！
-          <span
-            th:text="${user.role == T(com.petgrooming.pet_system.enums.UserRole).ADMIN ? '（管理員）' :
-                      user.role == T(com.petgrooming.pet_system.enums.UserRole).STAFF ? '（員工）' : ''}"
-          ></span>
-        </p>
+        <div style="margin-bottom: 1.25rem">
+          <h2 style="margin: 0">
+            歡迎回來，<span th:text="${user.name}"></span>
+            <span
+              style="font-size: 13px; color: var(--brown-light); font-weight: 400"
+              th:text="${user.role == T(com.petgrooming.pet_system.enums.UserRole).ADMIN ? '（管理員）' :
+                        user.role == T(com.petgrooming.pet_system.enums.UserRole).STAFF ? '（員工）' : ''}"
+            ></span>
+          </h2>
+          <p
+            style="margin: 4px 0 0; font-size: 13px; color: var(--brown-light)"
+            th:if="${today != null}"
+            th:text="${#temporals.format(today, 'yyyy年M月d日 · EEEE')}"
+          ></p>
+        </div>
 
-        <!-- CUSTOMER：顯示快速統計 -->
+        <!-- ══════════ CUSTOMER：快速統計 ══════════ -->
         <div th:if="${user.customer}">
           <div class="cards">
             <div class="stat-card">
@@ -40,70 +116,165 @@
             <a href="/appointments/new" class="btn">＋ 新增預約</a>
             <a href="/pets/new" class="btn btn-outline">＋ 新增寵物</a>
           </div>
+
+          <h2>近期預約</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>預約編號</th>
+                <th>寵物名稱</th>
+                <th>日期</th>
+                <th>時間</th>
+                <th>金額</th>
+                <th>狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${appointments == null or appointments.isEmpty()}">
+                <td colspan="7" class="empty">目前沒有預約紀錄</td>
+              </tr>
+              <tr th:each="a : ${appointments}">
+                <td th:text="${a.appointmentCode}">AP001</td>
+                <td th:text="${a.petName}">小白</td>
+                <td th:text="${a.date}">2025-06-01</td>
+                <td th:text="${a.startTime + ' ~ ' + a.endTime}">11:00~13:00</td>
+                <td th:text="${'$' + a.totalAmount}">$500</td>
+                <td>
+                  <span class="badge badge-paid" th:if="${a.paid}">已結帳</span>
+                  <span class="badge badge-unpaid" th:unless="${a.paid}">未結帳</span>
+                </td>
+                <td>
+                  <a
+                    th:unless="${a.paid}"
+                    th:href="@{/payments/checkout/{id}(id=${a.id})}"
+                    style="font-size: 12px; color: var(--brown-mid); text-decoration: underline;"
+                    >結帳</a
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <!-- STAFF / ADMIN：顯示所有預約 -->
+        <!-- ══════════ STAFF / ADMIN：店務總覽 ══════════ -->
         <div th:if="${user.staffOrAdmin}">
-          <div class="action-bar">
-            <a href="/admin/report" class="btn" th:if="${user.admin}"
-              >財務報告</a
-            >
-            <a href="/admin" class="btn btn-outline" th:if="${user.admin}"
-              >管理後台</a
-            >
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 10px;
+              margin-bottom: 1.5rem;
+            "
+          >
+            <div class="dash-stat">
+              <div class="label">今日預約</div>
+              <div class="value" th:text="${todayCount}">0</div>
+            </div>
+            <div class="dash-stat">
+              <div class="label">今日營收</div>
+              <div class="value" th:text="'$' + ${#numbers.formatInteger(todayRevenue, 0, 'COMMA')}">$0</div>
+            </div>
+            <div class="dash-stat accent">
+              <div class="label">待確認預約</div>
+              <div class="value" th:text="${pendingConfirmCount}">0</div>
+            </div>
+            <div class="dash-stat accent">
+              <div class="label">待審核儲值</div>
+              <div class="value" th:text="${pendingTopupCount}">0</div>
+            </div>
+            <div class="dash-stat">
+              <div class="label">會員總數</div>
+              <div class="value" th:text="${memberCount}">0</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 1.5rem">
+            <a href="/admin/walk-in-orders" class="btn">＋ 現場加單</a>
+            <a href="/admin/report" class="btn btn-outline" th:if="${user.admin}">財務報告</a>
+            <a href="/admin" class="btn btn-outline" th:if="${user.admin}">管理後台</a>
+          </div>
+
+          <!-- 待確認預約 -->
+          <div class="dash-panel">
+            <div class="dash-panel-header">
+              <h3>待確認預約</h3>
+              <a href="/appointments?status=PENDING_CONFIRM">查看全部 →</a>
+            </div>
+            <div th:if="${pendingAppointments == null or pendingAppointments.isEmpty()}" class="dash-empty">
+              目前沒有待確認的預約
+            </div>
+            <div th:each="a : ${pendingAppointments}" class="dash-row">
+              <div style="min-width: 90px">
+                <span th:text="${a.date}" style="color: var(--brown-dark); font-weight: 500"></span>
+                <span th:text="${a.startTime}" style="color: var(--brown-light); margin-left: 4px"></span>
+              </div>
+              <div style="flex: 1">
+                <span th:text="${a.ownerName}" style="color: var(--brown-dark)"></span>
+                <span th:text="'/ ' + ${a.petName}" style="color: var(--brown-light)"></span>
+              </div>
+              <span class="badge" style="background: var(--cream-400); color: #4a3620;">待確認</span>
+              <form th:action="@{/appointments/{id}/confirm(id=${a.id})}" method="post">
+                <button type="submit" class="btn" style="padding: 4px 12px; font-size: 12.5px;">確認</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- 待審核儲值 -->
+          <div class="dash-panel">
+            <div class="dash-panel-header">
+              <h3>待審核儲值申請</h3>
+              <a href="/admin/wallets">查看全部 →</a>
+            </div>
+            <div th:if="${pendingTopups == null or pendingTopups.isEmpty()}" class="dash-empty">
+              目前沒有待審核的儲值申請
+            </div>
+            <div th:each="r : ${pendingTopups}" class="dash-row">
+              <div style="min-width: 100px">
+                <span th:text="${#temporals.format(r.createdAt, 'MM/dd HH:mm')}" style="color: var(--brown-light)"></span>
+              </div>
+              <div style="flex: 1">
+                <span th:text="${r.name}" style="color: var(--brown-dark)"></span>
+                <span th:text="${r.username}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
+              </div>
+              <span style="font-weight: 600; color: var(--brown-dark)" th:text="'$' + ${#numbers.formatInteger(r.amount, 0, 'COMMA')}"></span>
+              <form
+                th:action="@{/admin/topup/{id}/confirm(id=${r.id})}"
+                method="post"
+                onsubmit="return confirm('確認已收到匯款，要幫此會員加值嗎？');"
+              >
+                <button type="submit" class="btn" style="padding: 4px 12px; font-size: 12.5px;">確認入帳</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- 會員名單 -->
+          <div class="dash-panel">
+            <div class="dash-panel-header">
+              <h3>會員名單</h3>
+              <a href="/admin/wallets">查看全部（<span th:text="${memberCount}"></span>）→</a>
+            </div>
+            <div th:if="${recentCustomers == null or recentCustomers.isEmpty()}" class="dash-empty">
+              尚無會員資料
+            </div>
+            <div th:each="c : ${recentCustomers}" class="dash-row">
+              <div style="flex: 1">
+                <span th:text="${c.name}" style="color: var(--brown-dark)"></span>
+                <span th:text="${c.username}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
+              </div>
+              <span
+                th:text="'$' + ${#numbers.formatInteger(walletsByUsername.get(c.username).balance, 0, 'COMMA')}"
+                style="color: var(--brown-mid)"
+              ></span>
+              <a
+                th:href="@{/admin/wallets/{u}(u=${c.username})}"
+                class="btn btn-outline"
+                style="padding: 4px 12px; font-size: 12.5px;"
+                >查看錢包</a
+              >
+            </div>
           </div>
         </div>
-
-        <!-- 預約清單 -->
-        <h2>近期預約</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>預約編號</th>
-              <th>寵物名稱</th>
-              <th>日期</th>
-              <th>時間</th>
-              <th>金額</th>
-              <th>狀態</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr th:if="${appointments == null or appointments.isEmpty()}">
-              <td
-                colspan="7"
-                style="text-align: center; color: #aaa; padding: 2rem"
-              >
-                目前沒有預約紀錄
-              </td>
-            </tr>
-            <tr th:each="a : ${appointments}">
-              <td th:text="${a.appointmentCode}">AP001</td>
-              <td th:text="${a.petName}">小白</td>
-              <td th:text="${a.date}">2025-06-01</td>
-              <td th:text="${a.startTime + ' ~ ' + a.endTime}">11:00~13:00</td>
-              <td th:text="${'$' + a.totalAmount}">$500</td>
-              <td>
-                <span class="badge badge-paid" th:if="${a.paid}">已結帳</span>
-                <span class="badge badge-unpaid" th:unless="${a.paid}"
-                  >未結帳</span
-                >
-              </td>
-              <td>
-                <a
-                  th:unless="${a.paid}"
-                  th:href="@{/payments/checkout/{id}(id=${a.id})}"
-                  style="
-                    font-size: 12px;
-                    color: #555;
-                    text-decoration: underline;
-                  "
-                  >結帳</a
-                >
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </body>

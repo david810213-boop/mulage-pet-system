@@ -1,10 +1,12 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.CheckoutRequest;
+import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
@@ -24,6 +26,7 @@ public class PaymentMvcController {
     private final UserService userService;
     private final WalletService walletService;
     private final AppointmentRepository appointmentRepository;
+    private final WalkInOrderRepository walkInOrderRepository;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -40,6 +43,52 @@ public class PaymentMvcController {
         }
     }
 
+    // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
+    // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
+    // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
+    private java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
+            java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
+            java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
+
+        java.util.List<ConsumptionRecordResponse> records = new java.util.ArrayList<>();
+
+        for (var t : transactions) {
+            if (!t.isPaid()) continue;
+            records.add(ConsumptionRecordResponse.builder()
+                    .sourceLabel("預約結帳")
+                    .code(t.getAppointmentCode())
+                    .petName(null)
+                    .time(t.getPaymentTime())
+                    .handledBy(t.getHandledBy())
+                    .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
+                    .amount(t.getFinalAmount())
+                    .paid(true)
+                    .build());
+        }
+
+        for (var w : walkInOrders) {
+            if (!w.isPaid()) continue;
+            records.add(ConsumptionRecordResponse.builder()
+                    .sourceLabel("現場開單")
+                    .code("現場單#" + w.getId())
+                    .petName(w.getPetName())
+                    .time(w.getPaymentTime())
+                    .handledBy(w.getCreatedBy())
+                    .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
+                    .amount(w.getTotalAmount())
+                    .paid(true)
+                    .build());
+        }
+
+        records.sort((a, b) -> {
+            if (a.getTime() == null && b.getTime() == null) return 0;
+            if (a.getTime() == null) return 1;
+            if (b.getTime() == null) return -1;
+            return b.getTime().compareTo(a.getTime());
+        });
+        return records;
+    }
+
     // 列出付款紀錄（員工/管理員看全部，顧客只看自己的）
     @GetMapping
     public String list(HttpServletRequest request, Model model) {
@@ -47,10 +96,13 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         if (user.isStaffOrAdmin()) {
-            model.addAttribute("transactions", paymentService.getAllTransactions());
+            model.addAttribute("transactions", buildCombinedRecords(
+                    paymentService.getAllTransactions(),
+                    walkInOrderRepository.findAllByOrderByCreatedAtDesc()));
         } else {
-            model.addAttribute("transactions",
-                    paymentService.getMyTransactions(user.getUsername()));
+            model.addAttribute("transactions", buildCombinedRecords(
+                    paymentService.getMyTransactions(user.getUsername()),
+                    walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(user.getUsername())));
         }
         return "payments/list";
     }

@@ -16,10 +16,11 @@
         <table>
           <thead>
             <tr>
-              <th>預約編號</th>
+              <th>來源</th>
+              <th>編號</th>
+              <th>寵物</th>
               <th>付款方式</th>
-              <th>原始金額</th>
-              <th>實付金額</th>
+              <th>金額</th>
               <th>付款時間</th>
               <th>經手人</th>
             </tr>
@@ -27,18 +28,22 @@
           <tbody>
             <tr th:if="${transactions == null or transactions.isEmpty()}">
               <td
-                colspan="6"
+                colspan="7"
                 style="text-align: center; color: #aaa; padding: 2rem"
               >
                 目前沒有交易紀錄
               </td>
             </tr>
             <tr th:each="t : ${transactions}">
-              <td th:text="${t.appointmentCode}"></td>
-              <td th:text="${t.paymentMethod?.name()}"></td>
-              <td th:text="${'$' + t.baseAmount}"></td>
-              <td th:text="${'$' + t.finalAmount}"></td>
-              <td th:text="${t.paymentTime}"></td>
+              <td>
+                <span class="badge" th:style="${t.sourceLabel == '現場開單'} ? 'background:var(--cream-400); color:#4a3620;' : 'background:var(--cream-200); color:var(--brown-mid);'"
+                      th:text="${t.sourceLabel}"></span>
+              </td>
+              <td th:text="${t.code}"></td>
+              <td th:text="${t.petName} ?: '—'"></td>
+              <td th:text="${t.paymentMethodLabel}"></td>
+              <td th:text="${'$' + t.amount}"></td>
+              <td th:text="${t.time != null ? #temporals.format(t.time, 'yyyy/MM/dd HH:mm') : '—'}"></td>
               <td th:text="${t.handledBy}"></td>
             </tr>
           </tbody>

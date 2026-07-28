@@ -5,6 +5,52 @@
   ></head>
 
   <body>
+    <style>
+      .slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+      }
+      .slot-btn {
+        padding: 10px 8px;
+        border: 1.5px solid var(--cream-300);
+        border-radius: 8px;
+        text-align: center;
+        font-size: 13.5px;
+        cursor: pointer;
+        transition: all 0.15s;
+        color: var(--brown-mid);
+        background: #fff;
+      }
+      .slot-btn:hover {
+        border-color: var(--cream-500);
+      }
+      .slot-btn.selected {
+        border-color: var(--cream-500);
+        background: var(--cream-100);
+        color: var(--brown-dark);
+        font-weight: 600;
+      }
+      .slot-btn.unavailable {
+        background: var(--cream-100);
+        color: var(--cream-400);
+        text-decoration: line-through;
+        cursor: not-allowed;
+        border-color: var(--cream-200);
+      }
+      .slots-hint {
+        font-size: 12px;
+        color: var(--brown-light);
+        margin-top: 8px;
+      }
+      .slots-loading,
+      .slots-empty {
+        text-align: center;
+        padding: 16px;
+        color: var(--brown-light);
+        font-size: 13px;
+      }
+    </style>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
 
@@ -102,55 +148,27 @@
               <label>預約日期 *</label>
               <input
                 type="date"
-                name="date"
+                id="dateInput"
                 th:value="${appointmentRequest?.date}"
                 th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
                 required
+                onchange="loadSlots()"
               />
             </div>
 
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-                margin-bottom: 1.5rem;
-              "
-            >
-              <div class="field">
-                <label
-                  >開始時間 *
-                  <span
-                    style="
-                      font-size: 11px;
-                      color: var(--brown-light);
-                      font-weight: normal;
-                    "
-                    >（11:00～19:00）</span
-                  ></label
-                >
-                <input
-                  type="time"
-                  name="startTime"
-                  th:value="${appointmentRequest?.startTime}"
-                  min="11:00"
-                  max="19:00"
-                  required
-                />
+            <div class="field" id="slotsField" style="display: none; margin-bottom: 1.5rem">
+              <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--brown-dark)">
+                可預約時段 *
+              </label>
+              <div id="slotsContainer">
+                <div class="slots-loading">載入時段中...</div>
               </div>
-
-              <div class="field">
-                <label>結束時間 *</label>
-                <input
-                  type="time"
-                  name="endTime"
-                  th:value="${appointmentRequest?.endTime}"
-                  min="11:00"
-                  max="19:00"
-                  required
-                />
-              </div>
+              <div class="slots-hint">灰色時段已被預約，請選擇其他時段</div>
             </div>
+
+            <input type="hidden" name="date" id="dateHidden" />
+            <input type="hidden" name="startTime" id="startTimeHidden" />
+            <input type="hidden" name="endTime" id="endTimeHidden" />
             <div class="field" style="margin-bottom: 1.5rem">
               <label
                 style="
@@ -216,6 +234,115 @@
               </div>
             </div>
 
+            <!-- ── 寵物美容定型化契約 ── -->
+            <div class="field" style="margin-bottom: 1.5rem">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 0.8rem;
+                  font-weight: 600;
+                  color: var(--brown-dark);
+                "
+              >
+                寵物美容定型化契約 *
+              </label>
+
+              <div
+                id="contractBox"
+                style="
+                  background: var(--white-warm);
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  padding: 16px 18px;
+                  max-height: 220px;
+                  overflow-y: auto;
+                  font-size: 12.5px;
+                  line-height: 1.9;
+                  color: var(--brown-mid);
+                "
+              >
+                <p style="font-weight: 600; color: var(--brown-dark); margin-bottom: 8px;">
+                  慕沐村 Mulage pet 寵物美容服務定型化契約
+                </p>
+                <p>一、服務內容：本次預約之美容項目、時間，以雙方於系統上確認之預約內容為準。若到店後經評估毛髮狀況（如嚴重打結、皮膚問題等）需調整項目或加收費用，店家將事先告知飼主，經同意後始得施作。</p>
+                <p>二、寵物健康告知義務：飼主應如實告知寵物之年齡、病史、過敏史、特殊行為（如攻擊性、分離焦慮）等資訊。因飼主未告知或告知不實，致美容過程發生意外者，店家不負賠償責任。</p>
+                <p>三、美容風險說明：寵物美容（含洗澡、剪毛、剃毛、指甲修剪、肛門腺護理等）可能因寵物緊張、躁動或體質特殊，產生剃傷、擦傷、緊迫反應或其他非店家故意或重大過失所致之意外。店家將以專業技術及合理注意義務施作，惟仍請飼主理解上述風險無法完全排除。</p>
+                <p>四、費用與付款：服務費用以現場結帳或預約系統顯示金額為準，得使用會員錢包餘額折抵。逾時未到或當日取消，依店家公告之取消政策處理。</p>
+                <p>五、寵物寄放期間：施作期間寵物寄放於店內，店家將善盡照顧及看管責任；惟寵物寄放期間如發生逃脫、走失等情事，店家於已盡合理注意義務之前提下，不負完全賠償責任，但將全力協助尋回。</p>
+                <p>六、個人資料使用：飼主與寵物之基本資料僅供預約管理、服務聯繫及會員權益使用，店家不會將資料提供予無關第三方。</p>
+                <p>七、爭議處理：雙方應本誠信原則協商解決；協商不成時，依中華民國法律及台灣新北市轄區之管轄法院處理。</p>
+                <p style="margin-bottom: 0;">八、本契約經飼主詳閱並於下方簽名（輸入會員本名）後即生效，飼主並確認已充分理解上述各項條款內容。</p>
+              </div>
+
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  margin-top: 10px;
+                  font-weight: 400;
+                  font-size: 13px;
+                  cursor: pointer;
+                "
+              >
+                <input type="checkbox" id="contractAgreeCheckbox" required style="width: 15px; height: 15px;" />
+                我已詳細閱讀並同意上述定型化契約內容
+              </label>
+
+              <div style="margin-top: 10px">
+                <label style="font-size: 13px; margin-bottom: 4px; display: block;">
+                  請在下方簽名板親筆簽上「<span th:text="${user.name}" style="font-weight: 600; color: var(--brown-dark)"></span>」正楷簽名 *
+                </label>
+                <div
+                  style="
+                    background: #ffffff;
+                    border: 1.5px dashed var(--cream-400);
+                    border-radius: 8px;
+                    position: relative;
+                    touch-action: none;
+                  "
+                >
+                  <canvas
+                    id="signaturePad"
+                    width="600"
+                    height="180"
+                    style="width: 100%; height: 180px; display: block; cursor: crosshair; border-radius: 8px;"
+                  ></canvas>
+                  <span
+                    id="signaturePlaceholder"
+                    style="
+                      position: absolute;
+                      top: 50%;
+                      left: 50%;
+                      transform: translate(-50%, -50%);
+                      color: var(--cream-400);
+                      font-size: 13px;
+                      pointer-events: none;
+                    "
+                  >
+                    請在此處簽名
+                  </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                  <p
+                    id="signatureHint"
+                    style="font-size: 11.5px; color: var(--brown-light); margin: 0;"
+                  >
+                    簽名須為親筆手寫，系統才會受理此預約
+                  </p>
+                  <button
+                    type="button"
+                    id="clearSignatureBtn"
+                    class="btn btn-outline"
+                    style="padding: 4px 14px; font-size: 12px;"
+                  >
+                    清除重簽
+                  </button>
+                </div>
+                <input type="hidden" name="contractSignatureData" id="contractSignatureData" />
+              </div>
+            </div>
+
             <div
               style="
                 display: flex;
@@ -227,6 +354,8 @@
               <button
                 type="submit"
                 class="btn btn-primary"
+                id="submitBtn"
+                disabled
                 style="padding: 10px 24px; min-width: auto; height: auto"
               >
                 確認送出預約
@@ -249,7 +378,182 @@
         </div>
       </div>
     </div>
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      /*]]>*/
+
+      const canvas = document.getElementById("signaturePad");
+      const ctx = canvas.getContext("2d");
+      const placeholder = document.getElementById("signaturePlaceholder");
+      const hint = document.getElementById("signatureHint");
+      const hiddenInput = document.getElementById("contractSignatureData");
+      const submitBtn = document.getElementById("submitBtn");
+      const agreeCheckbox = document.getElementById("contractAgreeCheckbox");
+      const clearBtn = document.getElementById("clearSignatureBtn");
+
+      let hasSigned = false;
+      let drawing = false;
+
+      // Canvas 實際繪圖解析度對齊顯示尺寸，簽名線條才不會模糊或跑位
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = rect.width * ratio;
+        canvas.height = rect.height * ratio;
+        ctx.scale(ratio, ratio);
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "#2b2a28";
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      function getPos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        if (evt.touches && evt.touches.length > 0) {
+          return {
+            x: evt.touches[0].clientX - rect.left,
+            y: evt.touches[0].clientY - rect.top,
+          };
+        }
+        return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+      }
+
+      function startDraw(evt) {
+        evt.preventDefault();
+        drawing = true;
+        placeholder.style.display = "none";
+        const pos = getPos(evt);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      }
+
+      function moveDraw(evt) {
+        if (!drawing) return;
+        evt.preventDefault();
+        const pos = getPos(evt);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        hasSigned = true;
+        updateSubmitState();
+      }
+
+      function endDraw() {
+        drawing = false;
+      }
+
+      canvas.addEventListener("mousedown", startDraw);
+      canvas.addEventListener("mousemove", moveDraw);
+      window.addEventListener("mouseup", endDraw);
+      canvas.addEventListener("touchstart", startDraw, { passive: false });
+      canvas.addEventListener("touchmove", moveDraw, { passive: false });
+      canvas.addEventListener("touchend", endDraw);
+
+      clearBtn.addEventListener("click", function () {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        placeholder.style.display = "block";
+        hasSigned = false;
+        hiddenInput.value = "";
+        updateSubmitState();
+      });
+
+      function updateSubmitState() {
+        const agreed = agreeCheckbox.checked;
+
+        if (!hasSigned) {
+          hint.style.color = "var(--brown-light)";
+          hint.textContent = "簽名須為親筆手寫，系統才會受理此預約";
+        } else {
+          hint.style.color = "#2e7d32";
+          hint.textContent = "✓ 已完成簽名";
+        }
+
+        submitBtn.disabled = !(agreed && hasSigned);
+      }
+
+      agreeCheckbox.addEventListener("change", updateSubmitState);
+
+      // 送出表單前，把簽名畫布內容轉成圖片資料寫入隱藏欄位；並確認已選擇時段
+      document.querySelector("form").addEventListener("submit", function (e) {
+        if (!document.getElementById("startTimeHidden").value) {
+          e.preventDefault();
+          alert("請先選擇預約時段");
+          return;
+        }
+        if (!hasSigned) {
+          e.preventDefault();
+          return;
+        }
+        hiddenInput.value = canvas.toDataURL("image/png");
+      });
+    </script>
     <script>
+      let selectedSlotEl = null;
+
+      async function loadSlots() {
+        const dateInput = document.getElementById("dateInput");
+        const date = dateInput.value;
+        const slotsField = document.getElementById("slotsField");
+        const container = document.getElementById("slotsContainer");
+
+        document.getElementById("dateHidden").value = date;
+        document.getElementById("startTimeHidden").value = "";
+        document.getElementById("endTimeHidden").value = "";
+        selectedSlotEl = null;
+
+        if (!date) {
+          slotsField.style.display = "none";
+          return;
+        }
+
+        slotsField.style.display = "block";
+        container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
+
+        try {
+          const res = await fetch("/api/appointments/slots?date=" + date, {
+            credentials: "same-origin",
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const slots = await res.json();
+
+          if (!slots.length) {
+            container.innerHTML = '<div class="slots-empty">當天無可預約時段</div>';
+            return;
+          }
+
+          container.innerHTML =
+            '<div class="slots-grid">' +
+            slots
+              .map(function (s) {
+                var cls = "slot-btn" + (s.available ? "" : " unavailable");
+                var label = s.startTime.substring(0, 5) + " - " + s.endTime.substring(0, 5);
+                return (
+                  '<div class="' + cls + '" data-start="' + s.startTime + '" data-end="' + s.endTime + '">' +
+                  label +
+                  "</div>"
+                );
+              })
+              .join("") +
+            "</div>";
+
+          container.querySelectorAll(".slot-btn:not(.unavailable)").forEach(function (el) {
+            el.addEventListener("click", function () {
+              container.querySelectorAll(".slot-btn").forEach(function (b) {
+                b.classList.remove("selected");
+              });
+              el.classList.add("selected");
+              selectedSlotEl = el;
+              document.getElementById("startTimeHidden").value = el.dataset.start;
+              document.getElementById("endTimeHidden").value = el.dataset.end;
+            });
+          });
+        } catch (e) {
+          container.innerHTML =
+            '<div class="slots-empty" style="color:#c62828">載入時段失敗：' + e.message + "</div>";
+        }
+      }
+
       function autoCheckItems() {
         const select = document.getElementById("petSelect");
         const selected = select.options[select.selectedIndex];

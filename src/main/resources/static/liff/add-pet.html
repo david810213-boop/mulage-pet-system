@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>慕沐村Mulage pet</title>
@@ -8,14 +11,14 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8f5f0;
+      font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
+      background: #f6f2ea;
       min-height: 100vh;
       padding-bottom: 90px;
     }
     .header {
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
+      background: #2b2a28;
+      color: #d9be8f;
       padding: 20px 16px 24px;
       text-align: center;
     }
@@ -24,17 +27,17 @@
 
     .notice {
       margin: 16px;
-      background: #fff8f0;
-      border: 1px solid #f0e0c0;
+      background: #f6f2ea;
+      border: 1px solid #ede5d3;
       border-radius: 12px;
       padding: 16px;
       font-size: 13px;
-      color: #5c3d2e;
+      color: #454340;
       line-height: 1.8;
     }
     .notice .title {
       font-weight: 700;
-      color: #2c1810;
+      color: #2b2a28;
       margin-bottom: 8px;
       display: flex;
       align-items: center;
@@ -50,36 +53,36 @@
     }
     .form-card h3 {
       font-size: 15px;
-      color: #2c1810;
+      color: #2b2a28;
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #f0e8dc;
+      border-bottom: 1px solid #ede5d3;
     }
 
     .field { margin-bottom: 16px; }
     .field label {
       display: block;
       font-size: 13px;
-      color: #5c3d2e;
+      color: #454340;
       margin-bottom: 6px;
       font-weight: 500;
     }
     .field label .req { color: #e53935; margin-left: 2px; }
-    .field label .hint { color: #999; font-size: 11px; font-weight: 400; margin-left: 6px; }
+    .field label .hint { color: #8a8072; font-size: 11px; font-weight: 400; margin-left: 6px; }
 
     .field input, .field select, .field textarea {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #e0d5c8;
+      border: 1px solid #e3dccc;
       border-radius: 8px;
       font-size: 15px;
-      color: #2c1810;
-      background: #fdfaf7;
+      color: #2b2a28;
+      background: #fffefb;
       outline: none;
       transition: border-color 0.2s;
     }
     .field input:focus, .field select:focus, .field textarea:focus {
-      border-color: #c9a84c;
+      border-color: #b8935a;
     }
     .field textarea { resize: vertical; min-height: 80px; }
 
@@ -92,7 +95,7 @@
       flex: 1;
       min-width: 80px;
       padding: 10px;
-      border: 1.5px solid #e0d5c8;
+      border: 1.5px solid #e3dccc;
       border-radius: 8px;
       text-align: center;
       font-size: 14px;
@@ -101,9 +104,9 @@
       color: #666;
     }
     .radio-btn.selected {
-      border-color: #c9a84c;
-      background: #fff8f0;
-      color: #2c1810;
+      border-color: #b8935a;
+      background: #f6f2ea;
+      color: #2b2a28;
       font-weight: 700;
     }
 
@@ -127,8 +130,8 @@
       width: calc(100% - 32px);
       margin: 0 16px;
       padding: 14px;
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
-      color: #f5d49a;
+      background: #2b2a28;
+      color: #d9be8f;
       border: none;
       border-radius: 12px;
       font-size: 16px;
@@ -145,7 +148,7 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: #333;
+      background: #2b2a28;
       color: white;
       padding: 12px 24px;
       border-radius: 24px;
@@ -169,7 +172,7 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #2c1810, #5c3d2e);
+      background: #2b2a28;
       box-shadow: 0 4px 14px rgba(44,24,16,0.35);
       display: flex;
       align-items: center;
@@ -238,14 +241,7 @@
     <input type="number" id="age" min="0" placeholder="例如：3（歲）" />
   </div>
 
-  <div class="field">
-    <label>毛長 <span class="req">*</span></label>
-    <div class="radio-group" id="coatTypeGroup">
-      <div class="radio-btn" data-value="SHORT" onclick="selectRadio('coatType', 'SHORT', this)">短毛</div>
-      <div class="radio-btn" data-value="MEDIUM" onclick="selectRadio('coatType', 'MEDIUM', this)">中長毛</div>
-      <div class="radio-btn" data-value="LONG" onclick="selectRadio('coatType', 'LONG', this)">長毛</div>
-    </div>
-  </div>
+  <!-- 需求 2：毛長改由店家於後台檢視實際毛況後定義，此處不再讓顧客選擇 -->
 
   <!-- 自動判斷體型結果 -->
   <div class="auto-result" id="sizeResult">
@@ -285,7 +281,7 @@
 <script>
   const LIFF_ID = "2010567973-ygHvpq7X";
   let jwtToken = null;
-  const formData = { petType: null, coatType: null, anxiety: null };
+  const formData = { petType: null, anxiety: null }; // 需求 2：移除 coatType
 
   async function init() {
     try {
@@ -352,7 +348,6 @@
     if (!breed)            { showToast('請填寫品種', 'error'); return; }
     if (!weight || weight <= 0) { showToast('請填寫正確體重', 'error'); return; }
     if (age === null || isNaN(age)) { showToast('請填寫年齡', 'error'); return; }
-    if (!formData.coatType) { showToast('請選擇毛長', 'error'); return; }
     if (!phone)            { showToast('請填寫家長手機', 'error'); return; }
     if (formData.anxiety === null) { showToast('請選擇是否有分離焦慮', 'error'); return; }
 
@@ -370,7 +365,6 @@
         body: JSON.stringify({
           name, breed, weight, age,
           petType: formData.petType,
-          coatType: formData.coatType,
           hasSeparationAnxiety: formData.anxiety === 'true',
           ownerPhone: phone,
           notes: notes || null

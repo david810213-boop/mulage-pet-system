@@ -38,6 +38,7 @@ public class GroomingServiceImpl implements GroomingService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setDeleted(false); // 新增的項目預設就是直接上架使用
+        item.setBookable(request.getBookable() != null && request.getBookable()); // 需求 4
 
         // 3. 實質寫入資料庫
         groomingItemRepository.save(item);
@@ -45,12 +46,35 @@ public class GroomingServiceImpl implements GroomingService {
 
     /**
      * 1. 撈出整個美容項目菜單 (只拿沒被下架的)
+     * 需求：CHECKIN/CHECKOUT/COMPLETE 這三個項目是初始化時建立的內部流程標記
+     * （接待入場/接待送出/完成確認，$0 元，積分邏輯直接用 PerformanceCategory 計算，
+     * 不會真的去查這三個項目），不是給客人選的真實服務，一律從價目表/選單中排除。
      */
     @Override
     @Transactional(readOnly = true) 
     public List<GroomingItemResponse> getAllItems() {
         List<GroomingItem> items = groomingItemRepository.findByIsDeletedFalse();
         return items.stream()
+                .filter(GroomingServiceImpl::isCustomerFacingItem)
+                .map(GroomingItemResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    // 排除接待流程用的內部標記項目（CHECKIN / CHECKOUT / COMPLETE）
+    private static boolean isCustomerFacingItem(GroomingItem item) {
+        var category = item.getPerformanceCategory();
+        return category != com.petgrooming.pet_system.enums.PerformanceCategory.CHECKIN
+                && category != com.petgrooming.pet_system.enums.PerformanceCategory.CHECKOUT
+                && category != com.petgrooming.pet_system.enums.PerformanceCategory.COMPLETE;
+    }
+
+    /**
+     * 1b. 需求 4：只撈可線上預約的項目（大美容 / 小美容 / 精緻洗 / 定製洗）
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<GroomingItemResponse> getBookableItems() {
+        return groomingItemRepository.findByBookableTrueAndIsDeletedFalse().stream()
                 .map(GroomingItemResponse::from)
                 .collect(Collectors.toList());
     }
@@ -67,6 +91,7 @@ public class GroomingServiceImpl implements GroomingService {
         item.setName(request.getName());
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
+        if (request.getBookable() != null) item.setBookable(request.getBookable()); // 需求 4
         
         GroomingItem updatedItem = groomingItemRepository.save(item);
         return GroomingItemResponse.from(updatedItem);

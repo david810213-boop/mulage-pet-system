@@ -33,6 +33,19 @@ public class GroomingItem {
     // 邏輯刪除
     private boolean isDeleted = false;
 
+    // 需求 4：是否可線上預約。
+    // 只有「大美容 / 小美容 / 精緻洗 / 定製洗」設為 true，會出現在 LIFF 預約頁；
+    // 其餘調理 / 加購項目為 false，僅供店家現場開單使用。
+    //
+    // 注意（ddl-auto 陷阱）：這是新增到「既有資料表」的 NOT NULL 欄位。
+    // 若只寫 nullable=false 而不給資料庫層級預設值，Hibernate 產生的
+    // ALTER TABLE ... ADD COLUMN bookable boolean NOT NULL
+    // 會因既有列無值可填而失敗（H2 / MySQL 皆同）。columnDefinition 讓既有列
+    // 自動填入 false，新增才能成功。
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean bookable = false;
+
     // 績效大項分類（決定完成此項目時員工獲得哪個類別的積分）
     @Enumerated(EnumType.STRING)
     @Column(name = "performance_category", nullable = false)

@@ -41,10 +41,12 @@ public class Pet {
     @Builder.Default
     private PetSizeCategory sizeCategory = PetSizeCategory.OTHER; // 體型（小型犬/大型犬/小貓/大貓）
 
+    // 需求 2：毛長不再由顧客選填，改由店家於後台檢視實際毛況後定義。
+    // 新增寵物時一律預設 UNDEFINED（未定義），待店家後台設定。
     @Enumerated(EnumType.STRING)
     @Column(name = "coat_type", nullable = false)
     @Builder.Default
-    private CoatType coatType = CoatType.SHORT;                    // 毛長（短/中長/長）
+    private CoatType coatType = CoatType.UNDEFINED;                // 毛長（未定義 → 店家定義後：短/中長/長）
 
     // ── 預約須知相關欄位 ──────────────────────────────────────────────────
     @Column(name = "has_separation_anxiety", nullable = false)

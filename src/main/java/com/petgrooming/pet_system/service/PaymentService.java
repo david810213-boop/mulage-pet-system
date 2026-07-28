@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Transaction;
@@ -29,6 +30,7 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
     private final WalletService walletService;
+    private final AppointmentService appointmentService;
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -56,6 +58,11 @@ public class PaymentService {
         // 1c. 確認尚未付款
         if (appointment.isPaid()) {
             throw new IllegalArgumentException("此預約已完成結帳");
+        }
+
+        // 1c-2. 必須先完成「進行中核對」（店員與家長現場核對本次美容狀況並簽名），才能結帳
+        if (!appointment.isFinalCheckDone()) {
+            throw new IllegalArgumentException("請先完成進行中預約的核對（美容狀況備註 + 家長簽名）後才能結帳");
         }
 
         // 1d. 確認沒有重複交易紀錄
@@ -99,8 +106,9 @@ public class PaymentService {
 
         transactionRepository.save(transaction);
 
-        // 1h. 將預約標記為已付款
+        // 1h. 將預約標記為已付款，並把狀態轉為「已完成」（結帳＝整筆服務結束）
         appointment.setPaid(true);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
         appointmentRepository.save(appointment);
 
         // 1i. 自動建立績效紀錄（依預約選擇的服務項目 + 負責員工）
@@ -118,40 +126,56 @@ public class PaymentService {
     private void autoCreatePerformanceRecords(Appointment appointment,
                                               User checkoutUser,
                                               boolean isStaffOrAdmin) {
-        // 決定績效歸屬的員工
-        User staff = appointment.getStaff();
-        if (staff == null && isStaffOrAdmin) {
-            staff = checkoutUser;
+        // 若此預約已透過「現場開單（依預約編號）」確認過服務項目，
+        // 積分改依各項目個別指定的經手人計算，不再整包算給單一 appointment.staff。
+        if (appointmentService.hasCheckinOrderItems(appointment.getId())) {
+            appointmentService.awardPendingItemPointsForAppointment(appointment.getId());
+        } else {
+            // 舊版相容邏輯：沒有現場開單項目的預約（例如舊資料），維持原本整包算給
+            // appointment.staff（或操作結帳的店家/員工）的方式，避免破壞既有資料。
+            // 決定績效歸屬的員工
+            User staff = appointment.getStaff();
+            if (staff == null && isStaffOrAdmin) {
+                staff = checkoutUser;
+            }
+            if (staff == null) {
+                log.warn("預約 #{} 無指定員工，跳過自動績效建立", appointment.getId());
+                return;
+            }
+
+            List<GroomingItem> items = appointment.getSelectedItems();
+            if (items == null || items.isEmpty()) {
+                log.warn("預約 #{} 無服務項目，跳過績效建立", appointment.getId());
+                return;
+            }
+
+            // 依每個服務項目建立一筆績效紀錄（OTHER 類別跳過）
+            for (GroomingItem item : items) {
+                if (item.getPerformanceCategory() == PerformanceCategory.OTHER) continue;
+                if (item.getPoints() <= 0) continue;
+
+                performanceService.addRecord(
+                        staff.getId(),
+                        appointment.getId(),
+                        item.getPerformanceCategory(),
+                        item.getPoints(),
+                        appointment.getDate(),
+                        "自動計算：" + item.getName()
+                );
+            }
         }
-        if (staff == null) {
-            log.warn("預約 #{} 無指定員工，跳過自動績效建立", appointment.getId());
+
+        // 自動補一筆「完成」積分（整筆預約完成，記入結帳經手人的「完成確認」）
+        User completeStaff = appointment.getStaff();
+        if (completeStaff == null && isStaffOrAdmin) {
+            completeStaff = checkoutUser;
+        }
+        if (completeStaff == null) {
+            log.warn("預約 #{} 無法判斷經手人，跳過「完成」積分", appointment.getId());
             return;
         }
-
-        List<GroomingItem> items = appointment.getSelectedItems();
-        if (items == null || items.isEmpty()) {
-            log.warn("預約 #{} 無服務項目，跳過績效建立", appointment.getId());
-            return;
-        }
-
-        // 依每個服務項目建立一筆績效紀錄（OTHER 類別跳過）
-        for (GroomingItem item : items) {
-            if (item.getPerformanceCategory() == PerformanceCategory.OTHER) continue;
-            if (item.getPoints() <= 0) continue;
-
-            performanceService.addRecord(
-                    staff.getId(),
-                    appointment.getId(),
-                    item.getPerformanceCategory(),
-                    item.getPoints(),
-                    appointment.getDate(),
-                    "自動計算：" + item.getName()
-            );
-        }
-
-        // 自動補一筆「完成」積分（整筆預約完成）
         performanceService.addRecord(
-                staff.getId(),
+                completeStaff.getId(),
                 appointment.getId(),
                 PerformanceCategory.COMPLETE,
                 PerformanceCategory.COMPLETE.getDefaultPoints(),
@@ -159,8 +183,8 @@ public class PaymentService {
                 "預約 #" + appointment.getId() + " 完成"
         );
 
-        log.info("預約 #{} 結帳後自動建立 {} 筆績效紀錄（員工：{}）",
-                appointment.getId(), items.size() + 1, staff.getName());
+        log.info("預約 #{} 結帳後自動建立績效紀錄（經手人：{}）",
+                appointment.getId(), completeStaff.getName());
     }
 
     // ── 2. 查詢自己的交易紀錄 ──────────────────────────────────────────────

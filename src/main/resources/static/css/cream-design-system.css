@@ -5,36 +5,31 @@
 
 /* ── Design Tokens ── */
 :root {
-  --cream-50: #fffdf7;
-  --cream-100: #fdf8ee;
-  --cream-200: #faf0d7;
-  --cream-300: #f5e6c0;
-  --cream-400: #edd49a;
-  --cream-500: #d4a96a;
-  --cream-600: #b8894a;
-  --cream-700: #8c6435;
-  --brown-dark: #3d2e1e;
-  --brown-mid: #6b4e32;
-  --brown-light: #a07850;
-  --white-warm: #fffef9;
-  --shadow-xs:
-    0 1px 3px rgba(61, 46, 30, 0.06), 0 1px 2px rgba(61, 46, 30, 0.04);
-  --shadow-sm:
-    0 2px 8px rgba(61, 46, 30, 0.08), 0 1px 3px rgba(61, 46, 30, 0.06);
-  --shadow-md:
-    0 4px 16px rgba(61, 46, 30, 0.1), 0 2px 6px rgba(61, 46, 30, 0.07);
-  --shadow-lg:
-    0 8px 32px rgba(61, 46, 30, 0.12), 0 4px 12px rgba(61, 46, 30, 0.08);
-  --shadow-btn:
-    0 3px 10px rgba(61, 46, 30, 0.18), 0 1px 3px rgba(61, 46, 30, 0.12);
-  --shadow-btn-hover:
-    0 6px 18px rgba(61, 46, 30, 0.22), 0 2px 6px rgba(61, 46, 30, 0.14);
+  /* 慕沐村品牌色票 — 炭黑金線 · 大地色系 */
+  --cream-50: #faf7f1;
+  --cream-100: #f6f2ea;
+  --cream-200: #ede5d3;
+  --cream-300: #e3dccc;
+  --cream-400: #d9be8f;
+  --cream-500: #b8935a;
+  --cream-600: #9c7841;
+  --cream-700: #7a5e34;
+  --brown-dark: #2b2a28;
+  --brown-mid: #5c574c;
+  --brown-light: #8a8072;
+  --white-warm: #fffefb;
+  --shadow-xs: 0 1px 2px rgba(43, 42, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(43, 42, 40, 0.07);
+  --shadow-md: 0 2px 8px rgba(43, 42, 40, 0.08);
+  --shadow-lg: 0 4px 16px rgba(43, 42, 40, 0.1);
+  --shadow-btn: none;
+  --shadow-btn-hover: none;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --transition-fast: all 0.15s ease;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --transition: all 0.15s ease;
+  --transition-fast: all 0.12s ease;
 }
 
 /* ── Reset & Base ── */
@@ -48,37 +43,40 @@
 
 body {
   font-family:
+    "Noto Serif TC",
     "Segoe UI",
     system-ui,
     -apple-system,
-    sans-serif;
+    serif;
   background: var(--cream-100);
   color: var(--brown-dark);
   line-height: 1.6;
   min-height: 100vh;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+.section-title,
+th {
+  font-family: "Noto Serif TC", serif;
 }
 
 /* ── Layout ── */
 .page-wrapper {
   min-height: 100vh;
-  background:
-    radial-gradient(
-      ellipse at 20% 0%,
-      rgba(253, 240, 215, 0.6) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 80% 100%,
-      rgba(237, 212, 154, 0.3) 0%,
-      transparent 50%
-    ),
-    var(--cream-100);
+  background: var(--cream-100);
+  display: flex;
+  align-items: stretch;
 }
 
 .content {
   max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+  flex: 1;
+  min-width: 0;
 }
 .content-sm {
   max-width: 560px;
@@ -88,10 +86,10 @@ body {
 
 /* ── Typography ── */
 h1 {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 25px;
+  font-weight: 600;
   color: var(--brown-dark);
-  letter-spacing: -0.3px;
+  letter-spacing: 0.2px;
 }
 h2 {
   font-size: 20px;
@@ -140,54 +138,49 @@ p {
   box-shadow: var(--shadow-btn);
   transform: translateY(0);
   letter-spacing: 0.2px;
+  background: var(--brown-dark);
+  color: var(--cream-100);
 }
 
 .btn:hover {
-  box-shadow: var(--shadow-btn-hover);
-  transform: translateY(-2px);
+  opacity: 0.88;
+}
+
+.btn:disabled {
+  background: var(--cream-300);
+  color: var(--brown-light);
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .btn:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  opacity: 0.75;
 }
 
 .btn-primary {
-  background: linear-gradient(
-    135deg,
-    var(--brown-dark) 0%,
-    var(--brown-mid) 100%
-  );
+  background: var(--brown-dark);
   color: var(--cream-100);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #2a1f14 0%, var(--brown-dark) 100%);
+  background: #454340;
   color: var(--cream-100);
 }
 
 .btn-cream {
-  background: linear-gradient(
-    135deg,
-    var(--cream-300) 0%,
-    var(--cream-200) 100%
-  );
+  background: var(--cream-200);
   color: var(--brown-dark);
   border: 1px solid var(--cream-400);
 }
 
 .btn-cream:hover {
-  background: linear-gradient(
-    135deg,
-    var(--cream-400) 0%,
-    var(--cream-300) 100%
-  );
+  background: var(--cream-300);
 }
 
 .btn-outline {
-  background: transparent;
-  color: var(--brown-mid);
-  border: 1.5px solid var(--cream-400);
+  background: var(--cream-300);
+  color: var(--brown-dark);
+  border: 1.5px solid var(--cream-700);
   box-shadow: var(--shadow-xs);
 }
 
@@ -344,11 +337,11 @@ tr:hover td {
   border: 1px solid var(--cream-400);
 }
 .badge-admin {
-  background: linear-gradient(135deg, var(--brown-dark), var(--brown-mid));
-  color: var(--cream-200);
+  background: var(--brown-dark);
+  color: var(--cream-100);
 }
 .badge-staff {
-  background: linear-gradient(135deg, var(--cream-400), var(--cream-500));
+  background: var(--cream-400);
   color: var(--brown-dark);
 }
 .badge-cust {
@@ -375,13 +368,12 @@ tr:hover td {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--cream-400), var(--cream-500));
+  height: 2px;
+  background: var(--cream-500);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 .stat-card .label {
@@ -449,7 +441,6 @@ tr:hover td {
 }
 
 .pet-card:hover {
-  transform: translateY(-3px);
   box-shadow: var(--shadow-md);
 }
 .pet-card h3 {
@@ -469,7 +460,7 @@ tr:hover td {
   font-size: 11px;
   font-weight: 600;
   padding: 3px 10px;
-  background: linear-gradient(135deg, var(--cream-300), var(--cream-200));
+  background: var(--cream-200);
   color: var(--brown-mid);
   border-radius: 20px;
   margin-bottom: 8px;
@@ -495,31 +486,27 @@ tr:hover td {
   gap: 8px;
 }
 
-/* 1. 「＋ 新增預約」按鈕 (焦糖橘) */
+/* 1. 「＋ 新增預約」按鈕 (主要動作 — 炭黑) */
 .action-bar .btn {
-    background-color: #B87333 !important;
-    color: #FFFFFF !important;
-    border: 1px solid #B87333 !important;
+    background-color: var(--brown-dark) !important;
+    color: var(--cream-100) !important;
+    border: 1px solid var(--brown-dark) !important;
 }
 
-/* 滑鼠懸停時稍微變深，提升互動感 */
 .action-bar .btn:hover {
-    background-color: #9E5E24 !important;
-    border-color: #9E5E24 !important;
+    opacity: 0.88;
 }
 
 
-/* 2. 「＋ 新增寵物」按鈕 (暖駝色) */
+/* 2. 次要動作按鈕 (金線色) */
 .action-bar .btn-outline {
-    background-color: #D2B48C !important;
-    color: #FFFFFF !important;
-    border: 1px solid #D2B48C !important;
+    background-color: var(--cream-500) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--cream-500) !important;
 }
 
-/* 滑鼠懸停時稍微變深 */
 .action-bar .btn-outline:hover {
-    background-color: #C1A076 !important;
-    border-color: #C1A076 !important;
+    opacity: 0.88;
 }
 
 /* ── Section Divider ── */
@@ -535,7 +522,7 @@ tr:hover td {
 
 /* ── No-pet Warning ── */
 .no-pet-box {
-  background: linear-gradient(135deg, var(--cream-200), var(--cream-100));
+  background: var(--cream-100);
   border: 1.5px dashed var(--cream-400);
   border-radius: var(--radius-md);
   padding: 2rem;
@@ -640,32 +627,28 @@ tr:hover td {
    「新增寵物」等表單頁面的按鈕顏色自訂 (暖駝色)
    ========================================================================== */
 
-/* 1. 當表單(form)內出現 class="btn" 的主送出按鈕時，強行指定為暖駝色 */
+/* 1. 當表單(form)內出現 class="btn" 的主送出按鈕時，指定為金線色 */
 .content form .btn:not(.btn-outline) {
-    background: #D2B48C !important;
-    color: #FFFFFF !important;
-    border: 1px solid #D2B48C !important;
+    background: var(--cream-500) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--cream-500) !important;
 }
 
-/* 暖駝色按鈕滑鼠懸停效果 */
 .content form .btn:not(.btn-outline):hover {
-    background: #C1A076 !important;
-    border-color: #C1A076 !important;
-    color: #FFFFFF !important;
+    opacity: 0.88;
+    color: #ffffff !important;
 }
 
 /* 2. 表單內的「取消」按鈕 (btn-outline) 樣式優化 */
 .content form .btn-outline {
-    background: #FFFFFF !important;
-    color: #D2B48C !important;
-    border: 1.5px solid #D2B48C !important;
+    background: #ffffff !important;
+    color: var(--cream-600) !important;
+    border: 1.5px solid var(--cream-500) !important;
 }
 
-/* 取消按鈕滑鼠懸停效果 */
 .content form .btn-outline:hover {
-    background: var(--cream-50) !important; /* 使用你設計系統中的奶油白 */
-    color: #C1A076 !important;
-    border-color: #C1A076 !important;
+    background: var(--cream-50) !important;
+    opacity: 0.88;
 }
 
 

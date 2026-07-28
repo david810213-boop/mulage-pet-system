@@ -28,10 +28,13 @@ public class AppointmentResponse {
     private boolean paid;
     private AppointmentStatus status;
     private String statusLabel;
+    private LocalDateTime confirmedTime; // 需求 3：店家敲定的最後時間
+    private String memberNote;           // 需求 7：會員可見備注（不含店家內部備注）
     private boolean cancelled;
     private LocalDateTime cancelledAt;
     private String cancelReason;
     private String cancelledBy;
+    private boolean finalCheckDone; // 進行中核對是否已完成（結帳按鈕的顯示要用到，會員自助結帳時也需要）
 
     // 從 Entity 轉成 DTO 的靜態工廠方法
     public static AppointmentResponse from(Appointment a) {
@@ -51,10 +54,14 @@ public class AppointmentResponse {
         res.setPaid(a.isPaid());
         res.setStatus(a.getStatus());
         res.setStatusLabel(a.getStatus().getLabel());
+        res.setConfirmedTime(a.getConfirmedTime());
+        // ⚠️ 需求 7：只放 memberNote，internalNote 絕不放進顧客可見的 DTO
+        res.setMemberNote(a.getMemberNote());
         res.setCancelled(a.isCancelled());
         res.setCancelledAt(a.getCancelledAt());
         res.setCancelReason(a.getCancelReason());
         res.setCancelledBy(a.getCancelledBy());
+        res.setFinalCheckDone(a.isFinalCheckDone());
         return res;
     }
 }

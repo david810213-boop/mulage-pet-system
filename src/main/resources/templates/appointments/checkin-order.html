@@ -1,0 +1,100 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('現場開單 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: 640px">
+        <div
+          class="alert alert-error"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
+
+        <div th:if="${appointment == null}" class="card" style="text-align: center; padding: 3rem 2rem">
+          <p style="color: var(--brown-light)">找不到這筆預約，或此預約目前不是「已確認」狀態。</p>
+          <a href="/appointments?status=CONFIRMED" class="btn" style="margin-top: 1rem; display: inline-block;">返回預約列表</a>
+        </div>
+
+        <div th:if="${appointment != null}">
+          <h2 style="margin-bottom: 4px">現場開單</h2>
+          <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem">
+            依現場實際情況確認/調整本次服務項目，確認後才能開始服務
+          </p>
+
+          <div class="card" style="margin-bottom: 1.25rem">
+            <table style="box-shadow: none; border: none;">
+              <tr>
+                <td style="color: var(--brown-light); width: 100px; white-space: nowrap; border: none;">預約編號</td>
+                <td style="border: none;" th:text="'AP' + ${#numbers.formatInteger(appointment.id, 3)}"></td>
+              </tr>
+              <tr>
+                <td style="color: var(--brown-light); white-space: nowrap; border: none;">飼主 / 寵物</td>
+                <td style="border: none;" th:text="${appointment.ownerName} + ' / ' + ${appointment.petName} + '（' + ${appointment.petType} + '）'"></td>
+              </tr>
+              <tr>
+                <td style="color: var(--brown-light); white-space: nowrap; border: none;">原預約項目</td>
+                <td style="border: none;">
+                  <span th:each="item, iter : ${appointment.selectedItems}">
+                    <span th:text="${item.name}"></span><span th:if="${!iter.last}">、</span>
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <form method="post" th:action="@{/appointments/{id}/checkin-order(id=${appointment.id})}">
+            <div class="card" style="margin-bottom: 1rem">
+              <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 12px">
+                本次實際服務項目 *（依現場情況勾選，可與原預約項目不同）
+              </h3>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                  gap: 10px;
+                  padding: 0.8rem;
+                  background-color: var(--cream-100);
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                "
+              >
+                <label
+                  th:each="item : ${groomingItems}"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 10px 14px;
+                    background-color: #ffffff;
+                    border: 1px solid var(--cream-200);
+                    border-radius: 6px;
+                    cursor: pointer;
+                  "
+                >
+                  <span style="display:flex; align-items:center; gap:10px;">
+                    <input
+                      type="checkbox"
+                      name="itemCodes"
+                      th:value="${item.itemCode}"
+                      style="width: 16px; height: 16px; accent-color: var(--brown-dark);"
+                    />
+                    <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark)"></span>
+                  </span>
+                  <span th:text="'$' + ${item.price != null ? #numbers.formatDecimal(item.price, 1, 0) : '0'}" style="color: #2e7d32; font-weight: 600"></span>
+                </label>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px">
+              <button type="submit" class="btn btn-primary">確認開單，可開始服務</button>
+              <a href="/appointments?status=CONFIRMED" class="btn btn-outline">取消</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -39,7 +39,7 @@
           <!-- ── 毛孩基本資料 ── -->
           <div class="card" style="margin-bottom: 1rem">
             <h3 style="font-size: 15px; color: #5c3d2e; margin-bottom: 16px">
-              𖥸 毛孩基本資料
+              ◆ 毛孩基本資料
             </h3>
 
             <!-- 毛孩類型 -->
@@ -148,7 +148,6 @@
                   th:each="c : ${coatTypes}"
                   th:value="${c.name()}"
                   th:text="${c.label}"
-                  th:selected="${petRequest?.coatType?.name() == c.name()}"
                 ></option>
               </select>
             </div>
@@ -157,7 +156,7 @@
           <!-- ── 家長資料 ── -->
           <div class="card" style="margin-bottom: 1rem">
             <h3 style="font-size: 15px; color: #5c3d2e; margin-bottom: 16px">
-              𖥸 家長資料
+              ◆ 家長資料
             </h3>
 
             <!-- 家長手機 -->

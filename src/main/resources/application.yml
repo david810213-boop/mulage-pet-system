@@ -1,14 +1,9 @@
 spring:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
   datasource:
-    url: jdbc:h2:file:./data/petdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:petdb}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Taipei&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
 
   jpa:
     hibernate:
@@ -17,6 +12,7 @@ spring:
     properties:
       hibernate:
         "[hibernate.format_sql]": true
+        "[hibernate.dialect]": org.hibernate.dialect.MySQLDialect
 
   thymeleaf:
     prefix: classpath:/templates/
@@ -37,3 +33,7 @@ server:
 # LINE Login 設定（在 LINE Developers Console 建立 LINE Login Channel 後取得）
 line:
   channel-id: ${LINE_CHANNEL_ID:2010567973}
+  # LINE 官方帳號推播用（跟上面的 Login channel 不同，需要另外在 Messaging API 分頁簽發）
+  # 還沒申請好之前留空即可，LineMessagingService 會自動跳過發送、只記 log，不會讓系統出錯。
+  messaging:
+    channel-access-token: ${LINE_MESSAGING_CHANNEL_ACCESS_TOKEN:}

@@ -4,127 +4,204 @@
     <nav
       th:fragment="nav"
       style="
-        background: var(--white-warm);
-        border-bottom: 1px solid var(--cream-300);
-        padding: 0 1.5rem;
+        background: var(--brown-dark);
+        width: 176px;
+        min-width: 176px;
+        min-height: 100vh;
+        position: sticky;
+        top: 0;
+        align-self: flex-start;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 56px;
-        box-shadow: var(--shadow-xs);
+        flex-direction: column;
+        padding: 20px 0;
       "
     >
       <a
         href="/dashboard"
         style="
-          font-weight: 700;
-          font-size: 16px;
           text-decoration: none;
-          color: var(--brown-dark);
-          letter-spacing: -0.3px;
+          padding: 0 20px 20px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid #454340;
+          display: block;
         "
       >
-        🐾 慕沐村 Mulage pet
+        <div style="color: var(--cream-500); font-size: 15px; font-weight: 500; letter-spacing: 0.5px">慕沐村</div>
+        <div style="color: var(--cream-500); font-size: 9px; opacity: 0.7; letter-spacing: 1px; margin-top: 2px">MULAGE PET</div>
       </a>
 
-      <div style="display: flex; gap: 1.5rem; align-items: center">
+      <div style="display: flex; flex-direction: column; padding: 4px 10px; gap: 1px; flex: 1">
         <a
           href="/appointments"
           style="
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--brown-mid);
+            color: var(--cream-200);
             text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
             transition: var(--transition-fast);
           "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
           >預約管理</a
         >
         <a
           href="/pets"
           style="
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--brown-mid);
+            color: var(--cream-200);
             text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
             transition: var(--transition-fast);
           "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
           th:if="${user != null and user.customer}"
           >我的寵物</a
         >
         <a
           href="/payments"
           style="
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--brown-mid);
+            color: var(--cream-200);
             text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
             transition: var(--transition-fast);
           "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
           >交易紀錄</a
         >
+
+        <div
+          th:if="${user != null and user.staffOrAdmin}"
+          style="font-size: 10px; color: #6b6459; letter-spacing: 1px; padding: 14px 12px 4px; text-transform: uppercase"
+        >
+          店務管理
+        </div>
         <a
           href="/admin/wallets"
           style="
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--brown-mid);
+            color: var(--cream-200);
             text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
             transition: var(--transition-fast);
           "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
           th:if="${user != null and user.staffOrAdmin}"
           >儲值管理</a
         >
         <a
-          href="/admin/performance"
+          href="/admin/walk-in-orders"
           style="
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--brown-mid);
+            color: var(--cream-200);
             text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
             transition: var(--transition-fast);
           "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
+          th:if="${user != null and user.staffOrAdmin}"
+          >現場開單</a
+        >
+        <a
+          href="/admin/performance"
+          style="
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--cream-200);
+            text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+          "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
           th:if="${user != null and user.staffOrAdmin}"
           >績效管理</a
         >
         <a
-          href="/admin"
+          href="/admin/customers"
           style="
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--brown-mid);
+            color: var(--cream-200);
             text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
             transition: var(--transition-fast);
           "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
+          th:if="${user != null and user.staffOrAdmin}"
+          >會員信息</a
+        >
+        <a
+          href="/admin"
+          style="
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--cream-200);
+            text-decoration: none;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+          "
+          onmouseover="this.style.background='#3a3835'"
+          onmouseout="this.style.background='transparent'"
           th:if="${user != null and user.admin}"
           >管理後台</a
         >
       </div>
 
       <div
-        style="display: flex; align-items: center; gap: 12px"
+        style="border-top: 1px solid #454340; padding: 14px 16px 4px; margin-top: 8px"
         th:if="${user != null}"
       >
-        <span
-          style="font-size: 13px; color: var(--brown-mid); font-weight: 500"
-        >
-          <span th:text="${user.name}">使用者</span>
-
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px">
+          <span style="font-size: 13px; color: var(--cream-100); font-weight: 500" th:text="${user.name}">使用者</span>
           <span
-            style="font-size: 11px; margin-left: 6px"
+            style="font-size: 10px"
             th:class="${user.role.name() == 'ADMIN' ? 'badge badge-admin' : user.role.name() == 'STAFF' ? 'badge badge-staff' : 'badge badge-cust'}"
             th:text="${user.role}"
             >ROLE</span
           >
-        </span>
+        </div>
+
+        <a
+          href="/account/password"
+          style="
+            display: block;
+            font-size: 12px;
+            color: var(--cream-200);
+            text-decoration: none;
+            padding: 6px 0;
+          "
+          th:if="${user != null and user.staffOrAdmin}"
+        >
+          修改密碼
+        </a>
 
         <a
           href="/auth/logout"
-          class="btn btn-outline"
           style="
-            padding: 4px 12px;
+            display: block;
             font-size: 12px;
-            border-radius: var(--radius-sm);
-            box-shadow: none;
+            color: var(--cream-500);
+            text-decoration: none;
+            padding: 6px 0 4px;
           "
         >
           登出

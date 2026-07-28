@@ -58,6 +58,77 @@ public class PerformanceService {
         return recordRepo.save(record);
     }
 
+    // ── 現場開單專用：同一份積分邏輯，但對應現場單而非預約 ────────────
+    @Transactional
+    public PerformanceRecord addWalkInRecord(Long staffId, Long walkInOrderId,
+                                             PerformanceCategory category, Double points,
+                                             LocalDate serviceDate, String note) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + staffId));
+
+        PerformanceRecord record = PerformanceRecord.builder()
+                .staff(staff)
+                .walkInOrderId(walkInOrderId)
+                .category(category)
+                .points(points)
+                .serviceDate(serviceDate)
+                .note(note)
+                .build();
+
+        return recordRepo.save(record);
+    }
+
+    // ── 拆分積分：從既有紀錄「對半平分」給另一位員工 ──────────────────────
+    // 用於兩位員工共同完成同一項目的情境（例如各洗一半）。
+    // 僅支援對半拆分（不接受任意手動輸入的小數），因為「除以 2」在浮點數運算中
+    // 一定是精確運算，不會產生累積誤差；若開放任意小數輸入，長期下來可能因為
+    // 二進位浮點數無法精確表示部分十進位小數，讓報表出現對不起來的尾數。
+    // 會直接修正原始紀錄的積分（而非單純疊加新紀錄），確保同一筆預約的積分總和不會憑空增加。
+    @Transactional
+    public PerformanceRecord splitRecord(Long sourceRecordId, Long toStaffId, String note) {
+        PerformanceRecord source = recordRepo.findById(sourceRecordId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到原始績效紀錄：" + sourceRecordId));
+
+        if (source.getPoints() == null || source.getPoints() <= 0) {
+            throw new IllegalArgumentException("原始紀錄目前積分為 0，無法拆分");
+        }
+
+        User toStaff = userRepository.findById(toStaffId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + toStaffId));
+
+        if (source.getStaff().getId().equals(toStaffId)) {
+            throw new IllegalArgumentException("拆分對象不可與原負責員工相同");
+        }
+
+        // 對半平分：除以 2 在浮點數運算中一定精確，不會有累積誤差
+        double half = source.getPoints() / 2.0;
+
+        // 1. 原始紀錄改為一半積分
+        source.setPoints(half);
+        String originalStaffName = source.getStaff().getName();
+        source.setNote((source.getNote() == null ? "" : source.getNote() + "；")
+                + "已對半拆分 " + half + " 分給 " + toStaff.getName());
+        recordRepo.save(source);
+
+        // 2. 新增一筆屬於拆分對象的紀錄，積分總和與原本相同（不會憑空增加）
+        PerformanceRecord split = PerformanceRecord.builder()
+                .staff(toStaff)
+                .appointmentId(source.getAppointmentId())
+                .category(source.getCategory())
+                .points(half)
+                .serviceDate(source.getServiceDate())
+                .note((note == null || note.isBlank()
+                        ? "對半拆分自 " + originalStaffName
+                        : note) + "（原紀錄 #" + source.getId() + "）")
+                .build();
+
+        log.info("績效拆分：預約 #{} 的 {} 積分紀錄 #{}，對半拆分為 {} 分 / {} 分，{} ← {}",
+                source.getAppointmentId(), source.getCategory().getLabel(), source.getId(),
+                half, half, toStaff.getName(), originalStaffName);
+
+        return recordRepo.save(split);
+    }
+
     // ── 查詢某員工某月績效明細 ──────────────────────────────────────────
     public List<PerformanceRecord> getMonthlyRecords(Long staffId, int year, int month) {
         YearMonth ym = YearMonth.of(year, month);
