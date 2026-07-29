@@ -5,11 +5,6 @@
   ></head>
   <body>
     <style>
-      /* 此頁表格內容較多，內容區加寬避免與側欄空間互相擠壓 */
-      .content {
-        max-width: 1400px;
-      }
-
       /* 此頁表格：文字強制不換行，欄寬依內容自動調整 */
       .appt-table {
         width: auto;
@@ -110,15 +105,7 @@
           <div>
             <h2 style="margin: 0">預約管理</h2>
             <p
-<<<<<<< HEAD
               style="margin: 4px 0 0; font-size: 13px; color: var(--brown-light)"
-=======
-              style="
-                margin: 4px 0 0;
-                font-size: 13px;
-                color: var(--brown-light);
-              "
->>>>>>> 96ddec25dc36ddea36e89d39930af57bfcc1266f
               th:if="${today != null}"
               th:text="${#temporals.format(today, 'yyyy年M月d日 · EEEE')}"
             ></p>

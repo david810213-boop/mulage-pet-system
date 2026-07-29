@@ -12,12 +12,9 @@
           th:if="${errorMsg}"
           th:text="${errorMsg}"
         ></div>
-
-<<<<<<< HEAD
         <div th:if="${appointment == null}" class="card" style="text-align: center; padding: 3rem 2rem">
           <p style="color: var(--brown-light)">找不到這筆預約，或此預約目前不是「進行中」狀態。</p>
           <a href="/appointments?status=IN_PROGRESS" class="btn" style="margin-top: 1rem; display: inline-block;">返回預約列表</a>
-=======
         <div
           th:if="${appointment == null}"
           class="card"
@@ -32,14 +29,11 @@
             style="margin-top: 1rem; display: inline-block"
             >返回預約列表</a
           >
->>>>>>> 96ddec25dc36ddea36e89d39930af57bfcc1266f
         </div>
 
         <div th:if="${appointment != null}">
           <h2 style="margin-bottom: 4px">進行中核對</h2>
-<<<<<<< HEAD
           <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem">
-=======
           <p
             style="
               font-size: 13px;
@@ -47,12 +41,10 @@
               margin-bottom: 1.25rem;
             "
           >
->>>>>>> 96ddec25dc36ddea36e89d39930af57bfcc1266f
             請與家長當面核對本次美容狀況，填寫備注並請家長簽名確認後才能結帳
           </p>
 
           <div class="card" style="margin-bottom: 1.25rem">
-<<<<<<< HEAD
             <table style="box-shadow: none; border: none;">
               <tr>
                 <td style="color: var(--brown-light); width: 100px; white-space: nowrap; border: none;">預約編號</td>
@@ -79,7 +71,6 @@
                   <div style="font-size: 12px; color: var(--brown-light); margin-top: 4px;">
                     以上為店員現場開單確認的項目，可能與會員線上預約時勾選的不同，請與家長核對此明細為準
                   </div>
-=======
             <table style="box-shadow: none; border: none">
               <tr>
                 <td
@@ -142,7 +133,6 @@
                     <span th:text="${item.name}"></span
                     ><span th:if="${!iter.last}">、</span>
                   </span>
->>>>>>> 96ddec25dc36ddea36e89d39930af57bfcc1266f
                 </td>
               </tr>
             </table>

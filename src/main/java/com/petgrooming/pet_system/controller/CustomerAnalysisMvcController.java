@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
+import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
@@ -124,6 +125,7 @@ public class CustomerAnalysisMvcController {
 
         var pets = petService.getMyPets(username);
         model.addAttribute("pets", pets);
+        model.addAttribute("coatTypes", CoatType.values());
         var groomingNotesByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.model.PetGroomingNote>>();
         for (var p : pets) {
             groomingNotesByPetId.put(p.getId(),

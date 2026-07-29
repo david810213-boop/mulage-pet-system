@@ -9,12 +9,17 @@
 
       <div class="content">
         <!-- 返回按鈕 -->
-        <a
-          href="/admin/wallets"
-          class="btn btn-outline"
-          style="margin-bottom: 1rem; display: inline-block"
-          >← 返回列表</a
-        >
+        <div style="display: flex; gap: 8px; margin-bottom: 1rem">
+          <a href="/admin/wallets" class="btn btn-outline" style="display: inline-block"
+            >← 返回列表</a
+          >
+          <a
+            th:href="@{/admin/customers/{u}(u=${customer.username})}"
+            class="btn btn-outline"
+            style="display: inline-block"
+            >🐾 查看會員信息（寵物毛長／備註）</a
+          >
+        </div>
 
         <!-- 成功/失敗訊息 -->
         <div
@@ -251,91 +256,6 @@
               <button type="submit" class="btn">確認儲值</button>
             </form>
           </div>
-        </div>
-
-        <!-- 需求 2：寵物毛長設定 -->
-        <div
-          style="
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1.5rem;
-          "
-        >
-          <h3 style="margin-bottom: 12px; font-size: 15px; color: #666">
-            🐾 寵物毛長設定
-          </h3>
-          <table>
-            <thead>
-              <tr>
-                <th>寵物</th>
-                <th>目前毛長</th>
-                <th>設定</th>
-                <th>美容狀況歷史</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr th:if="${#lists.isEmpty(pets)}">
-                <td colspan="4" style="text-align: center; color: #aaa;">此會員尚未新增寵物</td>
-              </tr>
-              <tr th:each="p : ${pets}">
-                <td th:text="${p.name}"></td>
-                <td>
-                  <span th:text="${p.coatTypeLabel}"
-                        th:style="${p.coatType.name() == 'UNDEFINED'} ? 'color:#e53935;' : 'color:#43a047;'"></span>
-                </td>
-                <td>
-                  <form th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
-                        method="post" style="display:flex; gap:6px;">
-                    <select name="coatType" style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px;">
-                      <option th:each="c : ${coatTypes}" th:value="${c}" th:text="${c.label}"
-                              th:selected="${c == p.coatType}"></option>
-                    </select>
-                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">儲存</button>
-                  </form>
-                </td>
-                <td style="max-width: 260px;">
-                  <details th:if="${groomingNotesByPetId != null and !#lists.isEmpty(groomingNotesByPetId.get(p.id))}">
-                    <summary style="cursor:pointer; font-size:12px; color:var(--brown-mid);">
-                      查看 <span th:text="${groomingNotesByPetId.get(p.id).size()}"></span> 筆紀錄
-                    </summary>
-                    <div th:each="n : ${groomingNotesByPetId.get(p.id)}"
-                         style="font-size:11.5px; color:var(--brown-mid); border-top:0.5px solid var(--cream-200); padding:6px 0;">
-                      <div style="color:var(--brown-light);">
-                        <span th:text="${n.serviceDate}"></span> · <span th:text="${n.staff.name}"></span>
-                      </div>
-                      <div th:text="${n.note}"></div>
-                    </div>
-                  </details>
-                  <span th:if="${groomingNotesByPetId == null or #lists.isEmpty(groomingNotesByPetId.get(p.id))}"
-                        style="font-size:12px; color:var(--brown-light);">尚無紀錄</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 需求 8：會員特殊備注（僅後台可見） -->
-        <div
-          style="
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1.5rem;
-          "
-        >
-          <h3 style="margin-bottom: 12px; font-size: 15px; color: #666">
-            📝 會員特殊備注（僅店家後台可見，會員不會看到）
-          </h3>
-          <form th:action="@{/admin/wallets/{u}/note(u=${customer.username})}" method="post"
-                style="display:flex; flex-direction:column; gap:8px;">
-            <textarea name="adminNote" rows="3" th:text="${adminNote}"
-                      placeholder="例：對電剪聲音敏感、慣用現金付款、對某美容師特別信任..."
-                      style="padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:14px; resize:vertical;"></textarea>
-            <button type="submit" class="btn" style="align-self:flex-start; padding:6px 18px;">儲存備注</button>
-          </form>
         </div>
 
         <!-- 會員等級對照表 -->

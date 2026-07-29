@@ -30,26 +30,38 @@
       .cd-info-row {
         display: flex;
         justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
         font-size: 13px;
         padding: 7px 0;
         border-top: 0.5px solid var(--cream-200);
         color: var(--brown-mid);
       }
       .cd-info-row:first-of-type { border-top: none; }
-      .cd-info-row span:first-child { color: var(--brown-light); }
+      .cd-info-row span:first-child {
+        color: var(--brown-light);
+        flex-shrink: 0;
+      }
+      .cd-info-row span:last-child {
+        text-align: right;
+        word-break: break-all;
+        overflow-wrap: anywhere;
+        min-width: 0;
+      }
       .cd-tab-btn {
         padding: 8px 18px;
         font-size: 13.5px;
         border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-        border: 1px solid var(--cream-300);
+        border: 1px solid var(--cream-400);
         border-bottom: none;
-        background: var(--cream-100);
-        color: var(--brown-mid);
+        background: var(--cream-400);
+        color: var(--brown-dark);
         cursor: pointer;
       }
       .cd-tab-btn.active {
-        background: #fff;
-        color: var(--brown-dark);
+        background: var(--cream-500);
+        border-color: var(--cream-500);
+        color: #fff;
         font-weight: 600;
       }
       .cd-tab-panel { display: none; }
@@ -67,11 +79,11 @@
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
 
-      <div class="content" style="max-width: 1200px">
+      <div class="content">
         <a
           href="/admin/customers"
-          class="btn btn-outline"
-          style="margin-bottom: 1.25rem; text-decoration: none; display: inline-block"
+          class="btn"
+          style="margin-bottom: 1.25rem; text-decoration: none; display: inline-block; background: var(--cream-500); color: #fff; border-color: var(--cream-500);"
           >← 返回會員清單</a
         >
 
@@ -89,8 +101,7 @@
               <span th:if="${wallet != null}" class="badge" style="background: var(--cream-500); color: #fff;" th:text="${wallet.cardTierLabel}">等級</span>
             </div>
 
-            <div class="cd-info-row"><span>帳號</span><span th:text="${customer.username}"></span></div>
-            <div class="cd-info-row" th:if="${customer.phone != null}"><span>電話</span><span th:text="${customer.phone}"></span></div>
+            <div class="cd-info-row"><span>手機號碼</span><span th:text="${customer.phone} ?: '尚未填寫'"></span></div>
             <div class="cd-info-row" th:if="${customer.email != null}"><span>Email</span><span th:text="${customer.email}"></span></div>
             <div class="cd-info-row" th:if="${customer.age != null}"><span>年齡</span><span th:text="${customer.age} + ' 歲'"></span></div>
             <div class="cd-info-row" th:if="${customer.occupation != null}"><span>職業</span><span th:text="${customer.occupation}"></span></div>
@@ -102,6 +113,7 @@
             <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--cream-300)">
               <h4 style="font-size: 13px; color: var(--brown-dark); margin-bottom: 8px">🐾 會員備註（店家專用）</h4>
               <form th:action="@{/admin/wallets/{u}/note(u=${customer.username})}" method="post">
+                <input type="hidden" name="returnTo" th:value="@{/admin/customers/{u}(u=${customer.username})}" />
                 <textarea name="adminNote" rows="4"
                           placeholder="例如：都會自己攜帶寵物使用的用品，寵物梳下來的毛都要幫她留著"
                           style="width:100%; font-size:12.5px; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box; resize:vertical;"
@@ -167,14 +179,23 @@
               <div id="tab-pets" class="cd-tab-panel">
                 <div th:if="${#lists.isEmpty(pets)}" class="empty" style="text-align:center; padding:2rem 0;">此會員尚未新增寵物</div>
                 <div th:each="p : ${pets}" style="border:0.5px solid var(--cream-300); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:12px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <div>
                       <span style="font-weight:600; color:var(--brown-dark); font-size:14.5px;" th:text="${p.name}"></span>
                       <span style="font-size:12px; color:var(--brown-light); margin-left:6px;"
                             th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"></span>
                     </div>
-                    <span th:text="${p.coatTypeLabel}"
-                          th:style="${p.coatType.name() == 'UNDEFINED'} ? 'color:#e53935; font-size:12.5px;' : 'color:#43a047; font-size:12.5px;'"></span>
+                    <form th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
+                          method="post" style="display:flex; align-items:center; gap:6px;">
+                      <input type="hidden" name="returnTo" th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'" />
+                      <span th:text="${p.coatTypeLabel}"
+                            th:style="${p.coatType.name() == 'UNDEFINED'} ? 'color:#e53935; font-size:11.5px;' : 'color:#43a047; font-size:11.5px;'"></span>
+                      <select name="coatType" style="padding:4px 6px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:12.5px;">
+                        <option th:each="c : ${coatTypes}" th:value="${c}" th:text="${c.label}"
+                                th:selected="${c == p.coatType}"></option>
+                      </select>
+                      <button type="submit" class="btn" style="padding:4px 10px; font-size:12px;">儲存</button>
+                    </form>
                   </div>
                   <details style="margin-top:8px;" th:if="${groomingNotesByPetId != null and !#lists.isEmpty(groomingNotesByPetId.get(p.id))}">
                     <summary style="cursor:pointer; font-size:12.5px; color:var(--cream-600);">
@@ -232,6 +253,15 @@
         btn.classList.add('active');
         document.getElementById(btn.dataset.tab).classList.add('active');
       }
+
+      // 若網址帶 #tab-xxx（例如儲存毛長設定後導回），自動切到對應分頁
+      (function () {
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+          const btn = document.querySelector('.cd-tab-btn[data-tab="' + hash + '"]');
+          if (btn) switchTab(btn);
+        }
+      })();
     </script>
   </body>
 </html>

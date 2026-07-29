@@ -98,14 +98,17 @@ public class WalletMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/coat-type")
     public String setCoatType(@PathVariable String username, @PathVariable Long petId,
-                              @RequestParam CoatType coatType, RedirectAttributes ra) {
+                              @RequestParam CoatType coatType,
+                              @RequestParam(required = false) String returnTo,
+                              RedirectAttributes ra) {
         try {
             petService.setCoatType(petId, coatType);
             ra.addFlashAttribute("successMsg", "毛長已更新");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
         }
-        return "redirect:/admin/wallets/" + username;
+        return "redirect:" + (returnTo != null && !returnTo.isBlank()
+                ? returnTo : "/admin/wallets/" + username);
     }
 
     // ── POST /admin/wallets/{username}/note ─────────────────────────────────
@@ -114,6 +117,7 @@ public class WalletMvcController {
     @PostMapping("/{username}/note")
     public String setAdminNote(@PathVariable String username,
                                @RequestParam(required = false) String adminNote,
+                               @RequestParam(required = false) String returnTo,
                                RedirectAttributes ra) {
         try {
             userService.setAdminNote(username, adminNote);
@@ -121,7 +125,8 @@ public class WalletMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
         }
-        return "redirect:/admin/wallets/" + username;
+        return "redirect:" + (returnTo != null && !returnTo.isBlank()
+                ? returnTo : "/admin/wallets/" + username);
     }
 
     // ── POST /admin/wallets/{username}/deposit ─────────────────────────────

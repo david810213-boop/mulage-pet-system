@@ -1,212 +1,48 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
   <body>
-    <nav
-      th:fragment="nav"
-      style="
-        background: var(--brown-dark);
-        width: 176px;
-        min-width: 176px;
-        min-height: 100vh;
-        position: sticky;
-        top: 0;
-        align-self: flex-start;
-        display: flex;
-        flex-direction: column;
-        padding: 20px 0;
-      "
-    >
-      <a
-        href="/dashboard"
-        style="
-          text-decoration: none;
-          padding: 0 20px 20px;
-          margin-bottom: 8px;
-          border-bottom: 1px solid #454340;
-          display: block;
-        "
-      >
-        <div style="color: var(--cream-500); font-size: 15px; font-weight: 500; letter-spacing: 0.5px">慕沐村</div>
-        <div style="color: var(--cream-500); font-size: 9px; opacity: 0.7; letter-spacing: 1px; margin-top: 2px">MULAGE PET</div>
+    <!-- 用法完全不變：<div th:replace="~{fragments/nav :: nav}"></div>
+         目前頁面的高亮由下方小段 script 依網址自動判斷，模板不用改。 -->
+    <nav th:fragment="nav" class="nav-side">
+      <a href="/dashboard" class="nav-brand">
+        <div class="name">慕沐村</div>
+        <div class="latin">MULAGE PET</div>
       </a>
 
-      <div style="display: flex; flex-direction: column; padding: 4px 10px; gap: 1px; flex: 1">
-        <a
-          href="/appointments"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          >預約管理</a
-        >
-        <a
-          href="/pets"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.customer}"
-          >我的寵物</a
-        >
-        <a
-          href="/payments"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          >交易紀錄</a
-        >
+      <div class="nav-list">
+        <a href="/appointments" class="nav-link">預約管理</a>
+        <a href="/pets" class="nav-link" th:if="${user != null and user.customer}">我的寵物</a>
+        <a href="/payments" class="nav-link">交易紀錄</a>
 
-        <div
-          th:if="${user != null and user.staffOrAdmin}"
-          style="font-size: 10px; color: #6b6459; letter-spacing: 1px; padding: 14px 12px 4px; text-transform: uppercase"
-        >
-          店務管理
-        </div>
-        <a
-          href="/admin/wallets"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.staffOrAdmin}"
-          >儲值管理</a
-        >
-        <a
-          href="/admin/walk-in-orders"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.staffOrAdmin}"
-          >現場開單</a
-        >
-        <a
-          href="/admin/performance"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.staffOrAdmin}"
-          >績效管理</a
-        >
-        <a
-          href="/admin/customers"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.staffOrAdmin}"
-          >會員信息</a
-        >
-        <a
-          href="/admin"
-          style="
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
-          "
-          onmouseover="this.style.background='#3a3835'"
-          onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.admin}"
-          >管理後台</a
-        >
+        <div class="nav-group" th:if="${user != null and user.staffOrAdmin}">店務管理</div>
+        <a href="/admin/wallets" class="nav-link" th:if="${user != null and user.staffOrAdmin}">儲值管理</a>
+        <a href="/admin/walk-in-orders" class="nav-link" th:if="${user != null and user.staffOrAdmin}">現場開單</a>
+        <a href="/admin/performance" class="nav-link" th:if="${user != null and user.staffOrAdmin}">績效管理</a>
+        <a href="/admin/customers" class="nav-link" th:if="${user != null and user.staffOrAdmin}">會員信息</a>
+        <a href="/admin" class="nav-link" th:if="${user != null and user.admin}">管理後台</a>
       </div>
 
-      <div
-        style="border-top: 1px solid #454340; padding: 14px 16px 4px; margin-top: 8px"
-        th:if="${user != null}"
-      >
-        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px">
-          <span style="font-size: 13px; color: var(--cream-100); font-weight: 500" th:text="${user.name}">使用者</span>
-          <span
-            style="font-size: 10px"
-            th:class="${user.role.name() == 'ADMIN' ? 'badge badge-admin' : user.role.name() == 'STAFF' ? 'badge badge-staff' : 'badge badge-cust'}"
-            th:text="${user.role}"
-            >ROLE</span
-          >
-        </div>
-
-        <a
-          href="/account/password"
-          style="
-            display: block;
-            font-size: 12px;
-            color: var(--cream-200);
-            text-decoration: none;
-            padding: 6px 0;
-          "
-          th:if="${user != null and user.staffOrAdmin}"
-        >
-          修改密碼
-        </a>
-
-        <a
-          href="/auth/logout"
-          style="
-            display: block;
-            font-size: 12px;
-            color: var(--cream-500);
-            text-decoration: none;
-            padding: 6px 0 4px;
-          "
-        >
-          登出
-        </a>
+      <div class="nav-foot" th:if="${user != null}">
+        <div class="who" th:text="${user.name}">使用者</div>
+        <div class="role" th:text="${user.role}">ROLE</div>
+        <a href="/account/password" th:if="${user != null and user.staffOrAdmin}">修改密碼</a>
+        <a href="/auth/logout">登出</a>
       </div>
+
+      <script th:inline="none">
+        (function () {
+          var path = window.location.pathname;
+          var links = document.querySelectorAll(".nav-side .nav-link");
+          var best = null;
+          for (var i = 0; i < links.length; i++) {
+            var href = links[i].getAttribute("href");
+            if (path === href || path.indexOf(href + "/") === 0) {
+              if (!best || href.length > best.getAttribute("href").length) best = links[i];
+            }
+          }
+          if (best) best.classList.add("is-active");
+        })();
+      </script>
     </nav>
   </body>
 </html>
