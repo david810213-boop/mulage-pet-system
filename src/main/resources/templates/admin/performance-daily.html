@@ -58,10 +58,11 @@
 
         <!-- 拆分積分（兩人共同完成同一項目時使用） -->
         <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-          <h3 style="font-size:15px; margin-bottom:4px;">✂️ 拆分積分</h3>
+          <h3 style="font-size:15px; margin-bottom:4px;">✂️ 拆分積分（對半平分）</h3>
           <p style="font-size:13px; color:#999; margin-bottom:16px;">
             僅在兩位員工共同完成同一項目（例如各洗一半）時使用。選擇下方「原始紀錄」後，
-            系統會從該筆紀錄扣除指定積分，改分給另一位員工，<strong>積分總和不會改變</strong>。
+            系統會將該筆紀錄的積分<strong>對半平分</strong>給另一位員工，<strong>積分總和不會改變</strong>。
+            為避免長期累積誤差，僅支援對半拆分，不開放自訂拆分比例。
           </p>
           <form method="post" action="/admin/performance/split"
                 style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:16px; align-items:start;">
@@ -69,12 +70,12 @@
             <input type="hidden" name="date" th:value="${date}" />
 
             <div style="grid-column:1 / -1;">
-              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">原始績效紀錄（要從中拆分的紀錄）</label>
+              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">原始績效紀錄（要對半拆分的紀錄）</label>
               <select name="sourceRecordId" required id="sourceRecordSelect"
                       style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;">
                 <option value="">請選擇原始紀錄</option>
                 <option th:each="r : ${splittableRecords}" th:value="${r.id}"
-                        th:text="'#' + ${r.id} + ' 預約#' + ${r.appointmentId} + '　' + ${r.staff.name} + '　' + ${r.category.label} + '　目前 ' + ${r.points} + ' 分'">
+                        th:text="'#' + ${r.id} + ' 預約#' + ${r.appointmentId} + '　' + ${r.staff.name} + '　' + ${r.category.label} + '　目前 ' + ${r.points} + ' 分（對半後各得 ' + ${r.points / 2} + ' 分）'">
                   紀錄
                 </option>
               </select>
@@ -91,25 +92,16 @@
               </select>
             </div>
 
-            <div>
-              <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">拆分積分（可填 0.5）</label>
-              <input type="number" name="splitPoints" step="0.5" min="0.5"
-                     placeholder="例如：5 或 10.5"
-                     style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;"
-                     required />
-              <p style="font-size:11px; color:#999; margin:4px 0 0;">須小於原始紀錄目前積分</p>
-            </div>
-
             <div style="grid-column:1 / -1;">
               <label style="font-size:13px; color:#666; display:block; margin-bottom:4px;">備註（選填）</label>
-              <input type="text" name="note" placeholder="例如：與小王各分 0.5"
+              <input type="text" name="note" placeholder="例如：與小王各洗一半"
                      style="width:100%; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
             </div>
 
             <div style="grid-column:1 / -1;">
               <button type="submit" class="btn btn-outline"
                       style="border-color:#c9a84c; color:#c9a84c;">
-                拆分積分
+                對半拆分積分
               </button>
             </div>
           </form>

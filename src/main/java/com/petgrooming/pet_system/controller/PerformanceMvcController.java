@@ -58,21 +58,19 @@ public class PerformanceMvcController {
     }
 
     // ── POST /admin/performance/split ────────────────────────────────────
-    // 拆分績效：從指定的原始紀錄扣除一部分積分，改分給另一位員工
-    // 修正舊版問題：原本的「補登拆分積分」只會單純新增一筆紀錄，導致同一筆服務的積分被重複計算；
-    // 現在改為直接修正原始紀錄的積分，確保拆分前後積分總和不變。
+    // 拆分績效：從指定的原始紀錄「對半平分」給另一位員工
+    // 僅支援對半拆分（不接受手動輸入任意積分），避免長期累積浮點數誤差。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/split")
     public String splitRecord(@RequestParam Long sourceRecordId,
                               @RequestParam Long toStaffId,
-                              @RequestParam Double splitPoints,
                               @RequestParam(required = false) String note,
                               @RequestParam(required = false)
                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                               RedirectAttributes ra) {
         try {
-            performanceService.splitRecord(sourceRecordId, toStaffId, splitPoints, note);
-            ra.addFlashAttribute("successMsg", "積分拆分成功");
+            performanceService.splitRecord(sourceRecordId, toStaffId, note);
+            ra.addFlashAttribute("successMsg", "積分已對半拆分成功");
         } catch (Exception e) {
             ra.addFlashAttribute("errorMsg", "拆分失敗：" + e.getMessage());
         }
