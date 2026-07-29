@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Transaction;
@@ -105,8 +106,9 @@ public class PaymentService {
 
         transactionRepository.save(transaction);
 
-        // 1h. 將預約標記為已付款
+        // 1h. 將預約標記為已付款，並把狀態轉為「已完成」（結帳＝整筆服務結束）
         appointment.setPaid(true);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
         appointmentRepository.save(appointment);
 
         // 1i. 自動建立績效紀錄（依預約選擇的服務項目 + 負責員工）

@@ -178,9 +178,9 @@ p {
 }
 
 .btn-outline {
-  background: transparent;
-  color: var(--brown-mid);
-  border: 1.5px solid var(--cream-400);
+  background: var(--cream-300);
+  color: var(--brown-dark);
+  border: 1.5px solid var(--cream-700);
   box-shadow: var(--shadow-xs);
 }
 

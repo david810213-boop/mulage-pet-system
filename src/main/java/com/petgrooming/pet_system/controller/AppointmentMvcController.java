@@ -191,13 +191,6 @@ public class AppointmentMvcController {
         }
         model.addAttribute("appointment", target);
         model.addAttribute("groomingItems", groomingItemService.getAllItems());
-        java.util.Set<String> selectedItemCodes = new java.util.HashSet<>();
-        if (target.getSelectedItems() != null) {
-            for (var gi : target.getSelectedItems()) {
-                selectedItemCodes.add(gi.getItemCode());
-            }
-        }
-        model.addAttribute("selectedItemCodes", selectedItemCodes);
         return "appointments/checkin-order";
     }
 
@@ -267,6 +260,7 @@ public class AppointmentMvcController {
             return "redirect:/appointments?status=IN_PROGRESS";
         }
         model.addAttribute("appointment", target);
+        model.addAttribute("checkinItems", appointmentService.getCheckinItems(id));
         return "appointments/final-check";
     }
 

@@ -8,7 +8,7 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
           <h2 style="margin:0">📊 員工績效日報</h2>
-          <a href="/admin/performance/monthly" class="btn btn-outline">月報 / 結算 →</a>
+          <a href="/admin/performance/monthly" class="btn">月報 / 結算 →</a>
         </div>
 
         <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
@@ -99,7 +99,7 @@
             </div>
 
             <div style="grid-column:1 / -1;">
-              <button type="submit" class="btn btn-outline"
+              <button type="submit" class="btn"
                       style="border-color:#c9a84c; color:#c9a84c;">
                 對半拆分積分
               </button>

@@ -145,8 +145,8 @@
           "
           onmouseover="this.style.background='#3a3835'"
           onmouseout="this.style.background='transparent'"
-          th:if="${user != null and user.admin}"
-          >會員分析</a
+          th:if="${user != null and user.staffOrAdmin}"
+          >會員信息</a
         >
         <a
           href="/admin"

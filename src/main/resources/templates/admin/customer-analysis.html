@@ -11,12 +11,12 @@
       <div class="content">
         <a
           href="/admin"
-          class="btn btn-outline"
+          class="btn"
           style="margin-bottom: 1.5rem; text-decoration: none"
           >← 返回後台</a
         >
 
-        <h2>👥 會員資料分析</h2>
+        <h2>👥 會員信息</h2>
         <p
           style="
             font-size: 13px;
@@ -25,7 +25,7 @@
             margin-bottom: 1.5rem;
           "
         >
-          依會員填寫的年齡、職業、居住區域與得知來源，統計新客／回流客總覽
+          依會員填寫的年齡、職業、居住區域與得知來源，統計新客／回流客總覽；下方會員清單可點擊查看會員完整資訊
         </p>
 
         <!-- 新客／回流客總覽 -->
@@ -66,13 +66,13 @@
             <div style="font-size:28px;font-weight:700;color:var(--brown-dark);" th:text="${stats.neverBookedCustomers}">0</div>
           </div>
 
-          <div class="card" style="padding: 1.2rem 1.5rem; background-color: var(--cream-100); border-color: var(--brown-light);">
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color:#cecccc; border-color: var(--brown-light);">
             <div style="font-size:12px;color:var(--brown-mid);font-weight:600;margin-bottom:6px;">
               📝 基本資料完整填寫率
             </div>
             <div style="font-size:28px;font-weight:800;color:var(--brown-dark);"
                  th:text="${stats.profileCompletionRate + '%'}">0%</div>
-            <div style="font-size:11px;color:var(--brown-light);margin-top:4px;"
+            <div style="font-size:11px;color:var(--brown-dark);margin-top:4px;"
                  th:text="${stats.profileCompletedCount + ' / ' + stats.totalCustomers + ' 人已完整填寫'}"></div>
           </div>
         </div>
@@ -119,6 +119,68 @@
               ></div>
             </div>
           </div>
+        </div>
+
+        <!-- 會員清單：點擊姓名可查看該會員完整資訊（資料/寵物/預約/消費） -->
+        <div class="card" style="padding: 1.2rem 1.5rem; margin-top: 2rem">
+          <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 14px">
+            📇 會員清單
+          </h3>
+
+          <form method="get" action="/admin/customers"
+                style="display: flex; gap: 8px; margin-bottom: 1rem">
+            <input
+              type="text"
+              name="keyword"
+              th:value="${keyword}"
+              placeholder="搜尋會員姓名或帳號..."
+              style="
+                flex: 1;
+                padding: 8px 12px;
+                border: 1px solid var(--cream-300);
+                border-radius: var(--radius-sm);
+              "
+            />
+            <button type="submit" class="btn">搜尋</button>
+            <a href="/admin/customers" class="btn btn-outline">重置</a>
+          </form>
+
+          <table>
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>帳號</th>
+                <th>登入方式</th>
+                <th>居住區域</th>
+                <th>職業</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(customers)}">
+                <td colspan="6" class="empty">尚無會員資料</td>
+              </tr>
+              <tr th:each="c : ${customers}">
+                <td th:text="${c.name}">姓名</td>
+                <td th:text="${c.username}">帳號</td>
+                <td>
+                  <span th:if="${c.lineUserId != null}" class="badge" style="background: #06c755; color: #fff;">LINE</span>
+                  <span th:if="${c.lineUserId == null}" class="badge" style="background: var(--brown-light); color: #fff;">帳密</span>
+                </td>
+                <td th:text="${c.residenceArea} ?: '—'">—</td>
+                <td th:text="${c.occupation} ?: '—'">—</td>
+                <td>
+                  <a
+                    th:href="@{/admin/customers/{u}(u=${c.username})}"
+                    class="btn"
+                    style="padding: 4px 12px; font-size: 13px"
+                  >
+                    查看會員信息
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

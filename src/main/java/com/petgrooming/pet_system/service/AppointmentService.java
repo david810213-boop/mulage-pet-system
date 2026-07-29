@@ -510,6 +510,11 @@ public class AppointmentService {
         return AppointmentResponse.from(saved);
     }
 
+    // ── 取得某預約的現場開單項目明細（供進行中核對頁面顯示給家長核對用）─────
+    public List<com.petgrooming.pet_system.model.AppointmentItem> getCheckinItems(Long appointmentId) {
+        return appointmentItemRepository.findByAppointmentId(appointmentId);
+    }
+
     // ── 2. 取得使用者的寵物清單（預約表單下拉選單用）──────────────────
     public List<Pet> getMyPetsForBooking(String username) {
         return petRepository.findByOwnerUsername(username);

@@ -156,6 +156,10 @@
               />
             </div>
 
+<<<<<<< HEAD
+            <div class="field" id="slotsField" style="display: none; margin-bottom: 1.5rem">
+              <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--brown-dark)">
+=======
             <div
               class="field"
               id="slotsField"
@@ -169,6 +173,7 @@
                   color: var(--brown-dark);
                 "
               >
+>>>>>>> 96ddec25dc36ddea36e89d39930af57bfcc1266f
                 可預約時段 *
               </label>
               <div id="slotsContainer">
@@ -272,6 +277,19 @@
                   color: var(--brown-mid);
                 "
               >
+<<<<<<< HEAD
+                <p style="font-weight: 600; color: var(--brown-dark); margin-bottom: 8px;">
+                  慕沐村 Mulage pet 寵物美容服務定型化契約
+                </p>
+                <p>一、服務內容：本次預約之美容項目、時間，以雙方於系統上確認之預約內容為準。若到店後經評估毛髮狀況（如嚴重打結、皮膚問題等）需調整項目或加收費用，店家將事先告知飼主，經同意後始得施作。</p>
+                <p>二、寵物健康告知義務：飼主應如實告知寵物之年齡、病史、過敏史、特殊行為（如攻擊性、分離焦慮）等資訊。因飼主未告知或告知不實，致美容過程發生意外者，店家不負賠償責任。</p>
+                <p>三、美容風險說明：寵物美容（含洗澡、剪毛、剃毛、指甲修剪、肛門腺護理等）可能因寵物緊張、躁動或體質特殊，產生剃傷、擦傷、緊迫反應或其他非店家故意或重大過失所致之意外。店家將以專業技術及合理注意義務施作，惟仍請飼主理解上述風險無法完全排除。</p>
+                <p>四、費用與付款：服務費用以現場結帳或預約系統顯示金額為準，得使用會員錢包餘額折抵。逾時未到或當日取消，依店家公告之取消政策處理。</p>
+                <p>五、寵物寄放期間：施作期間寵物寄放於店內，店家將善盡照顧及看管責任；惟寵物寄放期間如發生逃脫、走失等情事，店家於已盡合理注意義務之前提下，不負完全賠償責任，但將全力協助尋回。</p>
+                <p>六、個人資料使用：飼主與寵物之基本資料僅供預約管理、服務聯繫及會員權益使用，店家不會將資料提供予無關第三方。</p>
+                <p>七、爭議處理：雙方應本誠信原則協商解決；協商不成時，依中華民國法律及台灣新北市轄區之管轄法院處理。</p>
+                <p style="margin-bottom: 0;">八、本契約經飼主詳閱並於下方簽名（輸入會員本名）後即生效，飼主並確認已充分理解上述各項條款內容。</p>
+=======
                 <p
                   style="
                     font-weight: 600;
@@ -305,6 +323,7 @@
                 <p style="margin-bottom: 0">
                   八、本契約經飼主詳閱並於下方簽名（輸入會員本名）後即生效，飼主並確認已充分理解上述各項條款內容。
                 </p>
+>>>>>>> 96ddec25dc36ddea36e89d39930af57bfcc1266f
               </div>
 
               <label
@@ -318,24 +337,13 @@
                   cursor: pointer;
                 "
               >
-                <input
-                  type="checkbox"
-                  id="contractAgreeCheckbox"
-                  required
-                  style="width: 15px; height: 15px"
-                />
+                <input type="checkbox" id="contractAgreeCheckbox" required style="width: 15px; height: 15px;" />
                 我已詳細閱讀並同意上述定型化契約內容
               </label>
 
               <div style="margin-top: 10px">
-                <label
-                  style="font-size: 13px; margin-bottom: 4px; display: block"
-                >
-                  請在下方簽名板親筆簽上「<span
-                    th:text="${user.name}"
-                    style="font-weight: 600; color: var(--brown-dark)"
-                  ></span
-                  >」正楷簽名 *
+                <label style="font-size: 13px; margin-bottom: 4px; display: block;">
+                  請在下方簽名板親筆簽上「<span th:text="${user.name}" style="font-weight: 600; color: var(--brown-dark)"></span>」正楷簽名 *
                 </label>
                 <div
                   style="
@@ -350,13 +358,7 @@
                     id="signaturePad"
                     width="600"
                     height="180"
-                    style="
-                      width: 100%;
-                      height: 180px;
-                      display: block;
-                      cursor: crosshair;
-                      border-radius: 8px;
-                    "
+                    style="width: 100%; height: 180px; display: block; cursor: crosshair; border-radius: 8px;"
                   ></canvas>
                   <span
                     id="signaturePlaceholder"
@@ -373,21 +375,10 @@
                     請在此處簽名
                   </span>
                 </div>
-                <div
-                  style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-top: 8px;
-                  "
-                >
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                   <p
                     id="signatureHint"
-                    style="
-                      font-size: 11.5px;
-                      color: var(--brown-light);
-                      margin: 0;
-                    "
+                    style="font-size: 11.5px; color: var(--brown-light); margin: 0;"
                   >
                     簽名須為親筆手寫，系統才會受理此預約
                   </p>
@@ -395,16 +386,12 @@
                     type="button"
                     id="clearSignatureBtn"
                     class="btn btn-outline"
-                    style="padding: 4px 14px; font-size: 12px"
+                    style="padding: 4px 14px; font-size: 12px;"
                   >
                     清除重簽
                   </button>
                 </div>
-                <input
-                  type="hidden"
-                  name="contractSignatureData"
-                  id="contractSignatureData"
-                />
+                <input type="hidden" name="contractSignatureData" id="contractSignatureData" />
               </div>
             </div>
 
@@ -583,8 +570,7 @@
           const slots = await res.json();
 
           if (!slots.length) {
-            container.innerHTML =
-              '<div class="slots-empty">當天無可預約時段</div>';
+            container.innerHTML = '<div class="slots-empty">當天無可預約時段</div>';
             return;
           }
 
@@ -593,18 +579,9 @@
             slots
               .map(function (s) {
                 var cls = "slot-btn" + (s.available ? "" : " unavailable");
-                var label =
-                  s.startTime.substring(0, 5) +
-                  " - " +
-                  s.endTime.substring(0, 5);
+                var label = s.startTime.substring(0, 5) + " - " + s.endTime.substring(0, 5);
                 return (
-                  '<div class="' +
-                  cls +
-                  '" data-start="' +
-                  s.startTime +
-                  '" data-end="' +
-                  s.endTime +
-                  '">' +
+                  '<div class="' + cls + '" data-start="' + s.startTime + '" data-end="' + s.endTime + '">' +
                   label +
                   "</div>"
                 );
@@ -612,25 +589,20 @@
               .join("") +
             "</div>";
 
-          container
-            .querySelectorAll(".slot-btn:not(.unavailable)")
-            .forEach(function (el) {
-              el.addEventListener("click", function () {
-                container.querySelectorAll(".slot-btn").forEach(function (b) {
-                  b.classList.remove("selected");
-                });
-                el.classList.add("selected");
-                selectedSlotEl = el;
-                document.getElementById("startTimeHidden").value =
-                  el.dataset.start;
-                document.getElementById("endTimeHidden").value = el.dataset.end;
+          container.querySelectorAll(".slot-btn:not(.unavailable)").forEach(function (el) {
+            el.addEventListener("click", function () {
+              container.querySelectorAll(".slot-btn").forEach(function (b) {
+                b.classList.remove("selected");
               });
+              el.classList.add("selected");
+              selectedSlotEl = el;
+              document.getElementById("startTimeHidden").value = el.dataset.start;
+              document.getElementById("endTimeHidden").value = el.dataset.end;
             });
+          });
         } catch (e) {
           container.innerHTML =
-            '<div class="slots-empty" style="color:#c62828">載入時段失敗：' +
-            e.message +
-            "</div>";
+            '<div class="slots-empty" style="color:#c62828">載入時段失敗：' + e.message + "</div>";
         }
       }
 

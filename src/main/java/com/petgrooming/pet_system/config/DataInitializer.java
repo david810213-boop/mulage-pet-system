@@ -53,7 +53,7 @@ public class DataInitializer implements ApplicationRunner {
             saveItem("AD", "AD藥浴", "抗菌除蟲藥浴療程", 400.0, PerformanceCategory.AD);
             saveItem("HC", "HC護毛", "深層護毛修護療程", 500.0, PerformanceCategory.HC);
             saveItem("PARTIAL", "局部修剪", "局部毛髮精修", 200.0, PerformanceCategory.PARTIAL);
-            saveItem("SPECIAL", "特殊項目", "其他特殊美容項目", 300.0, PerformanceCategory.SPECIAL);
+            saveItem("SPECIAL", "特殊項目", "其他特殊美容項目", 0.0, PerformanceCategory.SPECIAL);
 
             // 接待、完成（流程記錄用）
             saveItem("CHECKIN", "接待入場", "顧客接待與寵物入場登記", 0.0, PerformanceCategory.CHECKIN);

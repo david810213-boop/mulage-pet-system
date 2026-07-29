@@ -13,99 +13,41 @@
           th:text="${errorMsg}"
         ></div>
 
-        <div
-          th:if="${appointment == null}"
-          class="card"
-          style="text-align: center; padding: 3rem 2rem"
-        >
-          <p style="color: var(--brown-light)">
-            找不到這筆預約，或此預約目前不是「已確認」狀態。
-          </p>
-          <a
-            href="/appointments?status=CONFIRMED"
-            class="btn"
-            style="margin-top: 1rem; display: inline-block"
-            >返回預約列表</a
-          >
+        <div th:if="${appointment == null}" class="card" style="text-align: center; padding: 3rem 2rem">
+          <p style="color: var(--brown-light)">找不到這筆預約，或此預約目前不是「已確認」狀態。</p>
+          <a href="/appointments?status=CONFIRMED" class="btn" style="margin-top: 1rem; display: inline-block;">返回預約列表</a>
         </div>
 
         <div th:if="${appointment != null}">
           <h2 style="margin-bottom: 4px">現場加單</h2>
-          <p
-            style="
-              font-size: 13px;
-              color: var(--brown-light);
-              margin-bottom: 1.25rem;
-            "
-          >
+          <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem">
             依現場實際情況確認/調整本次服務項目，確認後才能開始服務
           </p>
 
           <div class="card" style="margin-bottom: 1.25rem">
-            <table style="box-shadow: none; border: none">
+            <table style="box-shadow: none; border: none;">
               <tr>
-                <td
-                  style="
-                    color: var(--brown-light);
-                    width: 100px;
-                    white-space: nowrap;
-                    border: none;
-                  "
-                >
-                  預約編號
-                </td>
-                <td
-                  style="border: none"
-                  th:text="'AP' + ${#numbers.formatInteger(appointment.id, 3)}"
-                ></td>
+                <td style="color: var(--brown-light); width: 100px; white-space: nowrap; border: none;">預約編號</td>
+                <td style="border: none;" th:text="'AP' + ${#numbers.formatInteger(appointment.id, 3)}"></td>
               </tr>
               <tr>
-                <td
-                  style="
-                    color: var(--brown-light);
-                    white-space: nowrap;
-                    border: none;
-                  "
-                >
-                  飼主 / 寵物
-                </td>
-                <td
-                  style="border: none"
-                  th:text="${appointment.ownerName} + ' / ' + ${appointment.petName} + '（' + ${appointment.petType} + '）'"
-                ></td>
+                <td style="color: var(--brown-light); white-space: nowrap; border: none;">飼主 / 寵物</td>
+                <td style="border: none;" th:text="${appointment.ownerName} + ' / ' + ${appointment.petName} + '（' + ${appointment.petType} + '）'"></td>
               </tr>
               <tr>
-                <td
-                  style="
-                    color: var(--brown-light);
-                    white-space: nowrap;
-                    border: none;
-                  "
-                >
-                  原預約項目
-                </td>
-                <td style="border: none">
+                <td style="color: var(--brown-light); white-space: nowrap; border: none;">原預約項目</td>
+                <td style="border: none;">
                   <span th:each="item, iter : ${appointment.selectedItems}">
-                    <span th:text="${item.name}"></span
-                    ><span th:if="${!iter.last}">、</span>
+                    <span th:text="${item.name}"></span><span th:if="${!iter.last}">、</span>
                   </span>
                 </td>
               </tr>
             </table>
           </div>
 
-          <form
-            method="post"
-            th:action="@{/appointments/{id}/checkin-order(id=${appointment.id})}"
-          >
+          <form method="post" th:action="@{/appointments/{id}/checkin-order(id=${appointment.id})}">
             <div class="card" style="margin-bottom: 1rem">
-              <h3
-                style="
-                  font-size: 15px;
-                  color: var(--brown-dark);
-                  margin-bottom: 12px;
-                "
-              >
+              <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 12px">
                 本次實際服務項目 *（依現場情況勾選，可與原預約項目不同）
               </h3>
               <div
@@ -132,38 +74,23 @@
                     cursor: pointer;
                   "
                 >
-                  <span style="display: flex; align-items: center; gap: 10px">
+                  <span style="display:flex; align-items:center; gap:10px;">
                     <input
                       type="checkbox"
                       name="itemCodes"
                       th:value="${item.itemCode}"
-                      th:checked="${selectedItemCodes != null and selectedItemCodes.contains(item.itemCode)}"
-                      style="
-                        width: 16px;
-                        height: 16px;
-                        accent-color: var(--brown-dark);
-                      "
+                      style="width: 16px; height: 16px; accent-color: var(--brown-dark);"
                     />
-                    <span
-                      th:text="${item.name}"
-                      style="font-weight: 500; color: var(--brown-dark)"
-                    ></span>
+                    <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark)"></span>
                   </span>
-                  <span
-                    th:text="'$' + ${#numbers.formatDecimal(item.price, 1, 0)}"
-                    style="color: #2e7d32; font-weight: 600"
-                  ></span>
+                  <span th:text="'$' + ${item.price != null ? #numbers.formatDecimal(item.price, 1, 0) : '0'}" style="color: #2e7d32; font-weight: 600"></span>
                 </label>
               </div>
             </div>
 
             <div style="display: flex; gap: 12px">
-              <button type="submit" class="btn btn-primary">
-                確認開單，可開始服務
-              </button>
-              <a href="/appointments?status=CONFIRMED" class="btn btn-outline"
-                >取消</a
-              >
+              <button type="submit" class="btn btn-primary">確認開單，可開始服務</button>
+              <a href="/appointments?status=CONFIRMED" class="btn btn-outline">取消</a>
             </div>
           </form>
         </div>

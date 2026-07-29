@@ -34,6 +34,7 @@ public class AppointmentResponse {
     private LocalDateTime cancelledAt;
     private String cancelReason;
     private String cancelledBy;
+    private boolean finalCheckDone; // 進行中核對是否已完成（結帳按鈕的顯示要用到，會員自助結帳時也需要）
 
     // 從 Entity 轉成 DTO 的靜態工廠方法
     public static AppointmentResponse from(Appointment a) {
@@ -60,6 +61,7 @@ public class AppointmentResponse {
         res.setCancelledAt(a.getCancelledAt());
         res.setCancelReason(a.getCancelReason());
         res.setCancelledBy(a.getCancelledBy());
+        res.setFinalCheckDone(a.isFinalCheckDone());
         return res;
     }
 }

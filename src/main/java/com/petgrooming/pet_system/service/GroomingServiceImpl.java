@@ -46,14 +46,26 @@ public class GroomingServiceImpl implements GroomingService {
 
     /**
      * 1. 撈出整個美容項目菜單 (只拿沒被下架的)
+     * 需求：CHECKIN/CHECKOUT/COMPLETE 這三個項目是初始化時建立的內部流程標記
+     * （接待入場/接待送出/完成確認，$0 元，積分邏輯直接用 PerformanceCategory 計算，
+     * 不會真的去查這三個項目），不是給客人選的真實服務，一律從價目表/選單中排除。
      */
     @Override
     @Transactional(readOnly = true) 
     public List<GroomingItemResponse> getAllItems() {
         List<GroomingItem> items = groomingItemRepository.findByIsDeletedFalse();
         return items.stream()
+                .filter(GroomingServiceImpl::isCustomerFacingItem)
                 .map(GroomingItemResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    // 排除接待流程用的內部標記項目（CHECKIN / CHECKOUT / COMPLETE）
+    private static boolean isCustomerFacingItem(GroomingItem item) {
+        var category = item.getPerformanceCategory();
+        return category != com.petgrooming.pet_system.enums.PerformanceCategory.CHECKIN
+                && category != com.petgrooming.pet_system.enums.PerformanceCategory.CHECKOUT
+                && category != com.petgrooming.pet_system.enums.PerformanceCategory.COMPLETE;
     }
 
     /**

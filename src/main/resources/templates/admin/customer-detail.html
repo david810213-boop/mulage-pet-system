@@ -1,0 +1,237 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('會員信息 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <style>
+      .cd-layout {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .cd-layout { grid-template-columns: 1fr; }
+      }
+      .cd-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--cream-500);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .cd-info-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        padding: 7px 0;
+        border-top: 0.5px solid var(--cream-200);
+        color: var(--brown-mid);
+      }
+      .cd-info-row:first-of-type { border-top: none; }
+      .cd-info-row span:first-child { color: var(--brown-light); }
+      .cd-tab-btn {
+        padding: 8px 18px;
+        font-size: 13.5px;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        border: 1px solid var(--cream-300);
+        border-bottom: none;
+        background: var(--cream-100);
+        color: var(--brown-mid);
+        cursor: pointer;
+      }
+      .cd-tab-btn.active {
+        background: #fff;
+        color: var(--brown-dark);
+        font-weight: 600;
+      }
+      .cd-tab-panel { display: none; }
+      .cd-tab-panel.active { display: block; }
+      .cd-stat {
+        background: var(--cream-100);
+        border: 0.5px solid var(--cream-300);
+        border-radius: var(--radius-md);
+        padding: 12px 16px;
+        text-align: center;
+      }
+      .cd-stat .label { font-size: 11.5px; color: var(--brown-light); margin-bottom: 4px; }
+      .cd-stat .value { font-size: 20px; font-weight: 600; color: var(--brown-dark); }
+    </style>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content" style="max-width: 1200px">
+        <a
+          href="/admin/customers"
+          class="btn btn-outline"
+          style="margin-bottom: 1.25rem; text-decoration: none; display: inline-block"
+          >← 返回會員清單</a
+        >
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <div class="cd-layout">
+          <!-- ══════════ 左側：會員資料卡 ══════════ -->
+          <div class="card" style="padding: 1.4rem">
+            <div class="cd-avatar" th:text="${#strings.substring(customer.name, 0, 1)}">名</div>
+            <h3 style="margin: 0 0 4px; font-size: 18px" th:text="${customer.name}">會員姓名</h3>
+            <div style="margin-bottom: 10px">
+              <span th:if="${customer.lineUserId != null}" class="badge" style="background: #06c755; color: #fff;">LINE 已綁定</span>
+              <span th:if="${customer.lineUserId == null}" class="badge" style="background: var(--brown-light); color: #fff;">帳號密碼登入</span>
+              <span th:if="${wallet != null}" class="badge" style="background: var(--cream-500); color: #fff;" th:text="${wallet.cardTierLabel}">等級</span>
+            </div>
+
+            <div class="cd-info-row"><span>帳號</span><span th:text="${customer.username}"></span></div>
+            <div class="cd-info-row" th:if="${customer.phone != null}"><span>電話</span><span th:text="${customer.phone}"></span></div>
+            <div class="cd-info-row" th:if="${customer.email != null}"><span>Email</span><span th:text="${customer.email}"></span></div>
+            <div class="cd-info-row" th:if="${customer.age != null}"><span>年齡</span><span th:text="${customer.age} + ' 歲'"></span></div>
+            <div class="cd-info-row" th:if="${customer.occupation != null}"><span>職業</span><span th:text="${customer.occupation}"></span></div>
+            <div class="cd-info-row" th:if="${customer.residenceArea != null}"><span>居住區域</span><span th:text="${customer.residenceArea}"></span></div>
+            <div class="cd-info-row" th:if="${customer.source != null}"><span>得知來源</span><span th:text="${customer.source.label}"></span></div>
+            <div class="cd-info-row"><span>加入日期</span><span th:text="${#temporals.format(customer.createdAt, 'yyyy/MM/dd')}"></span></div>
+            <div class="cd-info-row" th:if="${wallet != null}"><span>錢包餘額</span><span th:text="'$' + ${#numbers.formatInteger(wallet.balance, 0, 'COMMA')}"></span></div>
+
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--cream-300)">
+              <h4 style="font-size: 13px; color: var(--brown-dark); margin-bottom: 8px">🐾 會員備註（店家專用）</h4>
+              <form th:action="@{/admin/wallets/{u}/note(u=${customer.username})}" method="post">
+                <textarea name="adminNote" rows="4"
+                          placeholder="例如：都會自己攜帶寵物使用的用品，寵物梳下來的毛都要幫她留著"
+                          style="width:100%; font-size:12.5px; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box; resize:vertical;"
+                          th:text="${customer.adminNote}"></textarea>
+                <button type="submit" class="btn" style="margin-top: 8px; padding: 5px 14px; font-size: 12.5px;">儲存備註</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- ══════════ 右側：分頁內容 ══════════ -->
+          <div>
+            <div style="display: flex; gap: 2px">
+              <button type="button" class="cd-tab-btn active" data-tab="tab-consume" onclick="switchTab(this)">💰 消費記錄</button>
+              <button type="button" class="cd-tab-btn" data-tab="tab-pets" onclick="switchTab(this)">🐾 寵物資料</button>
+              <button type="button" class="cd-tab-btn" data-tab="tab-appt" onclick="switchTab(this)">📅 預約紀錄</button>
+            </div>
+
+            <div style="background: #fff; border: 1px solid var(--cream-300); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); padding: 1.2rem 1.4rem;">
+
+              <!-- 消費記錄 -->
+              <div id="tab-consume" class="cd-tab-panel active">
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.2rem;">
+                  <div class="cd-stat">
+                    <div class="label">累積消費</div>
+                    <div class="value" th:text="'$' + ${#numbers.formatInteger(totalSpent, 0, 'COMMA')}">$0</div>
+                  </div>
+                  <div class="cd-stat">
+                    <div class="label">累積訂單數</div>
+                    <div class="value" th:text="${orderCount}">0</div>
+                  </div>
+                  <div class="cd-stat">
+                    <div class="label">近期消費時間</div>
+                    <div class="value" style="font-size:14px;"
+                         th:text="${lastPaymentTime != null ? #temporals.format(lastPaymentTime, 'yyyy/MM/dd HH:mm') : '—'}">—</div>
+                  </div>
+                </div>
+
+                <table>
+                  <thead>
+                    <tr><th>來源</th><th>編號</th><th>寵物</th><th>消費時間</th><th>經手人</th><th>付款方式</th><th>金額</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr th:if="${#lists.isEmpty(transactions)}">
+                      <td colspan="7" class="empty">尚無消費紀錄</td>
+                    </tr>
+                    <tr th:each="t : ${transactions}">
+                      <td>
+                        <span class="badge" th:style="${t.sourceLabel == '現場開單'} ? 'background:var(--cream-400); color:#4a3620;' : 'background:var(--cream-200); color:var(--brown-mid);'"
+                              th:text="${t.sourceLabel}"></span>
+                      </td>
+                      <td th:text="${t.code}"></td>
+                      <td th:text="${t.petName} ?: '—'"></td>
+                      <td th:text="${t.time != null ? #temporals.format(t.time, 'yyyy/MM/dd HH:mm') : '—'}"></td>
+                      <td th:text="${t.handledBy} ?: '—'"></td>
+                      <td th:text="${t.paymentMethodLabel}"></td>
+                      <td th:text="'$' + ${#numbers.formatInteger(t.amount, 0, 'COMMA')}"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- 寵物資料 -->
+              <div id="tab-pets" class="cd-tab-panel">
+                <div th:if="${#lists.isEmpty(pets)}" class="empty" style="text-align:center; padding:2rem 0;">此會員尚未新增寵物</div>
+                <div th:each="p : ${pets}" style="border:0.5px solid var(--cream-300); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <span style="font-weight:600; color:var(--brown-dark); font-size:14.5px;" th:text="${p.name}"></span>
+                      <span style="font-size:12px; color:var(--brown-light); margin-left:6px;"
+                            th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"></span>
+                    </div>
+                    <span th:text="${p.coatTypeLabel}"
+                          th:style="${p.coatType.name() == 'UNDEFINED'} ? 'color:#e53935; font-size:12.5px;' : 'color:#43a047; font-size:12.5px;'"></span>
+                  </div>
+                  <details style="margin-top:8px;" th:if="${groomingNotesByPetId != null and !#lists.isEmpty(groomingNotesByPetId.get(p.id))}">
+                    <summary style="cursor:pointer; font-size:12.5px; color:var(--cream-600);">
+                      美容狀況歷史（<span th:text="${groomingNotesByPetId.get(p.id).size()}"></span> 筆）
+                    </summary>
+                    <div th:each="n : ${groomingNotesByPetId.get(p.id)}"
+                         style="font-size:12px; color:var(--brown-mid); border-top:0.5px solid var(--cream-200); padding:6px 0;">
+                      <div style="color:var(--brown-light);">
+                        <span th:text="${n.serviceDate}"></span> · <span th:text="${n.staff.name}"></span>
+                      </div>
+                      <div th:text="${n.note}"></div>
+                    </div>
+                  </details>
+                  <p th:if="${groomingNotesByPetId == null or #lists.isEmpty(groomingNotesByPetId.get(p.id))}"
+                     style="font-size:12px; color:var(--brown-light); margin-top:8px;">尚無美容狀況紀錄</p>
+                </div>
+              </div>
+
+              <!-- 預約紀錄 -->
+              <div id="tab-appt" class="cd-tab-panel">
+                <table>
+                  <thead>
+                    <tr><th>預約編號</th><th>寵物</th><th>日期</th><th>時間</th><th>項目</th><th>金額</th><th>狀態</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr th:if="${#lists.isEmpty(appointments)}">
+                      <td colspan="7" class="empty">尚無預約紀錄</td>
+                    </tr>
+                    <tr th:each="a : ${appointments}">
+                      <td th:text="${a.appointmentCode}"></td>
+                      <td th:text="${a.petName}"></td>
+                      <td th:text="${a.date}"></td>
+                      <td th:text="${a.startTime} + ' ~ ' + ${a.endTime}"></td>
+                      <td>
+                        <span th:each="item, iter : ${a.selectedItems}">
+                          <span th:text="${item.name}"></span><span th:if="${!iter.last}">、</span>
+                        </span>
+                      </td>
+                      <td th:text="'$' + ${#numbers.formatInteger(a.totalAmount, 0, 'COMMA')}"></td>
+                      <td th:text="${a.statusLabel}"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function switchTab(btn) {
+        document.querySelectorAll('.cd-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('.cd-tab-panel').forEach(function (p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      }
+    </script>
+  </body>
+</html>
