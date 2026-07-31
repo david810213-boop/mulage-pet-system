@@ -4,6 +4,21 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### 環境變數 / 機密資訊（務必確認未被追蹤，見下方註記）###
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+application-local.yml
+application-secret.yml
+
+### 資料庫檔案 ###
+data/
+*.db
+*.mv.db
+*.trace.db
+
 ### STS ###
 .apt_generated
 .classpath
@@ -34,7 +49,6 @@ build/
 
 ### 專案自訂 ###
 ngrok.exe
-data/
 *.log
 .DS_Store
 Thumbs.db
