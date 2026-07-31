@@ -105,3 +105,9 @@ ngrok http 8081
 - 開發歷程橫跨兩台工作機（主機 / 公司電腦）協作，累積多次資料庫遷移（H2 → MySQL）與需求迭代
 - Git 歷史保留了真實的開發與修正過程，未經過整理美化
 - 分支策略：`main`（穩定版）、`dev`（整合開發）、`redesign`（UI 重新設計）、`feature/*`（單一功能開發，如 `feature/line-auth`）
+
+---
+
+## 專案連結
+https://github.com/david810213-boop/mulage-pet-system
+
