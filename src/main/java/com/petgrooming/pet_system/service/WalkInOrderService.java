@@ -103,11 +103,11 @@ public class WalkInOrderService {
     // ── 需求：現場單串接結帳 ─────────────────────────────────────────────
     // 選現金/信用卡/LinePay：純標記已付款（金流在店家手上完成，系統只留紀錄）。
     // 選儲值金：實際呼叫 WalletService.deduct() 扣款（走既有悲觀鎖，跟預約結帳同一套邏輯），
-    //   僅限「有綁定會員」的單才能用（非會員沒有錢包可扣）。
+    // 僅限「有綁定會員」的單才能用（非會員沒有錢包可扣）。
     @Transactional
     public WalkInOrderResponse checkout(Long orderId,
-                                        com.petgrooming.pet_system.enums.PaymentMethod paymentMethod,
-                                        String staffUsername) {
+            com.petgrooming.pet_system.enums.PaymentMethod paymentMethod,
+            String staffUsername) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
 
@@ -123,8 +123,7 @@ public class WalkInOrderService {
                     order.getMember().getUsername(),
                     order.getTotalAmount(),
                     null,
-                    "現場單 #" + order.getId() + " 消費扣款"
-            );
+                    "現場單 #" + order.getId() + " 消費扣款");
         }
 
         order.setPaid(true);
@@ -140,6 +139,13 @@ public class WalkInOrderService {
     public List<WalkInOrderResponse> listAll() {
         return orderRepository.findAllByOrderByCreatedAtDesc()
                 .stream().map(WalkInOrderResponse::from).toList();
+    }
+
+    // ── 查單筆現場單完整明細（供會員信息頁「消費記錄」點擊查看用）─────────
+    public WalkInOrderResponse getById(Long id) {
+        WalkInOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + id));
+        return WalkInOrderResponse.from(order);
     }
 
     // ── 需求 6：待補經手人清單（operatorStaff 為 null 的項目）──────────────
@@ -181,12 +187,16 @@ public class WalkInOrderService {
 
     // ── 積分寫入：一筆項目只會被計入一次（pointsAwarded 防重複）────────────
     private void awardPoints(WalkInOrderItem item, WalkInOrder order) {
-        if (item.isPointsAwarded()) return; // 防呆：避免同一筆被重複計分
-        if (item.getPerformanceCategory() == PerformanceCategory.OTHER) return; // 跟預約結帳同樣規則，OTHER 不計分
-        if (item.getPoints() <= 0) return;
+        if (item.isPointsAwarded())
+            return; // 防呆：避免同一筆被重複計分
+        if (item.getPerformanceCategory() == PerformanceCategory.OTHER)
+            return; // 跟預約結帳同樣規則，OTHER 不計分
+        if (item.getPoints() <= 0)
+            return;
 
         LocalDate serviceDate = order.getCreatedAt() != null
-                ? order.getCreatedAt().toLocalDate() : LocalDate.now();
+                ? order.getCreatedAt().toLocalDate()
+                : LocalDate.now();
 
         performanceService.addWalkInRecord(
                 item.getOperatorStaff().getId(),
@@ -194,8 +204,7 @@ public class WalkInOrderService {
                 item.getPerformanceCategory(),
                 item.getPoints(),
                 serviceDate,
-                "現場單 #" + order.getId() + " - " + item.getItemName()
-        );
+                "現場單 #" + order.getId() + " - " + item.getItemName());
 
         item.setPointsAwarded(true);
         orderItemRepository.save(item);
@@ -207,9 +216,9 @@ public class WalkInOrderService {
         List<OperatorPointsResponse> result = new ArrayList<>();
         for (Object[] r : rows) {
             String operatorName = (String) r[1];
-            double totalPoints  = r[2] != null ? ((Number) r[2]).doubleValue() : 0;
-            int totalAmount     = r[3] != null ? ((Number) r[3]).intValue() : 0;
-            long itemCount      = r[4] != null ? ((Number) r[4]).longValue() : 0;
+            double totalPoints = r[2] != null ? ((Number) r[2]).doubleValue() : 0;
+            int totalAmount = r[3] != null ? ((Number) r[3]).intValue() : 0;
+            long itemCount = r[4] != null ? ((Number) r[4]).longValue() : 0;
             result.add(new OperatorPointsResponse(operatorName, totalPoints, totalAmount, itemCount));
         }
         return result;

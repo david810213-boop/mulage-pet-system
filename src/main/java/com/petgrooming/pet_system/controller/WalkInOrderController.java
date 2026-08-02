@@ -15,11 +15,11 @@ import java.util.List;
 /**
  * 需求 5 / 6：現場開單 API（店家後台）
  *
- * POST /api/admin/walk-in-orders                 現場開單
- * GET  /api/admin/walk-in-orders                 所有現場單（交易紀錄）
- * GET  /api/admin/walk-in-orders/pending-operator 待補經手人的項目
- * PUT  /api/admin/walk-in-orders/items/{itemId}/operator  補填經手人
- * GET  /api/admin/walk-in-orders/points-report   經手人積分結算
+ * POST /api/admin/walk-in-orders 現場開單
+ * GET /api/admin/walk-in-orders 所有現場單（交易紀錄）
+ * GET /api/admin/walk-in-orders/pending-operator 待補經手人的項目
+ * PUT /api/admin/walk-in-orders/items/{itemId}/operator 補填經手人
+ * GET /api/admin/walk-in-orders/points-report 經手人積分結算
  */
 @RestController
 @RequestMapping("/api/admin/walk-in-orders")
@@ -32,10 +32,10 @@ public class WalkInOrderController {
         return (String) request.getAttribute("tokenUsername");
     }
 
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody WalkInOrderCreateRequest req,
-                                    HttpServletRequest request) {
+            HttpServletRequest request) {
         try {
             return ResponseEntity.ok(walkInOrderService.create(req, currentUsername(request)));
         } catch (IllegalArgumentException e) {
@@ -43,22 +43,32 @@ public class WalkInOrderController {
         }
     }
 
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
     public ResponseEntity<List<WalkInOrderResponse>> listAll() {
         return ResponseEntity.ok(walkInOrderService.listAll());
     }
 
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getOne(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(walkInOrderService.getById(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/pending-operator")
     public ResponseEntity<List<WalkInOrderResponse.ItemLine>> pendingOperator() {
         return ResponseEntity.ok(walkInOrderService.pendingOperatorItems());
     }
 
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @PutMapping("/items/{itemId}/operator")
     public ResponseEntity<?> fillOperator(@PathVariable Long itemId,
-                                          @Valid @RequestBody FillOperatorRequest req) {
+            @Valid @RequestBody FillOperatorRequest req) {
         try {
             walkInOrderService.fillOperator(itemId, req.getStaffId());
             return ResponseEntity.ok().build();
@@ -67,9 +77,10 @@ public class WalkInOrderController {
         }
     }
 
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/points-report")
     public ResponseEntity<List<OperatorPointsResponse>> pointsReport() {
         return ResponseEntity.ok(walkInOrderService.operatorPointsReport());
     }
+
 }

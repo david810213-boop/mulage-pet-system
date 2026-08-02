@@ -52,7 +52,7 @@ public class AppointmentController {
 
     // ── GET /api/appointments ──────────────────────────────────────────────
     // 查詢所有預約（STAFF / ADMIN，對應原本 viewAllAppointments）
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> getAllAppointments() {
         return ResponseEntity.ok(appointmentService.getAllAppointments());
@@ -80,5 +80,15 @@ public class AppointmentController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(appointmentService.getAvailableSlots(date));
     }
-}
 
+    // ── GET /api/appointments/{id}/detail ──────────────────────────────────
+    // 取得某筆預約的完整消費明細（服務項目、金額、付款方式、經手人等），供 LIFF 點擊查看用
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<?> getDetail(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, currentUsername(request)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+}

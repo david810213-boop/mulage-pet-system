@@ -1,364 +1,440 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
-<head>
+  <head>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>慕沐村Mulage pet</title>
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
-      background: #f6f2ea;
-      min-height: 100vh;
-      padding-bottom: 100px;
-    }
-    .header {
-      background: #2b2a28;
-      color: #d9be8f;
-      padding: 20px 16px 24px;
-      text-align: center;
-    }
-    .header .logo { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
-    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 2px; }
-
-    .form-card {
-      margin: 16px;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .form-card h3 {
-      font-size: 15px;
-      color: #2b2a28;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #ede5d3;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .field { margin-bottom: 16px; }
-    .field:last-child { margin-bottom: 0; }
-    .field label {
-      display: block;
-      font-size: 13px;
-      color: #454340;
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    .field label .req { color: #e53935; margin-left: 2px; }
-
-    .field select, .field input[type="date"] {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #e3dccc;
-      border-radius: 8px;
-      font-size: 15px;
-      color: #2b2a28;
-      background: #fffefb;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .field select:focus, .field input:focus { border-color: #b8935a; }
-
-    .pet-empty-hint {
-      font-size: 13px;
-      color: #c62828;
-      background: #fdecec;
-      border-radius: 8px;
-      padding: 12px;
-    }
-    .pet-empty-hint a { color: #c62828; font-weight: 700; }
-
-    /* 時段選擇 */
-    .slots-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
-    .slot-btn {
-      padding: 12px 8px;
-      border: 1.5px solid #e3dccc;
-      border-radius: 8px;
-      text-align: center;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: #666;
-      background: white;
-    }
-    .slot-btn.selected {
-      border-color: #b8935a;
-      background: #f6f2ea;
-      color: #2b2a28;
-      font-weight: 700;
-    }
-    .slot-btn.unavailable {
-      background: #f2f2f2;
-      color: #bbb;
-      text-decoration: line-through;
-      cursor: not-allowed;
-      border-color: #e8e8e8;
-    }
-    .slots-hint {
-      font-size: 12px;
-      color: #8a8072;
-      margin-top: 8px;
-    }
-    .slots-loading, .slots-empty {
-      text-align: center;
-      padding: 20px;
-      color: #bbb;
-      font-size: 13px;
-    }
-
-    /* 服務項目 */
-    .item-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid #f5f0e8;
-    }
-    .item-row:last-child { border-bottom: none; }
-    .item-check {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex: 1;
-      cursor: pointer;
-    }
-    .item-check input[type="checkbox"] {
-      width: 20px;
-      height: 20px;
-      accent-color: #b8935a;
-      flex-shrink: 0;
-    }
-    .item-name { font-size: 14px; color: #2b2a28; font-weight: 500; }
-    .item-desc { font-size: 12px; color: #8a8072; margin-top: 2px; }
-    .item-price { font-size: 14px; color: #b8935a; font-weight: 700; white-space: nowrap; }
-    .item-recommend-tag {
-      display: inline-block;
-      margin-left: 6px;
-      padding: 1px 8px;
-      background: #f0f9f0;
-      color: #2e7d32;
-      font-size: 10px;
-      border-radius: 10px;
-      font-weight: 700;
-      vertical-align: middle;
-    }
-
-    /* 總金額固定底部 */
-    .summary-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: white;
-      box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
-      padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .summary-total {
-      flex-shrink: 0;
-      font-size: 13px;
-      color: #454340;
-    }
-    .summary-total .amount {
-      font-size: 20px;
-      font-weight: 700;
-      color: #2b2a28;
-    }
-    .submit-btn {
-      flex: 1;
-      padding: 14px;
-      background: #2b2a28;
-      color: #d9be8f;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-    .submit-btn:active { opacity: 0.8; }
-    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .toast {
-      position: fixed;
-      bottom: 90px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #2b2a28;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 24px;
-      font-size: 14px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-      white-space: nowrap;
-      max-width: 90vw;
-      z-index: 999;
-    }
-    .toast.show { opacity: 1; }
-    .toast.success { background: #2e7d32; }
-    .toast.error { background: #c62828; }
-
-    .loading-page {
-      text-align: center;
-      padding: 60px;
-      color: #bbb;
-    }
-
-    /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變（此頁底部有送出列，故上移避開） */
-    .fab-home {
-      position: fixed;
-      left: 50%;
-      bottom: 90px;
-      transform: translateX(-50%);
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: #2b2a28;
-      box-shadow: 0 4px 14px rgba(44,24,16,0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      z-index: 500;
-    }
-    .fab-home-icon {
-      font-size: 20px;
-      line-height: 1;
-    }
-    .fab-home:active { opacity: 0.8; }
-  </style>
-</head>
-<body>
-
-<div class="header">
-  <div class="logo">慕沐村 Mulage pet</div>
-  <h1>預約美容</h1>
-</div>
-
-<a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
-  <span class="fab-home-icon">🏠</span>
-</a>
-
-<div id="app"><div class="loading-page">載入中...</div></div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-  const LIFF_ID = "2010567973-ygHvpq7X";
-  let jwtToken = null;
-  let myPets = [];
-  let groomingItems = [];
-  let selectedPetId = null;
-  let selectedDate = null;
-  let selectedSlot = null; // { startTime, endTime }
-  let selectedItemCodes = new Set();
-  let hasSigned = false;
-  let signatureCanvas = null;
-  let signatureCtx = null;
-  let signatureDrawing = false;
-
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-
-      const res = await fetch('/api/line/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({ idToken: liff.getIDToken() })
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        renderError('登入失敗');
-        return;
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>慕沐村Mulage pet</title>
+    <script
+      charset="utf-8"
+      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+    ></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-      jwtToken = data?.token || data?.jwtToken || data?.accessToken;
-      window.currentUserName = (data && data.user && data.user.name) || '';
+      body {
+        font-family:
+          "Noto Serif TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          serif;
+        background: #f6f2ea;
+        min-height: 100vh;
+        padding-bottom: 100px;
+      }
+      .header {
+        background: #2b2a28;
+        color: #d9be8f;
+        padding: 20px 16px 24px;
+        text-align: center;
+      }
+      .header .logo {
+        font-size: 13px;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      .header h1 {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
 
-      // 平行載入毛孩清單 + 美容項目清單
-      const [pets, items] = await Promise.all([fetchMyPets(), fetchGroomingItems()]);
-      myPets = pets;
-      groomingItems = items;
+      .form-card {
+        margin: 16px;
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .form-card h3 {
+        font-size: 15px;
+        color: #2b2a28;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #ede5d3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
 
-      renderForm();
-    } catch (e) {
-      renderError('初始化失敗：' + e.message);
-    }
-  }
+      .field {
+        margin-bottom: 16px;
+      }
+      .field:last-child {
+        margin-bottom: 0;
+      }
+      .field label {
+        display: block;
+        font-size: 13px;
+        color: #454340;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      .field label .req {
+        color: #e53935;
+        margin-left: 2px;
+      }
 
-  function authHeaders(extra) {
-    return Object.assign({
-      'Authorization': 'Bearer ' + jwtToken,
-      'ngrok-skip-browser-warning': 'true'
-    }, extra || {});
-  }
+      .field select,
+      .field input[type="date"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e3dccc;
+        border-radius: 8px;
+        font-size: 15px;
+        color: #2b2a28;
+        background: #fffefb;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .field select:focus,
+      .field input:focus {
+        border-color: #b8935a;
+      }
 
-  async function fetchMyPets() {
-    const res = await fetch('/api/pets/my', { headers: authHeaders() });
-    if (!res.ok) throw new Error('取得毛孩清單失敗');
-    return res.json();
-  }
+      .pet-empty-hint {
+        font-size: 13px;
+        color: #c62828;
+        background: #fdecec;
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .pet-empty-hint a {
+        color: #c62828;
+        font-weight: 700;
+      }
 
-  async function fetchGroomingItems() {
-    const res = await fetch('/api/grooming-items', { headers: authHeaders() });
-    if (!res.ok) throw new Error('取得服務項目失敗');
-    return res.json();
-  }
+      /* 時段選擇 */
+      .slots-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .slot-btn {
+        padding: 12px 8px;
+        border: 1.5px solid #e3dccc;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #666;
+        background: white;
+      }
+      .slot-btn.selected {
+        border-color: #b8935a;
+        background: #f6f2ea;
+        color: #2b2a28;
+        font-weight: 700;
+      }
+      .slot-btn.unavailable {
+        background: #f2f2f2;
+        color: #bbb;
+        text-decoration: line-through;
+        cursor: not-allowed;
+        border-color: #e8e8e8;
+      }
+      .slots-hint {
+        font-size: 12px;
+        color: #8a8072;
+        margin-top: 8px;
+      }
+      .slots-loading,
+      .slots-empty {
+        text-align: center;
+        padding: 20px;
+        color: #bbb;
+        font-size: 13px;
+      }
 
-  function renderError(msg) {
-    document.getElementById('app').innerHTML =
-      '<div class="loading-page" style="color:red">' + msg + '</div>';
-  }
+      /* 服務項目 */
+      .item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f5f0e8;
+      }
+      .item-row:last-child {
+        border-bottom: none;
+      }
+      .item-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        cursor: pointer;
+      }
+      .item-check input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: #b8935a;
+        flex-shrink: 0;
+      }
+      .item-name {
+        font-size: 14px;
+        color: #2b2a28;
+        font-weight: 500;
+      }
+      .item-desc {
+        font-size: 12px;
+        color: #8a8072;
+        margin-top: 2px;
+      }
+      .item-price {
+        font-size: 14px;
+        color: #b8935a;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .item-recommend-tag {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 1px 8px;
+        background: #f0f9f0;
+        color: #2e7d32;
+        font-size: 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        vertical-align: middle;
+      }
 
-  function todayStr() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
+      /* 總金額固定底部 */
+      .summary-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+        padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .summary-total {
+        flex-shrink: 0;
+        font-size: 13px;
+        color: #454340;
+      }
+      .summary-total .amount {
+        font-size: 20px;
+        font-weight: 700;
+        color: #2b2a28;
+      }
+      .submit-btn {
+        flex: 1;
+        padding: 14px;
+        background: #2b2a28;
+        color: #d9be8f;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .submit-btn:active {
+        opacity: 0.8;
+      }
+      .submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
 
-  function renderForm() {
-    const app = document.getElementById('app');
+      .toast {
+        position: fixed;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2b2a28;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 24px;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        white-space: nowrap;
+        max-width: 90vw;
+        z-index: 999;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+      .toast.success {
+        background: #2e7d32;
+      }
+      .toast.error {
+        background: #c62828;
+      }
 
-    if (!myPets.length) {
-      app.innerHTML = `
+      .loading-page {
+        text-align: center;
+        padding: 60px;
+        color: #bbb;
+      }
+
+      /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變（此頁底部有送出列，故上移避開） */
+      .fab-home {
+        position: fixed;
+        left: 50%;
+        bottom: 90px;
+        transform: translateX(-50%);
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #2b2a28;
+        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        z-index: 500;
+      }
+      .fab-home-icon {
+        font-size: 20px;
+        line-height: 1;
+      }
+      .fab-home:active {
+        opacity: 0.8;
+      }
+    </style>
+    <link rel="stylesheet" href="/liff/liff-warm.css" />
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">慕沐村 Mulage pet</div>
+      <h1>預約美容</h1>
+    </div>
+
+    <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
+      <span class="fab-home-icon">🏠</span>
+    </a>
+
+    <div id="app"><div class="loading-page">載入中...</div></div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const LIFF_ID = "2010567973-ygHvpq7X";
+      let jwtToken = null;
+      let myPets = [];
+      let groomingItems = [];
+      let selectedPetId = null;
+      let selectedDate = null;
+      let selectedSlot = null; // { startTime, endTime }
+      let selectedItemCodes = new Set();
+      let hasSigned = false;
+      let signatureCanvas = null;
+      let signatureCtx = null;
+      let signatureDrawing = false;
+
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
+
+          const res = await fetch("/api/line/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify({ idToken: liff.getIDToken() }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            renderError("登入失敗");
+            return;
+          }
+          jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+          window.currentUserName = (data && data.user && data.user.name) || "";
+
+          // 平行載入毛孩清單 + 美容項目清單
+          const [pets, items] = await Promise.all([
+            fetchMyPets(),
+            fetchGroomingItems(),
+          ]);
+          myPets = pets;
+          groomingItems = items;
+
+          renderForm();
+        } catch (e) {
+          renderError("初始化失敗：" + e.message);
+        }
+      }
+
+      function authHeaders(extra) {
+        return Object.assign(
+          {
+            Authorization: "Bearer " + jwtToken,
+            "ngrok-skip-browser-warning": "true",
+          },
+          extra || {},
+        );
+      }
+
+      async function fetchMyPets() {
+        const res = await fetch("/api/pets/my", { headers: authHeaders() });
+        if (!res.ok) throw new Error("取得毛孩清單失敗");
+        return res.json();
+      }
+
+      async function fetchGroomingItems() {
+        const res = await fetch("/api/grooming-items", {
+          headers: authHeaders(),
+        });
+        if (!res.ok) throw new Error("取得服務項目失敗");
+        return res.json();
+      }
+
+      function renderError(msg) {
+        document.getElementById("app").innerHTML =
+          '<div class="loading-page" style="color:red">' + msg + "</div>";
+      }
+
+      function todayStr() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+
+      function renderForm() {
+        const app = document.getElementById("app");
+
+        if (!myPets.length) {
+          app.innerHTML = `
         <div class="form-card">
           <div class="pet-empty-hint">
             尚未新增任何毛孩，請先<a href="/liff/add-pet.html">新增毛孩</a>後再進行預約。
           </div>
         </div>`;
-      return;
-    }
+          return;
+        }
 
-    app.innerHTML = `
+        app.innerHTML = `
       <div class="form-card">
         <h3>𖥸 選擇毛孩</h3>
         <div class="field">
           <label>預約毛孩 <span class="req">*</span></label>
           <select id="petSelect" onchange="onPetChange()">
             <option value="">請選擇毛孩</option>
-            ${myPets.map(p => `<option value="${p.id}">${p.name}（${p.breed}）</option>`).join('')}
+            ${myPets.map((p) => `<option value="${p.id}">${p.name}（${p.breed}）</option>`).join("")}
           </select>
         </div>
       </div>
@@ -378,9 +454,11 @@
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
         <div id="itemsContainer">
-          ${groomingItems.length
-            ? groomingItems.map(itemRowHtml).join('')
-            : '<div class="slots-empty">目前無可預約的服務項目</div>'}
+          ${
+            groomingItems.length
+              ? groomingItems.map(itemRowHtml).join("")
+              : '<div class="slots-empty">目前無可預約的服務項目</div>'
+          }
         </div>
       </div>
 
@@ -414,7 +492,7 @@
         </label>
 
         <div class="field" style="margin-top:12px;">
-          <label>請在下方簽名板親筆簽上「${window.currentUserName || ''}」正楷簽名 <span class="req">*</span></label>
+          <label>請在下方簽名板親筆簽上「${window.currentUserName || ""}」正楷簽名 <span class="req">*</span></label>
           <div style="background:#fff; border:1.5px dashed #d9be8f; border-radius:8px; position:relative; touch-action:none;">
             <canvas id="signaturePad" width="600" height="160" style="width:100%; height:160px; display:block; cursor:crosshair; border-radius:8px;"></canvas>
             <span id="signaturePlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#d9be8f; font-size:13px; pointer-events:none;">請在此處簽名</span>
@@ -427,261 +505,321 @@
       </div>
     `;
 
-    document.getElementById('itemsContainer').querySelectorAll('input[type=checkbox]').forEach(cb => {
-      cb.addEventListener('change', onItemToggle);
-    });
+        document
+          .getElementById("itemsContainer")
+          .querySelectorAll("input[type=checkbox]")
+          .forEach((cb) => {
+            cb.addEventListener("change", onItemToggle);
+          });
 
-    setupSignaturePad();
-    renderSummaryBar();
-  }
+        setupSignaturePad();
+        renderSummaryBar();
+      }
 
-  function itemRowHtml(item) {
-    return `
+      function itemRowHtml(item) {
+        return `
       <div class="item-row">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
             <div class="item-name">${item.name}</div>
-            ${item.description ? `<div class="item-desc">${item.description}</div>` : ''}
+            ${item.description ? `<div class="item-desc">${item.description}</div>` : ""}
           </div>
         </label>
         <div class="item-price">$${item.price}</div>
       </div>`;
-  }
-
-  function onPetChange() {
-    const sel = document.getElementById('petSelect');
-    selectedPetId = sel.value || null;
-
-    // 依所選毛孩自動勾選建議服務項目
-    const pet = myPets.find(p => String(p.id) === String(selectedPetId));
-    selectedItemCodes.clear();
-    if (pet && pet.recommendedItemCodes) {
-      pet.recommendedItemCodes.forEach(code => selectedItemCodes.add(code));
-    }
-    document.getElementById('itemsContainer').querySelectorAll('input[type=checkbox]').forEach(cb => {
-      cb.checked = selectedItemCodes.has(cb.value);
-    });
-
-    renderSummaryBar();
-  }
-
-  async function onDateChange() {
-    const dateInput = document.getElementById('dateInput');
-    selectedDate = dateInput.value;
-    selectedSlot = null;
-
-    const slotsField = document.getElementById('slotsField');
-    const container = document.getElementById('slotsContainer');
-    if (!selectedDate) { slotsField.style.display = 'none'; return; }
-
-    slotsField.style.display = 'block';
-    container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
-
-    try {
-      const res = await fetch('/api/appointments/slots?date=' + selectedDate, { headers: authHeaders() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const slots = await res.json();
-
-      if (!slots.length) {
-        container.innerHTML = '<div class="slots-empty">當天無可預約時段</div>';
-        return;
       }
 
-      container.innerHTML = `
+      function onPetChange() {
+        const sel = document.getElementById("petSelect");
+        selectedPetId = sel.value || null;
+
+        // 依所選毛孩自動勾選建議服務項目
+        const pet = myPets.find((p) => String(p.id) === String(selectedPetId));
+        selectedItemCodes.clear();
+        if (pet && pet.recommendedItemCodes) {
+          pet.recommendedItemCodes.forEach((code) =>
+            selectedItemCodes.add(code),
+          );
+        }
+        document
+          .getElementById("itemsContainer")
+          .querySelectorAll("input[type=checkbox]")
+          .forEach((cb) => {
+            cb.checked = selectedItemCodes.has(cb.value);
+          });
+
+        renderSummaryBar();
+      }
+
+      async function onDateChange() {
+        const dateInput = document.getElementById("dateInput");
+        selectedDate = dateInput.value;
+        selectedSlot = null;
+
+        const slotsField = document.getElementById("slotsField");
+        const container = document.getElementById("slotsContainer");
+        if (!selectedDate) {
+          slotsField.style.display = "none";
+          return;
+        }
+
+        slotsField.style.display = "block";
+        container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
+
+        try {
+          const res = await fetch(
+            "/api/appointments/slots?date=" + selectedDate,
+            { headers: authHeaders() },
+          );
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const slots = await res.json();
+
+          if (!slots.length) {
+            container.innerHTML =
+              '<div class="slots-empty">當天無可預約時段</div>';
+            return;
+          }
+
+          container.innerHTML = `
         <div class="slots-grid">
-          ${slots.map((s, i) => `
-            <div class="slot-btn ${s.available ? '' : 'unavailable'}"
+          ${slots
+            .map(
+              (s, i) => `
+            <div class="slot-btn ${s.available ? "" : "unavailable"}"
                  data-start="${s.startTime}" data-end="${s.endTime}"
-                 onclick="${s.available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ''}">
-              ${s.startTime.substring(0,5)} - ${s.endTime.substring(0,5)}
-            </div>`).join('')}
+                 onclick="${s.available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ""}">
+              ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}
+            </div>`,
+            )
+            .join("")}
         </div>
         <div class="slots-hint">灰色時段已被預約，請選擇其他時段</div>
       `;
-    } catch (e) {
-      container.innerHTML = '<div class="slots-empty" style="color:#c62828">載入時段失敗：' + e.message + '</div>';
-    }
-  }
-
-  function onSlotClick(el, start, end) {
-    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    selectedSlot = { startTime: start, endTime: end };
-    renderSummaryBar();
-  }
-
-  function onItemToggle(e) {
-    const code = e.target.value;
-    if (e.target.checked) selectedItemCodes.add(code);
-    else selectedItemCodes.delete(code);
-    renderSummaryBar();
-  }
-
-  function setupSignaturePad() {
-    signatureCanvas = document.getElementById('signaturePad');
-    if (!signatureCanvas) return;
-    signatureCtx = signatureCanvas.getContext('2d');
-    hasSigned = false;
-
-    function resize() {
-      const rect = signatureCanvas.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      signatureCanvas.width = rect.width * ratio;
-      signatureCanvas.height = rect.height * ratio;
-      signatureCtx.scale(ratio, ratio);
-      signatureCtx.lineWidth = 2.2;
-      signatureCtx.lineCap = 'round';
-      signatureCtx.lineJoin = 'round';
-      signatureCtx.strokeStyle = '#2b2a28';
-    }
-    resize();
-    window.addEventListener('resize', resize);
-
-    function getPos(evt) {
-      const rect = signatureCanvas.getBoundingClientRect();
-      if (evt.touches && evt.touches.length > 0) {
-        return { x: evt.touches[0].clientX - rect.left, y: evt.touches[0].clientY - rect.top };
+        } catch (e) {
+          container.innerHTML =
+            '<div class="slots-empty" style="color:#c62828">載入時段失敗：' +
+            e.message +
+            "</div>";
+        }
       }
-      return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
-    }
 
-    function start(evt) {
-      evt.preventDefault();
-      signatureDrawing = true;
-      const ph = document.getElementById('signaturePlaceholder');
-      if (ph) ph.style.display = 'none';
-      const pos = getPos(evt);
-      signatureCtx.beginPath();
-      signatureCtx.moveTo(pos.x, pos.y);
-    }
+      function onSlotClick(el, start, end) {
+        document
+          .querySelectorAll(".slot-btn")
+          .forEach((b) => b.classList.remove("selected"));
+        el.classList.add("selected");
+        selectedSlot = { startTime: start, endTime: end };
+        renderSummaryBar();
+      }
 
-    function move(evt) {
-      if (!signatureDrawing) return;
-      evt.preventDefault();
-      const pos = getPos(evt);
-      signatureCtx.lineTo(pos.x, pos.y);
-      signatureCtx.stroke();
-      hasSigned = true;
-      updateSignatureHint();
-    }
+      function onItemToggle(e) {
+        const code = e.target.value;
+        if (e.target.checked) selectedItemCodes.add(code);
+        else selectedItemCodes.delete(code);
+        renderSummaryBar();
+      }
 
-    function end() {
-      signatureDrawing = false;
-    }
+      function setupSignaturePad() {
+        signatureCanvas = document.getElementById("signaturePad");
+        if (!signatureCanvas) return;
+        signatureCtx = signatureCanvas.getContext("2d");
+        hasSigned = false;
 
-    signatureCanvas.addEventListener('mousedown', start);
-    signatureCanvas.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', end);
-    signatureCanvas.addEventListener('touchstart', start, { passive: false });
-    signatureCanvas.addEventListener('touchmove', move, { passive: false });
-    signatureCanvas.addEventListener('touchend', end);
-  }
+        function resize() {
+          const rect = signatureCanvas.getBoundingClientRect();
+          const ratio = window.devicePixelRatio || 1;
+          signatureCanvas.width = rect.width * ratio;
+          signatureCanvas.height = rect.height * ratio;
+          signatureCtx.scale(ratio, ratio);
+          signatureCtx.lineWidth = 2.2;
+          signatureCtx.lineCap = "round";
+          signatureCtx.lineJoin = "round";
+          signatureCtx.strokeStyle = "#2b2a28";
+        }
+        resize();
+        window.addEventListener("resize", resize);
 
-  function clearSignature() {
-    if (!signatureCanvas || !signatureCtx) return;
-    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-    const ph = document.getElementById('signaturePlaceholder');
-    if (ph) ph.style.display = 'block';
-    hasSigned = false;
-    updateSignatureHint();
-  }
+        function getPos(evt) {
+          const rect = signatureCanvas.getBoundingClientRect();
+          if (evt.touches && evt.touches.length > 0) {
+            return {
+              x: evt.touches[0].clientX - rect.left,
+              y: evt.touches[0].clientY - rect.top,
+            };
+          }
+          return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
 
-  function updateSignatureHint() {
-    const hint = document.getElementById('signatureHint');
-    if (!hint) return;
-    if (hasSigned) {
-      hint.style.color = '#2e7d32';
-      hint.textContent = '✓ 已完成簽名';
-    } else {
-      hint.style.color = '#8a8072';
-      hint.textContent = '簽名須為親筆手寫，系統才會受理此預約';
-    }
-  }
+        function start(evt) {
+          evt.preventDefault();
+          signatureDrawing = true;
+          const ph = document.getElementById("signaturePlaceholder");
+          if (ph) ph.style.display = "none";
+          const pos = getPos(evt);
+          signatureCtx.beginPath();
+          signatureCtx.moveTo(pos.x, pos.y);
+        }
 
-  function onContractAgreeChange() {
-    // 目前無額外動作，送出時會統一檢查 checkbox 狀態
-  }
+        function move(evt) {
+          if (!signatureDrawing) return;
+          evt.preventDefault();
+          const pos = getPos(evt);
+          signatureCtx.lineTo(pos.x, pos.y);
+          signatureCtx.stroke();
+          hasSigned = true;
+          updateSignatureHint();
+        }
 
-  function currentTotal() {
-    let total = 0;
-    document.querySelectorAll('#itemsContainer input[type=checkbox]:checked').forEach(cb => {
-      total += parseFloat(cb.dataset.price) || 0;
-    });
-    return total;
-  }
+        function end() {
+          signatureDrawing = false;
+        }
 
-  function renderSummaryBar() {
-    let bar = document.getElementById('summaryBar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.className = 'summary-bar';
-      bar.id = 'summaryBar';
-      document.body.appendChild(bar);
-    }
-    const total = currentTotal();
-    bar.innerHTML = `
+        signatureCanvas.addEventListener("mousedown", start);
+        signatureCanvas.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", end);
+        signatureCanvas.addEventListener("touchstart", start, {
+          passive: false,
+        });
+        signatureCanvas.addEventListener("touchmove", move, { passive: false });
+        signatureCanvas.addEventListener("touchend", end);
+      }
+
+      function clearSignature() {
+        if (!signatureCanvas || !signatureCtx) return;
+        signatureCtx.clearRect(
+          0,
+          0,
+          signatureCanvas.width,
+          signatureCanvas.height,
+        );
+        const ph = document.getElementById("signaturePlaceholder");
+        if (ph) ph.style.display = "block";
+        hasSigned = false;
+        updateSignatureHint();
+      }
+
+      function updateSignatureHint() {
+        const hint = document.getElementById("signatureHint");
+        if (!hint) return;
+        if (hasSigned) {
+          hint.style.color = "#2e7d32";
+          hint.textContent = "✓ 已完成簽名";
+        } else {
+          hint.style.color = "#8a8072";
+          hint.textContent = "簽名須為親筆手寫，系統才會受理此預約";
+        }
+      }
+
+      function onContractAgreeChange() {
+        // 目前無額外動作，送出時會統一檢查 checkbox 狀態
+      }
+
+      function currentTotal() {
+        let total = 0;
+        document
+          .querySelectorAll("#itemsContainer input[type=checkbox]:checked")
+          .forEach((cb) => {
+            total += parseFloat(cb.dataset.price) || 0;
+          });
+        return total;
+      }
+
+      function renderSummaryBar() {
+        let bar = document.getElementById("summaryBar");
+        if (!bar) {
+          bar = document.createElement("div");
+          bar.className = "summary-bar";
+          bar.id = "summaryBar";
+          document.body.appendChild(bar);
+        }
+        const total = currentTotal();
+        bar.innerHTML = `
       <div class="summary-total">總金額<br><span class="amount">$${total}</span></div>
       <button class="submit-btn" id="submitBtn" onclick="submitBooking()">確認預約</button>
     `;
-  }
-
-  async function submitBooking() {
-    if (!selectedPetId) { showToast('請選擇毛孩', 'error'); return; }
-    if (!selectedDate) { showToast('請選擇預約日期', 'error'); return; }
-    if (!selectedSlot) { showToast('請選擇預約時段', 'error'); return; }
-    if (!selectedItemCodes.size) { showToast('請至少選擇一項服務', 'error'); return; }
-
-    const agreeBox = document.getElementById('contractAgree');
-    if (!agreeBox || !agreeBox.checked) { showToast('請詳閱並同意定型化契約', 'error'); return; }
-    if (!hasSigned) { showToast('請在簽名板上完成簽名', 'error'); return; }
-
-    const contractSignatureData = signatureCanvas.toDataURL('image/png');
-
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.textContent = '送出中...';
-
-    try {
-      const res = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({
-          petId: selectedPetId,
-          date: selectedDate,
-          startTime: selectedSlot.startTime,
-          endTime: selectedSlot.endTime,
-          selectedItems: Array.from(selectedItemCodes),
-          contractSignatureData: contractSignatureData
-        })
-      });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        showToast('預約失敗：' + (typeof data === 'string' ? data : (data && data.message) || res.status), 'error');
-        return;
       }
 
-      showToast('✅ 預約成功！編號 ' + data.appointmentCode, 'success');
-      setTimeout(() => {
-        window.location.href = '/liff/my-appointments.html';
-      }, 1500);
-    } catch (e) {
-      showToast('網路錯誤，請重試', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '確認預約';
-    }
-  }
+      async function submitBooking() {
+        if (!selectedPetId) {
+          showToast("請選擇毛孩", "error");
+          return;
+        }
+        if (!selectedDate) {
+          showToast("請選擇預約日期", "error");
+          return;
+        }
+        if (!selectedSlot) {
+          showToast("請選擇預約時段", "error");
+          return;
+        }
+        if (!selectedItemCodes.size) {
+          showToast("請至少選擇一項服務", "error");
+          return;
+        }
 
-  function showToast(msg, type = '') {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.className = 'toast show ' + type;
-    setTimeout(() => el.classList.remove('show'), 3000);
-  }
+        const agreeBox = document.getElementById("contractAgree");
+        if (!agreeBox || !agreeBox.checked) {
+          showToast("請詳閱並同意定型化契約", "error");
+          return;
+        }
+        if (!hasSigned) {
+          showToast("請在簽名板上完成簽名", "error");
+          return;
+        }
 
-  init();
-</script>
-</body>
+        const contractSignatureData = signatureCanvas.toDataURL("image/png");
+
+        const btn = document.getElementById("submitBtn");
+        btn.disabled = true;
+        btn.textContent = "送出中...";
+
+        try {
+          const res = await fetch("/api/appointments", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+              petId: selectedPetId,
+              date: selectedDate,
+              startTime: selectedSlot.startTime,
+              endTime: selectedSlot.endTime,
+              selectedItems: Array.from(selectedItemCodes),
+              contractSignatureData: contractSignatureData,
+            }),
+          });
+
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            showToast(
+              "預約失敗：" +
+                (typeof data === "string"
+                  ? data
+                  : (data && data.message) || res.status),
+              "error",
+            );
+            return;
+          }
+
+          showToast("✅ 預約成功！編號 " + data.appointmentCode, "success");
+          setTimeout(() => {
+            window.location.href = "/liff/my-appointments.html";
+          }, 1500);
+        } catch (e) {
+          showToast("網路錯誤，請重試", "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "確認預約";
+        }
+      }
+
+      function showToast(msg, type = "") {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.className = "toast show " + type;
+        setTimeout(() => el.classList.remove("show"), 3000);
+      }
+
+      init();
+    </script>
+  </body>
 </html>

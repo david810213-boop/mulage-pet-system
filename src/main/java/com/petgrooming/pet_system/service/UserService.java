@@ -82,6 +82,9 @@ public class UserService {
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
         }
+        if (req.getPhone() != null) { // ← 新增這 3 行
+            user.setPhone(req.getPhone().isBlank() ? null : req.getPhone().trim());
+        }
         if (req.getAge() != null) {
             user.setAge(req.getAge());
         }
@@ -123,7 +126,8 @@ public class UserService {
     // 需求：現場開單時依姓名/帳號搜尋會員（解決 LINE 登入會員帳號是 line_xxx 內碼，
     // 店家不可能知道要打什麼的問題）
     public List<User> searchCustomers(String keyword) {
-        if (keyword == null || keyword.isBlank()) return List.of();
+        if (keyword == null || keyword.isBlank())
+            return List.of();
         String kw = keyword.trim().toLowerCase();
         return getAllCustomers().stream()
                 .filter(u -> u.getName().toLowerCase().contains(kw)
@@ -165,6 +169,7 @@ public class UserService {
 
         return new AbstractMap.SimpleEntry<>(userRepository.save(newUser), true);
     }
+
     public UserResponse createStaff(CreateStaffRequest req) {
         if (userRepository.existsByUsername(req.getUsername())) {
             throw new IllegalArgumentException("帳號已存在：" + req.getUsername());

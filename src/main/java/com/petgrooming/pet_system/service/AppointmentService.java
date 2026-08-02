@@ -34,20 +34,21 @@ import java.util.List;
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
+    private final com.petgrooming.pet_system.repository.TransactionRepository transactionRepository; // 消費明細用
     private final UserRepository userRepository;
     private final PetRepository petRepository;
     private final GroomingItemRepository groomingItemRepository; // ⚡ 1. 補上這行注入，用來撈取服務價格
     private final NotificationService notificationService;
     private final LineMessagingService lineMessagingService;
-    private final SlotCapacityService slotCapacityService;       // 需求 3：時段名額控管
+    private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
     private final PetGroomingNoteRepository petGroomingNoteRepository; // 進行中核對：毛孩美容狀況歷史
-    private final PerformanceService performanceService;                // 進行中核對：接待送出積分
+    private final PerformanceService performanceService; // 進行中核對：接待送出積分
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
 
-    private static final LocalTime OPENING   = LocalTime.of(11, 0);
-    private static final LocalTime CLOSING   = LocalTime.of(19, 0);
-    private static final int       SLOT_HOURS = 2;
-    private static final int       SLOT_CAPACITY = 5;            // 同時段最多 5 隻
+    private static final LocalTime OPENING = LocalTime.of(11, 0);
+    private static final LocalTime CLOSING = LocalTime.of(19, 0);
+    private static final int SLOT_HOURS = 2;
+    private static final int SLOT_CAPACITY = 5; // 同時段最多 5 隻
 
     @Transactional
     public AppointmentResponse book(AppointmentRequest req, String username) {
@@ -87,7 +88,7 @@ public class AppointmentService {
         }
 
         // 1f. 需求 3：同時段最多 5 隻（併發安全）。
-        //     先確保計數列存在（獨立交易），再於本交易內加悲觀鎖 +1；額滿則丟出例外。
+        // 先確保計數列存在（獨立交易），再於本交易內加悲觀鎖 +1；額滿則丟出例外。
         slotCapacityService.ensureSlot(req.getDate(), req.getStartTime());
         try {
             slotCapacityService.reserve(req.getDate(), req.getStartTime());
@@ -106,10 +107,10 @@ public class AppointmentService {
         List<GroomingItem> actualItems = req.getSelectedItems().stream()
                 .map((String itemCode) -> groomingItemRepository.findByItemCode(itemCode)
                         .orElseThrow(() -> new IllegalArgumentException("找不到有效的服務項目代碼：" + itemCode)))
-                .filter(item -> !item.isDeleted()) 
-                .toList(); 
+                .filter(item -> !item.isDeleted())
+                .toList();
 
-        // ⚡ 4. 動態計算總金額 
+        // ⚡ 4. 動態計算總金額
         int total = (int) actualItems.stream()
                 .mapToDouble(GroomingItem::getPrice) // 轉為 double 計算
                 .sum();
@@ -156,7 +157,7 @@ public class AppointmentService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
 
-        boolean isOwner        = appointment.getUser().getId().equals(user.getId());
+        boolean isOwner = appointment.getUser().getId().equals(user.getId());
         boolean isStaffOrAdmin = user.isStaffOrAdmin();
 
         if (!isOwner && !isStaffOrAdmin) {
@@ -231,8 +232,10 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
 
-        if (internalNote != null) appointment.setInternalNote(internalNote);
-        if (memberNote != null)   appointment.setMemberNote(memberNote);
+        if (internalNote != null)
+            appointment.setInternalNote(internalNote);
+        if (memberNote != null)
+            appointment.setMemberNote(memberNote);
 
         Appointment saved = appointmentRepository.save(appointment);
         return com.petgrooming.pet_system.dto.AppointmentAdminResponse.from(saved);
@@ -244,9 +247,10 @@ public class AppointmentService {
         LocalTime current = OPENING;
         while (current.isBefore(CLOSING)) {
             LocalTime next = current.plusHours(SLOT_HOURS);
-            if (next.isAfter(CLOSING)) next = CLOSING;
+            if (next.isAfter(CLOSING))
+                next = CLOSING;
 
-            int booked    = slotCapacityService.bookedCount(date, current);
+            int booked = slotCapacityService.bookedCount(date, current);
             int remaining = Math.max(0, SLOT_CAPACITY - booked);
             allSlots.add(new TimeSlotResponse(
                     current, next, remaining > 0, booked, SLOT_CAPACITY, remaining));
@@ -282,10 +286,9 @@ public class AppointmentService {
         // 而是請會員留意店家後續來電或訊息通知的預計完成時間。
         String notifyText = String.format(
                 "【慕沐村 Mulage pet】您好，%s 的美容預約已確認！%n" +
-                "由於每隻毛孩的施作時間會依體型、毛況及個性而有所不同，" +
-                "我們會在施作過程中致電或傳訊息通知您預計完成時間，請留意來電或訊息喔 🐾",
-                saved.getPetName()
-        );
+                        "由於每隻毛孩的施作時間會依體型、毛況及個性而有所不同，" +
+                        "我們會在施作過程中致電或傳訊息通知您預計完成時間，請留意來電或訊息喔 🐾",
+                saved.getPetName());
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
 
         return AppointmentResponse.from(saved);
@@ -323,8 +326,7 @@ public class AppointmentService {
                 PerformanceCategory.CHECKIN,
                 PerformanceCategory.CHECKIN.getDefaultPoints(),
                 appointment.getDate(),
-                "接待入場：預約 #" + appointment.getId()
-        );
+                "接待入場：預約 #" + appointment.getId());
 
         return AppointmentResponse.from(saved);
     }
@@ -360,15 +362,15 @@ public class AppointmentService {
             GroomingItem gi = groomingItemRepository.findByItemCode(code)
                     .orElseThrow(() -> new IllegalArgumentException("找不到項目代碼：" + code));
 
-            com.petgrooming.pet_system.model.AppointmentItem item =
-                    com.petgrooming.pet_system.model.AppointmentItem.builder()
-                            .appointment(appointment)
-                            .groomingItemId(gi.getId())
-                            .itemName(gi.getName())
-                            .price((int) Math.round(gi.getPrice()))
-                            .points(gi.getPoints())
-                            .performanceCategory(gi.getPerformanceCategory())
-                            .build();
+            com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
+                    .builder()
+                    .appointment(appointment)
+                    .groomingItemId(gi.getId())
+                    .itemName(gi.getName())
+                    .price((int) Math.round(gi.getPrice()))
+                    .points(gi.getPoints())
+                    .performanceCategory(gi.getPerformanceCategory())
+                    .build();
             appointmentItemRepository.save(item);
             total += item.getPrice();
         }
@@ -408,10 +410,14 @@ public class AppointmentService {
 
     // ── 現場開單項目積分寫入：一筆項目只會被計入一次（pointsAwarded 防重複）──
     public void awardItemPoints(com.petgrooming.pet_system.model.AppointmentItem item) {
-        if (item.isPointsAwarded()) return;
-        if (item.getOperatorStaff() == null) return;
-        if (item.getPerformanceCategory() == PerformanceCategory.OTHER) return;
-        if (item.getPoints() <= 0) return;
+        if (item.isPointsAwarded())
+            return;
+        if (item.getOperatorStaff() == null)
+            return;
+        if (item.getPerformanceCategory() == PerformanceCategory.OTHER)
+            return;
+        if (item.getPoints() <= 0)
+            return;
 
         Appointment appt = item.getAppointment();
         performanceService.addRecord(
@@ -420,8 +426,7 @@ public class AppointmentService {
                 item.getPerformanceCategory(),
                 item.getPoints(),
                 appt.getDate(),
-                "預約 #" + appt.getId() + " - " + item.getItemName()
-        );
+                "預約 #" + appt.getId() + " - " + item.getItemName());
 
         item.setPointsAwarded(true);
         appointmentItemRepository.save(item);
@@ -435,8 +440,8 @@ public class AppointmentService {
 
     @Transactional
     public void awardPendingItemPointsForAppointment(Long appointmentId) {
-        List<com.petgrooming.pet_system.model.AppointmentItem> items =
-                appointmentItemRepository.findByAppointmentId(appointmentId);
+        List<com.petgrooming.pet_system.model.AppointmentItem> items = appointmentItemRepository
+                .findByAppointmentId(appointmentId);
         for (com.petgrooming.pet_system.model.AppointmentItem item : items) {
             awardItemPoints(item);
         }
@@ -504,8 +509,7 @@ public class AppointmentService {
                 PerformanceCategory.CHECKOUT,
                 PerformanceCategory.CHECKOUT.getDefaultPoints(),
                 appointment.getDate(),
-                "接待送出核對：預約 #" + appointment.getId()
-        );
+                "接待送出核對：預約 #" + appointment.getId());
 
         return AppointmentResponse.from(saved);
     }
@@ -518,5 +522,69 @@ public class AppointmentService {
     // ── 2. 取得使用者的寵物清單（預約表單下拉選單用）──────────────────
     public List<Pet> getMyPetsForBooking(String username) {
         return petRepository.findByOwnerUsername(username);
+
+    }
+
+    // ── 取得某筆預約的完整消費明細（供 LIFF「我的預約」點擊查看用）──────
+    // 權限：本人（該預約的顧客）或店家/員工皆可查看
+    public com.petgrooming.pet_system.dto.AppointmentDetailResponse getAppointmentDetail(
+            Long appointmentId, String username) {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        boolean isOwner = appointment.getUser().getId().equals(user.getId());
+        if (!isOwner && !user.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：只能查看自己的預約明細");
+        }
+
+        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems = appointmentItemRepository
+                .findByAppointmentId(appointmentId);
+
+        List<com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem> items;
+        if (!checkinItems.isEmpty()) {
+            items = checkinItems.stream()
+                    .map(ci -> com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                            .name(ci.getItemName())
+                            .price(ci.getPrice())
+                            .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
+                            .build())
+                    .toList();
+        } else {
+            items = appointment.getSelectedItems().stream()
+                    .map(gi -> com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                            .name(gi.getName())
+                            .price((int) Math.round(gi.getPrice()))
+                            .operatorName(null)
+                            .build())
+                    .toList();
+        }
+
+        var detailBuilder = com.petgrooming.pet_system.dto.AppointmentDetailResponse.builder()
+                .appointmentCode(String.format("AP%03d", appointment.getId()))
+                .petName(appointment.getPetName())
+                .petType(appointment.getPetType())
+                .date(appointment.getDate())
+                .startTime(appointment.getStartTime())
+                .endTime(appointment.getEndTime())
+                .statusLabel(appointment.getStatus().getLabel())
+                .cancelled(appointment.isCancelled())
+                .memberNote(appointment.getMemberNote())
+                .items(items)
+                .totalAmount(appointment.getTotalAmount())
+                .paid(appointment.isPaid());
+
+        transactionRepository.findByAppointmentId(appointmentId).ifPresent(tx -> {
+            detailBuilder
+                    .paymentMethodLabel(tx.getPaymentMethod() != null ? tx.getPaymentMethod().getDisplayName() : null);
+            detailBuilder.paymentTime(tx.getPaymentTime());
+            detailBuilder.handledBy(tx.getHandledBy());
+            detailBuilder.totalAmount(tx.getFinalAmount());
+        });
+
+        return detailBuilder.build();
     }
 }

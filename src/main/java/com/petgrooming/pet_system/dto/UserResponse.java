@@ -12,6 +12,7 @@ public class UserResponse {
     private String username;
     private String name;
     private UserRole role;
+    private String phone;
 
     // ── 會員基本資料（供編輯資料頁與店家分析使用）─────────────────────
     private Integer age;
@@ -27,6 +28,7 @@ public class UserResponse {
         res.setUsername(user.getUsername());
         res.setName(user.getName());
         res.setRole(user.getRole());
+        res.setPhone(user.getPhone());
         res.setAge(user.getAge());
         res.setOccupation(user.getOccupation());
         res.setResidenceArea(user.getResidenceArea());
