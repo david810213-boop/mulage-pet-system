@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -31,6 +32,7 @@ public class WalkInOrderMvcController {
     private final GroomingService groomingService;
     private final UserService userService;
     private final AppointmentService appointmentService;
+    private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -98,6 +100,8 @@ public class WalkInOrderMvcController {
             req.setItems(items);
 
             var result = walkInOrderService.create(req, user.getUsername());
+            operationLogService.log(user, "WALKIN", "CREATE", "現場單 #" + result.getId(),
+                    "$" + result.getTotalAmount() + (petName != null ? "（" + petName + "）" : ""));
             ra.addFlashAttribute("successMsg",
                     "開單成功！單號 #" + result.getId() + "，總額 $" + result.getTotalAmount());
         } catch (IllegalArgumentException e) {
@@ -132,6 +136,8 @@ public class WalkInOrderMvcController {
         User user = getLoginUser(request);
         try {
             var result = walkInOrderService.checkout(id, paymentMethod, user.getUsername());
+            operationLogService.log(user, "WALKIN", "CHECKOUT", "現場單 #" + result.getId(),
+                    result.getPaymentMethodLabel());
             ra.addFlashAttribute("successMsg",
                     "結帳完成！單號 #" + result.getId() + "，付款方式：" + result.getPaymentMethodLabel());
         } catch (IllegalArgumentException e) {

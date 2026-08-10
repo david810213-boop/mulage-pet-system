@@ -5,7 +5,9 @@ import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.dto.WalletTransactionResponse;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.WalletService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,11 @@ import java.util.List;
 public class CustomerWalletAdminController {
 
     private final WalletService walletService;
+    private final OperationLogService operationLogService;
+
+    private String currentUsername(HttpServletRequest request) {
+        return (String) request.getAttribute("tokenUsername");
+    }
 
     // ── GET /api/admin/wallet/{username} ───────────────────────────────────
     // 查詢指定顧客的錢包
@@ -46,9 +53,12 @@ public class CustomerWalletAdminController {
     @PostMapping("/{username}/deposit")
     public ResponseEntity<?> deposit(
             @PathVariable String username,
-            @Valid @RequestBody DepositRequest req) {
+            @Valid @RequestBody DepositRequest req,
+            HttpServletRequest request) {
         try {
             WalletResponse res = walletService.deposit(username, req);
+            operationLogService.logByUsername(currentUsername(request), "WALLET", "DEPOSIT",
+                    "會員 " + username, "+$" + req.getAmount() + (req.getNote() != null ? "（" + req.getNote() + "）" : ""));
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
