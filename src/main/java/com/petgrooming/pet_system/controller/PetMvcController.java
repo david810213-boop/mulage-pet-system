@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ public class PetMvcController {
 
     private final PetService petService;
     private final UserService userService;
+    private final OperationLogService operationLogService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -83,6 +85,9 @@ public class PetMvcController {
             if (coatType != null && created != null && created.getId() != null) {
                 petService.setCoatType(created.getId(), coatType);
             }
+            operationLogService.log(user, "CUSTOMER", "ADD_PET",
+                    "寵物 " + (created != null ? created.getName() : "") + " #" + (created != null ? created.getId() : ""),
+                    req.getBreed());
             redirectAttributes.addFlashAttribute("successMsg", "寵物新增成功！");
             return "redirect:/pets";
         } catch (IllegalArgumentException e) {

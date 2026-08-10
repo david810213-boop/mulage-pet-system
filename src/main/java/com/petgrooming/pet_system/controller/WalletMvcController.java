@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
@@ -28,6 +29,7 @@ public class WalletMvcController {
     private final PetService petService;
     private final TopUpService topUpService;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
+    private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -100,9 +102,13 @@ public class WalletMvcController {
     public String setCoatType(@PathVariable String username, @PathVariable Long petId,
                               @RequestParam CoatType coatType,
                               @RequestParam(required = false) String returnTo,
+                              HttpServletRequest request,
                               RedirectAttributes ra) {
+        User user = getLoginUser(request);
         try {
             petService.setCoatType(petId, coatType);
+            operationLogService.log(user, "CUSTOMER", "SET_COAT_TYPE",
+                    "會員 " + username + " 的寵物 #" + petId, coatType.name());
             ra.addFlashAttribute("successMsg", "毛長已更新");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
@@ -118,9 +124,13 @@ public class WalletMvcController {
     public String setAdminNote(@PathVariable String username,
                                @RequestParam(required = false) String adminNote,
                                @RequestParam(required = false) String returnTo,
+                               HttpServletRequest request,
                                RedirectAttributes ra) {
+        User user = getLoginUser(request);
         try {
             userService.setAdminNote(username, adminNote);
+            operationLogService.log(user, "CUSTOMER", "SET_NOTE", "會員 " + username,
+                    adminNote != null && adminNote.length() > 100 ? adminNote.substring(0, 100) + "…" : adminNote);
             ra.addFlashAttribute("successMsg", "會員備注已更新");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
@@ -135,9 +145,13 @@ public class WalletMvcController {
     @PostMapping("/{username}/deposit")
     public String deposit(@PathVariable String username,
                           @Valid @ModelAttribute DepositRequest req,
+                          HttpServletRequest request,
                           RedirectAttributes ra) {
+        User user = getLoginUser(request);
         try {
             var result = walletService.deposit(username, req);
+            operationLogService.log(user, "WALLET", "DEPOSIT", "會員 " + username,
+                    "+$" + req.getAmount() + "（目前餘額 $" + result.getBalance() + "）");
             ra.addFlashAttribute("successMsg",
                     "儲值成功！目前餘額 $" + result.getBalance() +
                     "，會員等級：" + result.getCardTierLabel());

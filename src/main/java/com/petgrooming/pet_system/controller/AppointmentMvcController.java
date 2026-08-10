@@ -223,9 +223,13 @@ public class AppointmentMvcController {
     @PostMapping("/checkin-items/{itemId}/operator")
     public String fillCheckinItemOperator(@PathVariable Long itemId,
                                           @RequestParam Long staffId,
+                                          HttpServletRequest request,
                                           RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
         try {
             appointmentService.fillItemOperator(itemId, staffId);
+            operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
+                    "項目 #" + itemId, "指定經手人 #" + staffId);
             redirectAttributes.addFlashAttribute("successMsg", "已補填經手人");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "補填失敗：" + e.getMessage());
@@ -380,7 +384,9 @@ public class AppointmentMvcController {
         }
 
         try {
-            appointmentService.book(req, user.getUsername());
+            AppointmentResponse res = appointmentService.book(req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "BOOK",
+                    "預約 " + res.getAppointmentCode(), res.getPetName());
             redirectAttributes.addFlashAttribute("successMsg", "預約成功！");
             return "redirect:/appointments";
 

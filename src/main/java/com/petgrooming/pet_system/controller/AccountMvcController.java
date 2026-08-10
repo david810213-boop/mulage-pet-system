@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class AccountMvcController {
 
     private final UserService userService;
+    private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -58,6 +60,7 @@ public class AccountMvcController {
             req.setOldPassword(oldPassword);
             req.setNewPassword(newPassword);
             userService.changePassword(user.getUsername(), req);
+            operationLogService.log(user, "AUTH", "CHANGE_PASSWORD", user.getUsername(), null);
             model.addAttribute("successMsg", "密碼修改成功，下次登入請使用新密碼");
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMsg", e.getMessage());

@@ -116,9 +116,13 @@ public class WalkInOrderMvcController {
     @PostMapping("/items/{itemId}/operator")
     public String fillOperator(@PathVariable Long itemId,
                                @RequestParam Long staffId,
+                               HttpServletRequest request,
                                RedirectAttributes ra) {
+        User user = getLoginUser(request);
         try {
             walkInOrderService.fillOperator(itemId, staffId);
+            operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
+                    "項目 #" + itemId, "指定經手人 #" + staffId);
             ra.addFlashAttribute("successMsg", "已補填經手人");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "補填失敗：" + e.getMessage());

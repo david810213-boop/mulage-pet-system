@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.model.MonthlyPerformance;
 import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PerformanceService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,7 @@ public class PerformanceMvcController {
 
     private final PerformanceService performanceService;
     private final UserService userService;
+    private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -67,9 +69,13 @@ public class PerformanceMvcController {
                               @RequestParam(required = false) String note,
                               @RequestParam(required = false)
                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                              HttpServletRequest request,
                               RedirectAttributes ra) {
+        User user = getLoginUser(request);
         try {
             performanceService.splitRecord(sourceRecordId, toStaffId, note);
+            operationLogService.log(user, "PERFORMANCE", "SPLIT_POINTS",
+                    "績效紀錄 #" + sourceRecordId, "拆分給員工 #" + toStaffId + (note != null ? "：" + note : ""));
             ra.addFlashAttribute("successMsg", "積分已對半拆分成功");
         } catch (Exception e) {
             ra.addFlashAttribute("errorMsg", "拆分失敗：" + e.getMessage());
@@ -98,9 +104,13 @@ public class PerformanceMvcController {
     // 月底結算（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/settle")
-    public String settle(@RequestParam int year, @RequestParam int month, RedirectAttributes ra) {
+    public String settle(@RequestParam int year, @RequestParam int month,
+                         HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
         try {
             List<MonthlyPerformance> results = performanceService.settleMonth(year, month);
+            operationLogService.log(user, "PERFORMANCE", "SETTLE",
+                    year + "年" + month + "月", "共 " + results.size() + " 位員工");
             ra.addFlashAttribute("successMsg",
                     year + "年" + month + "月結算完成，共 " + results.size() + " 位員工");
         } catch (Exception e) {

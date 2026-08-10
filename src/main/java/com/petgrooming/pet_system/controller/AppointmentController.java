@@ -38,6 +38,8 @@ public class AppointmentController {
             HttpServletRequest request) {
         try {
             AppointmentResponse res = appointmentService.book(req, currentUsername(request));
+            operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "BOOK",
+                    "預約 " + res.getAppointmentCode(), res.getPetName());
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             // 時間超出營業時間、時段重疊等錯誤

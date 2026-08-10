@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.LineLoginResponse;
 import com.petgrooming.pet_system.dto.LineVerifyResponse;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.JwtUtils;
 import jakarta.servlet.http.Cookie;
@@ -45,6 +46,11 @@ public class LineAuthController {
     private final UserService userService;
     private final JwtUtils jwtUtils;
     private final RestClient restClient = RestClient.create();
+    private final OperationLogService operationLogService;
+
+    // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
+    @Value("${COOKIE_SECURE:false}")
+    private boolean cookieSecure;
 
     @Value("${line.channel-id}")
     private String channelId;
@@ -77,9 +83,13 @@ public class LineAuthController {
         // 4. 簽發本系統的 JWT（標記 source=LINE）
         String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "LINE");
 
+        operationLogService.log(user, "AUTH", isNewMember ? "LINE_REGISTER" : "LINE_LOGIN",
+                user.getUsername(), null);
+
         // 5. 同時寫入 Cookie，方便之後若有需要轉跳一般網頁版時沿用登入狀態
         Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
         jwtCookie.setHttpOnly(true);
+        jwtCookie.setSecure(cookieSecure); // 只在 HTTPS 連線下傳送（由 COOKIE_SECURE 環境變數控制）
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(86400);
         response.addCookie(jwtCookie);
