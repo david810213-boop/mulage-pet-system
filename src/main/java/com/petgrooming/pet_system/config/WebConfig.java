@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -39,6 +40,13 @@ public class WebConfig implements WebMvcConfigurer {
                 bean.addUrlPatterns("/*");
                 bean.setOrder(1);
                 return bean;
+        }
+
+        // 打開網站根目錄（不帶任何路徑）時，導向後台首頁；
+        // 未登入的話會照常被 LoginInterceptor 攔截、轉去登入頁，行為跟直接打 /dashboard 一致。
+        @Override
+        public void addViewControllers(@NonNull ViewControllerRegistry registry) {
+                registry.addRedirectViewController("/", "/dashboard");
         }
 
         @Override
