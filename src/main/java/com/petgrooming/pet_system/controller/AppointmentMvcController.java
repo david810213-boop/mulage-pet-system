@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -33,6 +34,7 @@ public class AppointmentMvcController {
     private final GroomingService groomingItemService;
     private final UserService userService;
     private final PetService petService;
+    private final OperationLogService operationLogService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -149,6 +151,7 @@ public class AppointmentMvcController {
         User user = getLoginUser(request);
         try {
             appointmentService.confirm(id, confirmedTime, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CONFIRM", "預約 #" + id, null);
             redirectAttributes.addFlashAttribute("successMsg", "已確認預約");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "確認失敗：" + e.getMessage());
@@ -204,6 +207,8 @@ public class AppointmentMvcController {
         User user = getLoginUser(request);
         try {
             appointmentService.confirmCheckinOrder(id, itemCodes, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
+                    itemCodes != null ? String.join("、", itemCodes) : null);
             redirectAttributes.addFlashAttribute("successMsg", "已依現場情況開立服務項目，現在可以開始服務");
             return "redirect:/appointments?status=CONFIRMED";
         } catch (IllegalArgumentException e) {
@@ -237,6 +242,7 @@ public class AppointmentMvcController {
         User user = getLoginUser(request);
         try {
             appointmentService.startProgress(id, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "START", "預約 #" + id, null);
             redirectAttributes.addFlashAttribute("successMsg", "已開始服務，狀態轉為進行中");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "操作失敗：" + e.getMessage());
@@ -286,6 +292,7 @@ public class AppointmentMvcController {
 
         try {
             appointmentService.finalCheck(id, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "FINAL_CHECK", "預約 #" + id, req.getNote());
             redirectAttributes.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
             return "redirect:/appointments?status=IN_PROGRESS";
         } catch (IllegalArgumentException e) {
@@ -311,6 +318,7 @@ public class AppointmentMvcController {
             var req = new com.petgrooming.pet_system.dto.CancelAppointmentRequest();
             req.setReason(reason);
             appointmentService.cancel(id, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CANCEL", "預約 #" + id, reason);
             redirectAttributes.addFlashAttribute("successMsg", "預約已取消");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "取消失敗：" + e.getMessage());

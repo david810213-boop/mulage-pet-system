@@ -20,6 +20,7 @@
         <a href="/admin/performance" class="nav-link" th:if="${user != null and user.staffOrAdmin}">績效管理</a>
         <a href="/admin/customers" class="nav-link" th:if="${user != null and user.staffOrAdmin}">會員信息</a>
         <a href="/admin" class="nav-link" th:if="${user != null and user.admin}">管理後台</a>
+        <a href="/admin/operation-logs" class="nav-link" th:if="${user != null and user.admin}">操作紀錄</a>
       </div>
 
       <div class="nav-foot" th:if="${user != null}">

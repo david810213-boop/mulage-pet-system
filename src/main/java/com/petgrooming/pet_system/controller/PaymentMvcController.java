@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
@@ -27,6 +28,7 @@ public class PaymentMvcController {
     private final WalletService walletService;
     private final AppointmentRepository appointmentRepository;
     private final WalkInOrderRepository walkInOrderRepository;
+    private final OperationLogService operationLogService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -147,6 +149,8 @@ public class PaymentMvcController {
 
         try {
             paymentService.checkout(appointmentId, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
+                    req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
             redirectAttributes.addFlashAttribute("successMsg", "結帳成功！");
             return "redirect:/payments";
         } catch (IllegalArgumentException e) {

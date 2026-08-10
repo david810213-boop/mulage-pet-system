@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.OperationLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,6 +23,7 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final OperationLogService operationLogService;
 
     // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
     private String currentUsername(HttpServletRequest request) {
@@ -67,6 +69,9 @@ public class AppointmentController {
             HttpServletRequest request) {
         try {
             AppointmentResponse res = appointmentService.cancel(id, req, currentUsername(request));
+            operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "CANCEL",
+                    "預約 " + res.getAppointmentCode(),
+                    req != null && req.getReason() != null ? req.getReason() : "顧客自行取消");
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
