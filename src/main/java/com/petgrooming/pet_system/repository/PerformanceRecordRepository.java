@@ -19,6 +19,9 @@ public interface PerformanceRecordRepository extends JpaRepository<PerformanceRe
     // 查詢某預約的所有績效紀錄
     List<PerformanceRecord> findByAppointmentId(Long appointmentId);
 
+    // 查詢某現場單的所有績效紀錄（需求：退款時要能一次刪除這張單的所有積分）
+    List<PerformanceRecord> findByWalkInOrderId(Long walkInOrderId);
+
     // 查詢某日所有員工績效
     List<PerformanceRecord> findByServiceDate(LocalDate date);
 

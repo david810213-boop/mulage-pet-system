@@ -72,6 +72,44 @@ public class WalkInOrder {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    // ── 結束服務（比照預約單邏輯）────────────────────────────────────────
+    @Column(name = "service_ended_done", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean serviceEndedDone = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_ended_staff_id")
+    @ToString.Exclude
+    private User serviceEndedStaff;
+
+    @Column(name = "service_ended_at")
+    private LocalDateTime serviceEndedAt;
+
+    // ── 核對（比照預約單邏輯，須先結束服務才能核對，核對後才能結帳）───────
+    @Column(name = "final_check_done", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean finalCheckDone = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "final_check_staff_id")
+    @ToString.Exclude
+    private User finalCheckStaff;
+
+    @Column(name = "final_check_note", columnDefinition = "TEXT")
+    private String finalCheckNote;
+
+    @Column(name = "final_check_signature_image", columnDefinition = "LONGTEXT")
+    private String finalCheckSignatureImage;
+
+    @Column(name = "final_check_at")
+    private LocalDateTime finalCheckAt;
+
+    // 開單人（店家/員工帳號，用於開單當下記 CHECKIN 積分；createdBy 只有姓名快照，這裡另存帳號方便查）
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_staff_id")
+    @ToString.Exclude
+    private User createdByStaff;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<WalkInOrderItem> items = new ArrayList<>();

@@ -149,4 +149,65 @@ public class WalkInOrderMvcController {
         }
         return "redirect:/admin/walk-in-orders";
     }
+
+    // ── GET /admin/walk-in-orders/{id}/final-check ──────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/{id}/final-check")
+    public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        try {
+            model.addAttribute("order", walkInOrderService.getById(id));
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMsg", e.getMessage());
+        }
+        return "admin/walk-in-order-final-check";
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/end-service ─────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/end-service")
+    public String endService(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.endService(id, user.getUsername());
+            operationLogService.log(user, "WALKIN", "END_SERVICE", "現場單 #" + id, null);
+            ra.addFlashAttribute("successMsg", "已結束服務，已通知家長來店接寵物");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "操作失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/final-check ─────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/final-check")
+    public String finalCheck(@PathVariable Long id,
+                             @RequestParam String note,
+                             @RequestParam(name = "signatureData") String signatureData,
+                             HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername());
+            operationLogService.log(user, "WALKIN", "FINAL_CHECK", "現場單 #" + id, note);
+            ra.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "核對失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/refund ───────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/refund")
+    public String refund(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.refund(id, user.getUsername());
+            operationLogService.log(user, "WALKIN", "REFUND", "現場單 #" + id, null);
+            ra.addFlashAttribute("successMsg", "已退款並刪除此筆現場單，請重新開單");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "退款失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
 }

@@ -23,6 +23,8 @@ public class WalkInOrderResponse {
     private boolean paid;
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
+    private boolean serviceEndedDone;
+    private boolean finalCheckDone;
     private List<ItemLine> items;
 
     @Data
@@ -67,6 +69,8 @@ public class WalkInOrderResponse {
         res.setPaid(o.isPaid());
         res.setPaymentMethodLabel(o.getPaymentMethod() != null ? o.getPaymentMethod().getDisplayName() : null);
         res.setPaymentTime(o.getPaymentTime());
+        res.setServiceEndedDone(o.isServiceEndedDone());
+        res.setFinalCheckDone(o.isFinalCheckDone());
         res.setItems(o.getItems().stream().map(ItemLine::from).toList());
         return res;
     }

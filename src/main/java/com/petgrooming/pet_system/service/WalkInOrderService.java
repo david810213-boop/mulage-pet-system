@@ -7,15 +7,18 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.model.WalkInOrderItem;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
+import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderItemRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.notification.LineMessagingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +41,8 @@ public class WalkInOrderService {
     private final UserRepository userRepository;
     private final WalletService walletService;
     private final PerformanceService performanceService;
+    private final PerformanceRecordRepository performanceRecordRepository;
+    private final LineMessagingService lineMessagingService;
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
     @Transactional
@@ -48,9 +53,12 @@ public class WalkInOrderService {
                 .note(req.getNote())
                 .build();
 
-        // 開單人姓名（快照）
-        userRepository.findByUsername(createdByUsername)
-                .ifPresent(u -> order.setCreatedBy(u.getName()));
+        // 開單人姓名（快照）+ 帳號（供 CHECKIN 積分歸屬與之後查詢）
+        User creator = userRepository.findByUsername(createdByUsername).orElse(null);
+        if (creator != null) {
+            order.setCreatedBy(creator.getName());
+            order.setCreatedByStaff(creator);
+        }
 
         // 關聯會員（選填）
         if (req.getMemberUsername() != null && !req.getMemberUsername().isBlank()) {
@@ -97,6 +105,110 @@ public class WalkInOrderService {
         }
 
         log.info("現場開單 #{} 完成，共 {} 項，總額 {}", saved.getId(), saved.getItems().size(), total);
+
+        // 開單當下記入「接進」積分給開單人（比照預約單「開始服務」的邏輯，
+        // 現場單沒有獨立的開始服務步驟，開單本身就是這個時間點）
+        if (creator != null) {
+            performanceService.addWalkInRecord(
+                    creator.getId(),
+                    saved.getId(),
+                    PerformanceCategory.CHECKIN,
+                    PerformanceCategory.CHECKIN.getDefaultPoints(),
+                    saved.getCreatedAt().toLocalDate(),
+                    "接待入場：現場單 #" + saved.getId());
+        }
+
+        return WalkInOrderResponse.from(saved);
+    }
+
+    // ── 結束服務：服務項目全部做完（比照預約單邏輯）─────────────────────
+    // 狀態不影響 paid，只記錄「誰結束的」+ 完成積分，並強制之後的核對必須先做這一步。
+    @Transactional
+    public WalkInOrderResponse endService(Long orderId, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作");
+        }
+
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已結帳，無法結束服務");
+        }
+        if (order.isServiceEndedDone()) {
+            throw new IllegalArgumentException("此單已結束服務，請勿重複操作");
+        }
+
+        order.setServiceEndedDone(true);
+        order.setServiceEndedStaff(staff);
+        order.setServiceEndedAt(LocalDateTime.now());
+        WalkInOrder saved = orderRepository.save(order);
+
+        performanceService.addWalkInRecord(
+                staff.getId(),
+                order.getId(),
+                PerformanceCategory.COMPLETE,
+                PerformanceCategory.COMPLETE.getDefaultPoints(),
+                LocalDate.now(),
+                "結束服務：現場單 #" + order.getId());
+
+        // 若這張單有綁定會員，通知家長可以來接寵物了
+        if (saved.getMember() != null) {
+            String notifyText = String.format(
+                    "【慕沐村 Mulage pet】您好，%s 的美容服務已經完成囉！%n隨時可以來店接毛孩回家 🐾",
+                    saved.getPetName());
+            lineMessagingService.pushText(saved.getMember().getLineUserId(), notifyText);
+        }
+
+        return WalkInOrderResponse.from(saved);
+    }
+
+    // ── 核對：填美容狀況備註 + 簽名確認（比照預約單邏輯）───────────────
+    // 須先完成結束服務才能核對；核對完成才能結帳。
+    @Transactional
+    public WalkInOrderResponse finalCheck(Long orderId, String note, String signatureData, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作");
+        }
+
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+
+        if (!order.isServiceEndedDone()) {
+            throw new IllegalArgumentException("請先點擊「結束服務」才能進行核對");
+        }
+        if (order.isFinalCheckDone()) {
+            throw new IllegalArgumentException("此單已完成核對，請勿重複操作");
+        }
+
+        String noteTrim = note == null ? "" : note.trim();
+        if (noteTrim.isEmpty()) {
+            throw new IllegalArgumentException("請填寫本次美容狀況備註");
+        }
+        String sigTrim = signatureData == null ? "" : signatureData.trim();
+        if (sigTrim.isEmpty() || !sigTrim.startsWith("data:image") || sigTrim.length() < 1000) {
+            throw new IllegalArgumentException("請請家長於簽名板完成簽名確認");
+        }
+
+        order.setFinalCheckDone(true);
+        order.setFinalCheckStaff(staff);
+        order.setFinalCheckNote(noteTrim);
+        order.setFinalCheckSignatureImage(sigTrim);
+        order.setFinalCheckAt(LocalDateTime.now());
+        WalkInOrder saved = orderRepository.save(order);
+
+        performanceService.addWalkInRecord(
+                staff.getId(),
+                order.getId(),
+                PerformanceCategory.CHECKOUT,
+                PerformanceCategory.CHECKOUT.getDefaultPoints(),
+                LocalDate.now(),
+                "接待送出核對：現場單 #" + order.getId());
+
         return WalkInOrderResponse.from(saved);
     }
 
@@ -113,6 +225,9 @@ public class WalkInOrderService {
 
         if (order.isPaid()) {
             throw new IllegalArgumentException("此單已完成結帳");
+        }
+        if (!order.isFinalCheckDone()) {
+            throw new IllegalArgumentException("請先完成「結束服務」與「核對」後才能結帳");
         }
 
         if (paymentMethod == com.petgrooming.pet_system.enums.PaymentMethod.WALLET) {
@@ -133,6 +248,47 @@ public class WalkInOrderService {
 
         log.info("現場單 #{} 結帳完成，付款方式：{}", saved.getId(), paymentMethod);
         return WalkInOrderResponse.from(saved);
+    }
+
+    // ── 退款：僅限「已結帳」的現場單 ──────────────────────────────────
+    // 退款後直接刪除這筆現場單（含底下所有項目），積分全部刪除、
+    // 儲值金付款的補回餘額，之後店家重新開一張全新的單即可。
+    @Transactional
+    public void refund(Long orderId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!user.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作退款");
+        }
+
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+
+        if (!order.isPaid()) {
+            throw new IllegalArgumentException("此單尚未結帳，無法退款");
+        }
+
+        // 1. 若原本用儲值金付款，退回會員儲值餘額
+        if (order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET
+                && order.getMember() != null) {
+            walletService.refund(
+                    order.getMember().getUsername(),
+                    order.getTotalAmount(),
+                    null,
+                    "現場單 #" + orderId + " 退款");
+        }
+
+        // 2. 刪除這張單已經記過的所有績效積分（接進/完成/接出/服務項目）
+        List<com.petgrooming.pet_system.model.PerformanceRecord> records =
+                performanceRecordRepository.findByWalkInOrderId(orderId);
+        if (!records.isEmpty()) {
+            performanceRecordRepository.deleteAll(records);
+        }
+
+        // 3. 直接刪除整筆現場單（items 設定了 cascade + orphanRemoval，會一併刪除）
+        orderRepository.delete(order);
+
+        log.info("現場單 #{} 已退款並刪除，操作人：{}", orderId, username);
     }
 
     // ── 所有現場單（交易紀錄列表）───────────────────────────────────────────

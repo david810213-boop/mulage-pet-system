@@ -204,9 +204,22 @@
                 <td th:text="'$' + ${o.totalAmount}"></td>
                 <td>
                   <span th:if="${o.paid}" class="badge paid" th:text="'已' + ${o.paymentMethodLabel}"></span>
+
+                  <!-- 未結帳：依進度顯示 結束服務 → 核對 → 結帳 -->
                   <div th:unless="${o.paid}" style="display:flex; flex-direction:column; gap:4px;">
                     <span class="badge unpaid">未結帳</span>
-                    <form th:action="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}" method="post"
+
+                    <form th:if="${!o.serviceEndedDone}"
+                          th:action="@{/admin/walk-in-orders/{id}/end-service(id=${o.id})}" method="post">
+                      <button type="submit" class="btn btn-outline" style="padding:3px 10px; font-size:12px;">🏁 結束服務</button>
+                    </form>
+
+                    <a th:if="${o.serviceEndedDone and !o.finalCheckDone}"
+                       th:href="@{/admin/walk-in-orders/{id}/final-check(id=${o.id})}"
+                       class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">📝 核對</a>
+
+                    <form th:if="${o.finalCheckDone}"
+                          th:action="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}" method="post"
                           style="display:flex; gap:4px;"
                           onsubmit="return confirm('確定要結帳嗎？');">
                       <select name="paymentMethod" style="padding:3px 6px; font-size:12px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
@@ -218,6 +231,15 @@
                       <button type="submit" class="btn" style="padding:3px 10px; font-size:12px;">結帳</button>
                     </form>
                   </div>
+
+                  <!-- 已結帳：可退款 -->
+                  <form th:if="${o.paid}"
+                        th:action="@{/admin/walk-in-orders/{id}/refund(id=${o.id})}" method="post"
+                        onsubmit="return confirm('確定要退款這張現場單嗎？退款後此筆紀錄會直接刪除，需重新開單。');"
+                        style="margin-top:4px;">
+                    <button type="submit" class="btn btn-outline"
+                            style="padding:3px 10px; font-size:12px; color:#c62828; border-color:#c67a5c;">💸 退款</button>
+                  </form>
                 </td>
                 <td th:text="${o.createdBy}"></td>
               </tr>
@@ -230,6 +252,35 @@
     <script th:inline="javascript">
       // 從後端帶入可用項目清單（含不可線上預約的調理項目），JS 動態組出下拉選單
       const GROOMING_ITEMS = /*[[${groomingItems}]]*/ [];
+      // 需求 4：預設只給「會計積分」的項目；勾選/選到「特殊項目」(SPECIAL) 之後，
+      // 才把不計分的加購/調理項目 (OTHER) 加進所有列的下拉選單裡。
+      const POINT_ITEMS = GROOMING_ITEMS.filter(function (i) { return i.performanceCategory !== 'OTHER'; });
+      const OTHER_ITEMS = GROOMING_ITEMS.filter(function (i) { return i.performanceCategory === 'OTHER'; });
+      let otherItemsUnlocked = false;
+
+      function appendItemOptions(select, items) {
+        items.forEach(function (item) {
+          const opt = document.createElement('option');
+          opt.value = item.itemCode;
+          opt.textContent = item.name + '（$' + item.price + '）';
+          select.appendChild(opt);
+        });
+      }
+
+      // 一旦任何一列選到「特殊項目」，把不計分項目補進所有現存的下拉選單（含之後新增的列）
+      function unlockOtherItemsIfNeeded(select) {
+        const selectedItem = GROOMING_ITEMS.find(function (i) { return i.itemCode === select.value; });
+        if (selectedItem && selectedItem.performanceCategory === 'SPECIAL' && !otherItemsUnlocked) {
+          otherItemsUnlocked = true;
+          document.querySelectorAll('select[name="itemCodes"]').forEach(function (sel) {
+            const group = document.createElement('optgroup');
+            group.label = '✨ 其他加購項目（不計分）';
+            appendItemOptions(group, OTHER_ITEMS);
+            sel.appendChild(group);
+          });
+        }
+      }
+
       // 需求：經手人綁定員工帳號，只給 id + 姓名（不含密碼等敏感欄位）
       const STAFF_LIST = /*[[${staffList}]]*/ [];
 
@@ -262,12 +313,15 @@
         emptyOpt.value = '';
         emptyOpt.textContent = '請選擇項目';
         select.appendChild(emptyOpt);
-        GROOMING_ITEMS.forEach(function (item) {
-          const opt = document.createElement('option');
-          opt.value = item.itemCode;
-          opt.textContent = item.name + '（$' + item.price + '）';
-          select.appendChild(opt);
-        });
+        appendItemOptions(select, POINT_ITEMS);
+        // 若這一列建立時，其他列已經解鎖過不計分項目，這一列也要一併補上，維持一致
+        if (otherItemsUnlocked) {
+          const group = document.createElement('optgroup');
+          group.label = '✨ 其他加購項目（不計分）';
+          appendItemOptions(group, OTHER_ITEMS);
+          select.appendChild(group);
+        }
+        select.addEventListener('change', function () { unlockOtherItemsIfNeeded(select); });
 
         // 需求：經手人改成從員工清單選，不再自由輸入文字
         const operatorSelect = buildStaffSelect('operatorStaffIds');
