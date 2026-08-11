@@ -9,9 +9,12 @@ import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.AppointmentItemRepository;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,8 @@ public class PaymentService {
     private final PerformanceService performanceService;
     private final WalletService walletService;
     private final AppointmentService appointmentService;
+    private final AppointmentItemRepository appointmentItemRepository;
+    private final PerformanceRecordRepository performanceRecordRepository;
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -169,6 +174,73 @@ public class PaymentService {
         // 結帳這裡不再重複發放，避免同一筆預約算兩次完成積分。
 
         log.info("預約 #{} 結帳後自動建立績效紀錄", appointment.getId());
+    }
+
+    // ── 1x. 退款：僅限「已結帳」的預約 ────────────────────────────────────
+    // 退款後預約回到「已確認」狀態、清空現場開單/服務進度，讓店家可以重新
+    // 開單重新結帳（例如漏 key 項目需要重開）。
+    //   - 若原本用儲值金付款，金額自動退回會員儲值餘額
+    //   - 已經記給員工的積分（接進/完成/接出/服務項目）全部一併刪除
+    //   - 管理員與員工皆可操作
+    @Transactional
+    public void refund(Long appointmentId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!user.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作退款");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        if (!appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約尚未結帳，無法退款");
+        }
+
+        Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到此預約的交易紀錄"));
+
+        // 1. 若原本用儲值金付款，退回儲值餘額
+        if (transaction.getPaymentMethod() == PaymentMethod.WALLET) {
+            walletService.refund(
+                    appointment.getUser().getUsername(),
+                    transaction.getFinalAmount(),
+                    appointmentId,
+                    "預約 #" + appointmentId + " 退款");
+        }
+
+        // 2. 刪除這筆預約已經記過的所有績效積分（接進/完成/接出/服務項目）
+        List<com.petgrooming.pet_system.model.PerformanceRecord> records =
+                performanceRecordRepository.findByAppointmentId(appointmentId);
+        if (!records.isEmpty()) {
+            performanceRecordRepository.deleteAll(records);
+        }
+
+        // 3. 刪除現場開單（依預約編號）已勾選的服務項目，讓店家可以重新開單
+        List<com.petgrooming.pet_system.model.AppointmentItem> items =
+                appointmentItemRepository.findByAppointmentId(appointmentId);
+        if (!items.isEmpty()) {
+            appointmentItemRepository.deleteAll(items);
+        }
+
+        // 4. 刪除交易紀錄（checkout() 會擋「已有交易紀錄」，必須刪掉才能重新結帳）
+        transactionRepository.delete(transaction);
+
+        // 5. 預約狀態回到「已確認」，清空核對／結束服務／現場開單的進度旗標
+        appointment.setPaid(false);
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setCheckinOrderConfirmed(false);
+        appointment.setServiceEndedDone(false);
+        appointment.setServiceEndedStaff(null);
+        appointment.setServiceEndedAt(null);
+        appointment.setFinalCheckDone(false);
+        appointment.setFinalCheckStaff(null);
+        appointment.setFinalCheckNote(null);
+        appointment.setFinalCheckSignatureImage(null);
+        appointment.setFinalCheckAt(null);
+        appointmentRepository.save(appointment);
+
+        log.info("預約 #{} 已退款，操作人：{}", appointmentId, username);
     }
 
     // ── 2. 查詢自己的交易紀錄 ──────────────────────────────────────────────

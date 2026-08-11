@@ -174,4 +174,23 @@ public class PaymentMvcController {
             return "payments/checkout";
         }
     }
+
+    // ── POST /payments/{id}/refund ────────────────────────────────────────
+    // 退款：僅限「已結帳」的預約。退款後回到「已確認」狀態，清空現場開單、
+    // 結束服務、核對進度，可重新開單重新結帳；管理員與員工皆可操作。
+    @PostMapping("/{id}/refund")
+    public String refund(@PathVariable Long id, HttpServletRequest request,
+                         RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            paymentService.refund(id, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "REFUND", "預約 #" + id, null);
+            redirectAttributes.addFlashAttribute("successMsg", "已退款，預約已回到「已確認」狀態，可重新開單");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "退款失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments";
+    }
 }

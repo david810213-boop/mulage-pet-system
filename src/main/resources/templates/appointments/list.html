@@ -392,7 +392,16 @@
                       取消預約
                     </button>
                   </form>
-                  <span th:if="${a.paid}" style="font-size:11px; color:var(--brown-light); white-space:normal; display:block; max-width:130px;">已結帳，需先退款才能取消</span>
+                  <form th:if="${a.paid and !a.cancelled}"
+                        th:action="@{/payments/{id}/refund(id=${a.id})}"
+                        method="post"
+                        onsubmit="return confirm('確定要退款這筆預約嗎？（' + this.dataset.code + '）\n退款後將回到「已確認」狀態，需重新開單重新結帳。');"
+                        th:data-code="${a.appointmentCode}">
+                    <button type="submit" class="btn btn-outline"
+                            style="padding:3px 10px; font-size:12px; color:#c62828; border-color:#c67a5c;">
+                      💸 退款
+                    </button>
+                  </form>
                 </div>
                 <div th:if="${a.cancelled}" style="font-size:11px; color:var(--brown-light);">
                   <div th:text="${a.cancelledBy}"></div>
