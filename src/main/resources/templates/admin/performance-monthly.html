@@ -88,22 +88,13 @@
             margin-bottom: 1.5rem;
           "
         >
-          <h3 style="font-size: 15px; margin-bottom: 12px">
-            💰 積分獎勵金對照表（不含接待）
+          <h3 style="font-size: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span>💰 積分獎勵金對照表（不含接待）</span>
+            <a href="/admin/performance/bonus-tiers" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 400;">⚙️ 編輯級距</a>
           </h3>
           <div style="display: flex; gap: 8px; flex-wrap: wrap">
             <div
-              style="
-                background: #fff8f0;
-                border: 1px solid #f0e8dc;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              3001–3350 → <strong>$1,200</strong>
-            </div>
-            <div
+              th:each="t : ${tiers}"
               style="
                 background: #fff4e8;
                 border: 1px solid #f0e8dc;
@@ -112,73 +103,8 @@
                 font-size: 13px;
               "
             >
-              3351–3700 → <strong>$1,600</strong>
-            </div>
-            <div
-              style="
-                background: #ffeed8;
-                border: 1px solid #f0e8dc;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              3701–4000 → <strong>$2,200</strong>
-            </div>
-            <div
-              style="
-                background: #ffe8c8;
-                border: 1px solid #f0d8c0;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              4001–4300 → <strong>$2,800</strong>
-            </div>
-            <div
-              style="
-                background: #ffddb8;
-                border: 1px solid #f0c8a8;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              4301–4600 → <strong>$3,600</strong>
-            </div>
-            <div
-              style="
-                background: #ffd0a0;
-                border: 1px solid #f0b888;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              4601–5000 → <strong>$4,400</strong>
-            </div>
-            <div
-              style="
-                background: #ffc088;
-                border: 1px solid #f0a070;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              5001–5300 → <strong>$5,600</strong>
-            </div>
-            <div
-              style="
-                background: #ffb070;
-                border: 1px solid #f09060;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-              "
-            >
-              5301–5600 → <strong>$6,600</strong>
+              <span th:text="${t.minPoints} + '–' + ${t.maxPoints}"></span> →
+              <strong th:text="'$' + ${#numbers.formatInteger(t.bonusAmount, 0, 'COMMA')}"></strong>
             </div>
           </div>
         </div>

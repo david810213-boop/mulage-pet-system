@@ -1,9 +1,11 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.MonthlyPerformance;
 import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.BonusTierRepository;
 import com.petgrooming.pet_system.repository.MonthlyPerformanceRepository;
 import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
@@ -26,18 +28,7 @@ public class PerformanceService {
     private final PerformanceRecordRepository recordRepo;
     private final MonthlyPerformanceRepository monthlyRepo;
     private final UserRepository userRepository;
-
-    // ── 積分級距獎勵金對照表 ────────────────────────────────────────────
-    private static final int[][] BONUS_TABLE = {
-        {3001, 3350, 1200},
-        {3351, 3700, 1600},
-        {3701, 4000, 2200},
-        {4001, 4300, 2800},
-        {4301, 4600, 3600},
-        {4601, 5000, 4400},
-        {5001, 5300, 5600},
-        {5301, 5600, 6600},
-    };
+    private final BonusTierRepository bonusTierRepository;
 
     // ── 新增績效紀錄（由店家後台操作，記錄員工完成某項目的積分）──────
     @Transactional
@@ -287,10 +278,10 @@ public class PerformanceService {
 
         Integer nextThreshold = null;
         Double pointsToNext = null;
-        for (int[] range : BONUS_TABLE) {
-            if (mainPts < range[0]) {
-                nextThreshold = range[0];
-                pointsToNext = range[0] - mainPts;
+        for (BonusTier tier : bonusTierRepository.findAllByOrderByMinPointsAsc()) {
+            if (mainPts < tier.getMinPoints()) {
+                nextThreshold = tier.getMinPoints();
+                pointsToNext = tier.getMinPoints() - mainPts;
                 break;
             }
         }
@@ -306,13 +297,45 @@ public class PerformanceService {
                 .build();
     }
 
-    // ── 私有：依積分查獎勵金 ────────────────────────────────────────
+    // ── 私有：依積分查獎勵金（改成查後台可編輯的 bonus_tiers 資料表）────
     private int calcBonus(int points) {
-        for (int[] range : BONUS_TABLE) {
-            if (points >= range[0] && points <= range[1]) {
-                return range[2];
+        for (BonusTier tier : bonusTierRepository.findAllByOrderByMinPointsAsc()) {
+            if (points >= tier.getMinPoints() && points <= tier.getMaxPoints()) {
+                return tier.getBonusAmount();
             }
         }
-        return 0; // 未達最低門檻（3001分）
+        return 0; // 未達最低門檻
+    }
+
+    // ── 獎金級距管理（後台可編輯）────────────────────────────────────
+    public List<BonusTier> getAllBonusTiers() {
+        return bonusTierRepository.findAllByOrderByMinPointsAsc();
+    }
+
+    @Transactional
+    public BonusTier createBonusTier(int minPoints, int maxPoints, int bonusAmount) {
+        if (minPoints > maxPoints) {
+            throw new IllegalArgumentException("下限不能大於上限");
+        }
+        return bonusTierRepository.save(
+                BonusTier.builder().minPoints(minPoints).maxPoints(maxPoints).bonusAmount(bonusAmount).build());
+    }
+
+    @Transactional
+    public void updateBonusTier(Long id, int minPoints, int maxPoints, int bonusAmount) {
+        if (minPoints > maxPoints) {
+            throw new IllegalArgumentException("下限不能大於上限");
+        }
+        BonusTier tier = bonusTierRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("找不到級距 #" + id));
+        tier.setMinPoints(minPoints);
+        tier.setMaxPoints(maxPoints);
+        tier.setBonusAmount(bonusAmount);
+        bonusTierRepository.save(tier);
+    }
+
+    @Transactional
+    public void deleteBonusTier(Long id) {
+        bonusTierRepository.deleteById(id);
     }
 }

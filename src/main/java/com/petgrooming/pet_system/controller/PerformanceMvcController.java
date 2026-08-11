@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.MonthlyPerformance;
 import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.User;
@@ -97,6 +98,7 @@ public class PerformanceMvcController {
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("ym", ym);
         model.addAttribute("ranking", performanceService.getLiveMonthlyRanking(ym.getYear(), ym.getMonthValue()));
+        model.addAttribute("tiers", performanceService.getAllBonusTiers());
         return "admin/performance-monthly";
     }
 
@@ -169,5 +171,61 @@ public class PerformanceMvcController {
                         .filter(r -> r.getStaff().getId().equals(user.getId()))
                         .toList());
         return "admin/performance-my";
+    }
+
+    // ── GET /admin/performance/bonus-tiers ──────────────────────────────
+    @RequireRole(UserRole.ADMIN)
+    @GetMapping("/bonus-tiers")
+    public String bonusTiers(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("tiers", performanceService.getAllBonusTiers());
+        return "admin/performance-bonus-tiers";
+    }
+
+    // ── POST /admin/performance/bonus-tiers/create ──────────────────────
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/bonus-tiers/create")
+    public String createBonusTier(@RequestParam int minPoints, @RequestParam int maxPoints,
+                                  @RequestParam int bonusAmount,
+                                  HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            performanceService.createBonusTier(minPoints, maxPoints, bonusAmount);
+            operationLogService.log(user, "PERFORMANCE", "CREATE_BONUS_TIER",
+                    minPoints + "-" + maxPoints + "分", "$" + bonusAmount);
+            ra.addFlashAttribute("successMsg", "已新增級距");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/performance/bonus-tiers";
+    }
+
+    // ── POST /admin/performance/bonus-tiers/{id}/update ─────────────────
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/bonus-tiers/{id}/update")
+    public String updateBonusTier(@PathVariable Long id, @RequestParam int minPoints,
+                                  @RequestParam int maxPoints, @RequestParam int bonusAmount,
+                                  HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            performanceService.updateBonusTier(id, minPoints, maxPoints, bonusAmount);
+            operationLogService.log(user, "PERFORMANCE", "UPDATE_BONUS_TIER",
+                    "級距 #" + id, minPoints + "-" + maxPoints + "分 → $" + bonusAmount);
+            ra.addFlashAttribute("successMsg", "已更新級距");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/performance/bonus-tiers";
+    }
+
+    // ── POST /admin/performance/bonus-tiers/{id}/delete ─────────────────
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/bonus-tiers/{id}/delete")
+    public String deleteBonusTier(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        performanceService.deleteBonusTier(id);
+        operationLogService.log(user, "PERFORMANCE", "DELETE_BONUS_TIER", "級距 #" + id, null);
+        ra.addFlashAttribute("successMsg", "已刪除級距");
+        return "redirect:/admin/performance/bonus-tiers";
     }
 }

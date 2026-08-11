@@ -1,0 +1,79 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('獎金級距設定 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">⚙️ 積分獎勵金級距設定</h2>
+          <a href="/admin/performance/monthly" class="btn">← 回月報</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 12px">➕ 新增級距</h3>
+          <form method="post" action="/admin/performance/bonus-tiers/create"
+                style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+            <div class="field" style="margin: 0">
+              <label>積分下限</label>
+              <input type="number" name="minPoints" required />
+            </div>
+            <div class="field" style="margin: 0">
+              <label>積分上限</label>
+              <input type="number" name="maxPoints" required />
+            </div>
+            <div class="field" style="margin: 0">
+              <label>獎勵金</label>
+              <input type="number" name="bonusAmount" required />
+            </div>
+            <button type="submit" class="btn btn-primary">建立</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 15px; margin-bottom: 12px">目前級距（依積分由低到高排序）</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>積分下限</th>
+                <th>積分上限</th>
+                <th>獎勵金</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(tiers)}">
+                <td colspan="4" class="empty">尚無級距設定</td>
+              </tr>
+              <tr th:each="t : ${tiers}">
+                <form th:action="@{/admin/performance/bonus-tiers/{id}/update(id=${t.id})}" method="post"
+                      style="display: contents;">
+                  <td><input type="number" name="minPoints" th:value="${t.minPoints}" style="width: 90px" required /></td>
+                  <td><input type="number" name="maxPoints" th:value="${t.maxPoints}" style="width: 90px" required /></td>
+                  <td><input type="number" name="bonusAmount" th:value="${t.bonusAmount}" style="width: 100px" required /></td>
+                  <td style="display: flex; gap: 6px">
+                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px">儲存</button>
+                    <button
+                      type="submit"
+                      th:formaction="@{/admin/performance/bonus-tiers/{id}/delete(id=${t.id})}"
+                      onclick="return confirm('確定要刪除這個級距嗎？');"
+                      class="btn btn-outline"
+                      style="padding: 4px 10px; font-size: 12px; color:#c62828; border-color:#c67a5c;"
+                    >
+                      刪除
+                    </button>
+                  </td>
+                </form>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

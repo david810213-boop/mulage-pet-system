@@ -2,8 +2,10 @@ package com.petgrooming.pet_system.config;
 
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.BonusTierRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final GroomingItemRepository groomingItemRepository;
+    private final BonusTierRepository bonusTierRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -29,6 +32,19 @@ public class DataInitializer implements ApplicationRunner {
         createIfNotExists("staff@pet.com", "staff123", "美容師小洪", UserRole.STAFF);
         createIfNotExists("user@pet.com", "user123", "測試會員", UserRole.CUSTOMER);
         log.info("預設帳號初始化完成");
+
+        // 需求 3：積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
+        if (bonusTierRepository.count() == 0) {
+            bonusTierRepository.save(BonusTier.builder().minPoints(3001).maxPoints(3350).bonusAmount(1200).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(3351).maxPoints(3700).bonusAmount(1600).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(3701).maxPoints(4000).bonusAmount(2200).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(4001).maxPoints(4300).bonusAmount(2800).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(4301).maxPoints(4600).bonusAmount(3600).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(4601).maxPoints(5000).bonusAmount(4400).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(5001).maxPoints(5300).bonusAmount(5600).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(5301).maxPoints(5600).bonusAmount(6600).build());
+            log.info("積分獎勵金級距種子資料初始化完成");
+        }
 
         if (groomingItemRepository.count() == 0) {
 
