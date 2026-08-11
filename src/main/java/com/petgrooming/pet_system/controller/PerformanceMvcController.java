@@ -96,7 +96,7 @@ public class PerformanceMvcController {
 
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("ym", ym);
-        model.addAttribute("ranking", performanceService.getMonthlyRanking(ym.getYear(), ym.getMonthValue()));
+        model.addAttribute("ranking", performanceService.getLiveMonthlyRanking(ym.getYear(), ym.getMonthValue()));
         return "admin/performance-monthly";
     }
 
@@ -136,5 +136,38 @@ public class PerformanceMvcController {
         model.addAttribute("records", performanceService.getMonthlyRecords(staffId, ym.getYear(), ym.getMonthValue()));
         model.addAttribute("history", performanceService.getStaffHistory(staffId));
         return "admin/performance-staff";
+    }
+
+    // ── POST /admin/performance/cancel-settle ────────────────────────────
+    // 取消結算：僅限「當月」，避免不小心取消掉過去已對外發放獎金的月份
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/cancel-settle")
+    public String cancelSettle(@RequestParam int year, @RequestParam int month,
+                               HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            performanceService.cancelSettlement(year, month);
+            operationLogService.log(user, "PERFORMANCE", "CANCEL_SETTLE", year + "年" + month + "月", null);
+            ra.addFlashAttribute("successMsg", "已取消 " + year + "年" + month + "月 的結算");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "取消失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/performance/monthly?year=" + year + "&month=" + month;
+    }
+
+    // ── GET /admin/performance/my ────────────────────────────────────────
+    // 我的績效：員工查詢自己今日/當月累積積分，以及距離下一個獎勵金級距還差幾分
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/my")
+    public String myProgress(HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        model.addAttribute("user", user);
+        model.addAttribute("progress",
+                performanceService.getMyProgress(user.getId(), java.time.LocalDate.now()));
+        model.addAttribute("myRecordsToday",
+                performanceService.getDailyRecords(java.time.LocalDate.now()).stream()
+                        .filter(r -> r.getStaff().getId().equals(user.getId()))
+                        .toList());
+        return "admin/performance-my";
     }
 }

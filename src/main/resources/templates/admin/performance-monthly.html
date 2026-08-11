@@ -197,6 +197,7 @@
             📊
             <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span>
             績效排行
+            <span style="font-size: 12px; font-weight: 400; color: var(--brown-light)">（依每日累加積分即時更新，未結算也會顯示）</span>
           </h3>
           <table>
             <thead>
@@ -213,7 +214,7 @@
             <tbody>
               <tr th:if="${#lists.isEmpty(ranking)}">
                 <td colspan="7" style="text-align: center; color: #aaa">
-                  尚未結算，或本月無績效資料
+                  本月尚無績效資料
                 </td>
               </tr>
               <tr th:each="mp,stat : ${ranking}">
@@ -247,12 +248,12 @@
                 </td>
                 <td>
                   <span
-                    th:if="${mp.settled}"
+                    th:if="${mp.getIsSettled()}"
                     style="color: #43a047; font-size: 13px"
                     >✅ 已結算</span
                   >
                   <span
-                    th:unless="${mp.settled}"
+                    th:unless="${mp.getIsSettled()}"
                     style="color: #e53935; font-size: 13px"
                     >⏳ 未結算</span
                   >
@@ -318,6 +319,25 @@
                 >月份</span
               >
               結算
+            </button>
+          </form>
+
+          <!-- 取消結算：僅限當月，且需已有結算紀錄才顯示 -->
+          <form
+            th:if="${ym.year == T(java.time.YearMonth).now().year and ym.monthValue == T(java.time.YearMonth).now().monthValue and !#lists.isEmpty(ranking.?[getIsSettled()])}"
+            method="post"
+            action="/admin/performance/cancel-settle"
+            style="margin-top: 10px"
+            onsubmit="return confirm('確定要取消本月結算嗎？取消後可以重新執行結算復原，不會影響原始積分紀錄。');"
+          >
+            <input type="hidden" name="year" th:value="${ym.year}" />
+            <input type="hidden" name="month" th:value="${ym.monthValue}" />
+            <button
+              type="submit"
+              class="btn btn-outline"
+              style="color: #c62828; border-color: #c67a5c"
+            >
+              取消本月結算
             </button>
           </form>
         </div>

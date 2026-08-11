@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -141,63 +142,111 @@ public class PerformanceService {
         return recordRepo.findByAppointmentId(appointmentId);
     }
 
-    // ── 月底結算：統計所有員工本月積分並計算獎勵金 ──────────────────
+    // ── 月底結算：統計所有員工本月積分並計算獎勵金，寫入結算快照 ──────────
     @Transactional
     public List<MonthlyPerformance> settleMonth(int year, int month) {
+        LocalDate ymKey = YearMonth.of(year, month).atDay(1);
+        List<MonthlyPerformance> computed = computeMonthSummaries(year, month);
+
+        List<MonthlyPerformance> results = new ArrayList<>();
+        for (MonthlyPerformance c : computed) {
+            MonthlyPerformance mp = monthlyRepo
+                    .findByStaffIdAndYearMonth(c.getStaff().getId(), ymKey)
+                    .orElse(MonthlyPerformance.builder().staff(c.getStaff()).yearMonth(ymKey).build());
+
+            mp.setTotalPoints(c.getTotalPoints());
+            mp.setReceptionPoints(c.getReceptionPoints());
+            mp.setBonusAmount(c.getBonusAmount());
+            mp.setIsSettled(true);
+            mp.setSettledAt(LocalDateTime.now());
+
+            results.add(monthlyRepo.save(mp));
+            log.info("結算員工 {} 的 {} 績效：主要積分={}, 接待積分={}, 獎勵金={}",
+                    c.getStaff().getName(), YearMonth.of(year, month), c.getTotalPoints(), c.getReceptionPoints(), c.getBonusAmount());
+        }
+        return results;
+    }
+
+    // ── 取消結算：僅限「當月」，避免不小心把過去已對外發放獎金的月份也取消掉 ──
+    // 取消後該月份的結算快照會被刪除，回到「即時預覽、尚未結算」狀態；
+    // 資料本身（PerformanceRecord）完全不受影響，需要的話隨時可以重新執行結算復原。
+    @Transactional
+    public void cancelSettlement(int year, int month) {
+        YearMonth target = YearMonth.of(year, month);
+        if (!target.equals(YearMonth.now())) {
+            throw new IllegalArgumentException("只能取消「當月」的結算，避免影響已對外發放獎金的過去月份");
+        }
+        LocalDate ymKey = target.atDay(1);
+        List<MonthlyPerformance> rows = monthlyRepo.findByYearMonthOrderByTotalPointsDesc(ymKey);
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("此月份尚未結算過，無需取消");
+        }
+        monthlyRepo.deleteAll(rows);
+        log.info("已取消 {} 的結算，共 {} 筆", target, rows.size());
+    }
+
+    // ── 即時月度排行（給月報頁面用）：不需要先結算，每天都會依最新積分即時更新 ──
+    // 若該月份已經正式結算過，obtainSettled=true 且獎勵金取結算當下鎖定的數字；
+    // 尚未結算則即時計算預覽值，obtainSettled=false。
+    public List<MonthlyPerformance> getLiveMonthlyRanking(int year, int month) {
+        List<MonthlyPerformance> live = computeMonthSummaries(year, month);
+
+        LocalDate ymKey = YearMonth.of(year, month).atDay(1);
+        Map<Long, MonthlyPerformance> settledByStaffId = monthlyRepo
+                .findByYearMonthOrderByTotalPointsDesc(ymKey).stream()
+                .collect(Collectors.toMap(mp -> mp.getStaff().getId(), mp -> mp));
+
+        for (MonthlyPerformance mp : live) {
+            MonthlyPerformance settled = settledByStaffId.get(mp.getStaff().getId());
+            if (settled != null) {
+                mp.setIsSettled(true);
+                mp.setSettledAt(settled.getSettledAt());
+            }
+        }
+
+        live.sort((a, b) -> Double.compare(b.getTotalPoints(), a.getTotalPoints()));
+        return live;
+    }
+
+    // ── 共用計算：依 PerformanceRecord 即時統計每位員工本月主要積分/接待積分/獎勵金 ──
+    // 回傳的物件是「暫存、未寫入資料庫」的 MonthlyPerformance（id 為 null），
+    // 只用來組顯示資料或給 settleMonth() 拿去正式寫入，不能直接拿去 save。
+    private List<MonthlyPerformance> computeMonthSummaries(int year, int month) {
         YearMonth ym = YearMonth.of(year, month);
         LocalDate start = ym.atDay(1);
         LocalDate end   = ym.atEndOfMonth();
-        LocalDate ymKey = start;
 
         List<PerformanceRecord> allRecords = recordRepo.findByMonth(start, end);
 
-        // 依員工分組
         Map<Long, List<PerformanceRecord>> byStaff = allRecords.stream()
                 .collect(Collectors.groupingBy(r -> r.getStaff().getId()));
 
         List<MonthlyPerformance> results = new ArrayList<>();
-
         for (Map.Entry<Long, List<PerformanceRecord>> entry : byStaff.entrySet()) {
-            Long staffId = entry.getKey();
             List<PerformanceRecord> records = entry.getValue();
 
-            // 接待積分單獨統計
             double receptionPts = records.stream()
                     .filter(r -> r.getCategory() == PerformanceCategory.CHECKIN
                               || r.getCategory() == PerformanceCategory.CHECKOUT)
                     .mapToDouble(PerformanceRecord::getPoints).sum();
 
-            // 主要積分（不含接待、OTHER）
             double mainPts = records.stream()
                     .filter(r -> r.getCategory() != PerformanceCategory.CHECKIN
                               && r.getCategory() != PerformanceCategory.CHECKOUT
                               && r.getCategory() != PerformanceCategory.OTHER)
                     .mapToDouble(PerformanceRecord::getPoints).sum();
 
-            int bonus = calcBonus((int) mainPts);
-
-            // 更新或建立月績效
             User staff = records.get(0).getStaff();
-            MonthlyPerformance mp = monthlyRepo
-                    .findByStaffIdAndYearMonth(staffId, ymKey)
-                    .orElse(MonthlyPerformance.builder().staff(staff).yearMonth(ymKey).build());
-
-            mp.setTotalPoints(mainPts);
-            mp.setReceptionPoints(receptionPts);
-            mp.setBonusAmount(bonus);
-
-            results.add(monthlyRepo.save(mp));
-            log.info("結算員工 {} 的 {} 績效：主要積分={}, 接待積分={}, 獎勵金={}",
-                    staff.getName(), ym, mainPts, receptionPts, bonus);
+            results.add(MonthlyPerformance.builder()
+                    .staff(staff)
+                    .yearMonth(start)
+                    .totalPoints(mainPts)
+                    .receptionPoints(receptionPts)
+                    .bonusAmount(calcBonus((int) mainPts))
+                    .isSettled(false)
+                    .build());
         }
-
         return results;
-    }
-
-    // ── 查詢某月所有員工結算結果（排行榜） ──────────────────────────
-    public List<MonthlyPerformance> getMonthlyRanking(int year, int month) {
-        return monthlyRepo.findByYearMonthOrderByTotalPointsDesc(
-                YearMonth.of(year, month).atDay(1));
     }
 
     // ── 查詢某員工所有月度紀錄 ──────────────────────────────────────
@@ -208,6 +257,53 @@ public class PerformanceService {
     // ── 查詢某日績效（店家後台日報用）──────────────────────────────
     public List<PerformanceRecord> getDailyRecords(LocalDate date) {
         return recordRepo.findByServiceDate(date);
+    }
+
+    // ── 我的績效：員工查詢自己今日/當月累積積分，以及距離下一級距還差幾分 ──
+    public com.petgrooming.pet_system.dto.StaffProgressResponse getMyProgress(Long staffId, LocalDate today) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + staffId));
+
+        double todayPoints = recordRepo.findByServiceDate(today).stream()
+                .filter(r -> r.getStaff().getId().equals(staffId))
+                .mapToDouble(PerformanceRecord::getPoints).sum();
+
+        YearMonth ym = YearMonth.from(today);
+        List<PerformanceRecord> monthRecords = recordRepo
+                .findByStaffIdAndServiceDateBetweenOrderByServiceDateDesc(staffId, ym.atDay(1), ym.atEndOfMonth());
+
+        double receptionPts = monthRecords.stream()
+                .filter(r -> r.getCategory() == PerformanceCategory.CHECKIN
+                          || r.getCategory() == PerformanceCategory.CHECKOUT)
+                .mapToDouble(PerformanceRecord::getPoints).sum();
+
+        double mainPts = monthRecords.stream()
+                .filter(r -> r.getCategory() != PerformanceCategory.CHECKIN
+                          && r.getCategory() != PerformanceCategory.CHECKOUT
+                          && r.getCategory() != PerformanceCategory.OTHER)
+                .mapToDouble(PerformanceRecord::getPoints).sum();
+
+        int currentBonus = calcBonus((int) mainPts);
+
+        Integer nextThreshold = null;
+        Double pointsToNext = null;
+        for (int[] range : BONUS_TABLE) {
+            if (mainPts < range[0]) {
+                nextThreshold = range[0];
+                pointsToNext = range[0] - mainPts;
+                break;
+            }
+        }
+
+        return com.petgrooming.pet_system.dto.StaffProgressResponse.builder()
+                .staffName(staff.getName())
+                .todayPoints(todayPoints)
+                .monthMainPoints(mainPts)
+                .monthReceptionPoints(receptionPts)
+                .currentBonus(currentBonus)
+                .nextThreshold(nextThreshold)
+                .pointsToNextThreshold(pointsToNext)
+                .build();
     }
 
     // ── 私有：依積分查獎勵金 ────────────────────────────────────────

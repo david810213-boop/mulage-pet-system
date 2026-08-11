@@ -1,0 +1,80 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('我的績效 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <h2 style="margin-bottom: 4px">📊 我的績效</h2>
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.5rem">
+          <span th:text="${progress.staffName}"></span>，這是您目前的積分進度
+        </p>
+
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <div class="card" style="text-align: center; padding: 1.2rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px">今日累積積分</div>
+            <div style="font-size: 28px; font-weight: 700; color: var(--brown-dark)" th:text="${progress.todayPoints} + ' 分'"></div>
+          </div>
+          <div class="card" style="text-align: center; padding: 1.2rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px">本月主要積分</div>
+            <div style="font-size: 28px; font-weight: 700; color: var(--brown-dark)" th:text="${progress.monthMainPoints} + ' 分'"></div>
+          </div>
+          <div class="card" style="text-align: center; padding: 1.2rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px">本月接待積分</div>
+            <div style="font-size: 28px; font-weight: 700; color: var(--brown-dark)" th:text="${progress.monthReceptionPoints} + ' 分'"></div>
+          </div>
+          <div class="card" style="text-align: center; padding: 1.2rem; background: var(--cream-100)">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px">目前對應獎勵金</div>
+            <div style="font-size: 28px; font-weight: 700; color: #43a047"
+                 th:text="${progress.currentBonus > 0 ? '$' + progress.currentBonus : '未達門檻'}"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.5rem">
+          <h3 style="font-size: 15px; margin-bottom: 10px">🎯 下一個獎勵金級距</h3>
+          <div th:if="${progress.nextThreshold != null}" style="font-size: 14px; color: var(--brown-dark)">
+            還差 <strong style="color: #c9a84c; font-size: 18px" th:text="${progress.pointsToNextThreshold}"></strong> 分，
+            就能達到 <strong th:text="${progress.nextThreshold}"></strong> 分的級距，加油！
+          </div>
+          <div th:if="${progress.nextThreshold == null}" style="font-size: 14px; color: #43a047">
+            🎉 已達本月最高獎勵金級距！
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 15px; margin-bottom: 10px">今日積分明細</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>類別</th>
+                <th>積分</th>
+                <th>備註</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(myRecordsToday)}">
+                <td colspan="4" class="empty">今天還沒有積分紀錄</td>
+              </tr>
+              <tr th:each="r : ${myRecordsToday}">
+                <td th:text="${#temporals.format(r.createdAt, 'HH:mm')}"></td>
+                <td th:text="${r.category.label}"></td>
+                <td style="font-weight: 700; color: #c9a84c" th:text="${r.points} + ' 分'"></td>
+                <td th:text="${r.note}"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

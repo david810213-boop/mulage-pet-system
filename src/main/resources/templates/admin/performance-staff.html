@@ -216,12 +216,12 @@
                 </td>
                 <td>
                   <span
-                    th:if="${h.settled}"
+                    th:if="${h.getIsSettled()}"
                     style="color: #43a047; font-size: 13px"
                     >✅ 已結算</span
                   >
                   <span
-                    th:unless="${h.settled}"
+                    th:unless="${h.getIsSettled()}"
                     style="color: #e53935; font-size: 13px"
                     >⏳ 未結算</span
                   >

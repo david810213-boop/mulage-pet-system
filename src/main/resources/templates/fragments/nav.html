@@ -18,6 +18,7 @@
         <a href="/admin/wallets" class="nav-link" th:if="${user != null and user.staffOrAdmin}">儲值管理</a>
         <a href="/admin/walk-in-orders" class="nav-link" th:if="${user != null and user.staffOrAdmin}">現場開單</a>
         <a href="/admin/performance" class="nav-link" th:if="${user != null and user.staffOrAdmin}">績效管理</a>
+        <a href="/admin/performance/my" class="nav-link" th:if="${user != null and user.staffOrAdmin}">我的績效</a>
         <a href="/admin/customers" class="nav-link" th:if="${user != null and user.staffOrAdmin}">會員信息</a>
         <a href="/admin" class="nav-link" th:if="${user != null and user.admin}">管理後台</a>
         <a href="/admin/operation-logs" class="nav-link" th:if="${user != null and user.admin}">操作紀錄</a>
