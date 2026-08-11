@@ -255,6 +255,23 @@ public class AppointmentMvcController {
         return "redirect:/appointments?status=IN_PROGRESS";
     }
 
+    // ── POST /appointments/{id}/end-service ───────────────────────────────
+    // 服務項目全部做完，通知家長來店接寵物；狀態維持進行中，之後才能核對
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/end-service")
+    public String endService(@PathVariable Long id, HttpServletRequest request,
+                             RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            appointmentService.endService(id, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "END_SERVICE", "預約 #" + id, null);
+            redirectAttributes.addFlashAttribute("successMsg", "已結束服務，已通知家長來店接寵物");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "操作失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments?status=IN_PROGRESS";
+    }
+
     // ── GET /appointments/{id}/final-check ──────────────────────────────────
     // 進行中核對頁面：店員與家長核對本次美容狀況，填備注 + 現場簽名
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

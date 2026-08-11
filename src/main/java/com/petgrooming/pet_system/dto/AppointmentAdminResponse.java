@@ -40,6 +40,7 @@ public class AppointmentAdminResponse {
     private boolean finalCheckDone;
     private String finalCheckNote;
     private boolean checkinOrderConfirmed;
+    private boolean serviceEndedDone;
 
     public static AppointmentAdminResponse from(Appointment a) {
         AppointmentAdminResponse res = new AppointmentAdminResponse();
@@ -66,6 +67,7 @@ public class AppointmentAdminResponse {
         res.setFinalCheckDone(a.isFinalCheckDone());
         res.setFinalCheckNote(a.getFinalCheckNote());
         res.setCheckinOrderConfirmed(a.isCheckinOrderConfirmed());
+        res.setServiceEndedDone(a.isServiceEndedDone());
         return res;
     }
 }

@@ -331,6 +331,51 @@ public class AppointmentService {
         return AppointmentResponse.from(saved);
     }
 
+    // ── 結束服務：服務項目全部做完，通知家長來店接寵物 ──────────────────────
+    // 狀態維持「進行中」不變，只記錄「誰結束的」+ 完成積分，並強制要求
+    // 之後的核對（finalCheck）必須先完成這一步才能進行。
+    @Transactional
+    public AppointmentResponse endService(Long appointmentId, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        if (appointment.getStatus() != AppointmentStatus.IN_PROGRESS) {
+            throw new IllegalArgumentException("僅「進行中」的預約可結束服務");
+        }
+        if (appointment.isServiceEndedDone()) {
+            throw new IllegalArgumentException("此預約已結束服務，請勿重複操作");
+        }
+
+        appointment.setServiceEndedDone(true);
+        appointment.setServiceEndedStaff(staff);
+        appointment.setServiceEndedAt(LocalDateTime.now());
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // 誰點結束服務，「完成」積分就記給誰（原本掛在結帳時發放，現在改到這一步）
+        performanceService.addRecord(
+                staff.getId(),
+                appointment.getId(),
+                PerformanceCategory.COMPLETE,
+                PerformanceCategory.COMPLETE.getDefaultPoints(),
+                appointment.getDate(),
+                "結束服務：預約 #" + appointment.getId());
+
+        // 用官方 LINE 通知家長可以來店接寵物了
+        String notifyText = String.format(
+                "【慕沐村 Mulage pet】您好，%s 的美容服務已經完成囉！%n" +
+                        "隨時可以來店接毛孩回家 🐾",
+                saved.getPetName());
+        lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
+
+        return AppointmentResponse.from(saved);
+    }
+
     // ── 現場開單（依預約編號）：家長到店後，店員依現場情況確認/調整服務項目 ──
     // 確認後才能開始服務；項目可先不指定經手人，之後從待補清單補上。
     @Transactional
@@ -463,6 +508,9 @@ public class AppointmentService {
 
         if (appointment.getStatus() != AppointmentStatus.IN_PROGRESS) {
             throw new IllegalArgumentException("僅「進行中」的預約可進行核對");
+        }
+        if (!appointment.isServiceEndedDone()) {
+            throw new IllegalArgumentException("請先點擊「結束服務」，通知家長來店後才能進行核對");
         }
         if (appointment.isFinalCheckDone()) {
             throw new IllegalArgumentException("此預約已完成核對，請勿重複操作");

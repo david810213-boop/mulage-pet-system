@@ -165,26 +165,10 @@ public class PaymentService {
             }
         }
 
-        // 自動補一筆「完成」積分（整筆預約完成，記入結帳經手人的「完成確認」）
-        User completeStaff = appointment.getStaff();
-        if (completeStaff == null && isStaffOrAdmin) {
-            completeStaff = checkoutUser;
-        }
-        if (completeStaff == null) {
-            log.warn("預約 #{} 無法判斷經手人，跳過「完成」積分", appointment.getId());
-            return;
-        }
-        performanceService.addRecord(
-                completeStaff.getId(),
-                appointment.getId(),
-                PerformanceCategory.COMPLETE,
-                PerformanceCategory.COMPLETE.getDefaultPoints(),
-                appointment.getDate(),
-                "預約 #" + appointment.getId() + " 完成"
-        );
+        // 「完成」積分現在改由「結束服務」步驟發放（見 AppointmentService.endService），
+        // 結帳這裡不再重複發放，避免同一筆預約算兩次完成積分。
 
-        log.info("預約 #{} 結帳後自動建立績效紀錄（經手人：{}）",
-                appointment.getId(), completeStaff.getName());
+        log.info("預約 #{} 結帳後自動建立績效紀錄", appointment.getId());
     }
 
     // ── 2. 查詢自己的交易紀錄 ──────────────────────────────────────────────

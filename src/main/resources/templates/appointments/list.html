@@ -302,7 +302,8 @@
                 <span class="badge unpaid" th:if="${!a.cancelled and !a.paid}">未結帳</span>
                 <div th:if="${!a.cancelled and a.status.name() == 'IN_PROGRESS'}" style="font-size:11px; margin-top:2px;">
                   <span th:if="${a.finalCheckDone}" style="color:#2e7d32;">✓ 已核對，可結帳</span>
-                  <span th:unless="${a.finalCheckDone}" style="color:#b8935a;">尚未核對</span>
+                  <span th:if="${!a.finalCheckDone and a.serviceEndedDone}" style="color:#b8935a;">已結束服務，尚未核對</span>
+                  <span th:unless="${a.serviceEndedDone}" style="color:#b8935a;">尚未結束服務</span>
                 </div>
                 <div th:if="${!a.cancelled and a.confirmedTime != null}" style="font-size:11px; color:var(--brown-light); margin-top:2px;">
                   確認時間：<span th:text="${#temporals.format(a.confirmedTime, 'MM/dd HH:mm')}"></span>
@@ -350,13 +351,24 @@
                         method="post">
                     <button type="submit" class="btn btn-outline" style="padding:3px 10px; font-size:12px;">▶ 開始服務</button>
                   </form>
-                  <!-- 進行中核對：填美容狀況備注 + 家長簽名 -->
+                  <!-- 結束服務：服務項目做完，通知家長來店接寵物；核對前必須先做這一步 -->
+                  <form th:if="${user.staffOrAdmin and a.status.name() == 'IN_PROGRESS' and !a.serviceEndedDone}"
+                        th:action="@{/appointments/{id}/end-service(id=${a.id})}"
+                        method="post">
+                    <button type="submit" class="btn btn-outline" style="padding:3px 10px; font-size:12px;">🏁 結束服務</button>
+                  </form>
+                  <!-- 進行中核對：填美容狀況備注 + 家長簽名，須先結束服務才能核對 -->
                   <a
-                    th:if="${user.staffOrAdmin and a.status.name() == 'IN_PROGRESS' and !a.finalCheckDone}"
+                    th:if="${user.staffOrAdmin and a.status.name() == 'IN_PROGRESS' and a.serviceEndedDone and !a.finalCheckDone}"
                     th:href="@{/appointments/{id}/final-check(id=${a.id})}"
                     class="btn"
                     style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;"
                     >📝 核對</a
+                  >
+                  <span
+                    th:if="${user.staffOrAdmin and a.status.name() == 'IN_PROGRESS' and !a.serviceEndedDone}"
+                    style="font-size: 11px; color: var(--brown-light);"
+                    >請先結束服務才能核對</span
                   >
                   <a
                     th:if="${!a.paid and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
