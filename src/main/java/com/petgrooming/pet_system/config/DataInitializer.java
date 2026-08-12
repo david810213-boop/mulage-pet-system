@@ -2,9 +2,11 @@ package com.petgrooming.pet_system.config;
 
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.model.BankAccountInfo;
 import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.BankAccountInfoRepository;
 import com.petgrooming.pet_system.repository.BonusTierRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
@@ -23,6 +25,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final GroomingItemRepository groomingItemRepository;
     private final BonusTierRepository bonusTierRepository;
+    private final BankAccountInfoRepository bankAccountInfoRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -44,6 +47,16 @@ public class DataInitializer implements ApplicationRunner {
             bonusTierRepository.save(BonusTier.builder().minPoints(5001).maxPoints(5300).bonusAmount(5600).build());
             bonusTierRepository.save(BonusTier.builder().minPoints(5301).maxPoints(5600).bonusAmount(6600).build());
             log.info("積分獎勵金級距種子資料初始化完成");
+        }
+
+        // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立一筆預設（佔位）資料，店家可自行到後台修改
+        if (bankAccountInfoRepository.count() == 0) {
+            bankAccountInfoRepository.save(BankAccountInfo.builder()
+                    .bankName("請於後台設定銀行名稱")
+                    .accountNumber("請於後台設定帳號")
+                    .accountHolder("請於後台設定戶名")
+                    .build());
+            log.info("匯款帳號預設資料初始化完成，請記得到後台修改成實際帳號");
         }
 
         if (groomingItemRepository.count() == 0) {

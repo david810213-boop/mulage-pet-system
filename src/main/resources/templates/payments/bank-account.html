@@ -1,0 +1,40 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('匯款帳號設定 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: 640px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🏦 匯款帳號設定</h2>
+          <a href="/appointments" class="btn">← 回預約管理</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem">
+          顧客或店員在結帳畫面選擇「匯款」付款方式時，會自動顯示這裡設定的帳號資訊。
+        </p>
+
+        <div class="card">
+          <form method="post" action="/payments/bank-account">
+            <div class="field">
+              <label>銀行名稱</label>
+              <input type="text" name="bankName" th:value="${info.bankName}" required />
+            </div>
+            <div class="field">
+              <label>帳號</label>
+              <input type="text" name="accountNumber" th:value="${info.accountNumber}" required />
+            </div>
+            <div class="field">
+              <label>戶名</label>
+              <input type="text" name="accountHolder" th:value="${info.accountHolder}" required />
+            </div>
+            <button type="submit" class="btn btn-primary">儲存</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

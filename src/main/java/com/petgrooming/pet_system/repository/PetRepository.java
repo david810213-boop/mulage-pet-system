@@ -15,4 +15,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
     List<Pet> findByOwnerUsername(String username);
 
     Optional<Pet> findByOwnerUsernameAndName(String username, String petName);
+
+    // 需求 9：依寵物名稱模糊搜尋（現場開單/預約用，自動對應家長）
+    List<Pet> findByNameContainingIgnoreCase(String namePart);
 }

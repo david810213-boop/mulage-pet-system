@@ -1,8 +1,10 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
@@ -117,8 +119,11 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         model.addAttribute("appointmentId", appointmentId);
-        model.addAttribute("paymentMethods", PaymentMethod.values());
+        // 需求 10：結帳畫面不再提供「信用卡」選項（歷史資料仍保留該列舉值，僅畫面隱藏）
+        model.addAttribute("paymentMethods", java.util.Arrays.stream(PaymentMethod.values())
+                .filter(m -> m != PaymentMethod.CREDIT_CARD).toList());
         model.addAttribute("checkoutRequest", new CheckoutRequest());
+        model.addAttribute("bankAccountInfo", paymentService.getBankAccountInfo());
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -175,6 +180,24 @@ public class PaymentMvcController {
         }
     }
 
+    // ── POST /payments/{id}/confirm-wire-transfer ───────────────────────
+    // 需求 10：店員核對匯款到帳後點擊，訂單才正式轉為已完成
+    @PostMapping("/{id}/confirm-wire-transfer")
+    public String confirmWireTransfer(@PathVariable Long id, HttpServletRequest request,
+                                      RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            paymentService.confirmWireTransferPayment(id, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CONFIRM_WIRE_TRANSFER", "預約 #" + id, null);
+            redirectAttributes.addFlashAttribute("successMsg", "已確認收款，訂單狀態轉為已完成");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "確認失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments";
+    }
+
     // ── POST /payments/{id}/refund ────────────────────────────────────────
     // 退款：僅限「已結帳」的預約。退款後回到「已確認」狀態，清空現場開單、
     // 結束服務、核對進度，可重新開單重新結帳；管理員與員工皆可操作。
@@ -192,5 +215,28 @@ public class PaymentMvcController {
             redirectAttributes.addFlashAttribute("errorMsg", "退款失敗：" + e.getMessage());
         }
         return "redirect:/appointments";
+    }
+
+    // ── GET /payments/bank-account ────────────────────────────────────────
+    // 需求 10：店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
+    @RequireRole(UserRole.ADMIN)
+    @GetMapping("/bank-account")
+    public String bankAccountForm(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("info", paymentService.getBankAccountInfo());
+        return "payments/bank-account";
+    }
+
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/bank-account")
+    public String updateBankAccount(@RequestParam String bankName,
+                                    @RequestParam String accountNumber,
+                                    @RequestParam String accountHolder,
+                                    HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        paymentService.updateBankAccountInfo(bankName, accountNumber, accountHolder);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT", "匯款帳號設定", null);
+        ra.addFlashAttribute("successMsg", "已更新匯款帳號資訊");
+        return "redirect:/payments/bank-account";
     }
 }

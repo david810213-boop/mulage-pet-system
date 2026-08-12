@@ -41,6 +41,8 @@ public class AppointmentAdminResponse {
     private String finalCheckNote;
     private boolean checkinOrderConfirmed;
     private boolean serviceEndedDone;
+    private boolean pendingWireTransfer; // 需求 10：已結帳選匯款，但店家尚未確認收款
+    private Long pendingTransactionId;   // 待確認收款的交易紀錄 id
 
     public static AppointmentAdminResponse from(Appointment a) {
         AppointmentAdminResponse res = new AppointmentAdminResponse();

@@ -130,6 +130,34 @@ public class WalkInOrderMvcController {
         return "redirect:/admin/walk-in-orders";
     }
 
+    // ── POST /admin/walk-in-orders/items/operator/batch ──────────────────
+    // 需求 11：批次補填經手人，逐一勾選/選擇後，一次性儲存全部，不用每列各按一次
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/items/operator/batch")
+    public String fillOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
+                                    @RequestParam("staffIds") List<String> staffIds,
+                                    HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        int filled = 0;
+        for (int i = 0; i < itemIds.size(); i++) {
+            String staffIdStr = i < staffIds.size() ? staffIds.get(i) : null;
+            if (staffIdStr == null || staffIdStr.isBlank()) continue; // 這列沒選就跳過，維持待補狀態
+            try {
+                Long staffId = Long.valueOf(staffIdStr);
+                walkInOrderService.fillOperator(itemIds.get(i), staffId);
+                operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
+                        "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
+                filled++;
+            } catch (Exception e) {
+                ra.addFlashAttribute("errorMsg", "項目 #" + itemIds.get(i) + " 補填失敗：" + e.getMessage());
+            }
+        }
+        if (filled > 0) {
+            ra.addFlashAttribute("successMsg", "已一次性補填 " + filled + " 筆經手人");
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
+
     // ── POST /admin/walk-in-orders/{id}/checkout ────────────────────────────
     // 需求：現場單串接結帳
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

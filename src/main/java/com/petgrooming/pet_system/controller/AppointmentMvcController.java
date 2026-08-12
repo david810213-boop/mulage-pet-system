@@ -240,6 +240,34 @@ public class AppointmentMvcController {
         return "redirect:/admin/walk-in-orders";
     }
 
+    // ── POST /appointments/checkin-items/operator/batch ──────────────────
+    // 需求 11：批次補填經手人（依預約編號現場開單這邊的待補清單）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/checkin-items/operator/batch")
+    public String fillCheckinItemOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
+                                               @RequestParam("staffIds") List<String> staffIds,
+                                               HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        int filled = 0;
+        for (int i = 0; i < itemIds.size(); i++) {
+            String staffIdStr = i < staffIds.size() ? staffIds.get(i) : null;
+            if (staffIdStr == null || staffIdStr.isBlank()) continue;
+            try {
+                Long staffId = Long.valueOf(staffIdStr);
+                appointmentService.fillItemOperator(itemIds.get(i), staffId);
+                operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
+                        "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
+                filled++;
+            } catch (Exception e) {
+                ra.addFlashAttribute("errorMsg", "項目 #" + itemIds.get(i) + " 補填失敗：" + e.getMessage());
+            }
+        }
+        if (filled > 0) {
+            ra.addFlashAttribute("successMsg", "已一次性補填 " + filled + " 筆經手人");
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
+
     // ── POST /appointments/{id}/start ───────────────────────────────────────
     // 店員開始服務：已確認 → 進行中（寵物到店開始施作）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

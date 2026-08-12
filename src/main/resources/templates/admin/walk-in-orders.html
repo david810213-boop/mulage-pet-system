@@ -62,14 +62,18 @@
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
         >
-          <h3 style="font-size: 15px; color: #666; margin-bottom: 14px;">⏳ 待補經手人（積分尚未計算）</h3>
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 待補經手人（積分尚未計算）</h3>
+          <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
+            需求 11：逐一選好每個項目的經手人後，按最下方「統一儲存」一次寫入，不用每列都點一次。
+          </p>
+          <form id="batchOperatorForm" method="post" action="/admin/walk-in-orders/items/operator/batch">
           <table>
             <thead>
               <tr>
                 <th>項目</th>
                 <th>價格</th>
                 <th>積分</th>
-                <th>補填經手人</th>
+                <th>經手人</th>
               </tr>
             </thead>
             <tbody>
@@ -81,19 +85,19 @@
                 <td th:text="'$' + ${i.price}"></td>
                 <td th:text="${i.points}"></td>
                 <td>
-                  <form th:action="@{/admin/walk-in-orders/items/{id}/operator(id=${i.itemId})}"
-                        method="post" style="display:flex; gap:6px;">
-                    <select name="staffId" required
-                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
-                            class="pending-staff-select">
-                      <option value="">請選擇員工</option>
-                    </select>
-                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
-                  </form>
+                  <input type="hidden" name="itemIds" th:value="${i.itemId}" />
+                  <select name="staffIds"
+                          style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                          class="pending-staff-select batch-operator-select">
+                    <option value="">尚未選擇</option>
+                  </select>
                 </td>
               </tr>
             </tbody>
           </table>
+          <button type="submit" class="btn btn-primary" style="margin-top: 12px;"
+                  th:if="${!#lists.isEmpty(pendingOperatorItems)}">統一儲存</button>
+          </form>
         </div>
 
         <!-- 預約現場開單（依預約編號）：待補經手人 -->
@@ -103,7 +107,9 @@
           <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 預約現場開單 — 待補經手人（積分尚未計算）</h3>
           <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
             這裡列出的是「已預約」的訂單、店員到店核對後依現場情況開立的服務項目，跟上面現場單是分開的兩套資料。
+            需求 11：逐一選好每個項目的經手人後，按最下方「統一儲存」一次寫入。
           </p>
+          <form id="batchAppointmentOperatorForm" method="post" action="/appointments/checkin-items/operator/batch">
           <table>
             <thead>
               <tr>
@@ -112,7 +118,7 @@
                 <th>項目</th>
                 <th>價格</th>
                 <th>積分</th>
-                <th>補填經手人</th>
+                <th>經手人</th>
               </tr>
             </thead>
             <tbody>
@@ -126,19 +132,19 @@
                 <td th:text="'$' + ${i.price}"></td>
                 <td th:text="${i.points}"></td>
                 <td>
-                  <form th:action="@{/appointments/checkin-items/{id}/operator(id=${i.id})}"
-                        method="post" style="display:flex; gap:6px;">
-                    <select name="staffId" required
-                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
-                            class="pending-staff-select">
-                      <option value="">請選擇員工</option>
-                    </select>
-                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
-                  </form>
+                  <input type="hidden" name="itemIds" th:value="${i.id}" />
+                  <select name="staffIds"
+                          style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                          class="pending-staff-select batch-operator-select">
+                    <option value="">尚未選擇</option>
+                  </select>
                 </td>
               </tr>
             </tbody>
           </table>
+          <button type="submit" class="btn btn-primary" style="margin-top: 12px;"
+                  th:if="${!#lists.isEmpty(appointmentPendingItems)}">統一儲存</button>
+          </form>
         </div>
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
@@ -376,28 +382,56 @@
         }
         // 防抖：停止打字 300ms 後才真的送出搜尋，避免每打一個字就打一次 API
         searchDebounce = setTimeout(function () {
-          fetch('/api/admin/members/search?keyword=' + encodeURIComponent(keyword))
-            .then(function (res) { return res.ok ? res.json() : []; })
-            .then(function (list) { renderSuggestions(list); })
-            .catch(function () { memberSuggestions.style.display = 'none'; });
+          // 需求 9：同時搜「家長姓名/帳號」跟「寵物名稱」，合併顯示
+          Promise.all([
+            fetch('/api/admin/members/search?keyword=' + encodeURIComponent(keyword))
+              .then(function (res) { return res.ok ? res.json() : []; })
+              .catch(function () { return []; }),
+            fetch('/api/admin/members/search-by-pet?keyword=' + encodeURIComponent(keyword))
+              .then(function (res) { return res.ok ? res.json() : []; })
+              .catch(function () { return []; })
+          ]).then(function (results) {
+            renderSuggestions(results[0], results[1]);
+          });
         }, 300);
       });
 
-      function renderSuggestions(list) {
+      function renderSuggestions(memberList, petList) {
         memberSuggestions.innerHTML = '';
-        if (!list.length) {
+        if (!memberList.length && !petList.length) {
           memberSuggestions.style.display = 'none';
           return;
         }
-        list.forEach(function (u) {
-          const item = document.createElement('div');
-          item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
-          item.textContent = u.name + '（' + u.username + '）';
-          item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
-          item.onmouseleave = function () { item.style.background = 'white'; };
-          item.onclick = function () { selectMember(u); };
-          memberSuggestions.appendChild(item);
-        });
+        if (memberList.length) {
+          const memberHeader = document.createElement('div');
+          memberHeader.textContent = '👤 依家長搜尋';
+          memberHeader.style.cssText = 'padding:6px 10px; font-size:11px; color:#999; background:#faf7f2;';
+          memberSuggestions.appendChild(memberHeader);
+          memberList.forEach(function (u) {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
+            item.textContent = u.name + '（' + u.username + '）';
+            item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
+            item.onmouseleave = function () { item.style.background = 'white'; };
+            item.onclick = function () { selectMember(u); };
+            memberSuggestions.appendChild(item);
+          });
+        }
+        if (petList.length) {
+          const petHeader = document.createElement('div');
+          petHeader.textContent = '🐾 依寵物名稱搜尋';
+          petHeader.style.cssText = 'padding:6px 10px; font-size:11px; color:#999; background:#faf7f2;';
+          memberSuggestions.appendChild(petHeader);
+          petList.forEach(function (p) {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
+            item.textContent = p.displayLabel;
+            item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
+            item.onmouseleave = function () { item.style.background = 'white'; };
+            item.onclick = function () { selectMemberByPet(p); };
+            memberSuggestions.appendChild(item);
+          });
+        }
         memberSuggestions.style.display = 'block';
       }
 
@@ -411,25 +445,44 @@
         // 需求 1：選定會員後自動抓出名下寵物
         fetch('/api/admin/members/' + encodeURIComponent(u.username) + '/pets')
           .then(function (res) { return res.ok ? res.json() : []; })
-          .then(function (pets) {
-            petSelect.innerHTML = '';
-            if (!pets.length) {
-              petSelect.style.display = 'none';
-              petNameInput.placeholder = '此會員尚未登記寵物，請手動輸入';
-              return;
-            }
-            const emptyOpt = document.createElement('option');
-            emptyOpt.value = '';
-            emptyOpt.textContent = '請選擇寵物';
-            petSelect.appendChild(emptyOpt);
-            pets.forEach(function (p) {
-              const opt = document.createElement('option');
-              opt.value = p.name;
-              opt.textContent = p.name + '（' + p.petTypeLabel + '）';
-              petSelect.appendChild(opt);
-            });
-            petSelect.style.display = 'block';
-          });
+          .then(function (pets) { fillPetSelect(pets, null); });
+      }
+
+      // 需求 9：用「寵物搜尋」結果選定時，選家長的同時直接把該隻寵物預選好
+      function selectMemberByPet(p) {
+        memberSearchBox.value = p.ownerName;
+        memberUsernameField.value = p.ownerUsername;
+        memberSelectedTag.textContent = '✓ 已選定：' + p.ownerName + '（依寵物「' + p.petName + '」搜尋帶入）';
+        memberSelectedTag.style.display = 'block';
+        memberSuggestions.style.display = 'none';
+
+        fetch('/api/admin/members/' + encodeURIComponent(p.ownerUsername) + '/pets')
+          .then(function (res) { return res.ok ? res.json() : []; })
+          .then(function (pets) { fillPetSelect(pets, p.petName); });
+      }
+
+      function fillPetSelect(pets, preselectName) {
+        petSelect.innerHTML = '';
+        if (!pets.length) {
+          petSelect.style.display = 'none';
+          petNameInput.placeholder = '此會員尚未登記寵物，請手動輸入';
+          return;
+        }
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '請選擇寵物';
+        petSelect.appendChild(emptyOpt);
+        pets.forEach(function (p) {
+          const opt = document.createElement('option');
+          opt.value = p.name;
+          opt.textContent = p.name + '（' + p.petTypeLabel + '）';
+          petSelect.appendChild(opt);
+        });
+        petSelect.style.display = 'block';
+        if (preselectName) {
+          petSelect.value = preselectName;
+          petSelect.dispatchEvent(new Event('change'));
+        }
       }
 
       // 選了下拉選單裡的寵物後，同步進真正會送出的欄位

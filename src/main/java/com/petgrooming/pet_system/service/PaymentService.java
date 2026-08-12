@@ -36,6 +36,7 @@ public class PaymentService {
     private final AppointmentService appointmentService;
     private final AppointmentItemRepository appointmentItemRepository;
     private final PerformanceRecordRepository performanceRecordRepository;
+    private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -98,18 +99,28 @@ public class PaymentService {
                 : "員工：" + user.getName();
 
         // 1g. 建立交易紀錄
+        // 需求 10：選「匯款」時，訂單先進入「待對帳」狀態（paid=false），
+        // 要等店員另外按「確認收款」才算真正完成；其他付款方式維持原本立即完成的邏輯。
+        boolean isWireTransfer = req.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER;
+
         Transaction transaction = Transaction.builder()
                 .appointment(appointment)
                 .user(appointment.getUser())
                 .paymentMethod(req.getPaymentMethod())
                 .baseAmount(baseAmount)
                 .finalAmount(finalAmount)
-                .paid(true)
-                .paymentTime(LocalDateTime.now())
+                .paid(!isWireTransfer)
+                .paymentTime(isWireTransfer ? null : LocalDateTime.now())
                 .handledBy(handledBy)
                 .build();
 
         transactionRepository.save(transaction);
+
+        if (isWireTransfer) {
+            // 匯款：先不動預約的 paid/status，也先不發放績效積分，等確認收款後才處理
+            log.info("預約 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", appointment.getId());
+            return TransactionResponse.from(transaction);
+        }
 
         // 1h. 將預約標記為已付款，並把狀態轉為「已完成」（結帳＝整筆服務結束）
         appointment.setPaid(true);
@@ -119,6 +130,43 @@ public class PaymentService {
         // 1i. 自動建立績效紀錄（依預約選擇的服務項目 + 負責員工）
         autoCreatePerformanceRecords(appointment, user, isStaffOrAdmin);
 
+        return TransactionResponse.from(transaction);
+    }
+
+    // ── 1x-1. 確認匯款收款：店員核對銀行入帳後，訂單才正式轉為已完成 ──────
+    @Transactional
+    public TransactionResponse confirmWireTransferPayment(Long appointmentId, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可確認收款");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到此預約的交易紀錄"));
+
+        if (transaction.getPaymentMethod() != com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER) {
+            throw new IllegalArgumentException("此交易不是匯款付款，無需確認收款");
+        }
+        if (transaction.isPaid()) {
+            throw new IllegalArgumentException("此筆匯款已確認收款過，請勿重複操作");
+        }
+
+        transaction.setPaid(true);
+        transaction.setPaymentTime(LocalDateTime.now());
+        transactionRepository.save(transaction);
+
+        appointment.setPaid(true);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointmentRepository.save(appointment);
+
+        boolean isStaffOrAdmin = true; // 確認收款一定是店家/員工操作
+        autoCreatePerformanceRecords(appointment, staff, isStaffOrAdmin);
+
+        log.info("預約 #{} 匯款收款已確認，操作人：{}", appointmentId, username);
         return TransactionResponse.from(transaction);
     }
 
@@ -267,5 +315,23 @@ public class PaymentService {
 
         return new FinancialReportResponse(
                 LocalDateTime.now(), all.size(), paidCount, revenue, average, details);
+    }
+
+    // ── 需求 10：店家匯款帳號資訊（單例設定，供結帳畫面選匯款時自動帶出） ──
+    public com.petgrooming.pet_system.model.BankAccountInfo getBankAccountInfo() {
+        return bankAccountInfoRepository.findAll().stream().findFirst()
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder()
+                        .bankName("尚未設定").accountNumber("尚未設定").accountHolder("尚未設定").build());
+    }
+
+    @Transactional
+    public void updateBankAccountInfo(String bankName, String accountNumber, String accountHolder) {
+        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findAll()
+                .stream().findFirst()
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().build());
+        info.setBankName(bankName);
+        info.setAccountNumber(accountNumber);
+        info.setAccountHolder(accountHolder);
+        bankAccountInfoRepository.save(info);
     }
 }

@@ -213,7 +213,18 @@ public class AppointmentService {
     public List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> getAllForAdmin() {
         return appointmentRepository.findAll()
                 .stream()
-                .map(com.petgrooming.pet_system.dto.AppointmentAdminResponse::from)
+                .map(a -> {
+                    var res = com.petgrooming.pet_system.dto.AppointmentAdminResponse.from(a);
+                    // 需求 10：查這筆預約有沒有「待對帳」的匯款交易（已建立交易但尚未確認收款）
+                    transactionRepository.findByAppointmentId(a.getId()).ifPresent(tx -> {
+                        if (tx.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
+                                && !tx.isPaid()) {
+                            res.setPendingWireTransfer(true);
+                            res.setPendingTransactionId(tx.getId());
+                        }
+                    });
+                    return res;
+                })
                 .toList();
     }
 
