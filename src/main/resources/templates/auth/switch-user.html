@@ -1,0 +1,150 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('切換使用者 | 慕沐村 Mulage pet')}"
+  ></head>
+
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content" style="max-width: 560px">
+        <a
+          href="/dashboard"
+          class="btn btn-outline"
+          style="margin-bottom: 1.5rem; text-decoration: none"
+          >← 返回首頁</a
+        >
+
+        <h2>🔄 切換使用者</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-top: -4px;
+            margin-bottom: 1.5rem;
+          "
+        >
+          共用裝置快速換人操作，不用完整登出登入。目前登入：<span th:text="${user.name}" style="font-weight: 700"></span>
+        </p>
+
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
+        <div
+          class="alert alert-danger"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
+
+        <div th:if="${#lists.isEmpty(switchable)}" class="card" style="text-align: center; padding: 2rem">
+          <p style="color: var(--brown-light); font-size: 14px">
+            目前沒有其他員工設定過 PIN 碼，無法切換。<br />
+            請先請該員工登入自己的帳號，到「帳號設定 → 設定 PIN 碼」設定完成後才會出現在這裡。
+          </p>
+        </div>
+
+        <div
+          th:if="${!#lists.isEmpty(switchable)}"
+          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1.5rem"
+        >
+          <div
+            th:each="s : ${switchable}"
+            class="card switch-user-card"
+            th:data-id="${s.id}"
+            th:data-name="${s.name}"
+            style="text-align: center; padding: 1.2rem 0.8rem; cursor: pointer; transition: all 0.15s;"
+          >
+            <div
+              style="
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                background: var(--cream-500);
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                font-weight: 700;
+                margin: 0 auto 8px;
+              "
+              th:text="${#strings.substring(s.name, 0, 1)}"
+            ></div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--brown-dark)" th:text="${s.name}"></div>
+            <div style="font-size: 11px; color: var(--brown-light); margin-top: 2px" th:text="${s.role == T(com.petgrooming.pet_system.enums.UserRole).ADMIN ? '管理員' : '員工'}"></div>
+          </div>
+        </div>
+
+        <!-- PIN 輸入彈窗 -->
+        <div
+          id="pinModal"
+          style="
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(43, 42, 40, 0.55);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          "
+        >
+          <div style="background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 340px; text-align: center;">
+            <h3 id="pinModalName" style="font-size: 16px; margin-bottom: 4px;"></h3>
+            <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 16px;">請輸入這位員工自己的 4 位數 PIN 碼</p>
+            <form method="post" th:action="@{/auth/switch-user}">
+              <input type="hidden" name="targetUserId" id="pinTargetId" />
+              <input
+                type="password"
+                name="pin"
+                inputmode="numeric"
+                pattern="\d{4}"
+                maxlength="4"
+                minlength="4"
+                required
+                autofocus
+                style="
+                  width: 100%;
+                  padding: 12px;
+                  font-size: 24px;
+                  letter-spacing: 10px;
+                  text-align: center;
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  box-sizing: border-box;
+                  margin-bottom: 16px;
+                "
+              />
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-outline" style="flex: 1" onclick="closePinModal()">取消</button>
+                <button type="submit" class="btn" style="flex: 1">切換</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <script>
+          const modal = document.getElementById('pinModal');
+          const nameEl = document.getElementById('pinModalName');
+          const idInput = document.getElementById('pinTargetId');
+
+          document.querySelectorAll('.switch-user-card').forEach(function (card) {
+            card.addEventListener('click', function () {
+              idInput.value = this.dataset.id;
+              nameEl.textContent = '切換為：' + this.dataset.name;
+              modal.style.display = 'flex';
+              modal.querySelector('input[name="pin"]').value = '';
+              modal.querySelector('input[name="pin"]').focus();
+            });
+          });
+
+          function closePinModal() {
+            modal.style.display = 'none';
+          }
+        </script>
+      </div>
+    </div>
+  </body>
+</html>

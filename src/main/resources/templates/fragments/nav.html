@@ -31,6 +31,8 @@
         <div class="who" th:text="${user.name}">使用者</div>
         <div class="role" th:text="${user.role}">ROLE</div>
         <a href="/account/password" th:if="${user != null and user.staffOrAdmin}">修改密碼</a>
+        <a href="/account/pin" th:if="${user != null and user.staffOrAdmin}">設定 PIN 碼</a>
+        <a href="/auth/switch-user" th:if="${user != null and user.staffOrAdmin}">🔄 切換使用者</a>
         <a href="/auth/logout">登出</a>
       </div>
 

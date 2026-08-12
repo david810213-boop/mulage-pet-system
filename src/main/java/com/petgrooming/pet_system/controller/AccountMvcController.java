@@ -67,4 +67,44 @@ public class AccountMvcController {
         }
         return "account/change-password";
     }
+
+    // ── GET /account/pin ──────────────────────────────────────────────────
+    // 新需求：設定共用平板快速切換使用者用的 PIN 碼
+    @GetMapping("/pin")
+    public String setPinPage(HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null || user.isCustomer()) return "redirect:/dashboard";
+        model.addAttribute("user", user);
+        model.addAttribute("hasPin", user.getSwitchPin() != null);
+        return "account/set-pin";
+    }
+
+    // ── POST /account/pin ───────────────────────────────────────────────────
+    @PostMapping("/pin")
+    public String setPin(@RequestParam String currentPassword,
+                         @RequestParam String pin,
+                         @RequestParam String confirmPin,
+                         HttpServletRequest request,
+                         Model model) {
+        User user = getLoginUser(request);
+        if (user == null || user.isCustomer()) return "redirect:/dashboard";
+
+        model.addAttribute("user", user);
+        model.addAttribute("hasPin", user.getSwitchPin() != null);
+
+        if (!pin.equals(confirmPin)) {
+            model.addAttribute("errorMsg", "兩次輸入的 PIN 碼不一致");
+            return "account/set-pin";
+        }
+
+        try {
+            userService.setSwitchPin(user.getUsername(), currentPassword, pin);
+            operationLogService.log(user, "AUTH", "SET_SWITCH_PIN", user.getUsername(), null);
+            model.addAttribute("successMsg", "PIN 碼設定成功，之後可以用它快速切換身份");
+            model.addAttribute("hasPin", true);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMsg", e.getMessage());
+        }
+        return "account/set-pin";
+    }
 }

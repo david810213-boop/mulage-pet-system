@@ -27,6 +27,12 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    // 新需求：共用平板快速切換使用者用的 4 位數 PIN 碼（加密儲存，同密碼一樣用 BCrypt）。
+    // 只有員工/管理員需要設定，尚未設定過的話這裡是 null，切換清單上不會出現他們，
+    // 提示要先去設定 PIN 才能被切換。
+    @Column(name = "switch_pin")
+    private String switchPin;
+
     @Column(nullable = false, length = 100)
     private String name;
 

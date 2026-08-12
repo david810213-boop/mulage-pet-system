@@ -207,4 +207,26 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
     }
+
+    // ── 新需求：切換使用者用的 PIN 碼 ─────────────────────────────────
+    // 員工/管理員自己設定 4 位數 PIN（需先驗證密碼，避免旁人隨便亂設）
+    public void setSwitchPin(String username, String currentPassword, String newPin) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("目前密碼不正確");
+        }
+        if (newPin == null || !newPin.matches("\\d{4}")) {
+            throw new IllegalArgumentException("PIN 碼必須是 4 位數字");
+        }
+        user.setSwitchPin(passwordEncoder.encode(newPin));
+        userRepository.save(user);
+    }
+
+    // 驗證 PIN 是否正確，用於快速切換使用者（不需要輸入完整密碼）
+    public boolean verifySwitchPin(User user, String pin) {
+        if (user.getSwitchPin() == null) return false;
+        return passwordEncoder.matches(pin, user.getSwitchPin());
+    }
 }

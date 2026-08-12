@@ -1,0 +1,149 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('設定PIN碼 | 慕沐村 Mulage pet')}"
+  ></head>
+
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content" style="max-width: 480px">
+        <a
+          href="/dashboard"
+          class="btn btn-outline"
+          style="margin-bottom: 1.5rem; text-decoration: none"
+          >← 返回首頁</a
+        >
+
+        <h2>🔢 設定切換身份 PIN 碼</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-top: -4px;
+            margin-bottom: 1.5rem;
+          "
+        >
+          帳號：<span th:text="${user.username}"></span>　目前狀態：
+          <span th:if="${hasPin}" style="color: #2e7d32; font-weight: 700">已設定</span>
+          <span th:unless="${hasPin}" style="color: #c62828; font-weight: 700">尚未設定</span>
+        </p>
+
+        <div class="card" style="padding: 1rem 1.2rem; margin-bottom: 1.5rem; background: var(--cream-100)">
+          <p style="font-size: 13px; color: var(--brown-mid); line-height: 1.7; margin: 0">
+            這組 4 位數 PIN 碼是給「切換使用者」功能用的——同一台裝置（例如店裡的 iPad），
+            不同員工要輪流操作系統時，不需要每次都完整登出登入，只要點自己的名字＋輸入 PIN 碼就能切換身份。
+            <strong>PIN 碼只有 4 位數，安全性比密碼低，請勿設定跟密碼相同或容易猜到的組合。</strong>
+          </p>
+        </div>
+
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
+        <div
+          class="alert alert-danger"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
+
+        <div class="card" style="padding: 1.5rem">
+          <form method="post" th:action="@{/account/pin}">
+            <div style="margin-bottom: 16px">
+              <label
+                style="
+                  display: block;
+                  font-size: 13px;
+                  color: var(--brown-mid);
+                  font-weight: 500;
+                  margin-bottom: 6px;
+                "
+                >目前密碼（驗證身份用）</label
+              >
+              <input
+                type="password"
+                name="currentPassword"
+                required
+                style="
+                  width: 100%;
+                  padding: 10px 12px;
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  font-size: 14px;
+                "
+              />
+            </div>
+
+            <div style="margin-bottom: 16px">
+              <label
+                style="
+                  display: block;
+                  font-size: 13px;
+                  color: var(--brown-mid);
+                  font-weight: 500;
+                  margin-bottom: 6px;
+                "
+                >新 PIN 碼（4 位數字）</label
+              >
+              <input
+                type="password"
+                inputmode="numeric"
+                pattern="\d{4}"
+                name="pin"
+                required
+                maxlength="4"
+                minlength="4"
+                style="
+                  width: 100%;
+                  padding: 10px 12px;
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  font-size: 20px;
+                  letter-spacing: 8px;
+                  text-align: center;
+                "
+              />
+            </div>
+
+            <div style="margin-bottom: 20px">
+              <label
+                style="
+                  display: block;
+                  font-size: 13px;
+                  color: var(--brown-mid);
+                  font-weight: 500;
+                  margin-bottom: 6px;
+                "
+                >確認新 PIN 碼</label
+              >
+              <input
+                type="password"
+                inputmode="numeric"
+                pattern="\d{4}"
+                name="confirmPin"
+                required
+                maxlength="4"
+                minlength="4"
+                style="
+                  width: 100%;
+                  padding: 10px 12px;
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  font-size: 20px;
+                  letter-spacing: 8px;
+                  text-align: center;
+                "
+              />
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%">
+              儲存 PIN 碼
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

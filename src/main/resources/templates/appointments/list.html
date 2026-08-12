@@ -371,13 +371,13 @@
                     >請先結束服務才能核對</span
                   >
                   <a
-                    th:if="${!a.paid and !a.pendingWireTransfer and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
+                    th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
                     th:href="@{/payments/checkout/{id}(id=${a.id})}"
                     style="font-size: 12px; color: var(--brown-mid); text-decoration: underline;"
                     >結帳</a
                   >
                   <span
-                    th:if="${!a.paid and !a.pendingWireTransfer and a.status.name() == 'IN_PROGRESS' and !a.finalCheckDone}"
+                    th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and a.status.name() == 'IN_PROGRESS' and !a.finalCheckDone}"
                     style="font-size: 11px; color: var(--brown-light);"
                     >請先完成核對才能結帳</span
                   >
@@ -403,7 +403,7 @@
                     </button>
                   </form>
                   <!-- 需求 10：選了匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
-                  <div th:if="${a.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                  <div th:if="${user.staffOrAdmin and a.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
                     <span class="badge" style="background:#fff3e0; color:#e65100; border-color:#ffcc80;">🏦 待對帳（匯款）</span>
                     <form th:action="@{/payments/{id}/confirm-wire-transfer(id=${a.id})}" method="post"
                           onsubmit="return confirm('確認已收到這筆匯款款項嗎？確認後訂單將轉為已完成。');">
