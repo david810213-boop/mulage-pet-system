@@ -193,6 +193,7 @@
             <a href="/admin/walk-in-orders" class="btn">＋ 現場加單</a>
             <a href="/admin/report" class="btn btn-outline" th:if="${user.admin}">財務報告</a>
             <a href="/admin" class="btn btn-outline" th:if="${user.admin}">管理後台</a>
+            <a href="/auth/switch-user" class="btn btn-primary" th:if="${user != null and user.staffOrAdmin}">🔄 切換使用者</a>
           </div>
 
           <!-- 待確認預約 -->
