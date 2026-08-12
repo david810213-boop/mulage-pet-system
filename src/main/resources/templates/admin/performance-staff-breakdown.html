@@ -1,0 +1,155 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('積分項目統計 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <style>
+      .matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11.5px;
+      }
+      .matrix-table th,
+      .matrix-table td {
+        border: 1px solid var(--cream-300);
+        padding: 4px 6px;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .matrix-table th {
+        background: var(--brown-dark);
+        color: #fff;
+        font-weight: 600;
+        font-size: 10.5px;
+      }
+      .matrix-table td:first-child,
+      .matrix-table th:first-child {
+        position: sticky;
+        left: 0;
+        background: var(--cream-100);
+        font-weight: 700;
+        z-index: 1;
+      }
+      .matrix-table th:first-child {
+        background: var(--brown-dark);
+      }
+      .matrix-table tr.totals-row td {
+        background: var(--cream-200);
+        font-weight: 700;
+      }
+      .matrix-table .total-col {
+        background: #fff4e0;
+        font-weight: 700;
+        color: #a06a1f;
+      }
+      .matrix-scroll {
+        overflow-x: auto;
+      }
+    </style>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: none">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">📈 積分項目統計（全員矩陣）</h2>
+          <a href="/admin/performance/monthly" class="btn">← 回月報</a>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <form method="get" action="/admin/performance/staff-breakdown"
+                style="display: flex; gap: 12px; align-items: end;">
+            <div class="field" style="margin: 0">
+              <label>年份</label>
+              <select name="year">
+                <option th:each="y : ${#numbers.sequence(ym.year - 1, ym.year + 1)}"
+                        th:value="${y}" th:text="${y}" th:selected="${y == ym.year}"></option>
+              </select>
+            </div>
+            <div class="field" style="margin: 0">
+              <label>月份</label>
+              <select name="month">
+                <option th:each="m : ${#numbers.sequence(1, 12)}"
+                        th:value="${m}" th:text="${m} + '月'" th:selected="${m == ym.monthValue}"></option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">查詢</button>
+            <a
+              th:href="@{/admin/performance/staff-breakdown/export(year=${ym.year}, month=${ym.monthValue})}"
+              class="btn btn-outline"
+              style="margin-left: auto"
+            >
+              📥 匯出 Excel
+            </a>
+          </form>
+        </div>
+
+        <!-- 區塊一：總計/隻數 -->
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 10px">
+            🐾 <span th:text="${ym.year} + '年' + ${ym.monthValue} + '月'"></span>　總計/隻數
+          </h3>
+          <div class="matrix-scroll">
+            <table class="matrix-table">
+              <thead>
+                <tr>
+                  <th>人</th>
+                  <th th:each="c : ${matrix.categories}" th:text="${c.label}"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:if="${#lists.isEmpty(matrix.rows)}">
+                  <td th:colspan="${matrix.categories.size() + 1}" class="empty">本月尚無績效資料</td>
+                </tr>
+                <tr th:each="r : ${matrix.rows}">
+                  <td th:text="${r.staffName}"></td>
+                  <td th:each="c : ${matrix.categories}"
+                      th:text="${#numbers.formatDecimal(r.countByCategory.get(c), 1, 1)}"></td>
+                </tr>
+                <tr class="totals-row" th:if="${!#lists.isEmpty(matrix.rows)}">
+                  <td>合計</td>
+                  <td th:each="c : ${matrix.categories}"
+                      th:text="${#numbers.formatDecimal(matrix.totalsRow.countByCategory.get(c), 1, 1)}"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 區塊二：換算積分 -->
+        <div class="card">
+          <h3 style="font-size: 15px; margin-bottom: 10px">
+            💰 <span th:text="${ym.year} + '年' + ${ym.monthValue} + '月'"></span>　換算積分
+          </h3>
+          <div class="matrix-scroll">
+            <table class="matrix-table">
+              <thead>
+                <tr>
+                  <th>人</th>
+                  <th th:each="c : ${matrix.categories}" th:text="${c.label}"></th>
+                  <th>總分</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:if="${#lists.isEmpty(matrix.rows)}">
+                  <td th:colspan="${matrix.categories.size() + 2}" class="empty">本月尚無績效資料</td>
+                </tr>
+                <tr th:each="r : ${matrix.rows}">
+                  <td th:text="${r.staffName}"></td>
+                  <td th:each="c : ${matrix.categories}"
+                      th:text="${#numbers.formatDecimal(r.pointsByCategory.get(c), 1, 1)}"></td>
+                  <td class="total-col" th:text="${#numbers.formatDecimal(r.totalPoints, 1, 1)}"></td>
+                </tr>
+                <tr class="totals-row" th:if="${!#lists.isEmpty(matrix.rows)}">
+                  <td>合計</td>
+                  <td th:each="c : ${matrix.categories}"
+                      th:text="${#numbers.formatDecimal(matrix.totalsRow.pointsByCategory.get(c), 1, 1)}"></td>
+                  <td class="total-col" th:text="${#numbers.formatDecimal(matrix.grandTotal, 1, 1)}"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
