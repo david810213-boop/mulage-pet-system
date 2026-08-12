@@ -11,6 +11,7 @@
 
       <div class="nav-list">
         <a href="/appointments" class="nav-link">預約管理</a>
+        <a href="/appointments/slots-manage" class="nav-link" th:if="${user != null and user.staffOrAdmin}">時段管理</a>
         <a href="/pets" class="nav-link" th:if="${user != null and user.customer}">我的寵物</a>
         <a href="/payments" class="nav-link">交易紀錄</a>
 

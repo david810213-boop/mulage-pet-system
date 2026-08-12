@@ -251,9 +251,10 @@ public class AppointmentService {
                 next = CLOSING;
 
             int booked = slotCapacityService.bookedCount(date, current);
-            int remaining = Math.max(0, SLOT_CAPACITY - booked);
+            int capacity = slotCapacityService.getCapacity(date, current);
+            int remaining = Math.max(0, capacity - booked);
             allSlots.add(new TimeSlotResponse(
-                    current, next, remaining > 0, booked, SLOT_CAPACITY, remaining));
+                    current, next, remaining > 0, booked, capacity, remaining));
 
             current = next;
         }

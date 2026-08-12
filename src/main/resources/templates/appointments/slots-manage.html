@@ -1,0 +1,83 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('時段管理 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🕐 預約時段管理</h2>
+          <a href="/appointments" class="btn">← 回預約管理</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <form method="get" action="/appointments/slots-manage"
+                style="display: flex; gap: 12px; align-items: end;">
+            <div class="field" style="margin: 0">
+              <label>選擇日期</label>
+              <input type="date" name="date" th:value="${date}" />
+            </div>
+            <button type="submit" class="btn btn-primary">查詢</button>
+            <a th:href="@{/appointments/slots-manage}" class="btn btn-outline">今天</a>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 15px; margin-bottom: 6px">
+            📅 <span th:text="${date}"></span>　各時段名額
+          </h3>
+          <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px">
+            調整只影響「剩餘可預約名額」，已經預約成功的紀錄不受影響，即使把名額調得比已預約數還低也不會取消現有預約。
+            這裡的調整只針對這一天這個時段，不會套用到其他日期。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>時段</th>
+                <th>已預約</th>
+                <th>目前上限</th>
+                <th>剩餘名額</th>
+                <th>調整名額上限</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(slots)}">
+                <td colspan="5" class="empty">當天沒有可調整的時段</td>
+              </tr>
+              <tr th:each="s : ${slots}">
+                <td th:text="${#temporals.format(s.startTime, 'HH:mm')} + ' - ' + ${#temporals.format(s.endTime, 'HH:mm')}"></td>
+                <td th:text="${s.booked}"></td>
+                <td th:text="${s.capacity}"></td>
+                <td>
+                  <span th:if="${s.remaining > 0}" style="color: #2e7d32; font-weight: 700;" th:text="${s.remaining}"></span>
+                  <span th:if="${s.remaining == 0}" style="color: #c62828; font-weight: 700;">已額滿/已關閉</span>
+                </td>
+                <td>
+                  <form method="post" action="/appointments/slots-manage/update" style="display: flex; gap: 6px; align-items: center;">
+                    <input type="hidden" name="date" th:value="${date}" />
+                    <input type="hidden" name="time" th:value="${#temporals.format(s.startTime, 'HH:mm')}" />
+                    <input type="number" name="capacity" th:value="${s.capacity}" min="0" style="width: 70px; padding: 5px 6px;" />
+                    <button type="submit" class="btn btn-outline" style="padding: 5px 12px; font-size: 12px;">儲存</button>
+                    <button
+                      type="submit"
+                      onclick="this.closest('form').querySelector('input[name=capacity]').value = 0;"
+                      class="btn btn-outline"
+                      style="padding: 5px 12px; font-size: 12px; color:#c62828; border-color:#c67a5c;"
+                    >
+                      關閉此時段
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

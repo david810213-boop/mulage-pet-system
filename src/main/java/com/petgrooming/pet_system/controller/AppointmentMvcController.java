@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
+import com.petgrooming.pet_system.service.SlotCapacityService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
@@ -36,6 +37,7 @@ public class AppointmentMvcController {
     private final UserService userService;
     private final PetService petService;
     private final OperationLogService operationLogService;
+    private final SlotCapacityService slotCapacityService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -424,5 +426,43 @@ public class AppointmentMvcController {
     public String adminDashboard(Model model) {
         // 這裡不需要再撈 user 來檢查了，因為警衛（RoleInterceptor）已經幫你嚴格把關！
         return "appointments/admin_dashboard";
+    }
+
+    // ── GET /appointments/slots-manage ───────────────────────────────────
+    // 需求 1：時段開關管理——查看某一天每個時段的名額上限/已預約數，
+    // 可手動調整上限或直接關閉（設為 0），只影響剩餘名額，不影響已預約紀錄。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/slots-manage")
+    public String slotsManage(HttpServletRequest request, Model model,
+                              @RequestParam(required = false)
+                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        if (date == null) date = LocalDate.now();
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("date", date);
+        model.addAttribute("slots", appointmentService.getAvailableSlots(date));
+        return "appointments/slots-manage";
+    }
+
+    // ── POST /appointments/slots-manage/update ───────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/update")
+    public String updateSlotCapacity(HttpServletRequest request,
+                                     @RequestParam
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                     @RequestParam
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
+                                     @RequestParam int capacity,
+                                     RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            slotCapacityService.setCapacity(date, time, capacity);
+            operationLogService.log(user, "APPOINTMENT", "SET_SLOT_CAPACITY",
+                    date + " " + time, "調整為 " + capacity + " 位");
+            ra.addFlashAttribute("successMsg",
+                    date + " " + time + " 時段名額已調整為 " + capacity + " 位");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "調整失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments/slots-manage?date=" + date;
     }
 }
