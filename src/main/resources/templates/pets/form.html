@@ -215,6 +215,70 @@
               </div>
             </div>
 
+            <!-- 需求 19：定型化契約要求蒐集的資料（內部表單，簡化輸入） -->
+            <div class="field">
+              <label>性別</label>
+              <div style="display: flex; gap: 12px; margin-top: 4px">
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="gender" value="公" th:checked="${petRequest?.gender == '公'}" /> 公
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="gender" value="母" th:checked="${petRequest?.gender == '母'}" /> 母
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>是否絕育</label>
+              <div style="display: flex; gap: 12px; margin-top: 4px">
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="isNeutered" value="false" th:checked="${petRequest?.isNeutered == false or petRequest?.isNeutered == null}" /> 未絕育
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="isNeutered" value="true" th:checked="${petRequest?.isNeutered == true}" /> 已絕育
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>晶片</label>
+              <div style="display: flex; gap: 12px; margin-top: 4px; margin-bottom: 8px">
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="hasChip" value="false" th:checked="${petRequest?.hasChip == false or petRequest?.hasChip == null}" /> 無
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="hasChip" value="true" th:checked="${petRequest?.hasChip == true}" /> 有
+                </label>
+              </div>
+              <input type="text" name="chipNumber" placeholder="晶片號碼（選填）" th:value="${petRequest?.chipNumber}" />
+            </div>
+
+            <div class="field">
+              <label>個性 <span style="font-size: 12px; color: #999; font-weight: 400">（例如：親近人,容易緊張，用逗號分隔）</span></label>
+              <input type="text" name="personalityTags" placeholder="親近人,容易緊張" th:value="${petRequest?.personalityTags}" />
+            </div>
+
+            <div class="field">
+              <label>病史 <span style="font-size: 12px; color: #999; font-weight: 400">（用逗號分隔，例如：心臟病,癲癇）</span></label>
+              <input type="text" name="healthHistory" placeholder="心臟病,癲癇" th:value="${petRequest?.healthHistory}" />
+              <input type="text" name="healthHistoryOther" placeholder="其他病史（選填）" th:value="${petRequest?.healthHistoryOther}" style="margin-top: 8px" />
+            </div>
+
+            <div class="field">
+              <label>指定獸醫院</label>
+              <div style="display: flex; gap: 12px; margin-top: 4px; margin-bottom: 8px">
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="hasDesignatedVet" value="false" th:checked="${petRequest?.hasDesignatedVet == false or petRequest?.hasDesignatedVet == null}" /> 無指定
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="hasDesignatedVet" value="true" th:checked="${petRequest?.hasDesignatedVet == true}" /> 有指定
+                </label>
+              </div>
+              <input type="text" name="designatedVetName" placeholder="動物醫院名稱" th:value="${petRequest?.designatedVetName}" style="margin-bottom: 8px" />
+              <input type="text" name="designatedVetAddress" placeholder="地址" th:value="${petRequest?.designatedVetAddress}" style="margin-bottom: 8px" />
+              <input type="text" name="designatedVetPhone" placeholder="連絡電話" th:value="${petRequest?.designatedVetPhone}" />
+            </div>
+
             <!-- 注意事項 -->
             <div class="field">
               <label

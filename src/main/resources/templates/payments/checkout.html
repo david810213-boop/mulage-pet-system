@@ -55,6 +55,33 @@
           </p>
         </div>
 
+        <!-- 需求：結帳前逐項目消費明細，標示哪些項目有折扣、哪些沒有 -->
+        <div class="card" th:if="${detailItems != null and !detailItems.isEmpty()}" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 15px; margin-bottom: 10px;">📋 消費明細</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>價格</th>
+                <th>折扣資格</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="it : ${detailItems}">
+                <td th:text="${it.name}"></td>
+                <td th:text="'$' + ${it.price}"></td>
+                <td>
+                  <span th:if="${it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享折扣</span>
+                  <span th:unless="${it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px; margin-bottom: 0;">
+            只有標示「可享折扣」的項目，選擇儲值金付款時才會套用會員折扣；不打折的項目一律以原價計入結帳金額。
+          </p>
+        </div>
+
         <div class="card">
           <form
             method="post"

@@ -37,6 +37,8 @@ public class PaymentService {
     private final AppointmentItemRepository appointmentItemRepository;
     private final PerformanceRecordRepository performanceRecordRepository;
     private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
+    private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
+    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -89,7 +91,9 @@ public class PaymentService {
                 throw new IllegalArgumentException("儲值金結帳僅限店家/員工於後台操作");
             }
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
-            finalAmount = (int) Math.round(finalAmount * discount);
+            // 需求 5：改成逐項目判斷是否可享折扣，不再對整筆金額統一打折。
+            // 洗澡/剪毛/調理類項目打折，剪指甲/局部修剪/除廢毛等加購項目維持原價。
+            finalAmount = calculateWalletAmountPerItem(appointment, discount);
             walletService.deduct(appointment.getUser().getUsername(), finalAmount, appointment.getId());
         }
 
@@ -333,5 +337,46 @@ public class PaymentService {
         info.setAccountNumber(accountNumber);
         info.setAccountHolder(accountHolder);
         bankAccountInfoRepository.save(info);
+    }
+
+    // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────
+    // 優先用現場開單（依預約編號）的實際項目；沒有的話退回顧客線上勾選的項目。
+    private int calculateWalletAmountPerItem(Appointment appointment, double discount) {
+        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
+                appointmentItemRepository.findByAppointmentId(appointment.getId());
+
+        double total = 0;
+        if (!checkinItems.isEmpty()) {
+            for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
+                boolean eligible = item.getGroomingItemId() != null
+                        && groomingItemRepository.findById(item.getGroomingItemId())
+                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                .orElse(true);
+                total += eligible ? item.getPrice() * discount : item.getPrice();
+            }
+        } else {
+            for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
+                double price = item.getPrice() != null ? item.getPrice() : 0;
+                total += item.isDiscountEligible() ? price * discount : price;
+            }
+        }
+        return (int) Math.round(total);
+    }
+
+    // ── 需求 22：乙方（店家）固定電子簽名檔，顯示在顧客端契約最下方 ──────
+    public String getCompanySignatureImage() {
+        return companySignatureRepository.findAll().stream()
+                .findFirst()
+                .map(com.petgrooming.pet_system.model.CompanySignature::getSignatureImage)
+                .orElse(null);
+    }
+
+    @Transactional
+    public void updateCompanySignature(String base64Image) {
+        com.petgrooming.pet_system.model.CompanySignature sig = companySignatureRepository.findAll()
+                .stream().findFirst()
+                .orElse(com.petgrooming.pet_system.model.CompanySignature.builder().build());
+        sig.setSignatureImage(base64Image);
+        companySignatureRepository.save(sig);
     }
 }

@@ -24,4 +24,9 @@ public class UpdateProfileRequest {
     private String residenceArea;
 
     private CustomerSource source;
+
+    // ── 需求 19：定型化契約要求蒐集的資料（皆選填）───────────────────────
+    private String mailingAddress;
+    private String emergencyContactName;
+    private String emergencyContactPhone;
 }

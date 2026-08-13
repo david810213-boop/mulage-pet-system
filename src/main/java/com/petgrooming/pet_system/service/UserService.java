@@ -97,6 +97,16 @@ public class UserService {
         if (req.getSource() != null) {
             user.setSource(req.getSource());
         }
+        // 需求 19：定型化契約要求蒐集的資料（皆選填，只需填一次）
+        if (req.getMailingAddress() != null) {
+            user.setMailingAddress(req.getMailingAddress().isBlank() ? null : req.getMailingAddress().trim());
+        }
+        if (req.getEmergencyContactName() != null) {
+            user.setEmergencyContactName(req.getEmergencyContactName().isBlank() ? null : req.getEmergencyContactName().trim());
+        }
+        if (req.getEmergencyContactPhone() != null) {
+            user.setEmergencyContactPhone(req.getEmergencyContactPhone().isBlank() ? null : req.getEmergencyContactPhone().trim());
+        }
         // 第一次完整填寫基本資料時記錄時間點，供後台判斷「已完成資料填寫」的會員數
         if (user.getProfileCompletedAt() == null
                 && user.getAge() != null

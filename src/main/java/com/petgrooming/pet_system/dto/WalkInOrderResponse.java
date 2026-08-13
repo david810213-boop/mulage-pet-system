@@ -17,6 +17,7 @@ public class WalkInOrderResponse {
     private String memberName;
     private String petName;
     private int totalAmount;
+    private Integer chargedAmount; // 需求 5：實際扣款金額（打折後），null 代表跟 totalAmount 相同或尚未結帳
     private String createdBy;
     private String note;
     private LocalDateTime createdAt;
@@ -37,6 +38,7 @@ public class WalkInOrderResponse {
         private Long operatorStaffId;
         private String operator;        // 經手人姓名（顯示用）
         private boolean operatorFilled;
+        private boolean discountEligible; // 需求 5：是否可享會員儲值金折扣
 
         static ItemLine from(WalkInOrderItem oi) {
             ItemLine l = new ItemLine();
@@ -50,6 +52,7 @@ public class WalkInOrderResponse {
                 l.setOperator(oi.getOperatorStaff().getName());
             }
             l.setOperatorFilled(oi.isOperatorFilled());
+            l.setDiscountEligible(oi.isDiscountEligible());
             return l;
         }
     }
@@ -63,6 +66,7 @@ public class WalkInOrderResponse {
         }
         res.setPetName(o.getPetName());
         res.setTotalAmount(o.getTotalAmount());
+        res.setChargedAmount(o.getChargedAmount());
         res.setCreatedBy(o.getCreatedBy());
         res.setNote(o.getNote());
         res.setCreatedAt(o.getCreatedAt());

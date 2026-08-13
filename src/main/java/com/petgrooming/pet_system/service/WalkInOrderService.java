@@ -81,6 +81,7 @@ public class WalkInOrderService {
                     .price((int) Math.round(gi.getPrice()))
                     .points(gi.getPoints())
                     .performanceCategory(gi.getPerformanceCategory())
+                    .discountEligible(gi.isDiscountEligible())
                     .build();
 
             if (line.getOperatorStaffId() != null) {
@@ -230,13 +231,18 @@ public class WalkInOrderService {
             throw new IllegalArgumentException("請先完成「結束服務」與「核對」後才能結帳");
         }
 
+        int chargedAmount = order.getTotalAmount();
         if (paymentMethod == com.petgrooming.pet_system.enums.PaymentMethod.WALLET) {
             if (order.getMember() == null) {
                 throw new IllegalArgumentException("此單無會員資料，無法用儲值金付款");
             }
+            // 需求 5：套用會員等級折扣，且逐項目判斷是否可享折扣（洗澡/剪毛/調理類打折，
+            // 剪指甲/局部修剪/除廢毛等加購項目維持原價）。
+            double discount = walletService.getWallet(order.getMember().getUsername()).getDiscount();
+            chargedAmount = calculateWalletAmountPerItem(order, discount);
             walletService.deduct(
                     order.getMember().getUsername(),
-                    order.getTotalAmount(),
+                    chargedAmount,
                     null,
                     "現場單 #" + order.getId() + " 消費扣款");
         }
@@ -244,6 +250,7 @@ public class WalkInOrderService {
         order.setPaid(true);
         order.setPaymentMethod(paymentMethod);
         order.setPaymentTime(java.time.LocalDateTime.now());
+        order.setChargedAmount(chargedAmount);
         WalkInOrder saved = orderRepository.save(order);
 
         log.info("現場單 #{} 結帳完成，付款方式：{}", saved.getId(), paymentMethod);
@@ -268,12 +275,13 @@ public class WalkInOrderService {
             throw new IllegalArgumentException("此單尚未結帳，無法退款");
         }
 
-        // 1. 若原本用儲值金付款，退回會員儲值餘額
+        // 1. 若原本用儲值金付款，退回會員儲值餘額（退實際扣款金額，不是帳面未打折總額）
         if (order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET
                 && order.getMember() != null) {
+            int refundAmount = order.getChargedAmount() != null ? order.getChargedAmount() : order.getTotalAmount();
             walletService.refund(
                     order.getMember().getUsername(),
-                    order.getTotalAmount(),
+                    refundAmount,
                     null,
                     "現場單 #" + orderId + " 退款");
         }
@@ -378,5 +386,15 @@ public class WalkInOrderService {
             result.add(new OperatorPointsResponse(operatorName, totalPoints, totalAmount, itemCount));
         }
         return result;
+    }
+
+    // ── 需求 5：現場單儲值金結帳金額計算，逐項目判斷是否可享折扣 ─────────
+    // 用開單當下存的 discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
+    private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
+        double total = 0;
+        for (WalkInOrderItem item : order.getItems()) {
+            total += item.isDiscountEligible() ? item.getPrice() * discount : item.getPrice();
+        }
+        return (int) Math.round(total);
     }
 }

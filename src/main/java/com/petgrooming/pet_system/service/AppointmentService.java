@@ -607,11 +607,18 @@ public class AppointmentService {
         List<com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem> items;
         if (!checkinItems.isEmpty()) {
             items = checkinItems.stream()
-                    .map(ci -> com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
-                            .name(ci.getItemName())
-                            .price(ci.getPrice())
-                            .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
-                            .build())
+                    .map(ci -> {
+                        boolean eligible = ci.getGroomingItemId() != null
+                                && groomingItemRepository.findById(ci.getGroomingItemId())
+                                        .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                        .orElse(true);
+                        return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                                .name(ci.getItemName())
+                                .price(ci.getPrice())
+                                .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
+                                .discountEligible(eligible)
+                                .build();
+                    })
                     .toList();
         } else {
             items = appointment.getSelectedItems().stream()
@@ -619,6 +626,7 @@ public class AppointmentService {
                             .name(gi.getName())
                             .price((int) Math.round(gi.getPrice()))
                             .operatorName(null)
+                            .discountEligible(gi.isDiscountEligible())
                             .build())
                     .toList();
         }
@@ -642,7 +650,9 @@ public class AppointmentService {
                     .paymentMethodLabel(tx.getPaymentMethod() != null ? tx.getPaymentMethod().getDisplayName() : null);
             detailBuilder.paymentTime(tx.getPaymentTime());
             detailBuilder.handledBy(tx.getHandledBy());
-            detailBuilder.totalAmount(tx.getFinalAmount());
+            // 需求 5：實際扣款金額獨立顯示，不要覆蓋掉帳面未打折的 totalAmount，
+            // 兩者一起顯示消費者才看得出「有沒有打折、打了多少」。
+            detailBuilder.chargedAmount(tx.getFinalAmount());
         });
 
         return detailBuilder.build();

@@ -44,6 +44,18 @@ public class PetService {
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
                 .owner(user)
+                // 需求 19：定型化契約要求蒐集的資料（皆選填）
+                .gender(req.getGender())
+                .isNeutered(req.getIsNeutered() != null && req.getIsNeutered())
+                .hasChip(req.getHasChip() != null && req.getHasChip())
+                .chipNumber(req.getChipNumber())
+                .personalityTags(req.getPersonalityTags())
+                .healthHistory(req.getHealthHistory())
+                .healthHistoryOther(req.getHealthHistoryOther())
+                .hasDesignatedVet(req.getHasDesignatedVet() != null && req.getHasDesignatedVet())
+                .designatedVetName(req.getDesignatedVetName())
+                .designatedVetAddress(req.getDesignatedVetAddress())
+                .designatedVetPhone(req.getDesignatedVetPhone())
                 .build();
 
         Pet saved = petRepository.save(pet);

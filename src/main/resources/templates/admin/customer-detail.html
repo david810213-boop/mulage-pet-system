@@ -806,7 +806,7 @@
           .map(
             (it) => `
           <div class="cd-detail-row">
-            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}</span>
+            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.discountEligible ? '<span class="operator" style="color:#2e7d32;">・可享折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
             <span class="price">$${it.price}</span>
           </div>`,
           )
@@ -821,6 +821,8 @@
           </div>`
           : "";
 
+        const hasDiscountAmount = d.chargedAmount != null && d.chargedAmount !== d.totalAmount;
+
         body.innerHTML = `
           <div class="cd-detail-section">
             <div class="label">現場單 #${d.id}　${d.petName || ""}（現場開單）</div>
@@ -832,9 +834,10 @@
             <div class="label">服務項目</div>
             ${itemsHtml || '<div class="cd-detail-row"><span class="name">（無項目資料）</span></div>'}
             <div class="cd-detail-total">
-              <span>合計</span>
+              <span>帳面合計</span>
               <span>$${d.totalAmount}</span>
             </div>
+            ${hasDiscountAmount ? `<div class="cd-detail-total" style="border-top:none; padding-top:2px; color:#2e7d32;"><span>實際扣款（已套用折扣）</span><span>$${d.chargedAmount}</span></div>` : ""}
           </div>
 
           ${paymentHtml}

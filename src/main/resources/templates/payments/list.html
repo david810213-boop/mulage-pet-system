@@ -3,6 +3,122 @@
   <head
     th:replace="~{fragments/header :: common-head('交易紀錄 | 慕沐村 Mulage pet')}"
   ></head>
+  <style>
+    /* 交易紀錄列可點擊查看明細（比照會員信息頁消費明細做法） */
+    tbody tr.is-clickable {
+      cursor: pointer;
+    }
+    tbody tr.is-clickable:hover td {
+      background: var(--cream-100);
+    }
+    .cd-detail-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(32, 30, 29, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .cd-detail-backdrop.show {
+      display: flex;
+    }
+    .cd-detail-sheet {
+      background: #fff;
+      width: 100%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+      border-radius: var(--radius-lg, 12px);
+      padding: 22px 24px;
+    }
+    .cd-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--cream-300);
+    }
+    .cd-detail-header h3 {
+      font-size: 16px;
+      color: var(--brown-dark);
+      margin: 0;
+    }
+    .cd-detail-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--brown-light);
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    .cd-detail-loading,
+    .cd-detail-error {
+      text-align: center;
+      padding: 30px 0;
+      font-size: 13.5px;
+      color: var(--brown-light);
+    }
+    .cd-detail-error {
+      color: #c62828;
+    }
+    .cd-detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--cream-200);
+      font-size: 13.5px;
+      color: var(--brown-dark);
+    }
+    .cd-detail-row:last-child {
+      border-bottom: none;
+    }
+    .cd-detail-row .name {
+      flex: 1;
+    }
+    .cd-detail-row .operator {
+      font-size: 11px;
+      color: var(--brown-light);
+      margin-left: 6px;
+    }
+    .cd-detail-row .price {
+      font-weight: 700;
+      margin-left: 10px;
+      white-space: nowrap;
+    }
+    .cd-detail-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      margin-top: 6px;
+      border-top: 2px solid var(--brown-dark);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--brown-dark);
+    }
+    .cd-detail-section {
+      margin-bottom: 14px;
+    }
+    .cd-detail-section .label {
+      font-size: 11.5px;
+      color: var(--brown-light);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .cd-detail-payment {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: var(--cream-100);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      color: var(--brown-mid);
+      line-height: 1.8;
+    }
+  </style>
   <body>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
@@ -13,6 +129,9 @@
           th:text="${successMsg}"
         ></div>
         <h2>交易紀錄</h2>
+        <p style="font-size: 12px; color: var(--brown-light); margin-top: -6px; margin-bottom: 12px;">
+          點擊任一列可查看該筆消費明細
+        </p>
         <table>
           <thead>
             <tr>
@@ -34,7 +153,9 @@
                 目前沒有交易紀錄
               </td>
             </tr>
-            <tr th:each="t : ${transactions}">
+            <tr th:each="t : ${transactions}"
+                th:classappend="${t.recordId != null} ? 'is-clickable' : ''"
+                th:attr="data-source-type=${t.sourceType},data-record-id=${t.recordId}">
               <td>
                 <span class="badge" th:style="${t.sourceLabel == '現場開單'} ? 'background:var(--cream-400); color:#4a3620;' : 'background:var(--cream-200); color:var(--brown-mid);'"
                       th:text="${t.sourceLabel}"></span>
@@ -50,5 +171,188 @@
         </table>
       </div>
     </div>
+
+    <!-- 消費明細彈窗 -->
+    <div
+      class="cd-detail-backdrop"
+      id="cdDetailBackdrop"
+      onclick="closeConsumeDetailOnBackdrop(event)"
+    >
+      <div class="cd-detail-sheet">
+        <div class="cd-detail-header">
+          <h3>消費明細</h3>
+          <button
+            class="cd-detail-close"
+            onclick="closeConsumeDetail()"
+            aria-label="關閉"
+          >
+            ✕
+          </button>
+        </div>
+        <div id="cdDetailBody">
+          <div class="cd-detail-loading">載入中...</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var tbody = document.querySelector("tbody");
+        if (!tbody) return;
+        tbody.addEventListener("click", function (e) {
+          var row = e.target.closest("tr.is-clickable");
+          if (!row) return;
+          var sourceType = row.getAttribute("data-source-type");
+          var recordId = row.getAttribute("data-record-id");
+          if (!sourceType || !recordId) return;
+          openConsumeDetail(sourceType, recordId);
+        });
+      });
+
+      function petIconOf(type) {
+        if (type === "DOG") return "🐶";
+        if (type === "CAT") return "🐱";
+        return "🐾";
+      }
+
+      async function openConsumeDetail(sourceType, recordId) {
+        const backdrop = document.getElementById("cdDetailBackdrop");
+        const body = document.getElementById("cdDetailBody");
+        body.innerHTML = '<div class="cd-detail-loading">載入中...</div>';
+        backdrop.classList.add("show");
+
+        const url =
+          sourceType === "WALKIN"
+            ? "/api/admin/walk-in-orders/" + recordId
+            : "/api/appointments/" + recordId + "/detail";
+
+        try {
+          const res = await fetch(url, {
+            headers: { "ngrok-skip-browser-warning": "true" },
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            body.innerHTML =
+              '<div class="cd-detail-error">載入明細失敗：' +
+              (typeof data === "string"
+                ? data
+                : (data && data.message) || res.status) +
+              "</div>";
+            return;
+          }
+          if (sourceType === "WALKIN") {
+            renderWalkInDetail(data);
+          } else {
+            renderAppointmentDetail(data);
+          }
+        } catch (e) {
+          body.innerHTML =
+            '<div class="cd-detail-error">網路錯誤，請重試</div>';
+        }
+      }
+
+      function renderAppointmentDetail(d) {
+        const body = document.getElementById("cdDetailBody");
+        const itemsHtml = (d.items || [])
+          .map(
+            (it) => `
+          <div class="cd-detail-row">
+            <span class="name">${it.name}${it.operatorName ? `<span class="operator">・${it.operatorName}</span>` : ""}${it.discountEligible ? '<span class="operator" style="color:#2e7d32;">・可享折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="price">$${it.price}</span>
+          </div>`,
+          )
+          .join("");
+
+        const paymentHtml = d.paymentMethodLabel
+          ? `
+          <div class="cd-detail-payment">
+            付款方式：${d.paymentMethodLabel}<br>
+            ${d.paymentTime ? `付款時間：${d.paymentTime.replace("T", " ").substring(0, 16)}<br>` : ""}
+            ${d.handledBy ? `經手人：${d.handledBy}` : ""}
+          </div>`
+          : "";
+
+        const hasDiscountAmount = d.chargedAmount != null && d.chargedAmount !== d.totalAmount;
+
+        body.innerHTML = `
+          <div class="cd-detail-section">
+            <div class="label">${d.appointmentCode}　${petIconOf(d.petType)}${d.petName}（預約結帳）</div>
+            <div class="cd-detail-row">
+              <span class="name">預約時間</span>
+              <span class="price">${d.date} ${d.startTime.substring(0, 5)}-${d.endTime.substring(0, 5)}</span>
+            </div>
+            <div class="cd-detail-row">
+              <span class="name">狀態</span>
+              <span class="price">${d.cancelled ? "已取消" : d.statusLabel}</span>
+            </div>
+            ${d.memberNote ? `<div class="cd-detail-row"><span class="name">備註</span><span class="price">${d.memberNote}</span></div>` : ""}
+          </div>
+
+          <div class="cd-detail-section">
+            <div class="label">服務項目</div>
+            ${itemsHtml || '<div class="cd-detail-row"><span class="name">（無項目資料）</span></div>'}
+            <div class="cd-detail-total">
+              <span>帳面合計</span>
+              <span>$${d.totalAmount}</span>
+            </div>
+            ${hasDiscountAmount ? `<div class="cd-detail-total" style="border-top:none; padding-top:2px; color:#2e7d32;"><span>實際扣款（已套用折扣）</span><span>$${d.chargedAmount}</span></div>` : ""}
+          </div>
+
+          ${paymentHtml}
+        `;
+      }
+
+      function renderWalkInDetail(d) {
+        const body = document.getElementById("cdDetailBody");
+        const itemsHtml = (d.items || [])
+          .map(
+            (it) => `
+          <div class="cd-detail-row">
+            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.discountEligible ? '<span class="operator" style="color:#2e7d32;">・可享折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="price">$${it.price}</span>
+          </div>`,
+          )
+          .join("");
+
+        const paymentHtml = d.paymentMethodLabel
+          ? `
+          <div class="cd-detail-payment">
+            付款方式：${d.paymentMethodLabel}<br>
+            ${d.paymentTime ? `付款時間：${d.paymentTime.replace("T", " ").substring(0, 16)}<br>` : ""}
+            經手人／開單人：${d.createdBy || "—"}
+          </div>`
+          : "";
+
+        const hasDiscountAmount = d.chargedAmount != null && d.chargedAmount !== d.totalAmount;
+
+        body.innerHTML = `
+          <div class="cd-detail-section">
+            <div class="label">現場單 #${d.id}　${d.petName || ""}（現場開單）</div>
+            ${d.memberName ? `<div class="cd-detail-row"><span class="name">會員</span><span class="price">${d.memberName}</span></div>` : ""}
+            ${d.note ? `<div class="cd-detail-row"><span class="name">備註</span><span class="price">${d.note}</span></div>` : ""}
+          </div>
+
+          <div class="cd-detail-section">
+            <div class="label">服務項目</div>
+            ${itemsHtml || '<div class="cd-detail-row"><span class="name">（無項目資料）</span></div>'}
+            <div class="cd-detail-total">
+              <span>帳面合計</span>
+              <span>$${d.totalAmount}</span>
+            </div>
+            ${hasDiscountAmount ? `<div class="cd-detail-total" style="border-top:none; padding-top:2px; color:#2e7d32;"><span>實際扣款（已套用折扣）</span><span>$${d.chargedAmount}</span></div>` : ""}
+          </div>
+
+          ${paymentHtml}
+        `;
+      }
+
+      function closeConsumeDetail() {
+        document.getElementById("cdDetailBackdrop").classList.remove("show");
+      }
+
+      function closeConsumeDetailOnBackdrop(e) {
+        if (e.target.id === "cdDetailBackdrop") closeConsumeDetail();
+      }
+    </script>
   </body>
 </html>

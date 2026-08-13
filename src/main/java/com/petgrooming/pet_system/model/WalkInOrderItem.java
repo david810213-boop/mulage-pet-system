@@ -70,6 +70,12 @@ public class WalkInOrderItem {
     @Builder.Default
     private boolean pointsAwarded = false;
 
+    // 需求 5：折扣資格快照（開單當下從 GroomingItem 複製），供結帳計算與消費明細顯示，
+    // 比照 price/points 的快照做法，避免項目日後改設定影響到已經開好的舊單。
+    @Column(name = "discount_eligible", nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean discountEligible = true;
+
     public boolean isOperatorFilled() {
         return operatorStaff != null;
     }

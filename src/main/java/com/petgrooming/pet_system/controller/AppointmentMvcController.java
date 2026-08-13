@@ -38,6 +38,7 @@ public class AppointmentMvcController {
     private final PetService petService;
     private final OperationLogService operationLogService;
     private final SlotCapacityService slotCapacityService;
+    private final com.petgrooming.pet_system.service.PaymentService paymentService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -381,18 +382,45 @@ public class AppointmentMvcController {
     // ── GET /appointments/new ──────────────────────────────────────────────
     // 💡 作用：開啟預約表單。同樣只需登入，不限制特定角色。
     @GetMapping("/new")
-    public String newForm(HttpServletRequest request, Model model) {
+    public String newForm(HttpServletRequest request, Model model,
+                          @RequestParam(required = false) String forUsername) {
         User user = getLoginUser(request);
 
+        // 需求 20：店家/員工可代客建立預約——forUsername 有帶值時，
+        // 幫「那個會員」查寵物清單，而不是查登入者自己的寵物。
+        String targetUsername = user.getUsername();
+        com.petgrooming.pet_system.model.User targetUser = user;
+        if (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) {
+            try {
+                targetUser = userService.getUserEntityByUsername(forUsername);
+                targetUsername = targetUser.getUsername();
+            } catch (IllegalArgumentException e) {
+                return "redirect:/appointments/select-member";
+            }
+        }
+
         // 改用 PetResponse，前端才能讀到 sizeCategory、recommendedItemCodes
-        List<PetResponse> myPets = petService.getMyPets(user.getUsername());
+        List<PetResponse> myPets = petService.getMyPets(targetUsername);
         List<GroomingItemResponse> availableServices = groomingItemService.getAllItems();
 
         model.addAttribute("user", user);
         model.addAttribute("myPets", myPets);
         model.addAttribute("appointmentRequest", new AppointmentRequest());
         model.addAttribute("groomingItems", availableServices);
+        model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+        // 代客建立時，畫面要顯示「正在為誰建立」，送出時也要帶著這個值
+        model.addAttribute("forUsername", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUsername : null);
+        model.addAttribute("targetMemberName", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUser.getName() : null);
         return "appointments/form";
+    }
+
+    // ── GET /appointments/select-member ──────────────────────────────────
+    // 需求 20：店家代客建立預約——先搜尋/選定要幫哪位會員預約
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/select-member")
+    public String selectMemberForm(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        return "appointments/select-member";
     }
 
     // ── GET /appointments/slots ────────────────────────────────────────────
@@ -413,16 +441,34 @@ public class AppointmentMvcController {
     @PostMapping("/submit")
     public String submit(@Valid @ModelAttribute AppointmentRequest req,
                          BindingResult bindingResult,
+                         @RequestParam(required = false) String forUsername,
                          HttpServletRequest request,
                          RedirectAttributes redirectAttributes,
                          Model model) {
 
         User user = getLoginUser(request);
 
+        // 需求 20：代客建立時，實際預約要歸屬到目標會員，不是登入的店家帳號
+        String bookingUsername = user.getUsername();
+        String targetMemberName = null;
+        if (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) {
+            try {
+                var targetUser = userService.getUserEntityByUsername(forUsername);
+                bookingUsername = targetUser.getUsername();
+                targetMemberName = targetUser.getName();
+            } catch (IllegalArgumentException e) {
+                model.addAttribute("errorMsg", "找不到指定的會員");
+                return "redirect:/appointments/select-member";
+            }
+        }
+
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
-            model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
+            model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("forUsername", forUsername);
+            model.addAttribute("targetMemberName", targetMemberName);
             String firstError = bindingResult.getAllErrors().stream()
                     .findFirst()
                     .map(e -> e.getDefaultMessage())
@@ -432,16 +478,21 @@ public class AppointmentMvcController {
         }
 
         try {
-            AppointmentResponse res = appointmentService.book(req, user.getUsername());
+            AppointmentResponse res = appointmentService.book(req, bookingUsername);
             operationLogService.log(user, "APPOINTMENT", "BOOK",
-                    "預約 " + res.getAppointmentCode(), res.getPetName());
-            redirectAttributes.addFlashAttribute("successMsg", "預約成功！");
+                    "預約 " + res.getAppointmentCode(),
+                    targetMemberName != null ? "代客建立（" + targetMemberName + "）：" + res.getPetName() : res.getPetName());
+            redirectAttributes.addFlashAttribute("successMsg",
+                    targetMemberName != null ? "已為 " + targetMemberName + " 建立預約成功！" : "預約成功！");
             return "redirect:/appointments";
 
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
-            model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
+            model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("forUsername", forUsername);
+            model.addAttribute("targetMemberName", targetMemberName);
             model.addAttribute("errorMsg", e.getMessage());
             return "appointments/form";
         }

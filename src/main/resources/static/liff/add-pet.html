@@ -149,6 +149,29 @@
         font-weight: 700;
       }
 
+      /* 個性／病史 多選標籤 */
+      .tag-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tag-btn {
+        padding: 7px 12px;
+        border: 1.5px solid #e3dccc;
+        border-radius: 16px;
+        text-align: center;
+        font-size: 12.5px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #666;
+      }
+      .tag-btn.selected {
+        border-color: #b8935a;
+        background: #f6f2ea;
+        color: #2b2a28;
+        font-weight: 700;
+      }
+
       /* 體型自動判斷顯示區 */
       .auto-result {
         margin-top: 12px;
@@ -327,6 +350,82 @@
 
       <!-- 需求 2：毛長改由店家於後台檢視實際毛況後定義，此處不再讓顧客選擇 -->
 
+      <div class="field">
+        <label>性別 <span class="req">*</span></label>
+        <div class="radio-group" id="genderGroup">
+          <div class="radio-btn" data-value="公" onclick="selectRadio('gender', '公', this)">公</div>
+          <div class="radio-btn" data-value="母" onclick="selectRadio('gender', '母', this)">母</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>是否絕育 <span class="req">*</span></label>
+        <div class="radio-group" id="neuteredGroup">
+          <div class="radio-btn" data-value="false" onclick="selectRadio('neutered', 'false', this)">未絕育</div>
+          <div class="radio-btn" data-value="true" onclick="selectRadio('neutered', 'true', this)">已絕育</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>晶片號碼 <span class="hint">（依農業部犬貓美容定型化契約規定，貓咪若未辦理寵物登記可留空）</span></label>
+        <div class="radio-group" id="chipGroup">
+          <div class="radio-btn" data-value="false" onclick="selectRadio('hasChip', 'false', this)">無</div>
+          <div class="radio-btn" data-value="true" onclick="selectRadio('hasChip', 'true', this)">有</div>
+        </div>
+        <input type="text" id="chipNumber" placeholder="請輸入晶片號碼" style="margin-top:8px; display:none;" />
+      </div>
+
+      <div class="field">
+        <label>個性 <span class="hint">（可複選）</span></label>
+        <div class="tag-group" id="personalityGroup">
+          <div class="tag-btn" data-value="親近人" onclick="toggleTag('personality', '親近人', this)">親近人</div>
+          <div class="tag-btn" data-value="親近狗" onclick="toggleTag('personality', '親近狗', this)">親近狗</div>
+          <div class="tag-btn" data-value="會咬人" onclick="toggleTag('personality', '會咬人', this)">會咬人</div>
+          <div class="tag-btn" data-value="不會咬人" onclick="toggleTag('personality', '不會咬人', this)">不會咬人</div>
+          <div class="tag-btn" data-value="會咬狗貓" onclick="toggleTag('personality', '會咬狗貓', this)">會咬狗貓</div>
+          <div class="tag-btn" data-value="不會咬狗貓" onclick="toggleTag('personality', '不會咬狗貓', this)">不會咬狗貓</div>
+          <div class="tag-btn" data-value="容易緊張" onclick="toggleTag('personality', '容易緊張', this)">容易緊張</div>
+          <div class="tag-btn" data-value="有攻擊性" onclick="toggleTag('personality', '有攻擊性', this)">有攻擊性</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>病史 <span class="hint">（可複選，無則不勾）</span></label>
+        <div class="tag-group" id="healthGroup">
+          <div class="tag-btn" data-value="心臟病" onclick="toggleTag('health', '心臟病', this)">心臟病</div>
+          <div class="tag-btn" data-value="氣喘" onclick="toggleTag('health', '氣喘', this)">氣喘</div>
+          <div class="tag-btn" data-value="氣管塌陷" onclick="toggleTag('health', '氣管塌陷', this)">氣管塌陷</div>
+          <div class="tag-btn" data-value="白內障" onclick="toggleTag('health', '白內障', this)">白內障</div>
+          <div class="tag-btn" data-value="癲癇" onclick="toggleTag('health', '癲癇', this)">癲癇</div>
+          <div class="tag-btn" data-value="心絲蟲" onclick="toggleTag('health', '心絲蟲', this)">心絲蟲</div>
+          <div class="tag-btn" data-value="艾利希體" onclick="toggleTag('health', '艾利希體', this)">艾利希體</div>
+          <div class="tag-btn" data-value="腹膜炎" onclick="toggleTag('health', '腹膜炎', this)">腹膜炎</div>
+          <div class="tag-btn" data-value="腹積水" onclick="toggleTag('health', '腹積水', this)">腹積水</div>
+          <div class="tag-btn" data-value="手術外傷未癒合" onclick="toggleTag('health', '手術外傷未癒合', this)">手術外傷未癒合</div>
+          <div class="tag-btn" data-value="髖關節問題" onclick="toggleTag('health', '髖關節問題', this)">髖關節問題</div>
+          <div class="tag-btn" data-value="骨折" onclick="toggleTag('health', '骨折', this)">骨折</div>
+          <div class="tag-btn" data-value="腸炎" onclick="toggleTag('health', '腸炎', this)">腸炎</div>
+          <div class="tag-btn" data-value="血便" onclick="toggleTag('health', '血便', this)">血便</div>
+          <div class="tag-btn" data-value="血尿" onclick="toggleTag('health', '血尿', this)">血尿</div>
+          <div class="tag-btn" data-value="懷孕" onclick="toggleTag('health', '懷孕', this)">懷孕</div>
+          <div class="tag-btn" data-value="傳染性疾病" onclick="toggleTag('health', '傳染性疾病', this)">傳染性疾病</div>
+        </div>
+        <input type="text" id="healthOther" placeholder="其他病史（選填）" style="margin-top:8px;" />
+      </div>
+
+      <div class="field">
+        <label>是否有指定獸醫院 <span class="hint">（若未指定，緊急就醫時將送往本店合作動物醫院）</span></label>
+        <div class="radio-group" id="vetGroup">
+          <div class="radio-btn" data-value="false" onclick="selectRadio('hasVet', 'false', this)">無指定</div>
+          <div class="radio-btn" data-value="true" onclick="selectRadio('hasVet', 'true', this)">有指定</div>
+        </div>
+        <div id="vetDetail" style="display:none; margin-top:8px;">
+          <input type="text" id="vetName" placeholder="動物醫院名稱" style="margin-bottom:8px;" />
+          <input type="text" id="vetAddress" placeholder="地址" style="margin-bottom:8px;" />
+          <input type="tel" id="vetPhone" placeholder="連絡電話" />
+        </div>
+      </div>
+
       <!-- 自動判斷體型結果 -->
       <div class="auto-result" id="sizeResult">
         <div class="label">🤖 系統自動判斷</div>
@@ -382,7 +481,16 @@
     <script>
       const LIFF_ID = "2010567973-ygHvpq7X";
       let jwtToken = null;
-      const formData = { petType: null, anxiety: null }; // 需求 2：移除 coatType
+      const formData = {
+        petType: null,
+        anxiety: null,
+        gender: null,
+        neutered: null,
+        hasChip: null,
+        hasVet: null,
+        personality: [],
+        health: [],
+      };
 
       async function init() {
         try {
@@ -416,6 +524,26 @@
           .forEach((b) => b.classList.remove("selected"));
         el.classList.add("selected");
         if (field === "petType" || field === "anxiety") updateSizePreview();
+        if (field === "hasChip") {
+          document.getElementById("chipNumber").style.display =
+            value === "true" ? "block" : "none";
+        }
+        if (field === "hasVet") {
+          document.getElementById("vetDetail").style.display =
+            value === "true" ? "block" : "none";
+        }
+      }
+
+      function toggleTag(field, value, el) {
+        const arr = formData[field];
+        const idx = arr.indexOf(value);
+        if (idx >= 0) {
+          arr.splice(idx, 1);
+          el.classList.remove("selected");
+        } else {
+          arr.push(value);
+          el.classList.add("selected");
+        }
       }
 
       function updateSizePreview() {
@@ -519,6 +647,17 @@
               hasSeparationAnxiety: formData.anxiety === "true",
               ownerPhone: phone,
               notes: notes || null,
+              gender: formData.gender || null,
+              isNeutered: formData.neutered === "true",
+              hasChip: formData.hasChip === "true",
+              chipNumber: document.getElementById("chipNumber").value.trim() || null,
+              personalityTags: formData.personality.join(",") || null,
+              healthHistory: formData.health.join(",") || null,
+              healthHistoryOther: document.getElementById("healthOther").value.trim() || null,
+              hasDesignatedVet: formData.hasVet === "true",
+              designatedVetName: document.getElementById("vetName").value.trim() || null,
+              designatedVetAddress: document.getElementById("vetAddress").value.trim() || null,
+              designatedVetPhone: document.getElementById("vetPhone").value.trim() || null,
             }),
           });
 

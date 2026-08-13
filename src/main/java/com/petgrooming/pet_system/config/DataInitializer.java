@@ -105,6 +105,22 @@ public class DataInitializer implements ApplicationRunner {
 
             log.info("✨ [系統通知] {}項美容服務項目已成功初始化入庫！", groomingItemRepository.count());
         }
+
+        // 需求 5：修正「不可打折」的項目代碼——不管是全新安裝（剛用預設 true 建立）
+        // 還是既有資料庫（欄位剛新增，全部項目暫時都是 true），這段每次啟動都會執行一次，
+        // 確保這幾項最終一定是 false，其餘維持預設 true（洗澡/剪毛/調理類可打折）。
+        java.util.List<String> nonDiscountCodes = java.util.List.of(
+                "PARTIAL", "SPECIAL", "CHECKIN", "CHECKOUT", "COMPLETE",
+                "GS001", "GS002", "GS003", "GS004", "GS005", "GS006",
+                "GS007", "GS008", "GS009", "GS010", "GS011", "GS012");
+        for (String code : nonDiscountCodes) {
+            groomingItemRepository.findByItemCode(code).ifPresent(item -> {
+                if (item.isDiscountEligible()) {
+                    item.setDiscountEligible(false);
+                    groomingItemRepository.save(item);
+                }
+            });
+        }
     }
 
     private void saveItem(String code, String name, String desc, double price, PerformanceCategory category) {

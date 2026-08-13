@@ -313,6 +313,21 @@
         </div>
 
         <div class="field">
+          <label>通訊地址 <span class="hint">（依定型化契約規定蒐集，選填）</span></label>
+          <input type="text" id="mailingAddress" value="${me.mailingAddress ? escapeHtml(me.mailingAddress) : ""}" placeholder="請輸入完整通訊地址" />
+        </div>
+
+        <div class="field">
+          <label>緊急聯絡人姓名 <span class="hint">（依定型化契約規定蒐集，選填）</span></label>
+          <input type="text" id="emergencyContactName" value="${me.emergencyContactName ? escapeHtml(me.emergencyContactName) : ""}" placeholder="請輸入緊急聯絡人姓名" />
+        </div>
+
+        <div class="field">
+          <label>緊急聯絡人電話 <span class="hint">（選填）</span></label>
+          <input type="tel" id="emergencyContactPhone" value="${me.emergencyContactPhone ? escapeHtml(me.emergencyContactPhone) : ""}" placeholder="例如：0912345678" />
+        </div>
+
+        <div class="field">
           <label>您是從哪裡得知慕沐村的？ <span class="hint">（選填）</span></label>
           <select id="source">
             <option value="">請選擇</option>
@@ -348,6 +363,9 @@
           .getElementById("residenceArea")
           .value.trim();
         const source = document.getElementById("source").value;
+        const mailingAddress = document.getElementById("mailingAddress").value.trim();
+        const emergencyContactName = document.getElementById("emergencyContactName").value.trim();
+        const emergencyContactPhone = document.getElementById("emergencyContactPhone").value.trim();
 
         const body = {
           name: name || null,
@@ -356,6 +374,9 @@
           occupation: occupation || null,
           residenceArea: residenceArea || null,
           source: source || null,
+          mailingAddress: mailingAddress || null,
+          emergencyContactName: emergencyContactName || null,
+          emergencyContactPhone: emergencyContactPhone || null,
         };
 
         const btn = document.getElementById("submitBtn");

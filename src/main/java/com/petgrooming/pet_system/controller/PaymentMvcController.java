@@ -31,6 +31,7 @@ public class PaymentMvcController {
     private final AppointmentRepository appointmentRepository;
     private final WalkInOrderRepository walkInOrderRepository;
     private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -60,6 +61,8 @@ public class PaymentMvcController {
             if (!t.isPaid()) continue;
             records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("預約結帳")
+                    .sourceType("APPOINTMENT")
+                    .recordId(t.getAppointmentId())
                     .code(t.getAppointmentCode())
                     .petName(null)
                     .time(t.getPaymentTime())
@@ -74,6 +77,8 @@ public class PaymentMvcController {
             if (!w.isPaid()) continue;
             records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("現場開單")
+                    .sourceType("WALKIN")
+                    .recordId(w.getId())
                     .code("現場單#" + w.getId())
                     .petName(w.getPetName())
                     .time(w.getPaymentTime())
@@ -134,8 +139,18 @@ public class PaymentMvcController {
             model.addAttribute("walletDiscount", wallet.getDiscount());
             model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
             model.addAttribute("baseAmount", appointment.getTotalAmount());
-            model.addAttribute("walletFinalAmount",
-                    (int) Math.round(appointment.getTotalAmount() * wallet.getDiscount()));
+        }
+
+        // 需求：結帳頁面顯示逐項目消費明細（含折扣資格），跟實際結帳邏輯用同一份資料，
+        // 避免像舊版「整筆金額×折扣」預覽跟實際逐項目扣款金額對不上。
+        var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
+        model.addAttribute("detailItems", detail.getItems());
+        if (appointment != null && appointment.getUser() != null) {
+            double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
+            double walletPreview = detail.getItems().stream()
+                    .mapToDouble(it -> it.isDiscountEligible() ? it.getPrice() * discount : it.getPrice())
+                    .sum();
+            model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
         }
 
         return "payments/checkout";
@@ -238,5 +253,40 @@ public class PaymentMvcController {
         operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT", "匯款帳號設定", null);
         ra.addFlashAttribute("successMsg", "已更新匯款帳號資訊");
         return "redirect:/payments/bank-account";
+    }
+
+    // ── GET /payments/company-signature ──────────────────────────────────
+    // 需求 22：店家上傳乙方固定電子簽名檔（顯示在顧客端契約最下方）
+    @RequireRole(UserRole.ADMIN)
+    @GetMapping("/company-signature")
+    public String companySignatureForm(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("signatureImage", paymentService.getCompanySignatureImage());
+        return "payments/company-signature";
+    }
+
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/company-signature")
+    public String updateCompanySignature(@RequestParam String signatureImage,
+                                         HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        if (signatureImage == null || !signatureImage.startsWith("data:image")) {
+            ra.addFlashAttribute("errorMsg", "請上傳有效的圖片檔案");
+            return "redirect:/payments/company-signature";
+        }
+        paymentService.updateCompanySignature(signatureImage);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_COMPANY_SIGNATURE", "乙方電子簽名檔", null);
+        ra.addFlashAttribute("successMsg", "已更新乙方電子簽名檔");
+        return "redirect:/payments/company-signature";
+    }
+
+    // ── GET /api/company-signature ────────────────────────────────────────
+    // 需求 22：公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
+    // 不需要登入即可讀取——簽名檔本身不是敏感資訊，是要公開展示給顧客看的。
+    @GetMapping("/api/company-signature")
+    @ResponseBody
+    public java.util.Map<String, String> getCompanySignatureApi() {
+        String image = paymentService.getCompanySignatureImage();
+        return java.util.Collections.singletonMap("signatureImage", image);
     }
 }

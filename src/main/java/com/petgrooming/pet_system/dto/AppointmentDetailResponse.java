@@ -26,7 +26,8 @@ public class AppointmentDetailResponse {
     private boolean cancelled;
     private String memberNote;
     private List<DetailItem> items;
-    private int totalAmount;
+    private int totalAmount;      // 帳面總額（未打折）
+    private Integer chargedAmount; // 需求 5：實際扣款金額（有打折的話會比 totalAmount 少；null 代表跟 totalAmount 相同或尚未結帳）
     private boolean paid;
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
@@ -38,5 +39,6 @@ public class AppointmentDetailResponse {
         private String name;
         private int price;
         private String operatorName; // 現場開單項目才有經手人；一般預約項目則為 null
+        private boolean discountEligible; // 需求 5：這個項目是否可享會員折扣，消費明細要能看出哪些有打折
     }
 }

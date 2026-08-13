@@ -56,4 +56,16 @@ public class GroomingItem {
     @Column(name = "points", nullable = false)
     @Builder.Default
     private Double points = 0.0;
+
+    // 需求 5：是否可享會員儲值金折扣。洗澡/剪毛/調理類為 true；
+    // 剪指甲、局部修剪、除廢毛等單點加購項目為 false，維持原價不打折。
+    // 與 performanceCategory（決定積分）完全獨立，不要混用同一套分類判斷。
+    //
+    // 注意（ddl-auto 陷阱）：新增到既有資料表的 NOT NULL 欄位，需給資料庫層級
+    // 預設值，既有列才不會因無值可填導致 ALTER TABLE 失敗（比照 bookable 欄位）。
+    // 這裡預設 true（多數項目屬於「洗澡/剪毛」類），啟動時 DataInitializer 會
+    // 額外針對已知不打折的項目代碼做一次性修正，不論是全新安裝還是既有資料庫皆會生效。
+    @Column(name = "discount_eligible", nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean discountEligible = true;
 }

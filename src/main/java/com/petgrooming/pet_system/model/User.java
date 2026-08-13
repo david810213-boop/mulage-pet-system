@@ -69,6 +69,16 @@ public class User {
     @Column(name = "residence_area", length = 50)
     private String residenceArea;       // 居住區域（例如：板橋區）
 
+    // ── 需求 19：定型化契約要求蒐集的家長資料（皆選填，只需填一次）───────
+    @Column(name = "mailing_address", length = 200)
+    private String mailingAddress;              // 通訊地址（完整地址，與 residenceArea 用途不同，那個只是行銷分析用的粗略區域）
+
+    @Column(name = "emergency_contact_name", length = 100)
+    private String emergencyContactName;        // 緊急聯絡人姓名
+
+    @Column(name = "emergency_contact_phone", length = 20)
+    private String emergencyContactPhone;        // 緊急聯絡人電話
+
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private CustomerSource source;      // 得知本店的來源管道
