@@ -324,6 +324,20 @@
       </div>
 
       <div class="field">
+        <label>毛孩照片 <span class="hint">（選填，之後也可以到「我的毛孩」補傳）</span></label>
+        <input type="file" id="petPhoto" accept="image/*" />
+        <div
+          id="petPhotoPreview"
+          style="margin-top: 8px; display: none;"
+        >
+          <img
+            id="petPhotoPreviewImg"
+            style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid #e3dccc;"
+          />
+        </div>
+      </div>
+
+      <div class="field">
         <label>毛孩品種 <span class="req">*</span></label>
         <input type="text" id="breed" placeholder="例如：柴犬、貴賓、英短" />
       </div>
@@ -667,19 +681,52 @@
             return;
           }
 
-          showToast(
-            "✅ " +
-              data.name +
-              " 已成功新增！體型判斷：" +
-              data.sizeCategoryLabel,
-            "success",
-          );
+          // 若有選照片，寵物建立成功後立即上傳（拿到 data.id 才能傳）
+          const photoFile = document.getElementById("petPhoto").files[0];
+          if (photoFile) {
+            try {
+              const photoFormData = new FormData();
+              photoFormData.append("file", photoFile);
+              const photoRes = await fetch("/api/pets/" + data.id + "/photo", {
+                method: "POST",
+                headers: { Authorization: "Bearer " + jwtToken },
+                body: photoFormData,
+              });
+              if (!photoRes.ok) {
+                // 寵物本身已經建立成功，照片上傳失敗不影響新增結果，只是提醒可以之後在「我的毛孩」補傳
+                showToast(
+                  "✅ " + data.name + " 已新增，但照片上傳失敗，可到「我的毛孩」重新上傳",
+                  "error",
+                );
+              } else {
+                showToast(
+                  "✅ " + data.name + " 已成功新增！體型判斷：" + data.sizeCategoryLabel,
+                  "success",
+                );
+              }
+            } catch (photoErr) {
+              showToast(
+                "✅ " + data.name + " 已新增，但照片上傳失敗，可到「我的毛孩」重新上傳",
+                "error",
+              );
+            }
+          } else {
+            showToast(
+              "✅ " +
+                data.name +
+                " 已成功新增！體型判斷：" +
+                data.sizeCategoryLabel,
+              "success",
+            );
+          }
           setTimeout(() => {
             // 新增成功後清空表單
             document.getElementById("petName").value = "";
             document.getElementById("breed").value = "";
             document.getElementById("weight").value = "";
             document.getElementById("age").value = "";
+            document.getElementById("petPhoto").value = "";
+            document.getElementById("petPhotoPreview").style.display = "none";
             document.getElementById("ownerPhone").value = "";
             document.getElementById("notes").value = "";
             document
@@ -702,6 +749,23 @@
         el.className = "toast show " + type;
         setTimeout(() => el.classList.remove("show"), 3000);
       }
+
+      // 選照片後立即預覽
+      document.getElementById("petPhoto").addEventListener("change", function () {
+        const file = this.files[0];
+        const box = document.getElementById("petPhotoPreview");
+        const img = document.getElementById("petPhotoPreviewImg");
+        if (!file) {
+          box.style.display = "none";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          img.src = e.target.result;
+          box.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      });
 
       init();
     </script>

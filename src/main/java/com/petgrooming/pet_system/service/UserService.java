@@ -107,6 +107,9 @@ public class UserService {
         if (req.getEmergencyContactPhone() != null) {
             user.setEmergencyContactPhone(req.getEmergencyContactPhone().isBlank() ? null : req.getEmergencyContactPhone().trim());
         }
+        if (req.getEmergencyContactRelation() != null) {
+            user.setEmergencyContactRelation(req.getEmergencyContactRelation().isBlank() ? null : req.getEmergencyContactRelation().trim());
+        }
         // 第一次完整填寫基本資料時記錄時間點，供後台判斷「已完成資料填寫」的會員數
         if (user.getProfileCompletedAt() == null
                 && user.getAge() != null

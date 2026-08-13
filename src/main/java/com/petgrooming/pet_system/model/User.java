@@ -79,6 +79,9 @@ public class User {
     @Column(name = "emergency_contact_phone", length = 20)
     private String emergencyContactPhone;        // 緊急聯絡人電話
 
+    @Column(name = "emergency_contact_relation", length = 50)
+    private String emergencyContactRelation;      // 緊急聯絡人關係（例如：父母、配偶、朋友）
+
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private CustomerSource source;      // 得知本店的來源管道

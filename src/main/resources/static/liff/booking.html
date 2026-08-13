@@ -333,6 +333,22 @@
       let selectedPetId = null;
       let selectedDate = null;
       let selectedSlot = null; // { startTime, endTime }
+      let closedDatesCache = null; // 需求 16：公休日清單快取（本次頁面停留期間有效）
+
+      // 需求 16：抓取公休日清單（只抓一次，快取起來），回傳 Set<string> 方便查詢
+      async function loadClosedDates() {
+        if (closedDatesCache) return closedDatesCache;
+        try {
+          const res = await fetch("/api/appointments/closed-dates", {
+            headers: authHeaders(),
+          });
+          const list = res.ok ? await res.json() : [];
+          closedDatesCache = new Set(list);
+        } catch (e) {
+          closedDatesCache = new Set(); // 查詢失敗就當作沒有公休日，退回原本行為，不阻擋預約流程
+        }
+        return closedDatesCache;
+      }
       let selectedItemCodes = new Set();
       let hasSigned = false;
       let signatureCanvas = null;
@@ -503,8 +519,7 @@
 
           <p style="font-weight:700; color:#2b2a28; margin: 10px 0 2px;">乙方合作動物醫院（緊急送醫優先送往下列其一）</p>
           <p style="margin-top:0;">
-          配合醫院一：台大頑皮動物醫院　電話：(02)2857-3578　地址：新北市三重區三賢街197號<br />
-          配合醫院二：迦勒動物醫院　電話：(02)2974-7741　地址：新北市三重區中正南路114號
+          配合醫院一：台大頑皮動物醫院　電話：(02)2857-3578　地址：新北市三重區三賢街197號
           </p>
 
           <p style="font-weight:700; color:#2b2a28; margin: 12px 0 6px;">立契約書人：消費者（以下簡稱甲方）／企業經營者：慕沐村寵物美容（以下簡稱乙方）</p>
@@ -690,6 +705,14 @@
         container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
 
         try {
+          // 需求 16：先檢查是否為公休日，是的話直接提示，不用等 /slots 回傳空清單
+          const closedDates = await loadClosedDates();
+          if (closedDates.has(selectedDate)) {
+            container.innerHTML =
+              '<div class="slots-empty">🚫 當天為公休日，恕不開放預約，請選擇其他日期</div>';
+            return;
+          }
+
           const res = await fetch(
             "/api/appointments/slots?date=" + selectedDate,
             { headers: authHeaders() },

@@ -49,14 +49,25 @@ public class DataInitializer implements ApplicationRunner {
             log.info("積分獎勵金級距種子資料初始化完成");
         }
 
-        // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立一筆預設（佔位）資料，店家可自行到後台修改
-        if (bankAccountInfoRepository.count() == 0) {
+        // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
+        // 需求（追加）：改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
+        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
+                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)
                     .bankName("請於後台設定銀行名稱")
                     .accountNumber("請於後台設定帳號")
                     .accountHolder("請於後台設定戶名")
                     .build());
-            log.info("匯款帳號預設資料初始化完成，請記得到後台修改成實際帳號");
+            log.info("結帳收款帳號預設資料初始化完成，請記得到後台修改成實際帳號");
+        }
+        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP).isEmpty()) {
+            bankAccountInfoRepository.save(BankAccountInfo.builder()
+                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP)
+                    .bankName("請於後台設定銀行名稱")
+                    .accountNumber("請於後台設定帳號")
+                    .accountHolder("請於後台設定戶名")
+                    .build());
+            log.info("儲值金收款帳號（大額專用）預設資料初始化完成，請記得到後台修改成實際帳號");
         }
 
         if (groomingItemRepository.count() == 0) {

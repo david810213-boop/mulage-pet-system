@@ -129,7 +129,8 @@ public class PaymentMvcController {
         model.addAttribute("paymentMethods", java.util.Arrays.stream(PaymentMethod.values())
                 .filter(m -> m != PaymentMethod.CREDIT_CARD).toList());
         model.addAttribute("checkoutRequest", new CheckoutRequest());
-        model.addAttribute("bankAccountInfo", paymentService.getBankAccountInfo());
+        model.addAttribute("bankAccountInfo",
+                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -244,24 +245,49 @@ public class PaymentMvcController {
 
     // ── GET /payments/bank-account ────────────────────────────────────────
     // 需求 10：店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
+    // 需求（追加）：改成同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/bank-account")
     public String bankAccountForm(HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
-        model.addAttribute("info", paymentService.getBankAccountInfo());
+        model.addAttribute("checkoutInfo",
+                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
+        model.addAttribute("topupInfo",
+                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP));
         return "payments/bank-account";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account")
-    public String updateBankAccount(@RequestParam String bankName,
+    public String updateBankAccount(@RequestParam com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+                                    @RequestParam String bankName,
                                     @RequestParam String accountNumber,
                                     @RequestParam String accountHolder,
                                     HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
-        paymentService.updateBankAccountInfo(bankName, accountNumber, accountHolder);
-        operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT", "匯款帳號設定", null);
-        ra.addFlashAttribute("successMsg", "已更新匯款帳號資訊");
+        paymentService.updateBankAccountInfo(purpose, bankName, accountNumber, accountHolder);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT",
+                purpose.getLabel() + " 帳號設定", null);
+        ra.addFlashAttribute("successMsg", "已更新「" + purpose.getLabel() + "」帳號資訊");
+        return "redirect:/payments/bank-account";
+    }
+
+    // ── POST /payments/bank-account/qr-code ─────────────────────────────
+    // 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立）
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/bank-account/qr-code")
+    public String uploadBankAccountQrCode(@RequestParam com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                          HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            paymentService.updateBankAccountQrCode(purpose, file);
+            operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT_QR",
+                    purpose.getLabel() + " 收款 QR Code", null);
+            ra.addFlashAttribute("successMsg", "已更新「" + purpose.getLabel() + "」的收款 QR Code");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("errorMsg", "上傳失敗：" + e.getMessage());
+        }
         return "redirect:/payments/bank-account";
     }
 

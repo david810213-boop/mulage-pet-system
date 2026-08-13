@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>新客報到 | 慕沐村Mulage pet</title>
+    <script
+      charset="utf-8"
+      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+    ></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          "Noto Serif TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          serif;
+        background: #f6f2ea;
+        min-height: 100vh;
+        padding-bottom: 40px;
+      }
+      .header {
+        background: #2b2a28;
+        color: #d9be8f;
+        padding: 28px 20px 32px;
+        text-align: center;
+      }
+      .header .logo {
+        font-size: 13px;
+        opacity: 0.8;
+        margin-bottom: 6px;
+      }
+      .header .title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+      .header .sub {
+        font-size: 13px;
+        opacity: 0.8;
+        margin-top: 10px;
+        line-height: 1.7;
+      }
+
+      .steps {
+        margin: -16px 16px 0;
+      }
+      .step-card {
+        background: white;
+        border-radius: 16px;
+        padding: 18px 18px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        margin-bottom: 14px;
+        text-decoration: none;
+        display: block;
+        position: relative;
+      }
+      .step-card.done {
+        opacity: 0.85;
+      }
+      .step-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .step-num {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #ede5d3;
+        color: #5c4a2f;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .step-card.done .step-num {
+        background: #2e7d32;
+        color: white;
+      }
+      .step-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #2b2a28;
+      }
+      .step-desc {
+        font-size: 12.5px;
+        color: #8a8072;
+        margin-top: 6px;
+        margin-left: 44px;
+        line-height: 1.6;
+      }
+      .step-status {
+        margin-left: 44px;
+        margin-top: 8px;
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 20px;
+      }
+      .step-status.pending {
+        background: #fff3e0;
+        color: #e65100;
+      }
+      .step-status.done {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      .step-arrow {
+        position: absolute;
+        right: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px;
+        color: #cbbfa3;
+      }
+
+      .all-done-card {
+        margin: 8px 16px 0;
+        background: #2b2a28;
+        border-radius: 14px;
+        padding: 20px;
+        text-align: center;
+        display: none;
+      }
+      .all-done-card .msg {
+        color: #d9be8f;
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .all-done-card a {
+        display: inline-block;
+        background: #d9be8f;
+        color: #2b2a28;
+        padding: 10px 24px;
+        border-radius: 24px;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .loading {
+        text-align: center;
+        color: #8a8072;
+        font-size: 13px;
+        padding: 40px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">MULAGE PET</div>
+      <div class="title">🐾 歡迎加入慕沐村</div>
+      <div class="sub">
+        感謝您加入官方帳號！<br />
+        請先完成以下兩個步驟，就能開始為毛孩預約美容囉～
+      </div>
+    </div>
+
+    <div id="loadingBox" class="loading">載入中...</div>
+
+    <div class="steps" id="stepsBox" style="display: none">
+      <a class="step-card" id="stepProfile" href="/liff/my-profile.html">
+        <div class="step-top">
+          <div class="step-num" id="stepProfileNum">1</div>
+          <div class="step-title">填寫個人資料</div>
+        </div>
+        <div class="step-desc">
+          通訊地址、緊急聯絡人等資料，依規定需完整填寫，約 1 分鐘完成。
+        </div>
+        <span class="step-status pending" id="stepProfileStatus">尚未完成</span>
+        <div class="step-arrow">›</div>
+      </a>
+
+      <a class="step-card" id="stepPet" href="/liff/add-pet.html">
+        <div class="step-top">
+          <div class="step-num" id="stepPetNum">2</div>
+          <div class="step-title">新增毛孩檔案</div>
+        </div>
+        <div class="step-desc">
+          毛孩的基本資料與照片，方便我們認識您的寶貝、安排合適的美容服務。
+        </div>
+        <span class="step-status pending" id="stepPetStatus">尚未完成</span>
+        <div class="step-arrow">›</div>
+      </a>
+    </div>
+
+    <div class="all-done-card" id="allDoneCard">
+      <div class="msg">🎉 報到完成！可以開始預約囉</div>
+      <a href="/liff/index.html">前往首頁</a>
+    </div>
+
+    <script>
+      const LIFF_ID = "2010567973-ygHvpq7X";
+      let jwtToken = null;
+
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
+
+          const res = await fetch("/api/line/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify({ idToken: liff.getIDToken() }),
+          });
+
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            document.getElementById("loadingBox").textContent =
+              "登入失敗，請重新整理再試一次";
+            return;
+          }
+
+          jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+
+          await Promise.all([checkProfile(), checkPets()]);
+
+          document.getElementById("loadingBox").style.display = "none";
+          document.getElementById("stepsBox").style.display = "block";
+        } catch (e) {
+          document.getElementById("loadingBox").textContent =
+            "初始化失敗，請重新整理再試一次";
+        }
+      }
+
+      function authHeaders() {
+        return {
+          Authorization: "Bearer " + jwtToken,
+          "ngrok-skip-browser-warning": "true",
+        };
+      }
+
+      let profileDone = false;
+      let petDone = false;
+
+      async function checkProfile() {
+        try {
+          const res = await fetch("/api/users/me", { headers: authHeaders() });
+          if (!res.ok) return;
+          const me = await res.json();
+          // 通訊地址、緊急聯絡人關係都有填才算完成（跟後端必填欄位一致）
+          profileDone = !!(me.mailingAddress && me.emergencyContactRelation);
+          markStep("stepProfile", profileDone);
+        } catch (e) {
+          /* 查詢失敗就維持「尚未完成」預設狀態，不影響其他步驟 */
+        }
+      }
+
+      async function checkPets() {
+        try {
+          const res = await fetch("/api/pets/my", { headers: authHeaders() });
+          if (!res.ok) return;
+          const pets = await res.json();
+          petDone = !!(pets && pets.length > 0);
+          markStep("stepPet", petDone);
+        } catch (e) {
+          /* 查詢失敗就維持「尚未完成」預設狀態 */
+        }
+      }
+
+      function markStep(prefix, done) {
+        if (!done) return;
+        document.getElementById(prefix).classList.add("done");
+        document.getElementById(prefix + "Num").textContent = "✓";
+        const statusEl = document.getElementById(prefix + "Status");
+        statusEl.textContent = "已完成";
+        statusEl.classList.remove("pending");
+        statusEl.classList.add("done");
+        maybeShowAllDone();
+      }
+
+      function maybeShowAllDone() {
+        if (profileDone && petDone) {
+          document.getElementById("allDoneCard").style.display = "block";
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>

@@ -22,6 +22,12 @@ public class UserResponse {
     private String sourceLabel;       // 中文顯示用
     private boolean profileCompleted; // 是否已填寫過基本資料
 
+    // ── 需求 19：定型化契約要求蒐集的資料（原本漏掉沒回傳，導致編輯頁每次打開都是空的）──
+    private String mailingAddress;
+    private String emergencyContactName;
+    private String emergencyContactPhone;
+    private String emergencyContactRelation;
+
     public static UserResponse from(User user) {
         UserResponse res = new UserResponse();
         res.setId(user.getId());
@@ -35,6 +41,10 @@ public class UserResponse {
         res.setSource(user.getSource());
         res.setSourceLabel(user.getSource() != null ? user.getSource().getLabel() : null);
         res.setProfileCompleted(user.getProfileCompletedAt() != null);
+        res.setMailingAddress(user.getMailingAddress());
+        res.setEmergencyContactName(user.getEmergencyContactName());
+        res.setEmergencyContactPhone(user.getEmergencyContactPhone());
+        res.setEmergencyContactRelation(user.getEmergencyContactRelation());
         return res;
     }
 }

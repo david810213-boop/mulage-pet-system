@@ -98,4 +98,31 @@ public class PetMvcController {
             return "pets/form";
         }
     }
+
+    // ── POST /pets/{id}/photo ────────────────────────────────────────────
+    // 網頁版毛孩照片上傳（跟 LIFF 版一樣的概念：先建立寵物，再上傳照片，
+    // 因為建立當下還沒有 petId）。只能傳自己名下的寵物。
+    @PostMapping("/{id}/photo")
+    public String uploadPhoto(@PathVariable Long id,
+                              @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                              HttpServletRequest request,
+                              RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            var pet = petService.getPetEntity(id);
+            if (!pet.getOwner().getUsername().equals(user.getUsername())) {
+                ra.addFlashAttribute("errorMsg", "只能上傳自己寵物的照片");
+                return "redirect:/pets";
+            }
+            var updated = petService.updatePhoto(id, file);
+            operationLogService.log(user, "CUSTOMER", "UPLOAD_PET_PHOTO",
+                    "寵物 " + updated.getName() + " #" + updated.getId(), null);
+            ra.addFlashAttribute("successMsg", "照片已更新");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("errorMsg", "上傳失敗：" + e.getMessage());
+        }
+        return "redirect:/pets";
+    }
 }

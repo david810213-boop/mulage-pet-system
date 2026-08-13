@@ -171,7 +171,8 @@ public class WalkInOrderMvcController {
         try {
             var order = walkInOrderService.getById(id);
             model.addAttribute("order", order);
-            model.addAttribute("bankAccountInfo", paymentService.getBankAccountInfo()); // 需求 15 修正
+            model.addAttribute("bankAccountInfo",
+                    paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)); // 需求 15 修正
 
             // 需求 10：跟預約結帳一致，不再提供「信用卡」選項
             // 需求 15 修正：匯款現在有待對帳流程了，重新加回選單

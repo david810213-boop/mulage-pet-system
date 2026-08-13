@@ -37,6 +37,7 @@ public class PaymentService {
     private final AppointmentItemRepository appointmentItemRepository;
     private final PerformanceRecordRepository performanceRecordRepository;
     private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
+    private final CloudinaryService cloudinaryService; // 需求 21：匯款/儲值 QR Code 上傳
     private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
@@ -328,22 +329,42 @@ public class PaymentService {
                 LocalDateTime.now(), all.size(), paidCount, revenue, average, details);
     }
 
-    // ── 需求 10：店家匯款帳號資訊（單例設定，供結帳畫面選匯款時自動帶出） ──
-    public com.petgrooming.pet_system.model.BankAccountInfo getBankAccountInfo() {
-        return bankAccountInfoRepository.findAll().stream().findFirst()
+    // ── 店家匯款帳號資訊（依用途分開：結帳收款 / 儲值金收款大額專用）────
+    // 需求（追加）：LIFF 儲值金常有大額匯款，跟現場結帳的日常小額收款要分開帳戶方便對帳。
+    public com.petgrooming.pet_system.model.BankAccountInfo getBankAccountInfo(
+            com.petgrooming.pet_system.enums.BankAccountPurpose purpose) {
+        return bankAccountInfoRepository.findByPurpose(purpose)
                 .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder()
+                        .purpose(purpose)
                         .bankName("尚未設定").accountNumber("尚未設定").accountHolder("尚未設定").build());
     }
 
     @Transactional
-    public void updateBankAccountInfo(String bankName, String accountNumber, String accountHolder) {
-        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findAll()
-                .stream().findFirst()
-                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().build());
+    public void updateBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+                                      String bankName, String accountNumber, String accountHolder) {
+        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().purpose(purpose).build());
         info.setBankName(bankName);
         info.setAccountNumber(accountNumber);
         info.setAccountHolder(accountHolder);
         bankAccountInfoRepository.save(info);
+    }
+
+    // ── 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立一張）──────────
+    @Transactional
+    public void updateBankAccountQrCode(com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+                                        org.springframework.web.multipart.MultipartFile file) {
+        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().purpose(purpose).build());
+
+        CloudinaryService.UploadResult result = cloudinaryService.upload(file, "bank-account");
+
+        String oldPublicId = info.getQrCodePublicId();
+        info.setQrCodeUrl(result.url());
+        info.setQrCodePublicId(result.publicId());
+        bankAccountInfoRepository.save(info);
+
+        cloudinaryService.deleteQuietly(oldPublicId);
     }
 
     // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────

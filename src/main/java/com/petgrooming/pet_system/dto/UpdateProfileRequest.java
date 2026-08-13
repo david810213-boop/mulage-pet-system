@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.dto;
 import com.petgrooming.pet_system.enums.CustomerSource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
@@ -25,8 +26,18 @@ public class UpdateProfileRequest {
 
     private CustomerSource source;
 
-    // ── 需求 19：定型化契約要求蒐集的資料（皆選填）───────────────────────
+    // ── 需求 19：定型化契約要求蒐集的資料 ─────────────────────────────
+    // 通訊地址、緊急聯絡人姓名/電話/關係全部改為必填（配合定型化契約規定）。
+    @NotBlank(message = "請填寫通訊地址")
     private String mailingAddress;
+
+    @NotBlank(message = "請填寫緊急聯絡人姓名")
     private String emergencyContactName;
+
+    @NotBlank(message = "請填寫緊急聯絡人電話")
+    @Pattern(regexp = "^[0-9+\\-() ]{0,20}$", message = "緊急聯絡人電話格式不正確")
     private String emergencyContactPhone;
+
+    @NotBlank(message = "請填寫緊急聯絡人關係")
+    private String emergencyContactRelation;
 }

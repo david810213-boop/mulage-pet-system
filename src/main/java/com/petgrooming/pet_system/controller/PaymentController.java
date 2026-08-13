@@ -25,6 +25,21 @@ public class PaymentController {
         return (String) request.getAttribute("tokenUsername");
     }
 
+    // ── GET /api/payments/bank-account ──────────────────────────────────
+    // 需求 21：LIFF「線上儲值」頁面讀取匯款帳號資訊 + 收款 QR Code
+    // 需求（追加）：LIFF 儲值一律用「儲值金收款（大額專用）」帳戶，跟現場/預約結帳帳戶分開，
+    // 任何已登入使用者皆可查（顧客儲值前本來就需要看到這份資訊，不需要限定店家/員工）
+    @GetMapping("/bank-account")
+    public ResponseEntity<?> getBankAccountInfo() {
+        var info = paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP);
+        return ResponseEntity.ok(java.util.Map.of(
+                "bankName", info.getBankName() != null ? info.getBankName() : "",
+                "accountNumber", info.getAccountNumber() != null ? info.getAccountNumber() : "",
+                "accountHolder", info.getAccountHolder() != null ? info.getAccountHolder() : "",
+                "qrCodeUrl", info.getQrCodeUrl() != null ? info.getQrCodeUrl() : ""
+        ));
+    }
+
     // ── POST /api/payments/{appointmentId}/checkout ────────────────────────
     // 結帳（對應原本 processPayment），appointmentId = 要結哪一筆預約的帳
     @PostMapping("/{appointmentId}/checkout")

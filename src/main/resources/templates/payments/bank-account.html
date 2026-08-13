@@ -13,26 +13,97 @@
         </div>
 
         <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
         <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem">
-          顧客或店員在結帳畫面選擇「匯款」付款方式時，會自動顯示這裡設定的帳號資訊。
+          結帳收款與儲值金收款是兩組獨立帳戶，方便日常小額收款跟大額儲值分開對帳。
         </p>
 
-        <div class="card">
+        <!-- ── 結帳收款帳戶（預約結帳／現場開單）───────────────────────── -->
+        <h3 style="font-size: 15px; margin-bottom: 8px;">💰 結帳收款帳戶</h3>
+        <p style="font-size: 12.5px; color: var(--brown-light); margin-bottom: 10px;">
+          顧客或店員在「預約結帳」「現場開單結帳」選擇匯款付款方式時，會自動顯示這裡設定的帳號資訊。
+        </p>
+        <div class="card" style="margin-bottom: 1.5rem">
           <form method="post" action="/payments/bank-account">
+            <input type="hidden" name="purpose" value="CHECKOUT" />
             <div class="field">
               <label>銀行名稱</label>
-              <input type="text" name="bankName" th:value="${info.bankName}" required />
+              <input type="text" name="bankName" th:value="${checkoutInfo.bankName}" required />
             </div>
             <div class="field">
               <label>帳號</label>
-              <input type="text" name="accountNumber" th:value="${info.accountNumber}" required />
+              <input type="text" name="accountNumber" th:value="${checkoutInfo.accountNumber}" required />
             </div>
             <div class="field">
               <label>戶名</label>
-              <input type="text" name="accountHolder" th:value="${info.accountHolder}" required />
+              <input type="text" name="accountHolder" th:value="${checkoutInfo.accountHolder}" required />
             </div>
             <button type="submit" class="btn btn-primary">儲存</button>
           </form>
+
+          <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--cream-200);">
+            <p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">收款 QR Code</p>
+            <img
+              th:if="${checkoutInfo.qrCodeUrl != null}"
+              th:src="${checkoutInfo.qrCodeUrl}"
+              style="width: 160px; height: 160px; object-fit: contain; border: 1px solid var(--cream-300); border-radius: 8px; margin-bottom: 10px; display: block;"
+            />
+            <p th:if="${checkoutInfo.qrCodeUrl == null}" style="font-size: 13px; color: var(--brown-light); margin-bottom: 10px;">
+              尚未上傳 QR Code
+            </p>
+            <form method="post" action="/payments/bank-account/qr-code" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 8px;">
+              <input type="hidden" name="purpose" value="CHECKOUT" />
+              <input type="file" name="file" accept="image/*" required />
+              <button type="submit" class="btn btn-outline">
+                <span th:if="${checkoutInfo.qrCodeUrl == null}">上傳 QR Code</span>
+                <span th:if="${checkoutInfo.qrCodeUrl != null}">更換 QR Code</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ── 儲值金收款帳戶（LIFF 線上儲值，大額專用）───────────────────── -->
+        <h3 style="font-size: 15px; margin-bottom: 8px;">💎 儲值金收款帳戶（大額專用）</h3>
+        <p style="font-size: 12.5px; color: var(--brown-light); margin-bottom: 10px;">
+          LIFF「線上儲值」頁面會顯示這裡設定的帳號資訊，跟上面的結帳收款帳戶是不同帳戶。
+        </p>
+        <div class="card">
+          <form method="post" action="/payments/bank-account">
+            <input type="hidden" name="purpose" value="TOPUP" />
+            <div class="field">
+              <label>銀行名稱</label>
+              <input type="text" name="bankName" th:value="${topupInfo.bankName}" required />
+            </div>
+            <div class="field">
+              <label>帳號</label>
+              <input type="text" name="accountNumber" th:value="${topupInfo.accountNumber}" required />
+            </div>
+            <div class="field">
+              <label>戶名</label>
+              <input type="text" name="accountHolder" th:value="${topupInfo.accountHolder}" required />
+            </div>
+            <button type="submit" class="btn btn-primary">儲存</button>
+          </form>
+
+          <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--cream-200);">
+            <p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">收款 QR Code</p>
+            <img
+              th:if="${topupInfo.qrCodeUrl != null}"
+              th:src="${topupInfo.qrCodeUrl}"
+              style="width: 160px; height: 160px; object-fit: contain; border: 1px solid var(--cream-300); border-radius: 8px; margin-bottom: 10px; display: block;"
+            />
+            <p th:if="${topupInfo.qrCodeUrl == null}" style="font-size: 13px; color: var(--brown-light); margin-bottom: 10px;">
+              尚未上傳 QR Code
+            </p>
+            <form method="post" action="/payments/bank-account/qr-code" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 8px;">
+              <input type="hidden" name="purpose" value="TOPUP" />
+              <input type="file" name="file" accept="image/*" required />
+              <button type="submit" class="btn btn-outline">
+                <span th:if="${topupInfo.qrCodeUrl == null}">上傳 QR Code</span>
+                <span th:if="${topupInfo.qrCodeUrl != null}">更換 QR Code</span>
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

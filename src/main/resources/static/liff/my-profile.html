@@ -91,6 +91,10 @@
         margin-bottom: 6px;
         font-weight: 500;
       }
+      .field label .req {
+        color: #e53935;
+        margin-left: 2px;
+      }
       .field label .hint {
         color: #8a8072;
         font-size: 11px;
@@ -313,13 +317,18 @@
         </div>
 
         <div class="field">
-          <label>通訊地址 <span class="hint">（依定型化契約規定蒐集，選填）</span></label>
-          <input type="text" id="mailingAddress" value="${me.mailingAddress ? escapeHtml(me.mailingAddress) : ""}" placeholder="請輸入完整通訊地址" />
+          <label>通訊地址 <span class="req">*</span></label>
+          <input type="text" id="mailingAddress" value="${me.mailingAddress ? escapeHtml(me.mailingAddress) : ""}" placeholder="請輸入完整通訊地址" required />
         </div>
 
         <div class="field">
           <label>緊急聯絡人姓名 <span class="hint">（依定型化契約規定蒐集，選填）</span></label>
           <input type="text" id="emergencyContactName" value="${me.emergencyContactName ? escapeHtml(me.emergencyContactName) : ""}" placeholder="請輸入緊急聯絡人姓名" />
+        </div>
+
+        <div class="field">
+          <label>緊急聯絡人關係 <span class="req">*</span></label>
+          <input type="text" id="emergencyContactRelation" value="${me.emergencyContactRelation ? escapeHtml(me.emergencyContactRelation) : ""}" placeholder="例如：父母、配偶、朋友" required />
         </div>
 
         <div class="field">
@@ -366,6 +375,17 @@
         const mailingAddress = document.getElementById("mailingAddress").value.trim();
         const emergencyContactName = document.getElementById("emergencyContactName").value.trim();
         const emergencyContactPhone = document.getElementById("emergencyContactPhone").value.trim();
+        const emergencyContactRelation = document.getElementById("emergencyContactRelation").value.trim();
+
+        // 需求（追加）：通訊地址、緊急聯絡人關係改為必填
+        if (!mailingAddress) {
+          showToast("請填寫通訊地址", "error");
+          return;
+        }
+        if (!emergencyContactRelation) {
+          showToast("請填寫緊急聯絡人關係", "error");
+          return;
+        }
 
         const body = {
           name: name || null,
@@ -374,9 +394,10 @@
           occupation: occupation || null,
           residenceArea: residenceArea || null,
           source: source || null,
-          mailingAddress: mailingAddress || null,
+          mailingAddress: mailingAddress,
           emergencyContactName: emergencyContactName || null,
           emergencyContactPhone: emergencyContactPhone || null,
+          emergencyContactRelation: emergencyContactRelation,
         };
 
         const btn = document.getElementById("submitBtn");

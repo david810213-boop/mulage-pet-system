@@ -116,6 +116,12 @@
               <p style="font-size: 13px; margin: 2px 0;">銀行：<span th:text="${bankAccountInfo.bankName}"></span></p>
               <p style="font-size: 13px; margin: 2px 0;">帳號：<span th:text="${bankAccountInfo.accountNumber}"></span></p>
               <p style="font-size: 13px; margin: 2px 0;">戶名：<span th:text="${bankAccountInfo.accountHolder}"></span></p>
+              <!-- 需求 21：有設定 QR Code 就顯示，方便掃碼轉帳 -->
+              <img
+                th:if="${bankAccountInfo.qrCodeUrl != null}"
+                th:src="${bankAccountInfo.qrCodeUrl}"
+                style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--cream-300); border-radius: 8px; margin-top: 8px; display: block;"
+              />
               <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px;">
                 送出後訂單會先進入「待對帳」狀態，需要店家在確認收到款項後另外按「確認收款」，訂單才會正式轉為已完成。
               </p>
