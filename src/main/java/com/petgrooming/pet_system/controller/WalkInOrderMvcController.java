@@ -33,6 +33,9 @@ public class WalkInOrderMvcController {
     private final UserService userService;
     private final AppointmentService appointmentService;
     private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.WalletService walletService; // 需求 15
+    private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 15
+    private final com.petgrooming.pet_system.service.PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -158,6 +161,44 @@ public class WalkInOrderMvcController {
         return "redirect:/admin/walk-in-orders";
     }
 
+    // ── GET /admin/walk-in-orders/{id}/checkout ──────────────────────────
+    // 需求 15：現場開單結帳畫面統一——跟「預約訂單結帳」同樣風格的專屬結帳頁，
+    // 結帳前先看到逐項目折扣預覽（回洗優惠／會員折扣，兩者擇一），不是原本表格列裡的小下拉選單直接送出。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/{id}/checkout")
+    public String checkoutForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        try {
+            var order = walkInOrderService.getById(id);
+            model.addAttribute("order", order);
+            model.addAttribute("bankAccountInfo", paymentService.getBankAccountInfo()); // 需求 15 修正
+
+            // 需求 10：跟預約結帳一致，不再提供「信用卡」選項
+            // 需求 15 修正：匯款現在有待對帳流程了，重新加回選單
+            model.addAttribute("paymentMethods", java.util.Arrays.stream(
+                            com.petgrooming.pet_system.enums.PaymentMethod.values())
+                    .filter(m -> m != com.petgrooming.pet_system.enums.PaymentMethod.CREDIT_CARD)
+                    .toList());
+
+            if (order.getMemberUsername() != null) {
+                var wallet = walletService.getWallet(order.getMemberUsername());
+                model.addAttribute("walletBalance", wallet.getBalance());
+                model.addAttribute("walletLowBalance", wallet.getBalance() < com.petgrooming.pet_system.service.PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
+                model.addAttribute("walletDiscount", wallet.getDiscount());
+                model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
+
+                double walletPreview = order.getItems().stream()
+                        .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
+                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                        .sum();
+                model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+            }
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMsg", e.getMessage());
+        }
+        return "admin/walk-in-order-checkout";
+    }
+
     // ── POST /admin/walk-in-orders/{id}/checkout ────────────────────────────
     // 需求：現場單串接結帳
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
@@ -172,8 +213,25 @@ public class WalkInOrderMvcController {
                     result.getPaymentMethodLabel());
             ra.addFlashAttribute("successMsg",
                     "結帳完成！單號 #" + result.getId() + "，付款方式：" + result.getPaymentMethodLabel());
+            return "redirect:/admin/walk-in-orders";
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "結帳失敗：" + e.getMessage());
+            return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+        }
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/confirm-wire-transfer ────────────
+    // 需求 15 修正：店員核對匯款到帳後點擊，現場單才正式轉為已完成
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/confirm-wire-transfer")
+    public String confirmWireTransfer(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.confirmWireTransferPayment(id, user.getUsername());
+            operationLogService.log(user, "WALKIN", "CONFIRM_WIRE_TRANSFER", "現場單 #" + id, null);
+            ra.addFlashAttribute("successMsg", "已確認收款，現場單 #" + id + " 已完成");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "確認收款失敗：" + e.getMessage());
         }
         return "redirect:/admin/walk-in-orders";
     }

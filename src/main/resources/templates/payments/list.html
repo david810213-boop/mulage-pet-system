@@ -257,7 +257,7 @@
           .map(
             (it) => `
           <div class="cd-detail-row">
-            <span class="name">${it.name}${it.operatorName ? `<span class="operator">・${it.operatorName}</span>` : ""}${it.discountEligible ? '<span class="operator" style="color:#2e7d32;">・可享折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="name">${it.name}${it.operatorName ? `<span class="operator">・${it.operatorName}</span>` : ""}${it.appliedDiscountType === "REWASH" ? '<span class="operator" style="color:#2e7d32;">・回洗優惠</span>' : it.appliedDiscountType === "MEMBER" ? '<span class="operator" style="color:#2e7d32;">・會員折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
             <span class="price">$${it.price}</span>
           </div>`,
           )
@@ -308,7 +308,7 @@
           .map(
             (it) => `
           <div class="cd-detail-row">
-            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.discountEligible ? '<span class="operator" style="color:#2e7d32;">・可享折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.appliedDiscountType === "REWASH" ? '<span class="operator" style="color:#2e7d32;">・回洗優惠</span>' : it.appliedDiscountType === "MEMBER" ? '<span class="operator" style="color:#2e7d32;">・會員折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
             <span class="price">$${it.price}</span>
           </div>`,
           )

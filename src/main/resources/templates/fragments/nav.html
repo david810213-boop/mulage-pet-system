@@ -22,6 +22,7 @@
         <a href="/admin/performance/my" class="nav-link" th:if="${user != null and user.staffOrAdmin}">我的績效</a>
         <a href="/admin/performance/staff-breakdown" class="nav-link" th:if="${user != null and user.admin}">積分項目統計</a>
         <a href="/admin/customers" class="nav-link" th:if="${user != null and user.staffOrAdmin}">會員信息</a>
+        <a href="/admin/cat-rewash" class="nav-link" th:if="${user != null and user.staffOrAdmin}">貓咪回洗名單</a>
         <a href="/admin" class="nav-link" th:if="${user != null and user.admin}">管理後台</a>
         <a href="/payments/bank-account" class="nav-link" th:if="${user != null and user.admin}">匯款帳號設定</a>
         <a href="/payments/company-signature" class="nav-link" th:if="${user != null and user.admin}">乙方簽名檔設定</a>

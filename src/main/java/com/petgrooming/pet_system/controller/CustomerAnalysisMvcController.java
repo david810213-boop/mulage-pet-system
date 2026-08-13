@@ -141,11 +141,20 @@ public class CustomerAnalysisMvcController {
         model.addAttribute("pets", pets);
         model.addAttribute("coatTypes", CoatType.values());
         var groomingNotesByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.model.PetGroomingNote>>();
+        // 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁——依寵物名稱把上面已經整理好的
+        // 消費紀錄（records）分組。沿用需求 9 既有的「用寵物名稱文字比對」慣例
+        // （Appointment / WalkInOrder 都只存 petName 快照，沒有直接關聯 Pet 實體）。
+        var consumptionByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse>>();
         for (var p : pets) {
             groomingNotesByPetId.put(p.getId(),
                     petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(p.getId()));
+            consumptionByPetId.put(p.getId(),
+                    records.stream()
+                            .filter(r -> p.getName().equals(r.getPetName()))
+                            .toList());
         }
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
+        model.addAttribute("consumptionByPetId", consumptionByPetId);
 
         return "admin/customer-detail";
     }

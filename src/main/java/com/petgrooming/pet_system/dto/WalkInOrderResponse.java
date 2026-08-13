@@ -24,6 +24,7 @@ public class WalkInOrderResponse {
     private boolean paid;
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
+    private boolean pendingWireTransfer; // 需求 15 修正：已選匯款但店家尚未確認收款（比照需求10 Appointment 的待對帳機制）
     private boolean serviceEndedDone;
     private boolean finalCheckDone;
     private List<ItemLine> items;
@@ -39,6 +40,9 @@ public class WalkInOrderResponse {
         private String operator;        // 經手人姓名（顯示用）
         private boolean operatorFilled;
         private boolean discountEligible; // 需求 5：是否可享會員儲值金折扣
+        // 需求 8 修正：回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
+        private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（僅限有綁定會員、且該會員的貓距上次洗澡未滿90天）
+        private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
 
         static ItemLine from(WalkInOrderItem oi) {
             ItemLine l = new ItemLine();
@@ -73,6 +77,9 @@ public class WalkInOrderResponse {
         res.setPaid(o.isPaid());
         res.setPaymentMethodLabel(o.getPaymentMethod() != null ? o.getPaymentMethod().getDisplayName() : null);
         res.setPaymentTime(o.getPaymentTime());
+        res.setPendingWireTransfer(
+                o.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
+                        && !o.isPaid());
         res.setServiceEndedDone(o.isServiceEndedDone());
         res.setFinalCheckDone(o.isFinalCheckDone());
         res.setItems(o.getItems().stream().map(ItemLine::from).toList());

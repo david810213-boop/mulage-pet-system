@@ -18,4 +18,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
 
     // 需求 9：依寵物名稱模糊搜尋（現場開單/預約用，自動對應家長）
     List<Pet> findByNameContainingIgnoreCase(String namePart);
+
+    // 需求 8-2：查所有貓咪（回洗優惠名單篩選用）
+    List<Pet> findByPetType(com.petgrooming.pet_system.enums.PetType petType);
 }

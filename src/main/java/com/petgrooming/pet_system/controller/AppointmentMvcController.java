@@ -38,6 +38,7 @@ public class AppointmentMvcController {
     private final PetService petService;
     private final OperationLogService operationLogService;
     private final SlotCapacityService slotCapacityService;
+    private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16：公休日設定
     private final com.petgrooming.pet_system.service.PaymentService paymentService;
 
     /**
@@ -519,7 +520,41 @@ public class AppointmentMvcController {
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("date", date);
         model.addAttribute("slots", appointmentService.getAvailableSlots(date));
+        // 需求 16：公休日設定
+        model.addAttribute("isClosedToday", closedDateService.isClosed(date));
+        model.addAttribute("upcomingClosedDates", closedDateService.listUpcoming());
         return "appointments/slots-manage";
+    }
+
+    // ── POST /appointments/slots-manage/closed-date/add ───────────────────
+    // 需求 16：將指定日期設為公休日，當天所有時段自動不開放預約
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/closed-date/add")
+    public String addClosedDate(HttpServletRequest request,
+                                @RequestParam
+                                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                @RequestParam(required = false) String reason,
+                                RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        closedDateService.setClosed(date, reason);
+        operationLogService.log(user, "APPOINTMENT", "SET_CLOSED_DATE",
+                date.toString(), reason == null || reason.isBlank() ? "公休" : reason);
+        ra.addFlashAttribute("successMsg", date + " 已設定為公休日");
+        return "redirect:/appointments/slots-manage?date=" + date;
+    }
+
+    // ── POST /appointments/slots-manage/closed-date/remove ────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/closed-date/remove")
+    public String removeClosedDate(HttpServletRequest request,
+                                   @RequestParam
+                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                   RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        closedDateService.removeClosed(date);
+        operationLogService.log(user, "APPOINTMENT", "UNSET_CLOSED_DATE", date.toString(), "取消公休");
+        ra.addFlashAttribute("successMsg", date + " 已取消公休設定");
+        return "redirect:/appointments/slots-manage?date=" + date;
     }
 
     // ── POST /appointments/slots-manage/update ───────────────────────────

@@ -152,6 +152,14 @@ public class Appointment {
     @Builder.Default
     private boolean checkinOrderConfirmed = false;
 
+    // ── 需求 13：LINE 自動推播 ───────────────────────────────────────────
+    // 前一日 19:00 排程提醒是否已發送過，避免排程重跑（例如當天重新部署）造成重複推播。
+    // 用 columnDefinition 給資料庫層級預設值，避免既有表加 NOT NULL 欄位時 ALTER 失敗
+    // （沿用 GroomingItem.bookable / Appointment.serviceEndedDone 同樣的處理方式）。
+    @Column(name = "reminder_sent", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean reminderSent = false;
+
     public boolean isCancelled() {
         return status == AppointmentStatus.CANCELLED;
     }

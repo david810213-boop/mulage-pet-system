@@ -106,20 +106,27 @@ public class DataInitializer implements ApplicationRunner {
             log.info("✨ [系統通知] {}項美容服務項目已成功初始化入庫！", groomingItemRepository.count());
         }
 
-        // 需求 5：修正「不可打折」的項目代碼——不管是全新安裝（剛用預設 true 建立）
-        // 還是既有資料庫（欄位剛新增，全部項目暫時都是 true），這段每次啟動都會執行一次，
-        // 確保這幾項最終一定是 false，其餘維持預設 true（洗澡/剪毛/調理類可打折）。
+        // 需求 5 修正：折扣規則改為「所有計積分的項目都可以打折」，只有 GS001~GS012
+        // 這種加值加購項目（不計積分，performanceCategory 為 OTHER）才不打折。
+        // 局部修剪／特殊項目原本被排除，這次修正後也納入可打折範圍。
+        // CHECKIN/CHECKOUT/COMPLETE 是流程記錄用項目（價格恆為 0），打不打折沒有實際差異，
+        // 為了語意清楚（它們不是真正販售的服務）維持排除，但不影響任何金額計算。
+        //
+        // 這段邏輯改成「雙向強制」而非只糾正一邊：不在排除清單內的項目一律強制改回 true，
+        // 排除清單內的一律強制改回 false，每次啟動都會重新校正一次，
+        // 不管資料庫現有狀態是什麼（不管是全新安裝、舊資料庫殘留、或曾經被舊版清單設定錯誤過），
+        // 啟動後一定會回到跟這份清單一致的正確狀態，不會再有「改過清單但舊資料沒跟著更新」的漏網之魚。
         java.util.List<String> nonDiscountCodes = java.util.List.of(
-                "PARTIAL", "SPECIAL", "CHECKIN", "CHECKOUT", "COMPLETE",
+                "CHECKIN", "CHECKOUT", "COMPLETE",
                 "GS001", "GS002", "GS003", "GS004", "GS005", "GS006",
                 "GS007", "GS008", "GS009", "GS010", "GS011", "GS012");
-        for (String code : nonDiscountCodes) {
-            groomingItemRepository.findByItemCode(code).ifPresent(item -> {
-                if (item.isDiscountEligible()) {
-                    item.setDiscountEligible(false);
-                    groomingItemRepository.save(item);
-                }
-            });
+        for (GroomingItem item : groomingItemRepository.findAll()) {
+            boolean shouldBeDiscountEligible = !nonDiscountCodes.contains(item.getItemCode());
+            if (item.isDiscountEligible() != shouldBeDiscountEligible) {
+                item.setDiscountEligible(shouldBeDiscountEligible);
+                groomingItemRepository.save(item);
+                log.info("已校正項目 {} 的折扣資格為 {}", item.getItemCode(), shouldBeDiscountEligible);
+            }
         }
     }
 

@@ -32,6 +32,7 @@ public class PaymentMvcController {
     private final WalkInOrderRepository walkInOrderRepository;
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
+    private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
 
     /**
      * JWT 版獲取當前登入使用者
@@ -147,8 +148,11 @@ public class PaymentMvcController {
         model.addAttribute("detailItems", detail.getItems());
         if (appointment != null && appointment.getUser() != null) {
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
+            // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
+            // 不再是舊版的「符合會員折扣就直接乘」。
             double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> it.isDiscountEligible() ? it.getPrice() * discount : it.getPrice())
+                    .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
+                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
                     .sum();
             model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
         }
@@ -187,8 +191,14 @@ public class PaymentMvcController {
                 model.addAttribute("walletDiscount", wallet.getDiscount());
                 model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
                 model.addAttribute("baseAmount", appointment.getTotalAmount());
-                model.addAttribute("walletFinalAmount",
-                        (int) Math.round(appointment.getTotalAmount() * wallet.getDiscount()));
+                // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
+                var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
+                model.addAttribute("detailItems", detail.getItems());
+                double walletPreview = detail.getItems().stream()
+                        .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
+                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                        .sum();
+                model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
             }
 
             return "payments/checkout";

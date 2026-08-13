@@ -53,5 +53,26 @@ public class PetController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // ── POST /api/pets/{id}/photo ────────────────────────────────────────
+    // 需求 17：LIFF「我的毛孩」上傳/更換寵物照片。只能傳自己名下的寵物。
+    @PostMapping("/{id}/photo")
+    public ResponseEntity<?> uploadPhoto(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            HttpServletRequest request) {
+        try {
+            var pet = petService.getPetEntity(id);
+            if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
+                return ResponseEntity.status(403).body("只能上傳自己寵物的照片");
+            }
+            PetResponse res = petService.updatePhoto(id, file);
+            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",
+                    "寵物 " + res.getName() + " #" + res.getId(), null);
+            return ResponseEntity.ok(res);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
 

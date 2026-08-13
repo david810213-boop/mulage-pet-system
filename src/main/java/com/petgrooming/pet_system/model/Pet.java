@@ -95,6 +95,13 @@ public class Pet {
     @Column(name = "designated_vet_phone", length = 20)
     private String designatedVetPhone;
 
+    // ── 需求 17：寵物照片（Cloudinary 雲端圖床，存網址不存檔案本體）──────
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
+    @Column(name = "photo_public_id", length = 200)
+    private String photoPublicId; // Cloudinary 的 public_id，換照片時用來刪除舊圖
+
     // ── 關聯 ──────────────────────────────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

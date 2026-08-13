@@ -68,6 +68,7 @@ public class AdminMemberController {
                             .ownerUsername(p.getOwner().getUsername())
                             .ownerName(p.getOwner().getName())
                             .ownerPhone(p.getOwnerPhone())
+                            .photoUrl(p.getPhotoUrl())
                             .displayLabel(p.getName() + "（家長：" + p.getOwner().getName() + "・電話末四碼 " + phone + "）")
                             .build();
                 })

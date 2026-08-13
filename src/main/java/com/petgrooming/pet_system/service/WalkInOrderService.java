@@ -43,6 +43,7 @@ public class WalkInOrderService {
     private final PerformanceService performanceService;
     private final PerformanceRecordRepository performanceRecordRepository;
     private final LineMessagingService lineMessagingService;
+    private final CatRewashDiscountService catRewashDiscountService; // 需求 8
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
     @Transactional
@@ -238,6 +239,7 @@ public class WalkInOrderService {
             }
             // 需求 5：套用會員等級折扣，且逐項目判斷是否可享折扣（洗澡/剪毛/調理類打折，
             // 剪指甲/局部修剪/除廢毛等加購項目維持原價）。
+            // 需求 8 修正：貓咪回洗優惠（若有會員綁定）與會員儲值折扣只能擇一，不疊加。
             double discount = walletService.getWallet(order.getMember().getUsername()).getDiscount();
             chargedAmount = calculateWalletAmountPerItem(order, discount);
             walletService.deduct(
@@ -245,16 +247,66 @@ public class WalkInOrderService {
                     chargedAmount,
                     null,
                     "現場單 #" + order.getId() + " 消費扣款");
+        } else {
+            // 需求 8 修正：非儲值金付款（現金/LinePay/匯款）也要套用貓咪回洗優惠，
+            // 跟預約結帳（PaymentService）邏輯一致——回洗優惠不限付款方式，只有會員折扣才限儲值金。
+            chargedAmount = calculateAmountWithRewashDiscount(order);
+        }
+
+        // 需求 15 修正：匯款比照預約結帳（需求10）的「待對帳」機制——
+        // 先記下付款方式與金額，但不標記已付款，等店家另外按「確認收款」才轉為已完成。
+        // WalkInOrderItem 的積分是在指定經手人當下就發放（不是結帳才發放），
+        // 所以這裡不用擔心「待對帳期間積分該不該先發」的問題，跟預約結帳的積分時機完全不同。
+        boolean isWireTransfer = paymentMethod == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER;
+
+        order.setPaymentMethod(paymentMethod);
+        order.setChargedAmount(chargedAmount);
+        if (isWireTransfer) {
+            WalkInOrder saved = orderRepository.save(order);
+            log.info("現場單 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", saved.getId());
+            WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+            populateDiscountInfo(res, saved);
+            return res;
         }
 
         order.setPaid(true);
-        order.setPaymentMethod(paymentMethod);
         order.setPaymentTime(java.time.LocalDateTime.now());
-        order.setChargedAmount(chargedAmount);
         WalkInOrder saved = orderRepository.save(order);
 
         log.info("現場單 #{} 結帳完成，付款方式：{}", saved.getId(), paymentMethod);
-        return WalkInOrderResponse.from(saved);
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
+    }
+
+    // ── 確認匯款收款：店員核對銀行入帳後，現場單才正式轉為已完成 ─────────
+    // 需求 15 修正：比照 PaymentService.confirmWireTransferPayment() 同一套邏輯。
+    @Transactional
+    public WalkInOrderResponse confirmWireTransferPayment(Long orderId, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可確認收款");
+        }
+
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+
+        if (order.getPaymentMethod() != com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER) {
+            throw new IllegalArgumentException("此單不是匯款付款，無需確認收款");
+        }
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已確認收款過，請勿重複操作");
+        }
+
+        order.setPaid(true);
+        order.setPaymentTime(java.time.LocalDateTime.now());
+        WalkInOrder saved = orderRepository.save(order);
+
+        log.info("現場單 #{} 匯款收款已確認，操作人：{}", orderId, username);
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
     }
 
     // ── 退款：僅限「已結帳」的現場單 ──────────────────────────────────
@@ -309,7 +361,36 @@ public class WalkInOrderService {
     public WalkInOrderResponse getById(Long id) {
         WalkInOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + id));
-        return WalkInOrderResponse.from(order);
+        WalkInOrderResponse res = WalkInOrderResponse.from(order);
+        populateDiscountInfo(res, order);
+        return res;
+    }
+
+    // 需求 8 修正：消費明細要能看出每個項目實際套用的是回洗優惠還是會員折扣，
+    // 邏輯比照 AppointmentService.getAppointmentDetail()：只有已結帳的單才反推得出「實際」套用哪一種，
+    // 未結帳（尚未決定付款方式）則只標示 rewashEligible，不填 appliedDiscountType。
+    private void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean paidByWallet = order.isPaid()
+                && order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET;
+        double memberDiscountRate = paidByWallet
+                ? walletService.getWallet(order.getMember().getUsername()).getDiscount()
+                : 1.0;
+
+        List<WalkInOrderItem> entities = order.getItems();
+        List<WalkInOrderResponse.ItemLine> lines = res.getItems();
+        for (int i = 0; i < entities.size() && i < lines.size(); i++) {
+            WalkInOrderItem entity = entities.get(i);
+            WalkInOrderResponse.ItemLine line = lines.get(i);
+            boolean rewashApplicable = rewashEligible
+                    && catRewashDiscountService.isCatBathCategory(entity.getPerformanceCategory());
+            line.setRewashEligible(rewashApplicable);
+            if (order.isPaid()) {
+                line.setAppliedDiscountType(catRewashDiscountService.resolvePreferredDiscount(
+                        entity.getPrice(), rewashApplicable,
+                        entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+            }
+        }
     }
 
     // ── 需求 6：待補經手人清單（operatorStaff 為 null 的項目）──────────────
@@ -390,10 +471,33 @@ public class WalkInOrderService {
 
     // ── 需求 5：現場單儲值金結帳金額計算，逐項目判斷是否可享折扣 ─────────
     // 用開單當下存的 discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
+    // 需求 8 修正：貓咪回洗優惠（若有會員）與會員儲值折扣只能擇一，取較優惠者。
     private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
         double total = 0;
         for (WalkInOrderItem item : order.getItems()) {
-            total += item.isDiscountEligible() ? item.getPrice() * discount : item.getPrice();
+            boolean rewashApplicable = rewashEligible
+                    && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
+            total += catRewashDiscountService.resolvePreferredDiscount(
+                    item.getPrice(), rewashApplicable, item.isDiscountEligible(), discount).price();
+        }
+        return (int) Math.round(total);
+    }
+
+    // ── 需求 8 修正：非儲值金付款的現場單結帳金額計算，套用貓咪回洗優惠 ──
+    // 邏輯比照 PaymentService.calculateAmountWithRewashDiscount：沒有會員等級折扣，
+    // 只套用回洗優惠（不符合資格的話金額等同原本的 order.getTotalAmount()）。
+    private int calculateAmountWithRewashDiscount(WalkInOrder order) {
+        if (!catRewashDiscountService.isRewashEligible(order)) {
+            return order.getTotalAmount();
+        }
+        double total = 0;
+        for (WalkInOrderItem item : order.getItems()) {
+            double price = item.getPrice();
+            if (catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+                price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+            }
+            total += price;
         }
         return (int) Math.round(total);
     }

@@ -39,6 +39,7 @@ public class PaymentService {
     private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
     private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
+    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -79,8 +80,13 @@ public class PaymentService {
         }
 
         // 1e. 計算最終金額
+        // baseAmount 維持「帳面合計」（未打任何折扣的原始金額），呼應需求 5 已建立的
+        // 「帳面合計／實際扣款」透明化顯示慣例；實際折扣一律反映在 finalAmount。
         int baseAmount  = appointment.getTotalAmount();
-        int finalAmount = req.getPaymentMethod().calculateFinalAmount(baseAmount);
+        // 需求 8-1：貓咪距上次洗澡未滿 90 天再預約洗澡，洗澡項目結帳自動打 9 折
+        // （不限付款方式；跟需求 5 的儲值金會員折扣是兩套獨立規則，此為服務促銷、非付款方式優惠）
+        int finalAmount = req.getPaymentMethod()
+                .calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
 
         // 1e-1. 若選擇「儲值金」付款：
         //   - 僅限店家/員工於後台操作（顧客不可自行使用此付款方式）
@@ -93,6 +99,7 @@ public class PaymentService {
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
             // 需求 5：改成逐項目判斷是否可享折扣，不再對整筆金額統一打折。
             // 洗澡/剪毛/調理類項目打折，剪指甲/局部修剪/除廢毛等加購項目維持原價。
+            // 需求 8-1：貓咪回洗優惠與會員儲值折扣疊加計算（兩者是不同性質的折扣，疊加後再扣款）。
             finalAmount = calculateWalletAmountPerItem(appointment, discount);
             walletService.deduct(appointment.getUser().getUsername(), finalAmount, appointment.getId());
         }
@@ -341,23 +348,64 @@ public class PaymentService {
 
     // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────
     // 優先用現場開單（依預約編號）的實際項目；沒有的話退回顧客線上勾選的項目。
+    // 需求 8-1 修正：回洗優惠與會員折扣只能擇一（取較優惠者），不再疊加相乘。
     private int calculateWalletAmountPerItem(Appointment appointment, double discount) {
+        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
+                appointmentItemRepository.findByAppointmentId(appointment.getId());
+
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
+
+        double total = 0;
+        if (!checkinItems.isEmpty()) {
+            for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
+                boolean memberEligible = item.getGroomingItemId() != null
+                        && groomingItemRepository.findById(item.getGroomingItemId())
+                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                .orElse(true);
+                boolean rewashApplicable = rewashEligible
+                        && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
+                total += catRewashDiscountService.resolvePreferredDiscount(
+                        item.getPrice(), rewashApplicable, memberEligible, discount).price();
+            }
+        } else {
+            for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
+                double price = item.getPrice() != null ? item.getPrice() : 0;
+                boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(item);
+                total += catRewashDiscountService.resolvePreferredDiscount(
+                        price, rewashApplicable, item.isDiscountEligible(), discount).price();
+            }
+        }
+        return (int) Math.round(total);
+    }
+
+    // ── 需求 8-1：非儲值金付款的一般結帳金額計算，套用貓咪 90 天回洗優惠 ──
+    // 邏輯與 calculateWalletAmountPerItem 同樣優先用現場開單項目，但沒有會員等級折扣，
+    // 只套用回洗優惠（不符合資格的話金額等同原本的 appointment.getTotalAmount()）。
+    private int calculateAmountWithRewashDiscount(Appointment appointment) {
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment);
+        if (!rewashEligible) {
+            return appointment.getTotalAmount();
+        }
+
         List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
                 appointmentItemRepository.findByAppointmentId(appointment.getId());
 
         double total = 0;
         if (!checkinItems.isEmpty()) {
             for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
-                boolean eligible = item.getGroomingItemId() != null
-                        && groomingItemRepository.findById(item.getGroomingItemId())
-                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
-                                .orElse(true);
-                total += eligible ? item.getPrice() * discount : item.getPrice();
+                double price = item.getPrice();
+                if (catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+                    price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+                }
+                total += price;
             }
         } else {
             for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
                 double price = item.getPrice() != null ? item.getPrice() : 0;
-                total += item.isDiscountEligible() ? price * discount : price;
+                if (catRewashDiscountService.isCatBathItem(item)) {
+                    price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+                }
+                total += price;
             }
         }
         return (int) Math.round(total);

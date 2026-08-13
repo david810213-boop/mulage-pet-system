@@ -20,6 +20,8 @@ import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
@@ -41,14 +44,18 @@ public class AppointmentService {
     private final NotificationService notificationService;
     private final LineMessagingService lineMessagingService;
     private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
+    private final ClosedDateService closedDateService; // 需求 16：公休日設定
     private final PetGroomingNoteRepository petGroomingNoteRepository; // 進行中核對：毛孩美容狀況歷史
     private final PerformanceService performanceService; // 進行中核對：接待送出積分
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
+    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
+    private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
 
     private static final LocalTime OPENING = LocalTime.of(11, 0);
     private static final LocalTime CLOSING = LocalTime.of(19, 0);
     private static final int SLOT_HOURS = 2;
     private static final int SLOT_CAPACITY = 5; // 同時段最多 5 隻
+    private static final LocalTime EARLY_SLOT_CUTOFF = LocalTime.of(11, 0); // 需求 13-3：隔天預約早於此時間要額外提醒準時到場
 
     @Transactional
     public AppointmentResponse book(AppointmentRequest req, String username) {
@@ -66,6 +73,11 @@ public class AppointmentService {
         if (!pet.getOwner().getId().equals(user.getId())) {
             throw new IllegalArgumentException(
                     "找不到寵物，請先至「我的寵物」新增後再預約");
+        }
+
+        // 1c-2. 需求 16：公休日不開放預約（後端強制擋，避免前端被繞過或代客預約誤排）
+        if (closedDateService.isClosed(req.getDate())) {
+            throw new IllegalArgumentException("該日為公休日，恕不開放預約，請選擇其他日期");
         }
 
         // 1d. 驗證時間在營業時間內
@@ -116,6 +128,10 @@ public class AppointmentService {
                 .sum();
 
         // 1h. 建立並儲存 Appointment
+        // 需求 13：當天臨時預約（date == 今天）不用等店家手動點確認——
+        // 反正待確認的緩衝時間本來就是留給「提早幾天」的預約做行程安排用，
+        // 當天才排進來的單子等於已經是要馬上進行的，直接視為已確認並立即推播通知。
+        boolean isSameDayBooking = req.getDate().isEqual(LocalDate.now());
         Appointment appointment = Appointment.builder()
                 .user(user)
                 .petName(pet.getName())
@@ -126,8 +142,10 @@ public class AppointmentService {
                 .selectedItems(actualItems)
                 .totalAmount(total)
                 .paid(false)
-                // 需求 3：顧客送出後為「待確認」，等店家敲定最後時間
-                .status(AppointmentStatus.PENDING_CONFIRM)
+                // 需求 3：非當天的預約，顧客送出後為「待確認」，等店家敲定最後時間
+                // 需求 13：當天臨時預約直接視為已確認
+                .status(isSameDayBooking ? AppointmentStatus.CONFIRMED : AppointmentStatus.PENDING_CONFIRM)
+                .confirmedTime(isSameDayBooking ? java.time.LocalDateTime.now() : null)
                 .contractSignatureImage(signatureData)
                 .contractAgreedAt(java.time.LocalDateTime.now())
                 .build();
@@ -139,11 +157,17 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
 
-        // 1i. 發送通知
+        // 1i. 發送通知（原本的舊版模擬通知，實際上只印 console log，非真正 LINE 推播，先保留不動）
         notificationService.sendBookingConfirmation(
                 user.getUsername(), pet.getName(), req.getDate(), req.getStartTime());
         notificationService.scheduleReminder(
                 user.getUsername(), req.getDate(), req.getStartTime());
+
+        // 需求 13：當天臨時預約已直接視為已確認，立即發送真正的 LINE 確認通知
+        // （非當天的預約要等店家在後台點「確認預約」，由 confirm() 方法發送）
+        if (isSameDayBooking) {
+            sendConfirmedNotify(saved);
+        }
 
         return AppointmentResponse.from(saved);
     }
@@ -255,6 +279,13 @@ public class AppointmentService {
     // ── 查詢可預約時段（需求 3：回傳每個時段剩餘名額，上限 5）──────────────
     public List<TimeSlotResponse> getAvailableSlots(LocalDate date) {
         List<TimeSlotResponse> allSlots = new ArrayList<>();
+
+        // 需求 16：公休日當天不開放任何時段，直接回傳空清單
+        // （不動 SlotCapacity 底下各時段的 capacity 數字，公休日設定解除後名額設定自動還原）
+        if (closedDateService.isClosed(date)) {
+            return allSlots;
+        }
+
         LocalTime current = OPENING;
         while (current.isBefore(CLOSING)) {
             LocalTime next = current.plusHours(SLOT_HOURS);
@@ -293,7 +324,14 @@ public class AppointmentService {
         appointment.setConfirmedTime(confirmedTime != null ? confirmedTime : LocalDateTime.now());
         Appointment saved = appointmentRepository.save(appointment);
 
-        // 需求 3：用官方 LINE 通知會員「預約已確認」。
+        // 需求 3 / 13：用官方 LINE 通知會員「預約已確認」
+        sendConfirmedNotify(saved);
+
+        return AppointmentResponse.from(saved);
+    }
+
+    // 需求 13：預約確認通知文字內容 + 發送，供「店家點確認」與「當日臨時預約自動確認」共用
+    private void sendConfirmedNotify(Appointment saved) {
         // 因為每隻寵物的美容所需時間會依體型/毛長/性情而不同，這裡不承諾一個確切完成時間，
         // 而是請會員留意店家後續來電或訊息通知的預計完成時間。
         String notifyText = String.format(
@@ -302,8 +340,47 @@ public class AppointmentService {
                         "我們會在施作過程中致電或傳訊息通知您預計完成時間，請留意來電或訊息喔 🐾",
                 saved.getPetName());
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
+    }
 
-        return AppointmentResponse.from(saved);
+    // ── 需求 13：每天 19:00 自動掃描「隔天」預約，發送前一日提醒 ─────────────
+    // 只提醒狀態已是 CONFIRMED 的預約（PENDING_CONFIRM 代表店家還沒確認最後時間，
+    // 不適合先跟會員說「明天請準時到場」）。
+    // 當天現場開單／臨時預約因為在 book() 建立當下就已經直接送出確認通知（見 sendConfirmedNotify
+    // 於 isSameDayBooking 分支的呼叫），日期本來就不會等於「明天」，天然不會被這支排程重複提醒到。
+    // reminderSent 旗標避免同一筆預約被排程重複發送（例如當天系統重啟造成 cron 觸發兩次）。
+    @Scheduled(cron = "0 0 19 * * *", zone = "Asia/Taipei")
+    @Transactional
+    public void sendTomorrowReminders() {
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        List<Appointment> targets = appointmentRepository
+                .findByDateAndReminderSentFalseAndStatus(tomorrow, AppointmentStatus.CONFIRMED);
+
+        if (targets.isEmpty()) {
+            log.info("[需求13-前日提醒] {} 沒有待提醒的預約", tomorrow);
+            return;
+        }
+
+        for (Appointment appointment : targets) {
+            String reminderText = buildReminderText(appointment);
+            lineMessagingService.pushText(appointment.getUser().getLineUserId(), reminderText);
+            appointment.setReminderSent(true);
+            appointmentRepository.save(appointment);
+        }
+        log.info("[需求13-前日提醒] 已處理 {} 筆 {} 的預約提醒", targets.size(), tomorrow);
+    }
+
+    // 需求 13-3：隔天預約時間在上午 11:00 前的，提醒訊息額外加註提醒準時到場
+    private String buildReminderText(Appointment appointment) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format(
+                "【慕沐村 Mulage pet】提醒您，%s 明天（%s）%s 有預約寵物美容服務喔！",
+                appointment.getPetName(),
+                appointment.getDate(),
+                appointment.getStartTime()));
+        if (appointment.getStartTime().isBefore(EARLY_SLOT_CUTOFF)) {
+            sb.append(" 請準時到場，歡迎提前15分鐘抵達 🐾");
+        }
+        return sb.toString();
     }
 
     // ── 店員開始服務：CONFIRMED → IN_PROGRESS（寵物已到店開始施作）──────────
@@ -601,6 +678,17 @@ public class AppointmentService {
             throw new IllegalArgumentException("權限不足：只能查看自己的預約明細");
         }
 
+        // 需求 8-1 修正：先查出這筆預約是否有交易紀錄、用什麼付款方式，
+        // 才能判斷每個項目「實際」套用的是回洗優惠還是會員折扣（兩者只能擇一）。
+        var transactionOpt = transactionRepository.findByAppointmentId(appointmentId);
+        boolean paidByWallet = transactionOpt
+                .map(tx -> tx.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET)
+                .orElse(false);
+        double memberDiscountRate = paidByWallet
+                ? walletService.getWallet(appointment.getUser().getUsername()).getDiscount()
+                : 1.0;
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
+
         List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems = appointmentItemRepository
                 .findByAppointmentId(appointmentId);
 
@@ -608,26 +696,39 @@ public class AppointmentService {
         if (!checkinItems.isEmpty()) {
             items = checkinItems.stream()
                     .map(ci -> {
-                        boolean eligible = ci.getGroomingItemId() != null
+                        boolean memberEligible = ci.getGroomingItemId() != null
                                 && groomingItemRepository.findById(ci.getGroomingItemId())
                                         .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
                                         .orElse(true);
+                        boolean rewashApplicable = rewashEligible
+                                && catRewashDiscountService.isCatBathCategory(ci.getPerformanceCategory());
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
                                 .name(ci.getItemName())
                                 .price(ci.getPrice())
                                 .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
-                                .discountEligible(eligible)
+                                .discountEligible(memberEligible)
+                                .rewashEligible(rewashApplicable)
+                                .appliedDiscountType(transactionOpt.isPresent()
+                                        ? resolveAppliedDiscountType(rewashApplicable, memberEligible && paidByWallet, memberDiscountRate)
+                                        : null)
                                 .build();
                     })
                     .toList();
         } else {
             items = appointment.getSelectedItems().stream()
-                    .map(gi -> com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
-                            .name(gi.getName())
-                            .price((int) Math.round(gi.getPrice()))
-                            .operatorName(null)
-                            .discountEligible(gi.isDiscountEligible())
-                            .build())
+                    .map(gi -> {
+                        boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(gi);
+                        return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                                .name(gi.getName())
+                                .price((int) Math.round(gi.getPrice()))
+                                .operatorName(null)
+                                .discountEligible(gi.isDiscountEligible())
+                                .rewashEligible(rewashApplicable)
+                                .appliedDiscountType(transactionOpt.isPresent()
+                                        ? resolveAppliedDiscountType(rewashApplicable, gi.isDiscountEligible() && paidByWallet, memberDiscountRate)
+                                        : null)
+                                .build();
+                    })
                     .toList();
         }
 
@@ -645,7 +746,7 @@ public class AppointmentService {
                 .totalAmount(appointment.getTotalAmount())
                 .paid(appointment.isPaid());
 
-        transactionRepository.findByAppointmentId(appointmentId).ifPresent(tx -> {
+        transactionOpt.ifPresent(tx -> {
             detailBuilder
                     .paymentMethodLabel(tx.getPaymentMethod() != null ? tx.getPaymentMethod().getDisplayName() : null);
             detailBuilder.paymentTime(tx.getPaymentTime());
@@ -656,5 +757,15 @@ public class AppointmentService {
         });
 
         return detailBuilder.build();
+    }
+
+    // 需求 8-1 修正：只回傳「實際套用哪一種折扣」的標籤，不重算金額
+    // （金額計算仍以 PaymentService.checkout() 當下算出、存入 Transaction.finalAmount 的為準，
+    // 這裡只是為了消費明細顯示用途、用同一套「擇一」規則反推標籤）。
+    private com.petgrooming.pet_system.enums.DiscountType resolveAppliedDiscountType(
+            boolean rewashApplicable, boolean memberApplicable, double memberDiscountRate) {
+        return catRewashDiscountService
+                .resolvePreferredDiscount(100.0, rewashApplicable, memberApplicable, memberDiscountRate)
+                .type();
     }
 }

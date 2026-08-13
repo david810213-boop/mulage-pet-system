@@ -17,5 +17,6 @@ public class PetSearchResult {
     private String ownerUsername;
     private String ownerName;
     private String ownerPhone;
+    private String photoUrl; // 需求 17：現場開單搜尋寵物時帶出照片供視覺核對
     private String displayLabel; // 例如：「小白（家長：陳小明・電話末四碼 1234）」
 }

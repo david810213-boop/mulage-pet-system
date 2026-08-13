@@ -24,6 +24,7 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
     private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16
 
     // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
     private String currentUsername(HttpServletRequest request) {
@@ -86,6 +87,17 @@ public class AppointmentController {
     public ResponseEntity<List<TimeSlotResponse>> getAvailableSlots(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(appointmentService.getAvailableSlots(date));
+    }
+
+    // ── GET /api/appointments/closed-dates ───────────────────────────────
+    // 需求 16：查詢今天以後的公休日清單，供 LIFF 預約頁在選日期後即時提示「公休」，
+    // 不用等 /slots 回傳空清單才知道，UX 更明確。
+    @GetMapping("/closed-dates")
+    public ResponseEntity<List<String>> getClosedDates() {
+        return ResponseEntity.ok(
+                closedDateService.listUpcoming().stream()
+                        .map(cd -> cd.getDate().toString())
+                        .toList());
     }
 
     // ── GET /api/appointments/{id}/detail ──────────────────────────────────

@@ -39,6 +39,9 @@ public class AppointmentDetailResponse {
         private String name;
         private int price;
         private String operatorName; // 現場開單項目才有經手人；一般預約項目則為 null
-        private boolean discountEligible; // 需求 5：這個項目是否可享會員折扣，消費明細要能看出哪些有打折
+        private boolean discountEligible; // 需求 5：這個項目是否可享會員折扣（僅代表項目本身的靜態設定，不代表本次是否真的有打折）
+        // 需求 8-1 修正：90天回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
+        private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（貓咪洗澡 + 距上次洗澡未滿90天）
+        private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳的預約：實際套用的折扣種類；未結帳（尚未選付款方式）則為 null
     }
 }

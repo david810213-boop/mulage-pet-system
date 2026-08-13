@@ -117,6 +117,50 @@ public class WalletMvcController {
                 ? returnTo : "/admin/wallets/" + username);
     }
 
+    // ── POST /admin/wallets/{username}/pets/{petId}/photo ──────────────────
+    // 需求 17：店家後台可更新照片（不限本人上傳，方便店家幫忙補拍/更新）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{username}/pets/{petId}/photo")
+    public String uploadPetPhoto(@PathVariable String username, @PathVariable Long petId,
+                                 @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                 @RequestParam(required = false) String returnTo,
+                                 HttpServletRequest request,
+                                 RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            petService.updatePhoto(petId, file);
+            operationLogService.log(user, "CUSTOMER", "UPLOAD_PET_PHOTO",
+                    "會員 " + username + " 的寵物 #" + petId, null);
+            ra.addFlashAttribute("successMsg", "照片已更新");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("errorMsg", "上傳失敗：" + e.getMessage());
+        }
+        return "redirect:" + (returnTo != null && !returnTo.isBlank()
+                ? returnTo : "/admin/wallets/" + username);
+    }
+
+    // ── POST /admin/wallets/{username}/grooming-notes/{noteId}/photo ───────
+    // 需求 18：美容狀況歷史相簿——幫某一筆美容備註補上照片
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{username}/grooming-notes/{noteId}/photo")
+    public String uploadGroomingNotePhoto(@PathVariable String username, @PathVariable Long noteId,
+                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                          @RequestParam(required = false) String returnTo,
+                                          HttpServletRequest request,
+                                          RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            petService.uploadGroomingNotePhoto(noteId, file);
+            operationLogService.log(user, "CUSTOMER", "UPLOAD_GROOMING_NOTE_PHOTO",
+                    "會員 " + username + " 的美容紀錄 #" + noteId, null);
+            ra.addFlashAttribute("successMsg", "照片已更新");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("errorMsg", "上傳失敗：" + e.getMessage());
+        }
+        return "redirect:" + (returnTo != null && !returnTo.isBlank()
+                ? returnTo : "/admin/wallets/" + username);
+    }
+
     // ── POST /admin/wallets/{username}/note ─────────────────────────────────
     // 需求 8：店家後台備注會員特殊資訊
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

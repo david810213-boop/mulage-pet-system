@@ -211,8 +211,18 @@
                 <td>
                   <span th:if="${o.paid}" class="badge paid" th:text="'已' + ${o.paymentMethodLabel}"></span>
 
-                  <!-- 未結帳：依進度顯示 結束服務 → 核對 → 結帳 -->
-                  <div th:unless="${o.paid}" style="display:flex; flex-direction:column; gap:4px;">
+                  <!-- 需求 15 修正：已選匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
+                  <div th:if="${o.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                    <span class="badge" style="background:#fff3e0; color:#e65100; border-color:#ffcc80;">🏦 待對帳（匯款）</span>
+                    <form th:action="@{/admin/walk-in-orders/{id}/confirm-wire-transfer(id=${o.id})}" method="post"
+                          onsubmit="return confirm('確認已收到這筆匯款款項嗎？確認後現場單將轉為已完成。');">
+                      <button type="submit" class="btn btn-outline"
+                              style="padding:3px 10px; font-size:12px; color:#2e7d32; border-color:#a5d6a7;">✅ 確認收款</button>
+                    </form>
+                  </div>
+
+                  <!-- 未結帳：依進度顯示 結束服務 → 核對 → 結帳（已在待對帳狀態的不再顯示這區） -->
+                  <div th:if="${!o.paid and !o.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px;">
                     <span class="badge unpaid">未結帳</span>
 
                     <form th:if="${!o.serviceEndedDone}"
@@ -224,18 +234,10 @@
                        th:href="@{/admin/walk-in-orders/{id}/final-check(id=${o.id})}"
                        class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">📝 核對</a>
 
-                    <form th:if="${o.finalCheckDone}"
-                          th:action="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}" method="post"
-                          style="display:flex; gap:4px;"
-                          onsubmit="return confirm('確定要結帳嗎？');">
-                      <select name="paymentMethod" style="padding:3px 6px; font-size:12px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
-                        <option value="CASH">現金</option>
-                        <option value="CREDIT_CARD">信用卡</option>
-                        <option value="LINE_PAY">LinePay</option>
-                        <option value="WALLET" th:if="${o.memberName != null}">儲值金</option>
-                      </select>
-                      <button type="submit" class="btn" style="padding:3px 10px; font-size:12px;">結帳</button>
-                    </form>
+                    <!-- 需求 15：結帳畫面統一——改連到跟預約結帳同樣風格的專屬結帳頁，不再是表格列裡的小下拉選單 -->
+                    <a th:if="${o.finalCheckDone}"
+                       th:href="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}"
+                       class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">💰 結帳</a>
                   </div>
 
                   <!-- 已結帳：可退款 -->
@@ -424,8 +426,20 @@
           memberSuggestions.appendChild(petHeader);
           petList.forEach(function (p) {
             const item = document.createElement('div');
-            item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
-            item.textContent = p.displayLabel;
+            item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc; display:flex; align-items:center; gap:8px;';
+            // 需求 17：搜尋結果帶出寵物照片供店員視覺核對，沒有照片就顯示預設圖示
+            const thumb = document.createElement(p.photoUrl ? 'img' : 'span');
+            if (p.photoUrl) {
+              thumb.src = p.photoUrl;
+              thumb.style.cssText = 'width:28px; height:28px; border-radius:50%; object-fit:cover; flex-shrink:0;';
+            } else {
+              thumb.textContent = '🐾';
+              thumb.style.cssText = 'width:28px; height:28px; border-radius:50%; background:#ede5d3; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;';
+            }
+            const label = document.createElement('span');
+            label.textContent = p.displayLabel;
+            item.appendChild(thumb);
+            item.appendChild(label);
             item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
             item.onmouseleave = function () { item.style.background = 'white'; };
             item.onclick = function () { selectMemberByPet(p); };

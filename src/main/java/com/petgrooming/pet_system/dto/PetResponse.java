@@ -28,6 +28,7 @@ public class PetResponse {
     private Boolean hasSeparationAnxiety;       // 分離焦慮
     private String ownerPhone;                  // 家長手機
     private String notes;                       // 注意事項
+    private String photoUrl;                    // 需求 17：寵物照片（大頭照）
 
     // 系統根據體型自動推薦的服務 itemCode（預約時直接帶入）
     private List<String> recommendedItemCodes;
@@ -49,6 +50,7 @@ public class PetResponse {
         res.setHasSeparationAnxiety(pet.getHasSeparationAnxiety());
         res.setOwnerPhone(pet.getOwnerPhone());
         res.setNotes(pet.getNotes());
+        res.setPhotoUrl(pet.getPhotoUrl());
 
         // 自動推薦項目：依體型帶入洗澡+吹毛 itemCode
         List<String> recommended = new ArrayList<>();

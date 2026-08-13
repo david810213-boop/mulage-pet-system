@@ -503,23 +503,49 @@
                       gap: 8px;
                     "
                   >
-                    <div>
-                      <span
-                        style="
-                          font-weight: 600;
-                          color: var(--brown-dark);
-                          font-size: 14.5px;
-                        "
-                        th:text="${p.name}"
-                      ></span>
-                      <span
-                        style="
-                          font-size: 12px;
-                          color: var(--brown-light);
-                          margin-left: 6px;
-                        "
-                        th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"
-                      ></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <!-- 需求 17：寵物大頭照，沒有照片就顯示預設圖示 -->
+                      <img
+                        th:if="${p.photoUrl != null}"
+                        th:src="${p.photoUrl}"
+                        style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--cream-300);"
+                      />
+                      <div
+                        th:unless="${p.photoUrl != null}"
+                        style="width: 44px; height: 44px; border-radius: 50%; background: var(--cream-100); display:flex; align-items:center; justify-content:center; font-size:20px; border: 1px solid var(--cream-300);"
+                      >🐾</div>
+                      <div>
+                        <span
+                          style="
+                            font-weight: 600;
+                            color: var(--brown-dark);
+                            font-size: 14.5px;
+                          "
+                          th:text="${p.name}"
+                        ></span>
+                        <span
+                          style="
+                            font-size: 12px;
+                            color: var(--brown-light);
+                            margin-left: 6px;
+                          "
+                          th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"
+                        ></span>
+                        <form
+                          th:action="@{/admin/wallets/{u}/pets/{id}/photo(u=${customer.username},id=${p.id})}"
+                          method="post"
+                          enctype="multipart/form-data"
+                          style="margin-top: 4px;"
+                        >
+                          <input
+                            type="hidden"
+                            name="returnTo"
+                            th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                          />
+                          <input type="file" name="file" accept="image/*" style="font-size: 11px; max-width: 180px;" required />
+                          <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;">上傳照片</button>
+                        </form>
+                      </div>
                     </div>
                     <form
                       th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
@@ -590,6 +616,29 @@
                         <span th:text="${n.staff.name}"></span>
                       </div>
                       <div th:text="${n.note}"></div>
+                      <!-- 需求 18：美容狀況歷史相簿 -->
+                      <img
+                        th:if="${n.photoUrl != null}"
+                        th:src="${n.photoUrl}"
+                        style="width: 100%; max-width: 220px; border-radius: 8px; margin-top: 6px; display: block;"
+                      />
+                      <form
+                        th:action="@{/admin/wallets/{u}/grooming-notes/{id}/photo(u=${customer.username},id=${n.id})}"
+                        method="post"
+                        enctype="multipart/form-data"
+                        style="margin-top: 6px; display: flex; align-items: center; gap: 6px;"
+                      >
+                        <input
+                          type="hidden"
+                          name="returnTo"
+                          th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                        />
+                        <input type="file" name="file" accept="image/*" style="font-size: 11px; max-width: 160px;" required />
+                        <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;">
+                          <span th:if="${n.photoUrl == null}">加照片</span>
+                          <span th:if="${n.photoUrl != null}">換照片</span>
+                        </button>
+                      </form>
                     </div>
                   </details>
                   <p
@@ -602,6 +651,47 @@
                   >
                     尚無美容狀況紀錄
                   </p>
+
+                  <!-- 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁 -->
+                  <details
+                    style="margin-top: 8px"
+                    th:if="${consumptionByPetId != null and !#lists.isEmpty(consumptionByPetId.get(p.id))}"
+                  >
+                    <summary
+                      style="
+                        cursor: pointer;
+                        font-size: 12.5px;
+                        color: var(--cream-600);
+                      "
+                    >
+                      消費項目明細（<span
+                        th:text="${consumptionByPetId.get(p.id).size()}"
+                      ></span>
+                      筆）
+                    </summary>
+                    <div
+                      th:each="c : ${consumptionByPetId.get(p.id)}"
+                      style="
+                        font-size: 12px;
+                        color: var(--brown-mid);
+                        border-top: 0.5px solid var(--cream-200);
+                        padding: 6px 0;
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 8px;
+                      "
+                    >
+                      <div>
+                        <span th:text="${c.sourceLabel}"></span> ·
+                        <span th:text="${c.code}"></span>
+                        <div
+                          style="color: var(--brown-light)"
+                          th:text="${c.time != null ? #temporals.format(c.time, 'yyyy-MM-dd HH:mm') : '—'} + ' · ' + ${c.handledBy} + ' · ' + ${c.paymentMethodLabel}"
+                        ></div>
+                      </div>
+                      <div style="font-weight: 600; white-space: nowrap" th:text="'$' + ${c.amount}"></div>
+                    </div>
+                  </details>
                 </div>
               </div>
 
@@ -758,7 +848,7 @@
           .map(
             (it) => `
           <div class="cd-detail-row">
-            <span class="name">${it.name}${it.operatorName ? `<span class="operator">・${it.operatorName}</span>` : ""}</span>
+            <span class="name">${it.name}${it.operatorName ? `<span class="operator">・${it.operatorName}</span>` : ""}${it.appliedDiscountType === "REWASH" ? '<span class="operator" style="color:#2e7d32;">・回洗優惠</span>' : it.appliedDiscountType === "MEMBER" ? '<span class="operator" style="color:#2e7d32;">・會員折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
             <span class="price">$${it.price}</span>
           </div>`,
           )
@@ -806,7 +896,7 @@
           .map(
             (it) => `
           <div class="cd-detail-row">
-            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.discountEligible ? '<span class="operator" style="color:#2e7d32;">・可享折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.appliedDiscountType === "REWASH" ? '<span class="operator" style="color:#2e7d32;">・回洗優惠</span>' : it.appliedDiscountType === "MEMBER" ? '<span class="operator" style="color:#2e7d32;">・會員折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
             <span class="price">$${it.price}</span>
           </div>`,
           )

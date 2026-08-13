@@ -1,0 +1,82 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('貓咪回洗名單 | 慕沐村 Mulage pet')}"
+  ></head>
+
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content">
+        <a
+          href="/admin"
+          class="btn"
+          style="margin-bottom: 1.5rem; text-decoration: none"
+          >← 返回後台</a
+        >
+
+        <h2>🐱 貓咪回洗名單</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-top: -4px;
+            margin-bottom: 1.5rem;
+          "
+        >
+          列出所有有過洗澡紀錄的貓咪，依上次洗澡日期排序。距上次洗澡未滿
+          <span th:text="${rewashWindowDays}"></span
+          >天再次預約洗澡，結帳會自動打 9 折。這份名單只供店家手動聯繫參考，不會自動發送任何訊息。
+        </p>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <a th:href="@{/admin/cat-rewash}" class="btn"
+               th:classappend="${filter == null or filter == ''} ? ' btn-primary' : ' btn-outline'">全部</a>
+            <a th:href="@{/admin/cat-rewash(filter='within')}" class="btn"
+               th:classappend="${filter == 'within'} ? ' btn-primary' : ' btn-outline'">還在優惠期內</a>
+            <a th:href="@{/admin/cat-rewash(filter='overdue')}" class="btn"
+               th:classappend="${filter == 'overdue'} ? ' btn-primary' : ' btn-outline'">已超過90天</a>
+
+            <span style="flex: 1"></span>
+
+            <a th:href="@{/admin/cat-rewash/export.xlsx(filter=${filter})}" class="btn btn-outline">📊 匯出 Excel</a>
+            <a th:href="@{/admin/cat-rewash/export.csv(filter=${filter})}" class="btn btn-outline">📄 匯出 CSV</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>寵物名</th>
+                <th>家長姓名</th>
+                <th>家長電話</th>
+                <th>上次洗澡日期</th>
+                <th>距今天數</th>
+                <th>優惠狀態</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(candidates)}">
+                <td colspan="6" class="empty">目前沒有符合條件的資料</td>
+              </tr>
+              <tr th:each="c : ${candidates}">
+                <td th:text="${c.petName}"></td>
+                <td th:text="${c.ownerName}"></td>
+                <td th:text="${c.ownerPhone} ?: '—'"></td>
+                <td th:text="${c.lastBathDate}"></td>
+                <td th:text="${c.daysSinceLastBath} + ' 天'"></td>
+                <td>
+                  <span th:if="${c.withinDiscountWindow}" style="color: #2e7d32; font-weight: 700;">優惠期內</span>
+                  <span th:unless="${c.withinDiscountWindow}" style="color: #c62828; font-weight: 700;">已超過90天</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
