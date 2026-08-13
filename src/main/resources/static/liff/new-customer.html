@@ -213,7 +213,7 @@
         try {
           await liff.init({ liffId: LIFF_ID });
           if (!liff.isLoggedIn()) {
-            liff.login();
+            liff.login({ redirectUri: window.location.href });
             return;
           }
 
@@ -228,8 +228,7 @@
 
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            document.getElementById("loadingBox").textContent =
-              "登入失敗，請重新整理再試一次";
+            document.getElementById("loadingBox").textContent = "登入失敗，請重新整理再試一次";
             return;
           }
 
@@ -240,8 +239,7 @@
           document.getElementById("loadingBox").style.display = "none";
           document.getElementById("stepsBox").style.display = "block";
         } catch (e) {
-          document.getElementById("loadingBox").textContent =
-            "初始化失敗，請重新整理再試一次";
+          document.getElementById("loadingBox").textContent = "初始化失敗，請重新整理再試一次";
         }
       }
 
