@@ -120,7 +120,7 @@ public class LineAuthController {
         String idToken = body.get("idToken");
         String code = body.get("code");
         if (idToken == null || idToken.isBlank() || code == null || code.isBlank()) {
-            return ResponseEntity.badRequest().body("請提供驗證碼");
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "請提供驗證碼"));
         }
 
         LineVerifyResponse verified;
@@ -128,10 +128,12 @@ public class LineAuthController {
             verified = verifyIdToken(idToken);
         } catch (RestClientResponseException e) {
             log.warn("LINE idToken 驗證失敗（綁定流程）: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("LINE 登入驗證失敗，請重新開啟頁面再試一次");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("message", "LINE 登入驗證失敗，請重新開啟頁面再試一次"));
         }
         if (!channelId.equals(verified.getAud())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("idToken 不屬於本系統");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("message", "idToken 不屬於本系統"));
         }
 
         try {
@@ -139,7 +141,9 @@ public class LineAuthController {
             operationLogService.logByUsername(bound.getUsername(), "AUTH", "BIND_LINE", bound.getUsername(), null);
             return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            // 需求（追加）：跟成功回應一樣統一回 JSON（不要跟別的端點一個回純文字一個回 JSON，
+            // 這種不一致是這次「錯誤訊息被吞掉」問題的根源）
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }
     }
 }

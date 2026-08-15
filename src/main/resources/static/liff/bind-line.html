@@ -162,10 +162,16 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ idToken: idToken, code: code }),
           });
-          const data = await res.json().catch(() => null);
+
+          // 需求（追加）：後端失敗時回傳的是純文字（不是 JSON），先讀成文字，
+          // 能解析成 JSON 就當 JSON 用，不能解析就直接顯示原始文字——
+          // 不要再吞掉真正的錯誤原因，永遠只顯示同一句備援文字。
+          const rawText = await res.text();
+          let data = null;
+          try { data = JSON.parse(rawText); } catch (e) { data = null; }
 
           if (!res.ok) {
-            msgBox.textContent = "綁定失敗：" + (typeof data === "string" ? data : (data && data.message) || "請確認驗證碼是否正確");
+            msgBox.textContent = "綁定失敗：" + (data && data.message ? data.message : (rawText || "請確認驗證碼是否正確"));
             msgBox.className = "msg error";
             btn.disabled = false;
             btn.textContent = "綁定";
