@@ -62,6 +62,7 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/auth/register/submit",
                                                 "/auth/logout",
                                                 "/api/line/login",
+                                                "/api/line/bind",
                                                 "/test/**",
                                                 "/liff/**",
                                                 "/css/**",
@@ -79,6 +80,7 @@ public class WebConfig implements WebMvcConfigurer {
                                 .excludePathPatterns(
                                                 "/auth/**",
                                                 "/api/line/login",
+                                                "/api/line/bind",
                                                 "/test/**",
                                                 "/liff/**",
                                                 "/css/**", "/js/**", "/images/**", "/static/**",
