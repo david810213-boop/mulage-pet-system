@@ -1,0 +1,68 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('綁定LINE | 慕沐村 Mulage pet')}"
+  ></head>
+
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+
+      <div class="content" style="max-width: 480px">
+        <a
+          href="/dashboard"
+          class="btn btn-outline"
+          style="margin-bottom: 1.5rem; text-decoration: none"
+          >← 返回首頁</a
+        >
+
+        <h2>📱 綁定 LINE 帳號</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-top: -4px;
+            margin-bottom: 1.5rem;
+          "
+        >
+          帳號：<span th:text="${user.username}"></span>　目前狀態：
+          <span th:if="${alreadyBound}" style="color: #2e7d32; font-weight: 700">已綁定</span>
+          <span th:unless="${alreadyBound}" style="color: #c62828; font-weight: 700">尚未綁定</span>
+        </p>
+
+        <div class="card" style="padding: 1rem 1.2rem; margin-bottom: 1.5rem; background: var(--cream-100)">
+          <p style="font-size: 13px; color: var(--brown-mid); line-height: 1.7; margin: 0">
+            綁定 LINE 帳號後，低庫存等系統通知才能推播到你的手機。綁定方式：
+            <strong>先點下方按鈕產生驗證碼</strong>，接著用手機的 LINE 開啟綁定頁面連結，把驗證碼輸入進去即可，
+            驗證碼 10 分鐘內有效，過期或用過一次就要重新產生。
+          </p>
+        </div>
+
+        <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+          <form method="post" th:action="@{/account/bind-line/generate-code}">
+            <button type="submit" class="btn" style="width: 100%">產生驗證碼</button>
+          </form>
+
+          <div th:if="${bindCode != null}" style="margin-top: 20px; text-align: center;">
+            <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 8px;">你的驗證碼（10 分鐘內有效）</p>
+            <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: var(--brown-dark);" th:text="${bindCode}"></div>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 1.5rem;">
+          <p style="font-size: 13px; color: var(--brown-mid); line-height: 1.8; margin: 0 0 10px;">
+            <strong>用手機開啟這個連結</strong>（用 LINE 開啟，不要用一般瀏覽器），輸入上面的驗證碼：
+          </p>
+          <p style="font-size: 12px; word-break: break-all; color: var(--cream-600); background: var(--cream-100); padding: 10px; border-radius: 8px;">
+            https://liff.line.me/【你的綁定用LIFF ID】/liff/bind-line.html
+          </p>
+          <p style="font-size: 12px; color: var(--brown-light); margin-top: 10px; margin-bottom: 0;">
+            ⚠️ 這組連結要店家自己去 LINE Developers Console 申請一個新的 LIFF App，
+            Endpoint URL 指到 <code>/liff/bind-line.html</code>，申請好之後把上面網址裡的
+            「【你的綁定用LIFF ID】」換成實際的 LIFF ID。
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('店用洗劑管理 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🧴 店用洗劑管理</h2>
+          <a href="/admin" class="btn">← 回後台</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+          店用洗劑是店家自己使用的消耗品，不賣給顧客——員工使用時要「登記領用」才會扣庫存，跟零售商品的「結帳扣庫存」不同。
+          低於安全庫存量會自動發 LINE 通知有綁定 LINE 的店家/員工帳號。
+        </p>
+
+        <!-- 新增品項 -->
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 12px;">➕ 新增洗劑品項</h3>
+          <form method="post" action="/admin/store-supplies/create"
+                style="display: flex; gap: 12px; flex-wrap: wrap; align-items: end;">
+            <div class="field" style="margin: 0; flex: 1; min-width: 140px;">
+              <label>品名</label>
+              <input type="text" name="name" placeholder="例如：洗毛精" required />
+            </div>
+            <div class="field" style="margin: 0; width: 100px;">
+              <label>初始庫存</label>
+              <input type="number" name="stockQuantity" min="0" value="0" />
+            </div>
+            <div class="field" style="margin: 0; width: 110px;">
+              <label>安全庫存量</label>
+              <input type="number" name="safetyStockThreshold" min="0" value="0" />
+            </div>
+            <div class="field" style="margin: 0; width: 100px;">
+              <label>進貨單價</label>
+              <input type="number" name="unitCost" min="0" value="0" />
+            </div>
+            <button type="submit" class="btn btn-primary">新增</button>
+          </form>
+        </div>
+
+        <!-- 品項清單 -->
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>品名</th>
+                <th>目前庫存</th>
+                <th>安全庫存量</th>
+                <th>進貨單價</th>
+                <th style="min-width: 320px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(supplies)}">
+                <td colspan="5" class="empty">目前沒有品項，先在上方新增一筆</td>
+              </tr>
+              <tr th:each="s : ${supplies}">
+                <td th:text="${s.name}"></td>
+                <td th:text="${s.stockQuantity}"
+                    th:style="${s.stockQuantity} le ${s.safetyStockThreshold} ? 'color:#c62828; font-weight:700;' : ''"></td>
+                <td th:text="${s.safetyStockThreshold}"></td>
+                <td th:text="'$' + ${s.unitCost}"></td>
+                <td>
+                  <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <!-- 進貨補貨 -->
+                    <form method="post" th:action="@{/admin/store-supplies/{id}/restock(id=${s.id})}"
+                          style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" name="quantity" placeholder="數量" min="1" style="width: 65px; font-size: 12px;" required />
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">進貨</button>
+                    </form>
+                    <!-- 員工領用 -->
+                    <form method="post" th:action="@{/admin/store-supplies/{id}/use(id=${s.id})}"
+                          style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" name="quantity" placeholder="數量" min="1" style="width: 55px; font-size: 12px;" required />
+                      <input type="text" name="note" placeholder="用途備註" style="width: 90px; font-size: 12px;" />
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">領用</button>
+                    </form>
+                    <!-- 修改安全庫存量／單價 -->
+                    <form method="post" th:action="@{/admin/store-supplies/{id}/update(id=${s.id})}"
+                          style="display: flex; gap: 4px; align-items: center;">
+                      <input type="hidden" name="name" th:value="${s.name}" />
+                      <input type="number" name="safetyStockThreshold" th:value="${s.safetyStockThreshold}"
+                             style="width: 55px; font-size: 12px;" title="安全庫存量" required />
+                      <input type="number" name="unitCost" th:value="${s.unitCost}"
+                             style="width: 55px; font-size: 12px;" title="進貨單價" required />
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">儲存</button>
+                    </form>
+                    <!-- 下架 -->
+                    <form method="post" th:action="@{/admin/store-supplies/{id}/delete(id=${s.id})}"
+                          onsubmit="return confirm('確定要下架這個品項嗎？');">
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px; color:#c62828; border-color:#c67a5c;">下架</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -44,10 +44,18 @@ public class WalkInOrderService {
     private final PerformanceRecordRepository performanceRecordRepository;
     private final LineMessagingService lineMessagingService;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8
+    private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
+    // 需求 7-1 修正：支援純零售商品訂單（items 可以是空的，只要 retailItems 有東西即可）
     @Transactional
     public WalkInOrderResponse create(WalkInOrderCreateRequest req, String createdByUsername) {
+
+        boolean hasServiceItems = req.getItems() != null && !req.getItems().isEmpty();
+        boolean hasRetailItems = req.getRetailItems() != null && !req.getRetailItems().isEmpty();
+        if (!hasServiceItems && !hasRetailItems) {
+            throw new IllegalArgumentException("請至少加入一個美容項目或零售商品");
+        }
 
         WalkInOrder order = WalkInOrder.builder()
                 .petName(req.getPetName())
@@ -71,29 +79,44 @@ public class WalkInOrderService {
 
         // 逐項建立 OrderItem，快照名稱 / 價格 / 積分；若當下就指定經手人，順便建立績效紀錄
         int total = 0;
-        for (WalkInOrderCreateRequest.Item line : req.getItems()) {
-            GroomingItem gi = groomingItemRepository.findByItemCode(line.getItemCode())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "找不到項目代碼：" + line.getItemCode()));
-
-            WalkInOrderItem item = WalkInOrderItem.builder()
-                    .groomingItemId(gi.getId())
-                    .itemName(gi.getName())
-                    .price((int) Math.round(gi.getPrice()))
-                    .points(gi.getPoints())
-                    .performanceCategory(gi.getPerformanceCategory())
-                    .discountEligible(gi.isDiscountEligible())
-                    .build();
-
-            if (line.getOperatorStaffId() != null) {
-                User staff = userRepository.findById(line.getOperatorStaffId())
+        if (hasServiceItems) {
+            for (WalkInOrderCreateRequest.Item line : req.getItems()) {
+                GroomingItem gi = groomingItemRepository.findByItemCode(line.getItemCode())
                         .orElseThrow(() -> new IllegalArgumentException(
-                                "找不到員工 #" + line.getOperatorStaffId()));
-                item.setOperatorStaff(staff);
-            }
+                                "找不到項目代碼：" + line.getItemCode()));
 
-            order.addItem(item);
-            total += item.getPrice();
+                WalkInOrderItem item = WalkInOrderItem.builder()
+                        .groomingItemId(gi.getId())
+                        .itemName(gi.getName())
+                        .price((int) Math.round(gi.getPrice()))
+                        .points(gi.getPoints())
+                        .performanceCategory(gi.getPerformanceCategory())
+                        .discountEligible(gi.isDiscountEligible())
+                        .build();
+
+                if (line.getOperatorStaffId() != null) {
+                    User staff = userRepository.findById(line.getOperatorStaffId())
+                            .orElseThrow(() -> new IllegalArgumentException(
+                                    "找不到員工 #" + line.getOperatorStaffId()));
+                    item.setOperatorStaff(staff);
+                }
+
+                order.addItem(item);
+                total += item.getPrice();
+            }
+        }
+
+        // 需求 7-1：開單當下也能直接加零售商品（不用等結帳頁再加），
+        // 純零售訂單（沒有任何美容服務項目）就是靠這裡建立起整張單。
+        if (hasRetailItems) {
+            for (WalkInOrderCreateRequest.RetailItem line : req.getRetailItems()) {
+                if (line.getQuantity() <= 0) continue;
+                var product = retailProductService.getById(line.getRetailProductId());
+                for (int i = 0; i < line.getQuantity(); i++) {
+                    order.addItem(buildRetailOrderItem(product));
+                    total += product.getPrice();
+                }
+            }
         }
         order.setTotalAmount(total);
 
@@ -214,7 +237,77 @@ public class WalkInOrderService {
         return WalkInOrderResponse.from(saved);
     }
 
-    // ── 需求：現場單串接結帳 ─────────────────────────────────────────────
+    // ── 需求 7-1：現場單加購零售商品 ─────────────────────────────────────
+    // 結帳前都可以加購（不受「結束服務/核對」流程限制，因為零售商品不是美容服務，
+    // 跟原本的服務項目走的是不同的完成判定邏輯）。quantity 幾件就建幾筆項目列，
+    // 沿用既有 WalkInOrderItem 的「一列 = 一份，price 是單價」慣例，
+    // 不另外加 quantity 欄位去動到既有折扣/合計計算邏輯，降低牽連風險。
+    @Transactional
+    public WalkInOrderResponse addRetailItem(Long orderId, Long retailProductId, int quantity, String username) {
+        if (quantity <= 0) throw new IllegalArgumentException("加購數量必須大於 0");
+
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已結帳，無法再加購商品");
+        }
+
+        var product = retailProductService.getById(retailProductId);
+
+        int addedTotal = 0;
+        for (int i = 0; i < quantity; i++) {
+            order.addItem(buildRetailOrderItem(product));
+            addedTotal += product.getPrice();
+        }
+        order.setTotalAmount(order.getTotalAmount() + addedTotal);
+        WalkInOrder saved = orderRepository.save(order);
+
+        log.info("現場單 #{} 加購商品「{}」x{}", orderId, product.getName(), quantity);
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
+    }
+
+    // 需求 7-1：建立一筆零售商品的訂單項目快照，供開單當下加購、結帳頁加購共用同一份邏輯，
+    // 避免兩處各寫一次、日後改欄位漏改其中一邊。
+    private WalkInOrderItem buildRetailOrderItem(com.petgrooming.pet_system.model.RetailProduct product) {
+        return WalkInOrderItem.builder()
+                .retailProductId(product.getId())
+                .itemName(product.getName())
+                .price(product.getPrice())
+                .points(0.0)
+                .performanceCategory(PerformanceCategory.OTHER)
+                .discountEligible(false) // 零售商品不參與會員折扣／回洗優惠，維持原價
+                .build();
+    }
+
+    // 移除一筆已加購的零售商品（結帳前加錯可以移除；只能移除零售商品項目，
+    // 不能拿來移除美容服務項目，避免誤刪動到績效/預約相關資料）。
+    @Transactional
+    public WalkInOrderResponse removeRetailItem(Long orderId, Long orderItemId, String username) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已結帳，無法再移除商品");
+        }
+
+        WalkInOrderItem item = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到項目 #" + orderItemId));
+        if (item.getRetailProductId() == null) {
+            throw new IllegalArgumentException("只能移除零售商品項目");
+        }
+        if (!item.getOrder().getId().equals(orderId)) {
+            throw new IllegalArgumentException("項目不屬於這張現場單");
+        }
+
+        order.setTotalAmount(order.getTotalAmount() - item.getPrice());
+        order.getItems().remove(item); // orphanRemoval = true，從集合移除就會自動連帶刪除
+        WalkInOrder saved = orderRepository.save(order);
+
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
+    }
     // 選現金/信用卡/LinePay：純標記已付款（金流在店家手上完成，系統只留紀錄）。
     // 選儲值金：實際呼叫 WalletService.deduct() 扣款（走既有悲觀鎖，跟預約結帳同一套邏輯），
     // 僅限「有綁定會員」的單才能用（非會員沒有錢包可扣）。
@@ -228,8 +321,21 @@ public class WalkInOrderService {
         if (order.isPaid()) {
             throw new IllegalArgumentException("此單已完成結帳");
         }
-        if (!order.isFinalCheckDone()) {
+        // 需求 7-1 修正：純零售商品訂單（沒有任何美容服務項目）不需要「結束服務」「核對」這兩步——
+        // 那兩步是針對美容服務設計的（核對還要填美容狀況備註+簽名），單純買東西沒有這些內容可填。
+        boolean hasServiceItems = order.getItems().stream().anyMatch(i -> i.getGroomingItemId() != null);
+        if (hasServiceItems && !order.isFinalCheckDone()) {
             throw new IllegalArgumentException("請先完成「結束服務」與「核對」後才能結帳");
+        }
+
+        // 需求 7-1：結帳成功才真的扣零售商品庫存（不管付款方式是不是匯款待對帳，
+        // 因為顧客結完帳當下商品就會實際帶走，不是等匯款核對完成才拿走）。
+        // 這裡故意在真正寫入 paid/chargedAmount 之前先做，扣庫存失敗（例如庫存被其他單搶先扣完）
+        // 就直接整筆結帳拋例外中止，不會留下「已扣款但庫存沒扣成功」的不一致狀態。
+        for (WalkInOrderItem item : order.getItems()) {
+            if (item.getRetailProductId() != null) {
+                retailProductService.deductStock(item.getRetailProductId(), 1);
+            }
         }
 
         int chargedAmount = order.getTotalAmount();

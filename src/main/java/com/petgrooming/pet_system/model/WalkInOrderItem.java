@@ -40,6 +40,11 @@ public class WalkInOrderItem {
     @Column(name = "grooming_item_id")
     private Long groomingItemId;
 
+    // 需求 7-1：對應的零售商品 id（可為 null）。有值代表這一列是零售商品加購，
+    // 不是美容服務項目——不計積分、不用經手人、不參與折扣，結帳時會扣這個商品的庫存。
+    @Column(name = "retail_product_id")
+    private Long retailProductId;
+
     // 項目名稱（快照，避免項目日後改名或下架影響歷史單）
     @Column(name = "item_name", nullable = false)
     private String itemName;

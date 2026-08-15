@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>綁定LINE | 慕沐村Mulage pet</title>
+    <script
+      charset="utf-8"
+      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+    ></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          "Noto Serif TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          serif;
+        background: #f6f2ea;
+        min-height: 100vh;
+        padding: 30px 20px;
+      }
+      .card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px 20px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        max-width: 420px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 18px;
+        color: #2b2a28;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+      .sub {
+        font-size: 13px;
+        color: #8a8072;
+        text-align: center;
+        margin-bottom: 24px;
+        line-height: 1.6;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: #5c4a2f;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #e3dccc;
+        border-radius: 8px;
+        font-size: 22px;
+        letter-spacing: 6px;
+        text-align: center;
+        margin-bottom: 16px;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #2b2a28;
+        color: #d9be8f;
+        border: none;
+        border-radius: 24px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      .msg {
+        margin-top: 16px;
+        text-align: center;
+        font-size: 14px;
+        padding: 10px;
+        border-radius: 8px;
+        display: none;
+      }
+      .msg.success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        display: block;
+      }
+      .msg.error {
+        background: #fdecec;
+        color: #c62828;
+        display: block;
+      }
+      .loading {
+        text-align: center;
+        color: #8a8072;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>📱 綁定 LINE 帳號</h1>
+      <p class="sub">
+        請輸入在後台「綁定LINE」頁面產生的 6 位數驗證碼，綁定成功後，系統通知（例如低庫存提醒）就會發到這支手機。
+      </p>
+
+      <div id="loadingBox" class="loading">LINE 登入中...</div>
+
+      <div id="formBox" style="display: none;">
+        <label>驗證碼</label>
+        <input type="text" id="codeInput" inputmode="numeric" maxlength="6" placeholder="6 位數字" />
+        <button id="submitBtn" onclick="submitBind()">綁定</button>
+        <div id="msgBox" class="msg"></div>
+      </div>
+    </div>
+
+    <script>
+      const LIFF_ID = "請填入你申請的綁定用LIFF_ID"; // ⚠️ 要換成實際申請的 LIFF ID（Endpoint URL 指到本頁）
+
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            liff.login({ redirectUri: window.location.href });
+            return;
+          }
+          document.getElementById("loadingBox").style.display = "none";
+          document.getElementById("formBox").style.display = "block";
+        } catch (e) {
+          document.getElementById("loadingBox").textContent = "初始化失敗：" + e.message;
+        }
+      }
+
+      async function submitBind() {
+        const code = document.getElementById("codeInput").value.trim();
+        const msgBox = document.getElementById("msgBox");
+        const btn = document.getElementById("submitBtn");
+
+        if (!/^\d{6}$/.test(code)) {
+          msgBox.textContent = "請輸入 6 位數字驗證碼";
+          msgBox.className = "msg error";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "綁定中...";
+
+        try {
+          const idToken = liff.getIDToken();
+          const res = await fetch("/api/line/bind", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken: idToken, code: code }),
+          });
+          const data = await res.json().catch(() => null);
+
+          if (!res.ok) {
+            msgBox.textContent = "綁定失敗：" + (typeof data === "string" ? data : (data && data.message) || "請確認驗證碼是否正確");
+            msgBox.className = "msg error";
+            btn.disabled = false;
+            btn.textContent = "綁定";
+            return;
+          }
+
+          msgBox.textContent = "✅ 綁定成功！" + (data && data.name ? "（" + data.name + "）" : "") + " 可以關閉此頁面了。";
+          msgBox.className = "msg success";
+          btn.style.display = "none";
+        } catch (e) {
+          msgBox.textContent = "綁定失敗：" + e.message;
+          msgBox.className = "msg error";
+          btn.disabled = false;
+          btn.textContent = "綁定";
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>

@@ -26,6 +26,7 @@ public class DataInitializer implements ApplicationRunner {
     private final GroomingItemRepository groomingItemRepository;
     private final BonusTierRepository bonusTierRepository;
     private final BankAccountInfoRepository bankAccountInfoRepository;
+    private final com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -68,6 +69,17 @@ public class DataInitializer implements ApplicationRunner {
                     .accountHolder("請於後台設定戶名")
                     .build());
             log.info("儲值金收款帳號（大額專用）預設資料初始化完成，請記得到後台修改成實際帳號");
+        }
+
+        // 固定公休星期：預設週四、週五公休，呼應契約文字本來就寫的「固定公休：週四、週五」
+        // （這段文字之前只是契約說明，系統沒有真的去擋，這裡補上讓它成為實際生效的規則）。
+        // 只在還沒有任何設定時建立這筆預設值，之後店家在後台改過的設定不會被這段覆蓋。
+        if (weeklyClosureSettingRepository.count() == 0) {
+            weeklyClosureSettingRepository.save(com.petgrooming.pet_system.model.WeeklyClosureSetting.builder()
+                    .closedThursday(true)
+                    .closedFriday(true)
+                    .build());
+            log.info("固定公休星期預設資料初始化完成（週四、週五），可到後台調整");
         }
 
         if (groomingItemRepository.count() == 0) {

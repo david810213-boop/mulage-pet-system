@@ -11,107 +11,34 @@
 
       <div class="nav-list">
         <a href="/appointments" class="nav-link">預約管理</a>
-        <a
-          href="/appointments/slots-manage"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >時段管理</a
-        >
-        <a
-          href="/pets"
-          class="nav-link"
-          th:if="${user != null and user.customer}"
-          >我的寵物</a
-        >
-        <a href="/my-profile" class="nav-link" th:if="${user != null}"
-          >編輯個人信息</a
-        >
+        <a href="/appointments/slots-manage" class="nav-link" th:if="${user != null and user.staffOrAdmin}">時段管理</a>
+        <a href="/pets" class="nav-link" th:if="${user != null and user.customer}">我的寵物</a>
+        <a href="/my-profile" class="nav-link" th:if="${user != null}">編輯個人信息</a>
         <a href="/payments" class="nav-link">交易紀錄</a>
 
-        <div class="nav-group" th:if="${user != null and user.staffOrAdmin}">
-          店務管理
-        </div>
-        <a
-          href="/admin/wallets"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >儲值管理</a
-        >
-        <a
-          href="/admin/walk-in-orders"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >現場開單</a
-        >
-        <a
-          href="/admin/performance"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >績效管理</a
-        >
-        <a
-          href="/admin/performance/my"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >我的績效</a
-        >
-        <a
-          href="/admin/performance/staff-breakdown"
-          class="nav-link"
-          th:if="${user != null and user.admin}"
-          >積分項目統計</a
-        >
-        <a
-          href="/admin/customers"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >會員信息</a
-        >
-        <a
-          href="/admin/cat-rewash"
-          class="nav-link"
-          th:if="${user != null and user.staffOrAdmin}"
-          >貓咪回洗名單</a
-        >
-        <a href="/admin" class="nav-link" th:if="${user != null and user.admin}"
-          >管理後台</a
-        >
-        <a
-          href="/payments/bank-account"
-          class="nav-link"
-          th:if="${user != null and user.admin}"
-          >匯款帳號設定</a
-        >
-        <a
-          href="/payments/company-signature"
-          class="nav-link"
-          th:if="${user != null and user.admin}"
-          >乙方簽名檔設定</a
-        >
-        <a
-          href="/admin/operation-logs"
-          class="nav-link"
-          th:if="${user != null and user.admin}"
-          >操作紀錄</a
-        >
+        <div class="nav-group" th:if="${user != null and user.staffOrAdmin}">店務管理</div>
+        <a href="/admin/wallets" class="nav-link" th:if="${user != null and user.staffOrAdmin}">儲值管理</a>
+        <a href="/admin/walk-in-orders" class="nav-link" th:if="${user != null and user.staffOrAdmin}">現場開單</a>
+        <a href="/admin/retail-products" class="nav-link" th:if="${user != null and user.staffOrAdmin}">零售商品</a>
+        <a href="/admin/store-supplies" class="nav-link" th:if="${user != null and user.staffOrAdmin}">店用洗劑</a>
+        <a href="/admin/performance" class="nav-link" th:if="${user != null and user.staffOrAdmin}">績效管理</a>
+        <a href="/admin/performance/my" class="nav-link" th:if="${user != null and user.staffOrAdmin}">我的績效</a>
+        <a href="/admin/performance/staff-breakdown" class="nav-link" th:if="${user != null and user.admin}">積分項目統計</a>
+        <a href="/admin/customers" class="nav-link" th:if="${user != null and user.staffOrAdmin}">會員信息</a>
+        <a href="/admin/cat-rewash" class="nav-link" th:if="${user != null and user.staffOrAdmin}">貓咪回洗名單</a>
+        <a href="/admin" class="nav-link" th:if="${user != null and user.admin}">管理後台</a>
+        <a href="/payments/bank-account" class="nav-link" th:if="${user != null and user.admin}">匯款帳號設定</a>
+        <a href="/payments/company-signature" class="nav-link" th:if="${user != null and user.admin}">乙方簽名檔設定</a>
+        <a href="/admin/operation-logs" class="nav-link" th:if="${user != null and user.admin}">操作紀錄</a>
       </div>
 
       <div class="nav-foot" th:if="${user != null}">
         <div class="who" th:text="${user.name}">使用者</div>
         <div class="role" th:text="${user.role}">ROLE</div>
-        <a
-          href="/account/password"
-          th:if="${user != null and user.staffOrAdmin}"
-          >修改密碼</a
-        >
-        <a href="/account/pin" th:if="${user != null and user.staffOrAdmin}"
-          >設定 PIN 碼</a
-        >
-        <a
-          href="/auth/switch-user"
-          th:if="${user != null and user.staffOrAdmin}"
-          >🔄 切換使用者</a
-        >
+        <a href="/account/password" th:if="${user != null and user.staffOrAdmin}">修改密碼</a>
+        <a href="/account/pin" th:if="${user != null and user.staffOrAdmin}">設定 PIN 碼</a>
+        <a href="/account/bind-line" th:if="${user != null and user.staffOrAdmin}">綁定 LINE</a>
+        <a href="/auth/switch-user" th:if="${user != null and user.staffOrAdmin}">🔄 切換使用者</a>
         <a href="/auth/logout">登出</a>
       </div>
 
@@ -123,8 +50,7 @@
           for (var i = 0; i < links.length; i++) {
             var href = links[i].getAttribute("href");
             if (path === href || path.indexOf(href + "/") === 0) {
-              if (!best || href.length > best.getAttribute("href").length)
-                best = links[i];
+              if (!best || href.length > best.getAttribute("href").length) best = links[i];
             }
           }
           if (best) best.classList.add("is-active");

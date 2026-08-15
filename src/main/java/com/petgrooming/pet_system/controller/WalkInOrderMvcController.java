@@ -36,6 +36,7 @@ public class WalkInOrderMvcController {
     private final com.petgrooming.pet_system.service.WalletService walletService; // 需求 15
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 15
     private final com.petgrooming.pet_system.service.PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
+    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求 7-1
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -51,6 +52,16 @@ public class WalkInOrderMvcController {
     public String page(HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("groomingItems", groomingService.getAllItems()); // 含不可線上預約的調理項目
+        // 需求 7-1：開單當下可加購商品——這裡要塞進 JS 變數（Thymeleaf inline javascript 用 Jackson 序列化），
+        // 不能直接丟整個 RetailProduct entity，裡面的 createdAt（LocalDateTime）Jackson 預設不認得，
+        // 會直接讓整頁渲染中斷（跟 staffList 同樣的處理方式，只留 JS 真正需要的欄位）。
+        model.addAttribute("retailProducts", retailProductService.listActive().stream()
+                .map(p -> java.util.Map.of(
+                        "id", p.getId(),
+                        "name", p.getName(),
+                        "price", p.getPrice(),
+                        "stockQuantity", p.getStockQuantity()))
+                .toList());
         // 需求：經手人改綁員工帳號，前端下拉選單資料來源（STAFF + ADMIN，店主可能也會親自美容）
         // ⚠️ 絕不能把 User entity 整包丟進頁面（含密碼雜湊），只給 id + 姓名
         List<User> staffAndAdmin = new ArrayList<>(userService.getAllStaffEntities());
@@ -74,37 +85,51 @@ public class WalkInOrderMvcController {
                          @RequestParam(required = false) String note,
                          @RequestParam(required = false) List<String> itemCodes,
                          @RequestParam(required = false) List<String> operatorStaffIds,
+                         @RequestParam(required = false) List<String> retailProductIds,
+                         @RequestParam(required = false) List<String> retailQuantities,
                          HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            if (itemCodes == null || itemCodes.isEmpty()) {
-                throw new IllegalArgumentException("請至少加入一個項目");
-            }
             WalkInOrderCreateRequest req = new WalkInOrderCreateRequest();
             req.setMemberUsername(memberUsername != null && !memberUsername.isBlank() ? memberUsername : null);
             req.setPetName(petName);
             req.setNote(note);
 
             List<WalkInOrderCreateRequest.Item> items = new ArrayList<>();
-            for (int i = 0; i < itemCodes.size(); i++) {
-                String code = itemCodes.get(i);
-                if (code == null || code.isBlank()) continue; // 表單裡沒選的空列跳過
-                WalkInOrderCreateRequest.Item item = new WalkInOrderCreateRequest.Item();
-                item.setItemCode(code);
-                String staffIdStr = (operatorStaffIds != null && i < operatorStaffIds.size())
-                        ? operatorStaffIds.get(i) : null;
-                item.setOperatorStaffId((staffIdStr != null && !staffIdStr.isBlank())
-                        ? Long.valueOf(staffIdStr) : null); // null → 未填寫，之後從待補清單補
-                items.add(item);
-            }
-            if (items.isEmpty()) {
-                throw new IllegalArgumentException("請至少選擇一個有效項目");
+            if (itemCodes != null) {
+                for (int i = 0; i < itemCodes.size(); i++) {
+                    String code = itemCodes.get(i);
+                    if (code == null || code.isBlank()) continue; // 表單裡沒選的空列跳過
+                    WalkInOrderCreateRequest.Item item = new WalkInOrderCreateRequest.Item();
+                    item.setItemCode(code);
+                    String staffIdStr = (operatorStaffIds != null && i < operatorStaffIds.size())
+                            ? operatorStaffIds.get(i) : null;
+                    item.setOperatorStaffId((staffIdStr != null && !staffIdStr.isBlank())
+                            ? Long.valueOf(staffIdStr) : null); // null → 未填寫，之後從待補清單補
+                    items.add(item);
+                }
             }
             req.setItems(items);
 
+            // 需求 7-1：開單當下也能直接加零售商品，支援純零售訂單（沒有任何美容服務項目）
+            List<WalkInOrderCreateRequest.RetailItem> retailItems = new ArrayList<>();
+            if (retailProductIds != null) {
+                for (int i = 0; i < retailProductIds.size(); i++) {
+                    String idStr = retailProductIds.get(i);
+                    if (idStr == null || idStr.isBlank()) continue;
+                    String qtyStr = (retailQuantities != null && i < retailQuantities.size())
+                            ? retailQuantities.get(i) : "1";
+                    WalkInOrderCreateRequest.RetailItem retailItem = new WalkInOrderCreateRequest.RetailItem();
+                    retailItem.setRetailProductId(Long.valueOf(idStr));
+                    retailItem.setQuantity((qtyStr == null || qtyStr.isBlank()) ? 1 : Integer.parseInt(qtyStr));
+                    retailItems.add(retailItem);
+                }
+            }
+            req.setRetailItems(retailItems);
+
             var result = walkInOrderService.create(req, user.getUsername());
             operationLogService.log(user, "WALKIN", "CREATE", "現場單 #" + result.getId(),
-                    "$" + result.getTotalAmount() + (petName != null ? "（" + petName + "）" : ""));
+                    "$" + result.getTotalAmount() + (petName != null && !petName.isBlank() ? "（" + petName + "）" : ""));
             ra.addFlashAttribute("successMsg",
                     "開單成功！單號 #" + result.getId() + "，總額 $" + result.getTotalAmount());
         } catch (IllegalArgumentException e) {
@@ -171,6 +196,7 @@ public class WalkInOrderMvcController {
         try {
             var order = walkInOrderService.getById(id);
             model.addAttribute("order", order);
+            model.addAttribute("retailProducts", retailProductService.listActive()); // 需求 7-1：加購商品清單
             model.addAttribute("bankAccountInfo",
                     paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)); // 需求 15 修正
 
@@ -198,6 +224,40 @@ public class WalkInOrderMvcController {
             model.addAttribute("errorMsg", e.getMessage());
         }
         return "admin/walk-in-order-checkout";
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/add-retail-item ─────────────────
+    // 需求 7-1：結帳頁直接加購零售商品
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/add-retail-item")
+    public String addRetailItem(@PathVariable Long id, HttpServletRequest request,
+                                @RequestParam Long retailProductId,
+                                @RequestParam(defaultValue = "1") int quantity,
+                                RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.addRetailItem(id, retailProductId, quantity, user.getUsername());
+            ra.addFlashAttribute("successMsg", "已加購商品");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "加購失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/remove-retail-item ──────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/remove-retail-item")
+    public String removeRetailItem(@PathVariable Long id, HttpServletRequest request,
+                                   @RequestParam Long itemId,
+                                   RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.removeRetailItem(id, itemId, user.getUsername());
+            ra.addFlashAttribute("successMsg", "已移除商品");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "移除失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
     }
 
     // ── POST /admin/walk-in-orders/{id}/checkout ────────────────────────────

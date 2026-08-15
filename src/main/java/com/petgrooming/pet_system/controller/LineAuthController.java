@@ -47,6 +47,7 @@ public class LineAuthController {
     private final JwtUtils jwtUtils;
     private final RestClient restClient = RestClient.create();
     private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.LineBindService lineBindService; // 店員綁定 LINE 用
 
     // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
     @Value("${COOKIE_SECURE:false}")
@@ -109,5 +110,36 @@ public class LineAuthController {
                 .body(form)
                 .retrieve()
                 .body(LineVerifyResponse.class);
+    }
+
+    // ── POST /api/line/bind ──────────────────────────────────────────────
+    // 店員/店家綁定 LINE：手機上開啟綁定用的 LIFF 頁面，輸入從後台拿到的 6 位數驗證碼，
+    // 驗證通過就把這支手機的 LINE userId 寫進對應店員帳號，讓低庫存等通知發得到。
+    @PostMapping("/bind")
+    public ResponseEntity<?> bind(@RequestBody java.util.Map<String, String> body) {
+        String idToken = body.get("idToken");
+        String code = body.get("code");
+        if (idToken == null || idToken.isBlank() || code == null || code.isBlank()) {
+            return ResponseEntity.badRequest().body("請提供驗證碼");
+        }
+
+        LineVerifyResponse verified;
+        try {
+            verified = verifyIdToken(idToken);
+        } catch (RestClientResponseException e) {
+            log.warn("LINE idToken 驗證失敗（綁定流程）: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("LINE 登入驗證失敗，請重新開啟頁面再試一次");
+        }
+        if (!channelId.equals(verified.getAud())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("idToken 不屬於本系統");
+        }
+
+        try {
+            User bound = lineBindService.bindByCode(code, verified.getSub());
+            operationLogService.logByUsername(bound.getUsername(), "AUTH", "BIND_LINE", bound.getUsername(), null);
+            return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

@@ -21,6 +21,10 @@
              th:classappend="${category == 'WALLET'} ? ' btn-primary' : ' btn-outline'">會員錢包</a>
           <a href="/admin/operation-logs?category=WALKIN" class="btn"
              th:classappend="${category == 'WALKIN'} ? ' btn-primary' : ' btn-outline'">現場開單</a>
+          <a href="/admin/operation-logs?category=RETAIL" class="btn"
+             th:classappend="${category == 'RETAIL'} ? ' btn-primary' : ' btn-outline'">零售商品</a>
+          <a href="/admin/operation-logs?category=SUPPLY" class="btn"
+             th:classappend="${category == 'SUPPLY'} ? ' btn-primary' : ' btn-outline'">店用洗劑</a>
           <a href="/admin/operation-logs?category=PERFORMANCE" class="btn"
              th:classappend="${category == 'PERFORMANCE'} ? ' btn-primary' : ' btn-outline'">績效</a>
           <a href="/admin/operation-logs?category=CUSTOMER" class="btn"
@@ -48,9 +52,9 @@
             <tr th:each="l : ${logs}">
               <td th:text="${#temporals.format(l.createdAt, 'yyyy/MM/dd HH:mm')}"></td>
               <td th:text="${l.actorName} + ' (' + ${l.actorUsername} + ')'"></td>
-              <td th:text="${l.actorRole}"></td>
-              <td th:text="${l.category}"></td>
-              <td th:text="${l.action}"></td>
+              <td th:text="${l.actorRoleLabel}"></td>
+              <td th:text="${l.categoryLabel}"></td>
+              <td th:text="${l.actionLabel}"></td>
               <td th:text="${l.targetDesc}"></td>
               <td th:text="${l.detail}"></td>
             </tr>

@@ -21,6 +21,7 @@ public class AccountMvcController {
 
     private final UserService userService;
     private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.LineBindService lineBindService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -106,5 +107,30 @@ public class AccountMvcController {
             model.addAttribute("errorMsg", e.getMessage());
         }
         return "account/set-pin";
+    }
+
+    // ── GET /account/bind-line ───────────────────────────────────────────
+    // 店員/店家綁定 LINE 帳號（讓低庫存等通知發得到這支手機）
+    @GetMapping("/bind-line")
+    public String bindLinePage(HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null || user.isCustomer()) return "redirect:/dashboard";
+        model.addAttribute("user", user);
+        model.addAttribute("alreadyBound", user.getLineUserId() != null && !user.getLineUserId().isBlank());
+        return "account/bind-line";
+    }
+
+    // ── POST /account/bind-line/generate-code ────────────────────────────
+    // 產生 6 位數驗證碼，帶去手機的 LIFF 頁面輸入兌換綁定
+    @PostMapping("/bind-line/generate-code")
+    public String generateBindCode(HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null || user.isCustomer()) return "redirect:/dashboard";
+        model.addAttribute("user", user);
+        model.addAttribute("alreadyBound", user.getLineUserId() != null && !user.getLineUserId().isBlank());
+
+        String code = lineBindService.generateCode(user.getUsername());
+        model.addAttribute("bindCode", code);
+        return "account/bind-line";
     }
 }

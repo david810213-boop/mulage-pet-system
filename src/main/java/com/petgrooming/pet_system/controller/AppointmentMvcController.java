@@ -523,7 +523,30 @@ public class AppointmentMvcController {
         // 需求 16：公休日設定
         model.addAttribute("isClosedToday", closedDateService.isClosed(date));
         model.addAttribute("upcomingClosedDates", closedDateService.listUpcoming());
+        model.addAttribute("weeklyClosureSetting", closedDateService.getWeeklyClosureSetting());
         return "appointments/slots-manage";
+    }
+
+    // ── POST /appointments/slots-manage/weekly-closure ─────────────────────
+    // 固定公休星期：設定每週固定哪幾天公休（跟單一天公休日的 ClosedDate 是兩套機制並存）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/weekly-closure")
+    public String updateWeeklyClosure(HttpServletRequest request,
+                                      @RequestParam(defaultValue = "false") boolean monday,
+                                      @RequestParam(defaultValue = "false") boolean tuesday,
+                                      @RequestParam(defaultValue = "false") boolean wednesday,
+                                      @RequestParam(defaultValue = "false") boolean thursday,
+                                      @RequestParam(defaultValue = "false") boolean friday,
+                                      @RequestParam(defaultValue = "false") boolean saturday,
+                                      @RequestParam(defaultValue = "false") boolean sunday,
+                                      @RequestParam(required = false)
+                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                      RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        closedDateService.updateWeeklyClosureSetting(monday, tuesday, wednesday, thursday, friday, saturday, sunday);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_WEEKLY_CLOSURE", "固定公休星期設定", null);
+        ra.addFlashAttribute("successMsg", "固定公休星期已更新");
+        return "redirect:/appointments/slots-manage" + (date != null ? "?date=" + date : "");
     }
 
     // ── POST /appointments/slots-manage/closed-date/add ───────────────────
