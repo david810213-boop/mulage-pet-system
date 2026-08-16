@@ -29,6 +29,13 @@ public class RetailProduct {
     @Column(nullable = false)
     private int price;
 
+    // 需求 6：進貨成本單價（供財務報表計算毛利用；跟 price 賣價是不同概念）
+    // 原本需求 7-1 沒有要求記錄成本，這裡是財務報表需要才補上的欄位，預設 0
+    // （代表還沒設定成本，財務報表上會顯示成本為 0，不影響其他既有功能運作）。
+    @Column(name = "unit_cost", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int unitCost = 0;
+
     // 目前庫存量（結帳扣庫存、後台可手動調整）
     @Column(name = "stock_quantity", nullable = false)
     @Builder.Default

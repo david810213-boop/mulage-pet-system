@@ -50,11 +50,12 @@ public class RetailProductMvcController {
                          @RequestParam int price,
                          @RequestParam(defaultValue = "0") int stockQuantity,
                          @RequestParam(required = false) String description,
+                         @RequestParam(defaultValue = "0") int unitCost,
                          RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            var product = retailProductService.create(name, price, stockQuantity, description);
-            operationLogService.log(user, "APPOINTMENT", "CREATE_RETAIL_PRODUCT",
+            var product = retailProductService.create(name, price, stockQuantity, description, unitCost);
+            operationLogService.log(user, "RETAIL", "CREATE_RETAIL_PRODUCT",
                     "新增商品：" + product.getName(), null);
             ra.addFlashAttribute("successMsg", "已新增商品「" + product.getName() + "」");
         } catch (IllegalArgumentException e) {
@@ -69,11 +70,12 @@ public class RetailProductMvcController {
                          @RequestParam String name,
                          @RequestParam int price,
                          @RequestParam(required = false) String description,
+                         @RequestParam(defaultValue = "0") int unitCost,
                          RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            retailProductService.update(id, name, price, description);
-            operationLogService.log(user, "APPOINTMENT", "UPDATE_RETAIL_PRODUCT", "更新商品 #" + id, null);
+            retailProductService.update(id, name, price, description, unitCost);
+            operationLogService.log(user, "RETAIL", "UPDATE_RETAIL_PRODUCT", "更新商品 #" + id, null);
             ra.addFlashAttribute("successMsg", "已更新商品資訊");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", e.getMessage());
@@ -90,7 +92,7 @@ public class RetailProductMvcController {
         User user = getLoginUser(request);
         try {
             retailProductService.adjustStock(id, delta);
-            operationLogService.log(user, "APPOINTMENT", "ADJUST_RETAIL_STOCK",
+            operationLogService.log(user, "RETAIL", "ADJUST_RETAIL_STOCK",
                     "商品 #" + id + " 庫存調整 " + (delta >= 0 ? "+" : "") + delta, null);
             ra.addFlashAttribute("successMsg", "庫存已調整");
         } catch (IllegalArgumentException e) {
@@ -104,7 +106,7 @@ public class RetailProductMvcController {
     public String delete(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         retailProductService.softDelete(id);
-        operationLogService.log(user, "APPOINTMENT", "DELETE_RETAIL_PRODUCT", "下架商品 #" + id, null);
+        operationLogService.log(user, "RETAIL", "DELETE_RETAIL_PRODUCT", "下架商品 #" + id, null);
         ra.addFlashAttribute("successMsg", "商品已下架");
         return "redirect:/admin/retail-products";
     }

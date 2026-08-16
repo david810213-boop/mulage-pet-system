@@ -27,26 +27,30 @@ public class RetailProductService {
     }
 
     @Transactional
-    public RetailProduct create(String name, int price, int stockQuantity, String description) {
+    public RetailProduct create(String name, int price, int stockQuantity, String description, int unitCost) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("商品名稱不可為空");
         if (price < 0) throw new IllegalArgumentException("售價不可為負數");
         if (stockQuantity < 0) throw new IllegalArgumentException("庫存量不可為負數");
+        if (unitCost < 0) throw new IllegalArgumentException("成本不可為負數");
         return retailProductRepository.save(RetailProduct.builder()
                 .name(name.trim())
                 .price(price)
                 .stockQuantity(stockQuantity)
                 .description(description == null || description.isBlank() ? null : description.trim())
+                .unitCost(unitCost)
                 .build());
     }
 
     @Transactional
-    public void update(Long id, String name, int price, String description) {
+    public void update(Long id, String name, int price, String description, int unitCost) {
         RetailProduct product = getById(id);
         if (name == null || name.isBlank()) throw new IllegalArgumentException("商品名稱不可為空");
         if (price < 0) throw new IllegalArgumentException("售價不可為負數");
+        if (unitCost < 0) throw new IllegalArgumentException("成本不可為負數");
         product.setName(name.trim());
         product.setPrice(price);
         product.setDescription(description == null || description.isBlank() ? null : description.trim());
+        product.setUnitCost(unitCost);
         retailProductRepository.save(product);
     }
 
