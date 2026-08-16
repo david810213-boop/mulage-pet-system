@@ -1,7 +1,7 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
   <head
-    th:replace="~{fragments/header :: common-head('財務報告 | 慕沐村 Mulage pet')}"
+    th:replace="~{fragments/header :: common-head('財務報表 | 慕沐村 Mulage pet')}"
   ></head>
 
   <body>
@@ -9,135 +9,116 @@
       <div th:replace="~{fragments/nav :: nav}"></div>
 
       <div class="content">
-        <a
-          href="/admin"
-          class="btn btn-outline"
-          style="margin-bottom: 1.5rem; text-decoration: none"
-          >← 返回後台</a
-        >
-
-        <h2>財務報告</h2>
-        <p
-          class="gen-time"
-          style="
-            font-size: 13px;
-            color: var(--brown-light);
-            margin-top: -4px;
-            margin-bottom: 1.5rem;
-          "
-        >
-          產出時間：<span th:text="${report.generatedAt}"></span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <h2 style="margin:0;">💰 財務報表</h2>
+          <div style="display:flex; gap:10px;">
+            <a href="/admin/report/export.xlsx" class="btn btn-outline">📊 匯出 Excel</a>
+            <a href="/admin" class="btn">← 回後台</a>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--brown-light); margin-top: -4px; margin-bottom: 1.5rem;">
+          產出時間：<span th:text="${#temporals.format(report.generatedAt, 'yyyy-MM-dd HH:mm')}"></span>　
+          業績只計算「結帳完成」的預約與現場單，儲值本身是預收款、不計入業績。
         </p>
 
+        <!-- ── 當日業績 ────────────────────────────────────────────────── -->
+        <h3 style="font-size: 15px; margin-bottom: 10px;">📅 當日業績</h3>
         <div
-          class="stats"
           style="
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 2rem;
+          "
+        >
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color: var(--cream-100); border-color: var(--brown-light);">
+            <div style="font-size: 12px; color: var(--brown-mid); font-weight: 600; margin-bottom: 6px;">當日總業績</div>
+            <div style="font-size: 26px; font-weight: 800; color: var(--brown-dark);" th:text="'$' + ${report.todayRevenueTotal}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">儲值金扣款</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="'$' + ${report.todayRevenueWallet}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">非儲值金付款</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="'$' + ${report.todayRevenueNonWallet}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">結帳筆數</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="${report.todayOrderCount}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">當日儲值金額<span style="font-weight:400;">（預收款，非業績）</span></div>
+            <div style="font-size: 22px; font-weight: 700; color: #8a8072;" th:text="'$' + ${report.todayTopupCollected}"></div>
+          </div>
+        </div>
+
+        <!-- ── 當月業績 ────────────────────────────────────────────────── -->
+        <h3 style="font-size: 15px; margin-bottom: 10px;">🗓️ 當月業績</h3>
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 2rem;
+          "
+        >
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color: var(--cream-100); border-color: var(--brown-light);">
+            <div style="font-size: 12px; color: var(--brown-mid); font-weight: 600; margin-bottom: 6px;">當月總業績</div>
+            <div style="font-size: 26px; font-weight: 800; color: var(--brown-dark);" th:text="'$' + ${report.monthRevenueTotal}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">儲值金扣款</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="'$' + ${report.monthRevenueWallet}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">非儲值金付款</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="'$' + ${report.monthRevenueNonWallet}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">結帳筆數</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="${report.monthOrderCount}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">本月儲值金額<span style="font-weight:400;">（預收款，非業績）</span></div>
+            <div style="font-size: 22px; font-weight: 700; color: #8a8072;" th:text="'$' + ${report.monthTopupCollected}"></div>
+          </div>
+        </div>
+
+        <!-- ── 成本與毛利（當月） ─────────────────────────────────────────── -->
+        <h3 style="font-size: 15px; margin-bottom: 6px;">📦 成本與毛利（當月）</h3>
+        <p style="font-size: 12px; color: var(--brown-light); margin-top: 0; margin-bottom: 10px;">
+          零售商品成本是用「目前」進貨單價估算本月賣出數量，不是逐筆歷史成本，調過價格的話會有些微誤差；
+          店用洗劑成本則是逐筆單價快照，精確。毛利只扣掉這兩項成本，還沒扣人事/房租等固定開銷。
+        </p>
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
             margin-bottom: 2rem;
           "
         >
           <div class="card" style="padding: 1.2rem 1.5rem">
-            <div
-              style="
-                font-size: 12px;
-                color: var(--brown-light);
-                font-weight: 500;
-                margin-bottom: 6px;
-              "
-            >
-              總交易筆數
-            </div>
-            <div
-              style="
-                font-size: 28px;
-                font-weight: 700;
-                color: var(--brown-dark);
-              "
-              th:text="${report.totalTransactions}"
-            >
-              0
-            </div>
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">零售商品成本（估算）</div>
+            <div style="font-size: 22px; font-weight: 700; color: #c62828;" th:text="'$' + ${report.monthRetailCostEstimate}"></div>
           </div>
-
           <div class="card" style="padding: 1.2rem 1.5rem">
-            <div
-              style="
-                font-size: 12px;
-                color: var(--brown-light);
-                font-weight: 500;
-                margin-bottom: 6px;
-              "
-            >
-              已付款筆數
-            </div>
-            <div
-              style="
-                font-size: 28px;
-                font-weight: 700;
-                color: var(--brown-dark);
-              "
-              th:text="${report.paidCount}"
-            >
-              0
-            </div>
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">店用洗劑成本</div>
+            <div style="font-size: 22px; font-weight: 700; color: #c62828;" th:text="'$' + ${report.monthSupplyCost}"></div>
           </div>
-
-          <div
-            class="card"
-            style="
-              padding: 1.2rem 1.5rem;
-              background-color: var(--cream-100);
-              border-color: var(--brown-light);
-            "
-          >
-            <div
-              style="
-                font-size: 12px;
-                color: var(--brown-mid);
-                font-weight: 600;
-                margin-bottom: 6px;
-              "
-            >
-              💰 總營收
-            </div>
-            <div
-              style="
-                font-size: 28px;
-                font-weight: 800;
-                color: var(--brown-dark);
-              "
-              th:text="${'$' + #numbers.formatInteger(report.totalRevenue, 0)}"
-            >
-              $0
-            </div>
-          </div>
-
           <div class="card" style="padding: 1.2rem 1.5rem">
-            <div
-              style="
-                font-size: 12px;
-                color: var(--brown-light);
-                font-weight: 500;
-                margin-bottom: 6px;
-              "
-            >
-              平均客單價
-            </div>
-            <div
-              style="
-                font-size: 28px;
-                font-weight: 700;
-                color: var(--brown-dark);
-              "
-              th:text="${'$' + #numbers.formatInteger(report.averageAmount, 0)}"
-            >
-              $0
-            </div>
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">成本合計</div>
+            <div style="font-size: 22px; font-weight: 700; color: #c62828;" th:text="'$' + ${report.monthTotalCost}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem; background-color: var(--cream-100); border-color: var(--brown-light);">
+            <div style="font-size: 12px; color: var(--brown-mid); font-weight: 600; margin-bottom: 6px;">粗估毛利</div>
+            <div style="font-size: 26px; font-weight: 800; color: #2e7d32;" th:text="'$' + ${report.monthEstimatedProfit}"></div>
           </div>
         </div>
 
+        <!-- ── 明細 ────────────────────────────────────────────────────── -->
+        <h3 style="font-size: 15px; margin-bottom: 10px;">📋 交易明細</h3>
         <div
           style="
             border: 1px solid var(--cream-300);
@@ -147,120 +128,34 @@
             box-shadow: var(--shadow-sm);
           "
         >
-          <table
-            style="
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 14px;
-              text-align: left;
-            "
-          >
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">
             <thead>
-              <tr
-                style="
-                  background-color: var(--cream-200);
-                  color: var(--brown-dark);
-                  border-bottom: 1px solid var(--cream-300);
-                "
-              >
-                <th style="padding: 12px 16px; font-weight: 600">預約編號</th>
-                <th style="padding: 12px 16px; font-weight: 600">付款方式</th>
-                <th
-                  style="
-                    padding: 12px 16px;
-                    font-weight: 600;
-                    text-align: right;
-                  "
-                >
-                  原始金額
-                </th>
-                <th
-                  style="
-                    padding: 12px 16px;
-                    font-weight: 600;
-                    text-align: right;
-                  "
-                >
-                  實付金額
-                </th>
-                <th
-                  style="
-                    padding: 12px 16px;
-                    font-weight: 600;
-                    text-align: center;
-                  "
-                >
-                  付款時間
-                </th>
-                <th style="padding: 12px 16px; font-weight: 600">經手人</th>
+              <tr style="background-color: var(--cream-200); color: var(--brown-dark); border-bottom: 1px solid var(--cream-300);">
+                <th style="padding: 12px 16px; font-weight: 600;">來源</th>
+                <th style="padding: 12px 16px; font-weight: 600;">單號</th>
+                <th style="padding: 12px 16px; font-weight: 600;">付款方式</th>
+                <th style="padding: 12px 16px; font-weight: 600; text-align: right;">金額</th>
+                <th style="padding: 12px 16px; font-weight: 600; text-align: center;">付款時間</th>
+                <th style="padding: 12px 16px; font-weight: 600;">經手人</th>
               </tr>
             </thead>
             <tbody style="color: var(--brown-mid)">
               <tr th:if="${report.details.isEmpty()}">
-                <td
-                  colspan="6"
-                  style="
-                    text-align: center;
-                    color: var(--brown-light);
-                    padding: 3rem 16px;
-                    background: #fff;
-                  "
-                >
+                <td colspan="6" style="text-align: center; color: var(--brown-light); padding: 3rem 16px; background: #fff;">
                   📭 目前沒有交易紀錄
                 </td>
               </tr>
-
-              <tr
-                th:each="t : ${report.details}"
-                style="
-                  border-bottom: 1px solid var(--cream-200);
-                  background: #fff;
-                  transition: background 0.15s ease;
-                "
-              >
-                <td
-                  style="
-                    padding: 12px 16px;
-                    font-weight: 600;
-                    color: var(--brown-dark);
-                  "
-                  th:text="${t.appointmentCode}"
-                ></td>
-                <td style="padding: 12px 16px">
-                  <span
-                    style="
-                      font-size: 12px;
-                      padding: 2px 8px;
-                      background-color: var(--cream-100);
-                      border: 1px solid var(--cream-300);
-                      border-radius: 4px;
-                    "
-                    th:text="${t.paymentMethod?.name()}"
-                  ></span>
+              <tr th:each="d : ${report.details}" style="border-bottom: 1px solid var(--cream-200); background: #fff;">
+                <td style="padding: 12px 16px;" th:text="${d.sourceLabel}"></td>
+                <td style="padding: 12px 16px; font-weight: 600; color: var(--brown-dark);" th:text="${d.code}"></td>
+                <td style="padding: 12px 16px;">
+                  <span style="font-size: 12px; padding: 2px 8px; background-color: var(--cream-100); border: 1px solid var(--cream-300); border-radius: 4px;"
+                        th:text="${d.paymentMethodLabel}"></span>
                 </td>
-                <td
-                  style="padding: 12px 16px; text-align: right"
-                  th:text="${'$' + t.baseAmount}"
-                ></td>
-                <td
-                  style="
-                    padding: 12px 16px;
-                    text-align: right;
-                    font-weight: 600;
-                    color: var(--brown-dark);
-                  "
-                  th:text="${'$' + t.finalAmount}"
-                ></td>
-                <td
-                  style="
-                    padding: 12px 16px;
-                    text-align: center;
-                    font-size: 13px;
-                    color: var(--brown-light);
-                  "
-                  th:text="${t.paymentTime}"
-                ></td>
-                <td style="padding: 12px 16px" th:text="${t.handledBy}"></td>
+                <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: var(--brown-dark);" th:text="'$' + ${d.amount}"></td>
+                <td style="padding: 12px 16px; text-align: center; font-size: 13px; color: var(--brown-light);"
+                    th:text="${#temporals.format(d.paymentTime, 'yyyy-MM-dd HH:mm')}"></td>
+                <td style="padding: 12px 16px;" th:text="${d.handledBy}"></td>
               </tr>
             </tbody>
           </table>
@@ -269,7 +164,6 @@
     </div>
 
     <style>
-      /* 滑過表格行時有淡淡的奶油高亮效果 */
       table tbody tr:hover {
         background-color: var(--cream-100) !important;
       }

@@ -41,6 +41,10 @@ public class PaymentService {
     private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
+    private final com.petgrooming.pet_system.repository.WalkInOrderRepository walkInOrderRepository; // 需求 6
+    private final com.petgrooming.pet_system.repository.TopUpRequestRepository topUpRequestRepository; // 需求 6
+    private final com.petgrooming.pet_system.repository.RetailProductRepository retailProductRepository; // 需求 6
+    private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -316,17 +320,126 @@ public class PaymentService {
     }
 
     // ── 4. 財務報告（ADMIN）────────────────────────────────────────────────
+    // ── 需求 6：財務報表 ─────────────────────────────────────────────────
+    // 業績定義：只算「結帳完成」（Transaction / WalkInOrder，paid=true），
+    // 儲值本身不算業績（那是預收款，另外用 topupCollected 呈現）。
     public FinancialReportResponse getFinancialReport() {
-        List<Transaction> all = transactionRepository.findAll();
-        List<TransactionResponse> details = all.stream()
-                .map(TransactionResponse::from).toList();
+        LocalDateTime now = LocalDateTime.now();
+        java.time.LocalDate today = now.toLocalDate();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
 
-        int paidCount  = (int) all.stream().filter(Transaction::isPaid).count();
-        double revenue = transactionRepository.calculateTotalRevenue();
-        double average = paidCount > 0 ? revenue / paidCount : 0;
+        List<Transaction> paidTransactions = transactionRepository.findByPaidTrue();
+        List<com.petgrooming.pet_system.model.WalkInOrder> paidWalkInOrders =
+                walkInOrderRepository.findAll().stream()
+                        .filter(com.petgrooming.pet_system.model.WalkInOrder::isPaid)
+                        .toList();
 
-        return new FinancialReportResponse(
-                LocalDateTime.now(), all.size(), paidCount, revenue, average, details);
+        List<FinancialReportResponse.RevenueDetailLine> allLines = new java.util.ArrayList<>();
+
+        for (Transaction t : paidTransactions) {
+            if (t.getPaymentTime() == null) continue; // 防呆：理論上 paid=true 一定有付款時間
+            allLines.add(new FinancialReportResponse.RevenueDetailLine(
+                    "預約結帳",
+                    t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—",
+                    t.getPaymentTime(),
+                    t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—",
+                    t.getPaymentMethod() == PaymentMethod.WALLET,
+                    t.getFinalAmount(),
+                    t.getHandledBy()));
+        }
+        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+            if (w.getPaymentTime() == null) continue;
+            int amount = w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount();
+            allLines.add(new FinancialReportResponse.RevenueDetailLine(
+                    "現場開單",
+                    "現場單#" + w.getId(),
+                    w.getPaymentTime(),
+                    w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—",
+                    w.getPaymentMethod() == PaymentMethod.WALLET,
+                    amount,
+                    w.getCreatedBy()));
+        }
+        allLines.sort((a, b) -> b.getPaymentTime().compareTo(a.getPaymentTime()));
+
+        // ── 當日 / 當月彙總 ──────────────────────────────────────────────
+        int todayTotal = 0, todayWallet = 0, todayNonWallet = 0, todayCount = 0;
+        int monthTotal = 0, monthWallet = 0, monthNonWallet = 0, monthCount = 0;
+
+        for (FinancialReportResponse.RevenueDetailLine line : allLines) {
+            boolean inMonth = !line.getPaymentTime().isBefore(monthStart);
+            boolean inToday = !line.getPaymentTime().isBefore(todayStart);
+
+            if (inMonth) {
+                monthTotal += line.getAmount();
+                monthCount++;
+                if (line.isWalletPayment()) monthWallet += line.getAmount();
+                else monthNonWallet += line.getAmount();
+            }
+            if (inToday) {
+                todayTotal += line.getAmount();
+                todayCount++;
+                if (line.isWalletPayment()) todayWallet += line.getAmount();
+                else todayNonWallet += line.getAmount();
+            }
+        }
+
+        // ── 儲值總額（預收款，不計入業績，僅供參考）──────────────────────────
+        // 用「核帳確認時間」（reviewedAt）判斷屬於哪一天/哪個月，不是用顧客送出申請的時間，
+        // 因為錢真正入帳的時間點是店家核帳確認那一刻，不是顧客填表單那一刻。
+        List<com.petgrooming.pet_system.model.TopUpRequest> confirmedTopups =
+                topUpRequestRepository.findByStatusOrderByCreatedAtAsc(
+                        com.petgrooming.pet_system.enums.TopUpStatus.CONFIRMED);
+        int todayTopup = 0, monthTopup = 0;
+        for (var tu : confirmedTopups) {
+            if (tu.getReviewedAt() == null) continue;
+            if (!tu.getReviewedAt().isBefore(monthStart)) monthTopup += tu.getAmount();
+            if (!tu.getReviewedAt().isBefore(todayStart)) todayTopup += tu.getAmount();
+        }
+
+        // ── 成本（需求 7 庫存資料帶入，當月）─────────────────────────────────
+        // 零售商品成本：用「目前」進貨單價回推本月賣出的數量 × 單價（近似值，
+        // 因為 WalkInOrderItem 賣出當下沒有存成本快照，只存了售價）。
+        int monthRetailCost = 0;
+        var retailProducts = retailProductRepository.findAll();
+        java.util.Map<Long, Integer> retailUnitCostById = new java.util.HashMap<>();
+        for (var p : retailProducts) retailUnitCostById.put(p.getId(), p.getUnitCost());
+        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+            if (w.getPaymentTime() == null || w.getPaymentTime().isBefore(monthStart)) continue;
+            for (var item : w.getItems()) {
+                if (item.getRetailProductId() == null) continue;
+                Integer unitCost = retailUnitCostById.get(item.getRetailProductId());
+                if (unitCost != null) monthRetailCost += unitCost;
+            }
+        }
+
+        // 店用洗劑成本：有逐筆單價快照，精確加總本月領用紀錄
+        List<com.petgrooming.pet_system.model.SupplyUsageRecord> monthUsages =
+                supplyUsageRecordRepository.findByUsedAtBetween(monthStart, now);
+        int monthSupplyCost = monthUsages.stream()
+                .mapToInt(u -> u.getUnitCostSnapshot() * u.getQuantity())
+                .sum();
+
+        int monthTotalCost = monthRetailCost + monthSupplyCost;
+
+        FinancialReportResponse report = new FinancialReportResponse();
+        report.setGeneratedAt(now);
+        report.setTodayRevenueTotal(todayTotal);
+        report.setTodayRevenueWallet(todayWallet);
+        report.setTodayRevenueNonWallet(todayNonWallet);
+        report.setTodayOrderCount(todayCount);
+        report.setTodayTopupCollected(todayTopup);
+        report.setMonthRevenueTotal(monthTotal);
+        report.setMonthRevenueWallet(monthWallet);
+        report.setMonthRevenueNonWallet(monthNonWallet);
+        report.setMonthOrderCount(monthCount);
+        report.setMonthTopupCollected(monthTopup);
+        report.setMonthRetailCostEstimate(monthRetailCost);
+        report.setMonthSupplyCost(monthSupplyCost);
+        report.setMonthTotalCost(monthTotalCost);
+        report.setMonthEstimatedProfit(monthTotal - monthTotalCost);
+        report.setDetails(allLines);
+        return report;
     }
 
     // ── 店家匯款帳號資訊（依用途分開：結帳收款 / 儲值金收款大額專用）────

@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.petgrooming.pet_system.dto.GroomingItemRequest;  
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
+import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -80,11 +81,11 @@ public class GroomingServiceImpl implements GroomingService {
     }
 
     /**
-     * 2. 修改指定的美容項目 
+     * 2. 需求 14：修改指定的美容項目（名稱/描述/金額/是否可預約）——不含代碼，代碼不可改
      */
     @Override
-    @Transactional 
-    public GroomingItemResponse updateItem(Long id, GroomingItemRequest request) {
+    @Transactional
+    public GroomingItemResponse updateItem(Long id, UpdateGroomingItemRequest request) {
         GroomingItem item = groomingItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("修改失敗：找不到 ID 為 " + id + " 的美容項目"));
 

@@ -23,6 +23,7 @@ public class StoreSupplyService {
     private final StoreSupplyRepository storeSupplyRepository;
     private final UserService userService;
     private final LineMessagingService lineMessagingService;
+    private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
 
     public List<StoreSupply> listActive() {
         return storeSupplyRepository.findByIsDeletedFalseOrderByNameAsc();
@@ -85,8 +86,18 @@ public class StoreSupplyService {
         log.info("店用洗劑「{}」領用 -{}，領用人：{}，目前庫存 {}",
                 supply.getName(), quantity, staff.getName(), remaining);
 
-        // 需求 7-2 修正：「安全庫存量」代表達到這條線就該注意了，不是要真的跌破才算——
-        // 用 <=（達到或低於）而不是 <（只有嚴格低於），跟畫面上的紅字判斷邏輯保持一致。
+        // 需求 6：另外存一份結構化紀錄（不是只寫操作紀錄的文字備註），
+        // 成本用「領用當下」的單價快照，財務報表算成本才不會受之後調價影響。
+        supplyUsageRecordRepository.save(com.petgrooming.pet_system.model.SupplyUsageRecord.builder()
+                .supplyId(supply.getId())
+                .supplyName(supply.getName())
+                .quantity(quantity)
+                .unitCostSnapshot(supply.getUnitCost())
+                .usedByUsername(staff.getUsername())
+                .usedByName(staff.getName())
+                .note(note)
+                .build());
+
         if (remaining <= supply.getSafetyStockThreshold()) {
             notifyLowStock(supply);
         }
