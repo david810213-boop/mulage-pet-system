@@ -12,6 +12,7 @@ import com.petgrooming.pet_system.service.CustomerAnalysisService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
+import com.petgrooming.pet_system.service.WalkInOrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -35,6 +36,7 @@ public class CustomerAnalysisMvcController {
     private final PetGroomingNoteRepository petGroomingNoteRepository;
     private final TransactionRepository transactionRepository;
     private final WalkInOrderRepository walkInOrderRepository;
+    private final WalkInOrderService walkInOrderService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -70,7 +72,8 @@ public class CustomerAnalysisMvcController {
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/{username}")
     public String customerDetail(@PathVariable String username, HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+        User loginUser = getLoginUser(request);
+        model.addAttribute("user", loginUser);
 
         User customer = userService.getUserEntityByUsername(username);
         model.addAttribute("customer", customer);
@@ -83,6 +86,22 @@ public class CustomerAnalysisMvcController {
         for (var t : transactionRepository.findByUserUsername(username)) {
             if (!t.isPaid())
                 continue;
+            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
+            if (t.getAppointment() != null && loginUser != null) {
+                try {
+                    var detail = appointmentService.getAppointmentDetail(t.getAppointment().getId(), loginUser.getUsername());
+                    items = detail.getItems().stream()
+                            .map(di -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
+                                    .name(di.getName())
+                                    .staffName(di.getOperatorName())
+                                    .discountLabel(di.getAppliedDiscountType() != null ? di.getAppliedDiscountType().getLabel() : null)
+                                    .price(di.getPrice())
+                                    .build())
+                            .toList();
+                } catch (Exception ignored) {
+                    // 找不到明細（例如舊資料）就顯示空清單，不影響整頁其他內容
+                }
+            }
             records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
                     .sourceLabel("預約結帳")
                     .sourceType("APPOINTMENT")
@@ -94,6 +113,7 @@ public class CustomerAnalysisMvcController {
                     .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
                     .amount(t.getFinalAmount())
                     .paid(true)
+                    .items(items)
                     .build());
         }
 
@@ -101,6 +121,20 @@ public class CustomerAnalysisMvcController {
         for (var w : walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(username)) {
             if (!w.isPaid())
                 continue;
+            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
+            try {
+                var detail = walkInOrderService.getById(w.getId());
+                items = detail.getItems().stream()
+                        .map(il -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
+                                .name(il.getItemName())
+                                .staffName(il.getOperator())
+                                .discountLabel(il.getAppliedDiscountType() != null ? il.getAppliedDiscountType().getLabel() : null)
+                                .price(il.getPrice())
+                                .build())
+                        .toList();
+            } catch (Exception ignored) {
+                // 找不到明細就顯示空清單，不影響整頁其他內容
+            }
             records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
                     .sourceLabel("現場開單")
                     .sourceType("WALKIN")
@@ -112,6 +146,7 @@ public class CustomerAnalysisMvcController {
                     .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
                     .amount(w.getTotalAmount())
                     .paid(true)
+                    .items(items)
                     .build());
         }
 

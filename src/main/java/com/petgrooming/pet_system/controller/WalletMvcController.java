@@ -194,6 +194,13 @@ public class WalletMvcController {
         User user = getLoginUser(request);
         try {
             var result = walletService.deposit(username, req);
+            try {
+                User targetCustomer = userService.getUserEntityByUsername(username);
+                topUpService.recordManualTopup(targetCustomer, req.getAmount(),
+                        user != null ? user.getName() : "系統管理員", req.getNote());
+            } catch (Exception ignored) {
+                // 補登儲值申請紀錄失敗不影響已完成的儲值本身，僅財務報表統計可能漏這一筆
+            }
             operationLogService.log(user, "WALLET", "DEPOSIT", "會員 " + username,
                     "+$" + req.getAmount() + "（目前餘額 $" + result.getBalance() + "）");
             ra.addFlashAttribute("successMsg",

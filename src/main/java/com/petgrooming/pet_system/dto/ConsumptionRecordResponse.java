@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 會員信息頁「消費記錄」用的統一格式。
@@ -25,4 +26,16 @@ public class ConsumptionRecordResponse {
     private String paymentMethodLabel;
     private int amount;
     private boolean paid;
+    // 寵物資料頁「消費項目明細」直接展開顯示用：這筆訂單實際做了哪些服務項目，
+    // 讓美容師不用點進去看，一眼就能判斷寵物過往做過什麼、下次該安排什麼。
+    private List<Item> items;
+
+    @Data
+    @Builder
+    public static class Item {
+        private String name;
+        private String staffName; // 經手/操作美容師；無資料則為 null
+        private String discountLabel; // 「會員折扣」/「回洗優惠」/「原價（不打折）」；未結帳則為 null
+        private int price;
+    }
 }
