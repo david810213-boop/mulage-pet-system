@@ -1,0 +1,150 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('乙方電子簽名檔設定 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: 560px">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2 style="margin: 0">✍️ 乙方電子簽名檔設定</h2>
+          <a href="/appointments" class="btn">← 回預約管理</a>
+        </div>
+
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
+        <div
+          class="alert alert-error"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-bottom: 1.25rem;
+          "
+        >
+          這張簽名檔會固定顯示在顧客端（LIFF）與店家後台代預約頁面的定型化契約最下方，作為契約乙方（店家）的簽名。只需要上傳一次，之後可隨時更換。
+        </p>
+
+        <div
+          class="card"
+          style="margin-bottom: 1.25rem"
+          th:if="${signatureImage != null}"
+        >
+          <h3 style="font-size: 15px; margin-bottom: 10px">
+            目前使用中的簽名檔
+          </h3>
+          <img
+            th:src="${signatureImage}"
+            style="
+              max-width: 100%;
+              max-height: 160px;
+              border: 1px solid var(--cream-300);
+              border-radius: 8px;
+              background: #fff;
+              padding: 8px;
+            "
+          />
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 15px; margin-bottom: 10px">上傳新的簽名檔</h3>
+          <p
+            style="
+              font-size: 12px;
+              color: var(--brown-light);
+              margin-bottom: 10px;
+            "
+          >
+            建議上傳去背的 PNG 簽名圖檔，檔案請控制在 800KB
+            以內（簽名檔不需要太大）。
+          </p>
+          <form id="sigForm" method="post" action="/payments/company-signature">
+            <input
+              type="file"
+              id="sigFileInput"
+              accept="image/*"
+              style="margin-bottom: 12px"
+            />
+            <input
+              type="hidden"
+              name="signatureImage"
+              id="signatureImageInput"
+            />
+            <div id="previewBox" style="display: none; margin-bottom: 12px">
+              <p
+                style="
+                  font-size: 12px;
+                  color: var(--brown-light);
+                  margin-bottom: 6px;
+                "
+              >
+                預覽：
+              </p>
+              <img
+                id="previewImg"
+                style="
+                  max-width: 100%;
+                  max-height: 160px;
+                  border: 1px solid var(--cream-300);
+                  border-radius: 8px;
+                  background: #fff;
+                  padding: 8px;
+                "
+              />
+            </div>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              id="submitBtn"
+              disabled
+            >
+              儲存簽名檔
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("sigFileInput");
+      const hiddenInput = document.getElementById("signatureImageInput");
+      const previewBox = document.getElementById("previewBox");
+      const previewImg = document.getElementById("previewImg");
+      const submitBtn = document.getElementById("submitBtn");
+
+      fileInput.addEventListener("change", function () {
+        const file = fileInput.files[0];
+        if (!file) return;
+        if (file.size > 800 * 1024) {
+          alert(
+            "檔案太大，請選擇 800KB 以內的圖片（簽名檔通常不需要太大的檔案）",
+          );
+          fileInput.value = "";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          hiddenInput.value = e.target.result;
+          previewImg.src = e.target.result;
+          previewBox.style.display = "block";
+          submitBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      });
+    </script>
+  </body>
+</html>

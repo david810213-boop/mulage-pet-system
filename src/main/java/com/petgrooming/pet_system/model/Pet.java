@@ -59,6 +59,49 @@ public class Pet {
     @Column(length = 500)
     private String notes;                                           // 注意事項
 
+    // ── 需求 19：定型化契約要求蒐集的寵物資料（皆選填）─────────────────
+    @Column(length = 10)
+    private String gender;              // 性別："公" / "母"
+
+    @Builder.Default
+    private Boolean isNeutered = false; // 是否絕育
+
+    @Builder.Default
+    @Column(name = "has_chip", nullable = false, columnDefinition = "boolean default false")
+    private boolean hasChip = false;    // 是否植入晶片
+
+    @Column(name = "chip_number", length = 50)
+    private String chipNumber;          // 晶片號碼（hasChip=true 才有意義；貓咪未辦登記可留空）
+
+    @Column(name = "personality_tags", length = 200)
+    private String personalityTags;     // 個性，逗號分隔（例如「親近人,容易緊張」）
+
+    @Column(name = "health_history", length = 300)
+    private String healthHistory;       // 病史，逗號分隔
+
+    @Column(name = "health_history_other", length = 200)
+    private String healthHistoryOther;  // 病史「其他」欄位對應的文字
+
+    @Builder.Default
+    @Column(name = "has_designated_vet", nullable = false, columnDefinition = "boolean default false")
+    private boolean hasDesignatedVet = false; // 是否有指定獸醫院
+
+    @Column(name = "designated_vet_name", length = 100)
+    private String designatedVetName;
+
+    @Column(name = "designated_vet_address", length = 200)
+    private String designatedVetAddress;
+
+    @Column(name = "designated_vet_phone", length = 20)
+    private String designatedVetPhone;
+
+    // ── 需求 17：寵物照片（Cloudinary 雲端圖床，存網址不存檔案本體）──────
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
+    @Column(name = "photo_public_id", length = 200)
+    private String photoPublicId; // Cloudinary 的 public_id，換照片時用來刪除舊圖
+
     // ── 關聯 ──────────────────────────────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

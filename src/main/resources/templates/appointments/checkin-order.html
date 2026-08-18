@@ -63,6 +63,7 @@
               >
                 <label
                   th:each="item : ${groomingItems}"
+                  th:if="${item.performanceCategory != 'OTHER'}"
                   style="
                     display: flex;
                     align-items: center;
@@ -79,6 +80,7 @@
                       type="checkbox"
                       name="itemCodes"
                       th:value="${item.itemCode}"
+                      th:class="${item.performanceCategory == 'SPECIAL'} ? 'special-trigger' : ''"
                       style="width: 16px; height: 16px; accent-color: var(--brown-dark);"
                     />
                     <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark)"></span>
@@ -86,7 +88,62 @@
                   <span th:text="'$' + ${item.price != null ? #numbers.formatDecimal(item.price, 1, 0) : '0'}" style="color: #2e7d32; font-weight: 600"></span>
                 </label>
               </div>
+
+              <!-- 需求 4：勾選「特殊項目」後才展開，其餘不計分的加購/調理項目預設收起 -->
+              <div id="otherItemsSection" style="display:none; margin-top: 14px;">
+                <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 8px;">
+                  ✨ 其他加購項目（不計入員工積分）
+                </p>
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                    gap: 10px;
+                    padding: 0.8rem;
+                    background-color: var(--cream-100);
+                    border: 1px dashed var(--cream-300);
+                    border-radius: 8px;
+                  "
+                >
+                  <label
+                    th:each="item : ${groomingItems}"
+                    th:if="${item.performanceCategory == 'OTHER'}"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      padding: 10px 14px;
+                      background-color: #ffffff;
+                      border: 1px solid var(--cream-200);
+                      border-radius: 6px;
+                      cursor: pointer;
+                    "
+                  >
+                    <span style="display:flex; align-items:center; gap:10px;">
+                      <input
+                        type="checkbox"
+                        name="itemCodes"
+                        th:value="${item.itemCode}"
+                        style="width: 16px; height: 16px; accent-color: var(--brown-dark);"
+                      />
+                      <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark)"></span>
+                    </span>
+                    <span th:text="'$' + ${item.price != null ? #numbers.formatDecimal(item.price, 1, 0) : '0'}" style="color: #2e7d32; font-weight: 600"></span>
+                  </label>
+                </div>
+              </div>
             </div>
+
+            <script>
+              // 需求 4：勾選「特殊項目」才展開其餘不計分的加購項目清單
+              document.querySelectorAll('.special-trigger').forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                  if (this.checked) {
+                    document.getElementById('otherItemsSection').style.display = 'block';
+                  }
+                });
+              });
+            </script>
 
             <div style="display: flex; gap: 12px">
               <button type="submit" class="btn btn-primary">確認開單，可開始服務</button>

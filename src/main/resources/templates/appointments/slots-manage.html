@@ -1,0 +1,413 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('時段管理 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2 style="margin: 0">🕐 預約時段管理</h2>
+          <a href="/appointments" class="btn">← 回預約管理</a>
+        </div>
+
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
+        <div
+          class="alert alert-error"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <form
+            method="get"
+            action="/appointments/slots-manage"
+            style="display: flex; gap: 12px; align-items: end"
+          >
+            <div class="field" style="margin: 0">
+              <label>選擇日期</label>
+              <input type="date" name="date" th:value="${date}" />
+            </div>
+            <button type="submit" class="btn btn-primary">查詢</button>
+            <a th:href="@{/appointments/slots-manage}" class="btn btn-outline"
+              >今天</a
+            >
+          </form>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 6px">🔁 固定公休星期</h3>
+          <p
+            style="
+              font-size: 12px;
+              color: var(--brown-light);
+              margin-bottom: 14px;
+            "
+          >
+            設定每週固定公休的星期幾（例如每週四、五），跟上面的「查詢日期」無關，設定後每一週對應的星期都會自動公休，
+            不用一天一天手動加。跟下方「單一天公休日」是兩套機制並存，兩者符合任一條件當天就會公休。
+          </p>
+          <form
+            method="post"
+            action="/appointments/slots-manage/weekly-closure"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 14px;
+              align-items: center;
+            "
+          >
+            <input type="hidden" name="date" th:value="${date}" />
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="monday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedMonday}"
+              />
+              週一
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="tuesday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedTuesday}"
+              />
+              週二
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="wednesday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedWednesday}"
+              />
+              週三
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="thursday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedThursday}"
+              />
+              週四
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="friday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedFriday}"
+              />
+              週五
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="saturday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedSaturday}"
+              />
+              週六
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                name="sunday"
+                value="true"
+                th:checked="${weeklyClosureSetting.closedSunday}"
+              />
+              週日
+            </label>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              style="padding: 4px 16px"
+            >
+              儲存
+            </button>
+          </form>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 6px">🚫 公休日設定</h3>
+          <p
+            style="
+              font-size: 12px;
+              color: var(--brown-light);
+              margin-bottom: 14px;
+            "
+          >
+            設定公休日後，當天所有時段自動不開放預約（LIFF
+            與店家後台代客預約皆會擋下），不影響其他日期的時段名額設定。
+          </p>
+
+          <div
+            th:if="${isClosedToday}"
+            class="alert alert-error"
+            style="margin-bottom: 12px"
+          >
+            <span th:text="${date}"></span> 目前已設定為公休日
+            <form
+              method="post"
+              action="/appointments/slots-manage/closed-date/remove"
+              style="display: inline; margin-left: 10px"
+            >
+              <input type="hidden" name="date" th:value="${date}" />
+              <button
+                type="submit"
+                class="btn btn-outline"
+                style="padding: 3px 10px; font-size: 12px"
+              >
+                取消公休
+              </button>
+            </form>
+          </div>
+          <form
+            th:unless="${isClosedToday}"
+            method="post"
+            action="/appointments/slots-manage/closed-date/add"
+            style="
+              display: flex;
+              gap: 12px;
+              align-items: end;
+              margin-bottom: 14px;
+            "
+          >
+            <input type="hidden" name="date" th:value="${date}" />
+            <div class="field" style="margin: 0; flex: 1">
+              <label>公休原因（選填）</label>
+              <input
+                type="text"
+                name="reason"
+                placeholder="例如：農曆春節、店休"
+                style="width: 100%"
+              />
+            </div>
+            <button
+              type="submit"
+              class="btn btn-outline"
+              style="color: #c62828; border-color: #c67a5c"
+            >
+              將 <span th:text="${date}"></span> 設為公休日
+            </button>
+          </form>
+
+          <div th:if="${!#lists.isEmpty(upcomingClosedDates)}">
+            <p
+              style="
+                font-size: 12px;
+                color: var(--brown-light);
+                margin-bottom: 6px;
+              "
+            >
+              近期公休日：
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>原因</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="cd : ${upcomingClosedDates}">
+                  <td th:text="${cd.date}"></td>
+                  <td th:text="${cd.reason} ?: '—'"></td>
+                  <td>
+                    <form
+                      method="post"
+                      action="/appointments/slots-manage/closed-date/remove"
+                      style="display: inline"
+                    >
+                      <input type="hidden" name="date" th:value="${cd.date}" />
+                      <button
+                        type="submit"
+                        class="btn btn-outline"
+                        style="padding: 3px 10px; font-size: 12px"
+                      >
+                        取消
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 15px; margin-bottom: 6px">
+            📅 <span th:text="${date}"></span>　各時段名額
+          </h3>
+          <p
+            style="
+              font-size: 12px;
+              color: var(--brown-light);
+              margin-bottom: 14px;
+            "
+          >
+            調整只影響「剩餘可預約名額」，已經預約成功的紀錄不受影響，即使把名額調得比已預約數還低也不會取消現有預約。
+            這裡的調整只針對這一天這個時段，不會套用到其他日期。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>時段</th>
+                <th>已預約</th>
+                <th>目前上限</th>
+                <th>剩餘名額</th>
+                <th>調整名額上限</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(slots) and isClosedToday}">
+                <td colspan="5" class="empty">
+                  當天為公休日，不顯示可調整時段（取消公休後才會恢復）
+                </td>
+              </tr>
+              <tr th:if="${#lists.isEmpty(slots) and !isClosedToday}">
+                <td colspan="5" class="empty">當天沒有可調整的時段</td>
+              </tr>
+              <tr th:each="s : ${slots}">
+                <td
+                  th:text="${#temporals.format(s.startTime, 'HH:mm')} + ' - ' + ${#temporals.format(s.endTime, 'HH:mm')}"
+                ></td>
+                <td th:text="${s.booked}"></td>
+                <td th:text="${s.capacity}"></td>
+                <td>
+                  <span
+                    th:if="${s.remaining > 0}"
+                    style="color: #2e7d32; font-weight: 700"
+                    th:text="${s.remaining}"
+                  ></span>
+                  <span
+                    th:if="${s.remaining == 0}"
+                    style="color: #c62828; font-weight: 700"
+                    >已額滿/已關閉</span
+                  >
+                </td>
+                <td>
+                  <form
+                    method="post"
+                    action="/appointments/slots-manage/update"
+                    style="display: flex; gap: 6px; align-items: center"
+                  >
+                    <input type="hidden" name="date" th:value="${date}" />
+                    <input
+                      type="hidden"
+                      name="time"
+                      th:value="${#temporals.format(s.startTime, 'HH:mm')}"
+                    />
+                    <input
+                      type="number"
+                      name="capacity"
+                      th:value="${s.capacity}"
+                      min="0"
+                      style="width: 70px; padding: 5px 6px"
+                    />
+                    <button
+                      type="submit"
+                      class="btn btn-outline"
+                      style="padding: 5px 12px; font-size: 12px"
+                    >
+                      儲存
+                    </button>
+                    <button
+                      type="submit"
+                      onclick="
+                        this.closest('form').querySelector(
+                          'input[name=capacity]',
+                        ).value = 0
+                      "
+                      class="btn btn-outline"
+                      style="
+                        padding: 5px 12px;
+                        font-size: 12px;
+                        color: #c62828;
+                        border-color: #c67a5c;
+                      "
+                    >
+                      關閉此時段
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

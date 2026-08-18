@@ -9,9 +9,12 @@ import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.AppointmentItemRepository;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,17 @@ public class PaymentService {
     private final PerformanceService performanceService;
     private final WalletService walletService;
     private final AppointmentService appointmentService;
+    private final AppointmentItemRepository appointmentItemRepository;
+    private final PerformanceRecordRepository performanceRecordRepository;
+    private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
+    private final CloudinaryService cloudinaryService; // 需求 21：匯款/儲值 QR Code 上傳
+    private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
+    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
+    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
+    private final com.petgrooming.pet_system.repository.WalkInOrderRepository walkInOrderRepository; // 需求 6
+    private final com.petgrooming.pet_system.repository.TopUpRequestRepository topUpRequestRepository; // 需求 6
+    private final com.petgrooming.pet_system.repository.RetailProductRepository retailProductRepository; // 需求 6
+    private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -71,8 +85,13 @@ public class PaymentService {
         }
 
         // 1e. 計算最終金額
+        // baseAmount 維持「帳面合計」（未打任何折扣的原始金額），呼應需求 5 已建立的
+        // 「帳面合計／實際扣款」透明化顯示慣例；實際折扣一律反映在 finalAmount。
         int baseAmount  = appointment.getTotalAmount();
-        int finalAmount = req.getPaymentMethod().calculateFinalAmount(baseAmount);
+        // 需求 8-1：貓咪距上次洗澡未滿 90 天再預約洗澡，洗澡項目結帳自動打 9 折
+        // （不限付款方式；跟需求 5 的儲值金會員折扣是兩套獨立規則，此為服務促銷、非付款方式優惠）
+        int finalAmount = req.getPaymentMethod()
+                .calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
 
         // 1e-1. 若選擇「儲值金」付款：
         //   - 僅限店家/員工於後台操作（顧客不可自行使用此付款方式）
@@ -83,7 +102,10 @@ public class PaymentService {
                 throw new IllegalArgumentException("儲值金結帳僅限店家/員工於後台操作");
             }
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
-            finalAmount = (int) Math.round(finalAmount * discount);
+            // 需求 5：改成逐項目判斷是否可享折扣，不再對整筆金額統一打折。
+            // 洗澡/剪毛/調理類項目打折，剪指甲/局部修剪/除廢毛等加購項目維持原價。
+            // 需求 8-1：貓咪回洗優惠與會員儲值折扣疊加計算（兩者是不同性質的折扣，疊加後再扣款）。
+            finalAmount = calculateWalletAmountPerItem(appointment, discount);
             walletService.deduct(appointment.getUser().getUsername(), finalAmount, appointment.getId());
         }
 
@@ -93,18 +115,28 @@ public class PaymentService {
                 : "員工：" + user.getName();
 
         // 1g. 建立交易紀錄
+        // 需求 10：選「匯款」時，訂單先進入「待對帳」狀態（paid=false），
+        // 要等店員另外按「確認收款」才算真正完成；其他付款方式維持原本立即完成的邏輯。
+        boolean isWireTransfer = req.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER;
+
         Transaction transaction = Transaction.builder()
                 .appointment(appointment)
                 .user(appointment.getUser())
                 .paymentMethod(req.getPaymentMethod())
                 .baseAmount(baseAmount)
                 .finalAmount(finalAmount)
-                .paid(true)
-                .paymentTime(LocalDateTime.now())
+                .paid(!isWireTransfer)
+                .paymentTime(isWireTransfer ? null : LocalDateTime.now())
                 .handledBy(handledBy)
                 .build();
 
         transactionRepository.save(transaction);
+
+        if (isWireTransfer) {
+            // 匯款：先不動預約的 paid/status，也先不發放績效積分，等確認收款後才處理
+            log.info("預約 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", appointment.getId());
+            return TransactionResponse.from(transaction);
+        }
 
         // 1h. 將預約標記為已付款，並把狀態轉為「已完成」（結帳＝整筆服務結束）
         appointment.setPaid(true);
@@ -114,6 +146,43 @@ public class PaymentService {
         // 1i. 自動建立績效紀錄（依預約選擇的服務項目 + 負責員工）
         autoCreatePerformanceRecords(appointment, user, isStaffOrAdmin);
 
+        return TransactionResponse.from(transaction);
+    }
+
+    // ── 1x-1. 確認匯款收款：店員核對銀行入帳後，訂單才正式轉為已完成 ──────
+    @Transactional
+    public TransactionResponse confirmWireTransferPayment(Long appointmentId, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可確認收款");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到此預約的交易紀錄"));
+
+        if (transaction.getPaymentMethod() != com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER) {
+            throw new IllegalArgumentException("此交易不是匯款付款，無需確認收款");
+        }
+        if (transaction.isPaid()) {
+            throw new IllegalArgumentException("此筆匯款已確認收款過，請勿重複操作");
+        }
+
+        transaction.setPaid(true);
+        transaction.setPaymentTime(LocalDateTime.now());
+        transactionRepository.save(transaction);
+
+        appointment.setPaid(true);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointmentRepository.save(appointment);
+
+        boolean isStaffOrAdmin = true; // 確認收款一定是店家/員工操作
+        autoCreatePerformanceRecords(appointment, staff, isStaffOrAdmin);
+
+        log.info("預約 #{} 匯款收款已確認，操作人：{}", appointmentId, username);
         return TransactionResponse.from(transaction);
     }
 
@@ -165,26 +234,77 @@ public class PaymentService {
             }
         }
 
-        // 自動補一筆「完成」積分（整筆預約完成，記入結帳經手人的「完成確認」）
-        User completeStaff = appointment.getStaff();
-        if (completeStaff == null && isStaffOrAdmin) {
-            completeStaff = checkoutUser;
-        }
-        if (completeStaff == null) {
-            log.warn("預約 #{} 無法判斷經手人，跳過「完成」積分", appointment.getId());
-            return;
-        }
-        performanceService.addRecord(
-                completeStaff.getId(),
-                appointment.getId(),
-                PerformanceCategory.COMPLETE,
-                PerformanceCategory.COMPLETE.getDefaultPoints(),
-                appointment.getDate(),
-                "預約 #" + appointment.getId() + " 完成"
-        );
+        // 「完成」積分現在改由「結束服務」步驟發放（見 AppointmentService.endService），
+        // 結帳這裡不再重複發放，避免同一筆預約算兩次完成積分。
 
-        log.info("預約 #{} 結帳後自動建立績效紀錄（經手人：{}）",
-                appointment.getId(), completeStaff.getName());
+        log.info("預約 #{} 結帳後自動建立績效紀錄", appointment.getId());
+    }
+
+    // ── 1x. 退款：僅限「已結帳」的預約 ────────────────────────────────────
+    // 退款後預約回到「已確認」狀態、清空現場開單/服務進度，讓店家可以重新
+    // 開單重新結帳（例如漏 key 項目需要重開）。
+    //   - 若原本用儲值金付款，金額自動退回會員儲值餘額
+    //   - 已經記給員工的積分（接進/完成/接出/服務項目）全部一併刪除
+    //   - 管理員與員工皆可操作
+    @Transactional
+    public void refund(Long appointmentId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+        if (!user.isStaffOrAdmin()) {
+            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作退款");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+
+        if (!appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約尚未結帳，無法退款");
+        }
+
+        Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到此預約的交易紀錄"));
+
+        // 1. 若原本用儲值金付款，退回儲值餘額
+        if (transaction.getPaymentMethod() == PaymentMethod.WALLET) {
+            walletService.refund(
+                    appointment.getUser().getUsername(),
+                    transaction.getFinalAmount(),
+                    appointmentId,
+                    "預約 #" + appointmentId + " 退款");
+        }
+
+        // 2. 刪除這筆預約已經記過的所有績效積分（接進/完成/接出/服務項目）
+        List<com.petgrooming.pet_system.model.PerformanceRecord> records =
+                performanceRecordRepository.findByAppointmentId(appointmentId);
+        if (!records.isEmpty()) {
+            performanceRecordRepository.deleteAll(records);
+        }
+
+        // 3. 刪除現場開單（依預約編號）已勾選的服務項目，讓店家可以重新開單
+        List<com.petgrooming.pet_system.model.AppointmentItem> items =
+                appointmentItemRepository.findByAppointmentId(appointmentId);
+        if (!items.isEmpty()) {
+            appointmentItemRepository.deleteAll(items);
+        }
+
+        // 4. 刪除交易紀錄（checkout() 會擋「已有交易紀錄」，必須刪掉才能重新結帳）
+        transactionRepository.delete(transaction);
+
+        // 5. 預約狀態回到「已確認」，清空核對／結束服務／現場開單的進度旗標
+        appointment.setPaid(false);
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setCheckinOrderConfirmed(false);
+        appointment.setServiceEndedDone(false);
+        appointment.setServiceEndedStaff(null);
+        appointment.setServiceEndedAt(null);
+        appointment.setFinalCheckDone(false);
+        appointment.setFinalCheckStaff(null);
+        appointment.setFinalCheckNote(null);
+        appointment.setFinalCheckSignatureImage(null);
+        appointment.setFinalCheckAt(null);
+        appointmentRepository.save(appointment);
+
+        log.info("預約 #{} 已退款，操作人：{}", appointmentId, username);
     }
 
     // ── 2. 查詢自己的交易紀錄 ──────────────────────────────────────────────
@@ -200,16 +320,245 @@ public class PaymentService {
     }
 
     // ── 4. 財務報告（ADMIN）────────────────────────────────────────────────
+    // ── 需求 6：財務報表 ─────────────────────────────────────────────────
+    // 業績定義：只算「結帳完成」（Transaction / WalkInOrder，paid=true），
+    // 儲值本身不算業績（那是預收款，另外用 topupCollected 呈現）。
     public FinancialReportResponse getFinancialReport() {
-        List<Transaction> all = transactionRepository.findAll();
-        List<TransactionResponse> details = all.stream()
-                .map(TransactionResponse::from).toList();
+        LocalDateTime now = LocalDateTime.now();
+        java.time.LocalDate today = now.toLocalDate();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
 
-        int paidCount  = (int) all.stream().filter(Transaction::isPaid).count();
-        double revenue = transactionRepository.calculateTotalRevenue();
-        double average = paidCount > 0 ? revenue / paidCount : 0;
+        List<Transaction> paidTransactions = transactionRepository.findByPaidTrue();
+        List<com.petgrooming.pet_system.model.WalkInOrder> paidWalkInOrders =
+                walkInOrderRepository.findAll().stream()
+                        .filter(com.petgrooming.pet_system.model.WalkInOrder::isPaid)
+                        .toList();
 
-        return new FinancialReportResponse(
-                LocalDateTime.now(), all.size(), paidCount, revenue, average, details);
+        List<FinancialReportResponse.RevenueDetailLine> allLines = new java.util.ArrayList<>();
+
+        for (Transaction t : paidTransactions) {
+            if (t.getPaymentTime() == null) continue; // 防呆：理論上 paid=true 一定有付款時間
+            allLines.add(new FinancialReportResponse.RevenueDetailLine(
+                    "預約結帳",
+                    t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—",
+                    t.getPaymentTime(),
+                    t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—",
+                    t.getPaymentMethod() == PaymentMethod.WALLET,
+                    t.getFinalAmount(),
+                    t.getHandledBy()));
+        }
+        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+            if (w.getPaymentTime() == null) continue;
+            int amount = w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount();
+            allLines.add(new FinancialReportResponse.RevenueDetailLine(
+                    "現場開單",
+                    "現場單#" + w.getId(),
+                    w.getPaymentTime(),
+                    w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—",
+                    w.getPaymentMethod() == PaymentMethod.WALLET,
+                    amount,
+                    w.getCreatedBy()));
+        }
+        allLines.sort((a, b) -> b.getPaymentTime().compareTo(a.getPaymentTime()));
+
+        // ── 當日 / 當月彙總 ──────────────────────────────────────────────
+        int todayTotal = 0, todayWallet = 0, todayNonWallet = 0, todayCount = 0;
+        int monthTotal = 0, monthWallet = 0, monthNonWallet = 0, monthCount = 0;
+
+        for (FinancialReportResponse.RevenueDetailLine line : allLines) {
+            boolean inMonth = !line.getPaymentTime().isBefore(monthStart);
+            boolean inToday = !line.getPaymentTime().isBefore(todayStart);
+
+            if (inMonth) {
+                monthTotal += line.getAmount();
+                monthCount++;
+                if (line.isWalletPayment()) monthWallet += line.getAmount();
+                else monthNonWallet += line.getAmount();
+            }
+            if (inToday) {
+                todayTotal += line.getAmount();
+                todayCount++;
+                if (line.isWalletPayment()) todayWallet += line.getAmount();
+                else todayNonWallet += line.getAmount();
+            }
+        }
+
+        // ── 儲值總額（預收款，不計入業績，僅供參考）──────────────────────────
+        // 用「核帳確認時間」（reviewedAt）判斷屬於哪一天/哪個月，不是用顧客送出申請的時間，
+        // 因為錢真正入帳的時間點是店家核帳確認那一刻，不是顧客填表單那一刻。
+        List<com.petgrooming.pet_system.model.TopUpRequest> confirmedTopups =
+                topUpRequestRepository.findByStatusOrderByCreatedAtAsc(
+                        com.petgrooming.pet_system.enums.TopUpStatus.CONFIRMED);
+        int todayTopup = 0, monthTopup = 0;
+        for (var tu : confirmedTopups) {
+            if (tu.getReviewedAt() == null) continue;
+            if (!tu.getReviewedAt().isBefore(monthStart)) monthTopup += tu.getAmount();
+            if (!tu.getReviewedAt().isBefore(todayStart)) todayTopup += tu.getAmount();
+        }
+
+        // ── 成本（需求 7 庫存資料帶入，當月）─────────────────────────────────
+        // 零售商品成本：用「目前」進貨單價回推本月賣出的數量 × 單價（近似值，
+        // 因為 WalkInOrderItem 賣出當下沒有存成本快照，只存了售價）。
+        int monthRetailCost = 0;
+        var retailProducts = retailProductRepository.findAll();
+        java.util.Map<Long, Integer> retailUnitCostById = new java.util.HashMap<>();
+        for (var p : retailProducts) retailUnitCostById.put(p.getId(), p.getUnitCost());
+        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+            if (w.getPaymentTime() == null || w.getPaymentTime().isBefore(monthStart)) continue;
+            for (var item : w.getItems()) {
+                if (item.getRetailProductId() == null) continue;
+                Integer unitCost = retailUnitCostById.get(item.getRetailProductId());
+                if (unitCost != null) monthRetailCost += unitCost;
+            }
+        }
+
+        // 店用洗劑成本：有逐筆單價快照，精確加總本月領用紀錄
+        List<com.petgrooming.pet_system.model.SupplyUsageRecord> monthUsages =
+                supplyUsageRecordRepository.findByUsedAtBetween(monthStart, now);
+        int monthSupplyCost = monthUsages.stream()
+                .mapToInt(u -> u.getUnitCostSnapshot() * u.getQuantity())
+                .sum();
+
+        int monthTotalCost = monthRetailCost + monthSupplyCost;
+
+        FinancialReportResponse report = new FinancialReportResponse();
+        report.setGeneratedAt(now);
+        report.setTodayRevenueTotal(todayTotal);
+        report.setTodayRevenueWallet(todayWallet);
+        report.setTodayRevenueNonWallet(todayNonWallet);
+        report.setTodayOrderCount(todayCount);
+        report.setTodayTopupCollected(todayTopup);
+        report.setMonthRevenueTotal(monthTotal);
+        report.setMonthRevenueWallet(monthWallet);
+        report.setMonthRevenueNonWallet(monthNonWallet);
+        report.setMonthOrderCount(monthCount);
+        report.setMonthTopupCollected(monthTopup);
+        report.setMonthRetailCostEstimate(monthRetailCost);
+        report.setMonthSupplyCost(monthSupplyCost);
+        report.setMonthTotalCost(monthTotalCost);
+        report.setMonthEstimatedProfit(monthTotal - monthTotalCost);
+        report.setDetails(allLines);
+        return report;
+    }
+
+    // ── 店家匯款帳號資訊（依用途分開：結帳收款 / 儲值金收款大額專用）────
+    // 需求（追加）：LIFF 儲值金常有大額匯款，跟現場結帳的日常小額收款要分開帳戶方便對帳。
+    public com.petgrooming.pet_system.model.BankAccountInfo getBankAccountInfo(
+            com.petgrooming.pet_system.enums.BankAccountPurpose purpose) {
+        return bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder()
+                        .purpose(purpose)
+                        .bankName("尚未設定").accountNumber("尚未設定").accountHolder("尚未設定").build());
+    }
+
+    @Transactional
+    public void updateBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+                                      String bankName, String accountNumber, String accountHolder) {
+        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().purpose(purpose).build());
+        info.setBankName(bankName);
+        info.setAccountNumber(accountNumber);
+        info.setAccountHolder(accountHolder);
+        bankAccountInfoRepository.save(info);
+    }
+
+    // ── 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立一張）──────────
+    @Transactional
+    public void updateBankAccountQrCode(com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+                                        org.springframework.web.multipart.MultipartFile file) {
+        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().purpose(purpose).build());
+
+        CloudinaryService.UploadResult result = cloudinaryService.upload(file, "bank-account");
+
+        String oldPublicId = info.getQrCodePublicId();
+        info.setQrCodeUrl(result.url());
+        info.setQrCodePublicId(result.publicId());
+        bankAccountInfoRepository.save(info);
+
+        cloudinaryService.deleteQuietly(oldPublicId);
+    }
+
+    // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────
+    // 優先用現場開單（依預約編號）的實際項目；沒有的話退回顧客線上勾選的項目。
+    // 需求 8-1 修正：回洗優惠與會員折扣只能擇一（取較優惠者），不再疊加相乘。
+    private int calculateWalletAmountPerItem(Appointment appointment, double discount) {
+        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
+                appointmentItemRepository.findByAppointmentId(appointment.getId());
+
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
+
+        double total = 0;
+        if (!checkinItems.isEmpty()) {
+            for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
+                boolean memberEligible = item.getGroomingItemId() != null
+                        && groomingItemRepository.findById(item.getGroomingItemId())
+                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                .orElse(true);
+                boolean rewashApplicable = rewashEligible
+                        && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
+                total += catRewashDiscountService.resolvePreferredDiscount(
+                        item.getPrice(), rewashApplicable, memberEligible, discount).price();
+            }
+        } else {
+            for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
+                double price = item.getPrice() != null ? item.getPrice() : 0;
+                boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(item);
+                total += catRewashDiscountService.resolvePreferredDiscount(
+                        price, rewashApplicable, item.isDiscountEligible(), discount).price();
+            }
+        }
+        return (int) Math.round(total);
+    }
+
+    // ── 需求 8-1：非儲值金付款的一般結帳金額計算，套用貓咪 90 天回洗優惠 ──
+    // 邏輯與 calculateWalletAmountPerItem 同樣優先用現場開單項目，但沒有會員等級折扣，
+    // 只套用回洗優惠（不符合資格的話金額等同原本的 appointment.getTotalAmount()）。
+    private int calculateAmountWithRewashDiscount(Appointment appointment) {
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment);
+        if (!rewashEligible) {
+            return appointment.getTotalAmount();
+        }
+
+        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
+                appointmentItemRepository.findByAppointmentId(appointment.getId());
+
+        double total = 0;
+        if (!checkinItems.isEmpty()) {
+            for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
+                double price = item.getPrice();
+                if (catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+                    price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+                }
+                total += price;
+            }
+        } else {
+            for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
+                double price = item.getPrice() != null ? item.getPrice() : 0;
+                if (catRewashDiscountService.isCatBathItem(item)) {
+                    price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+                }
+                total += price;
+            }
+        }
+        return (int) Math.round(total);
+    }
+
+    // ── 需求 22：乙方（店家）固定電子簽名檔，顯示在顧客端契約最下方 ──────
+    public String getCompanySignatureImage() {
+        return companySignatureRepository.findAll().stream()
+                .findFirst()
+                .map(com.petgrooming.pet_system.model.CompanySignature::getSignatureImage)
+                .orElse(null);
+    }
+
+    @Transactional
+    public void updateCompanySignature(String base64Image) {
+        com.petgrooming.pet_system.model.CompanySignature sig = companySignatureRepository.findAll()
+                .stream().findFirst()
+                .orElse(com.petgrooming.pet_system.model.CompanySignature.builder().build());
+        sig.setSignatureImage(base64Image);
+        companySignatureRepository.save(sig);
     }
 }

@@ -2,12 +2,15 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
+import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
+import com.petgrooming.pet_system.service.SlotCapacityService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
@@ -33,6 +36,10 @@ public class AppointmentMvcController {
     private final GroomingService groomingItemService;
     private final UserService userService;
     private final PetService petService;
+    private final OperationLogService operationLogService;
+    private final SlotCapacityService slotCapacityService;
+    private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16：公休日設定
+    private final com.petgrooming.pet_system.service.PaymentService paymentService;
 
     /**
      * JWT 版獲取當前登入使用者
@@ -149,6 +156,7 @@ public class AppointmentMvcController {
         User user = getLoginUser(request);
         try {
             appointmentService.confirm(id, confirmedTime, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CONFIRM", "預約 #" + id, null);
             redirectAttributes.addFlashAttribute("successMsg", "已確認預約");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "確認失敗：" + e.getMessage());
@@ -204,6 +212,8 @@ public class AppointmentMvcController {
         User user = getLoginUser(request);
         try {
             appointmentService.confirmCheckinOrder(id, itemCodes, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
+                    itemCodes != null ? String.join("、", itemCodes) : null);
             redirectAttributes.addFlashAttribute("successMsg", "已依現場情況開立服務項目，現在可以開始服務");
             return "redirect:/appointments?status=CONFIRMED";
         } catch (IllegalArgumentException e) {
@@ -218,12 +228,44 @@ public class AppointmentMvcController {
     @PostMapping("/checkin-items/{itemId}/operator")
     public String fillCheckinItemOperator(@PathVariable Long itemId,
                                           @RequestParam Long staffId,
+                                          HttpServletRequest request,
                                           RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
         try {
             appointmentService.fillItemOperator(itemId, staffId);
+            operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
+                    "項目 #" + itemId, "指定經手人 #" + staffId);
             redirectAttributes.addFlashAttribute("successMsg", "已補填經手人");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "補填失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders";
+    }
+
+    // ── POST /appointments/checkin-items/operator/batch ──────────────────
+    // 需求 11：批次補填經手人（依預約編號現場開單這邊的待補清單）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/checkin-items/operator/batch")
+    public String fillCheckinItemOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
+                                               @RequestParam("staffIds") List<String> staffIds,
+                                               HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        int filled = 0;
+        for (int i = 0; i < itemIds.size(); i++) {
+            String staffIdStr = i < staffIds.size() ? staffIds.get(i) : null;
+            if (staffIdStr == null || staffIdStr.isBlank()) continue;
+            try {
+                Long staffId = Long.valueOf(staffIdStr);
+                appointmentService.fillItemOperator(itemIds.get(i), staffId);
+                operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
+                        "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
+                filled++;
+            } catch (Exception e) {
+                ra.addFlashAttribute("errorMsg", "項目 #" + itemIds.get(i) + " 補填失敗：" + e.getMessage());
+            }
+        }
+        if (filled > 0) {
+            ra.addFlashAttribute("successMsg", "已一次性補填 " + filled + " 筆經手人");
         }
         return "redirect:/admin/walk-in-orders";
     }
@@ -237,7 +279,25 @@ public class AppointmentMvcController {
         User user = getLoginUser(request);
         try {
             appointmentService.startProgress(id, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "START", "預約 #" + id, null);
             redirectAttributes.addFlashAttribute("successMsg", "已開始服務，狀態轉為進行中");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", "操作失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments?status=IN_PROGRESS";
+    }
+
+    // ── POST /appointments/{id}/end-service ───────────────────────────────
+    // 服務項目全部做完，通知家長來店接寵物；狀態維持進行中，之後才能核對
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/end-service")
+    public String endService(@PathVariable Long id, HttpServletRequest request,
+                             RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        try {
+            appointmentService.endService(id, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "END_SERVICE", "預約 #" + id, null);
+            redirectAttributes.addFlashAttribute("successMsg", "已結束服務，已通知家長來店接寵物");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "操作失敗：" + e.getMessage());
         }
@@ -286,6 +346,7 @@ public class AppointmentMvcController {
 
         try {
             appointmentService.finalCheck(id, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "FINAL_CHECK", "預約 #" + id, req.getNote());
             redirectAttributes.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
             return "redirect:/appointments?status=IN_PROGRESS";
         } catch (IllegalArgumentException e) {
@@ -311,6 +372,7 @@ public class AppointmentMvcController {
             var req = new com.petgrooming.pet_system.dto.CancelAppointmentRequest();
             req.setReason(reason);
             appointmentService.cancel(id, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CANCEL", "預約 #" + id, reason);
             redirectAttributes.addFlashAttribute("successMsg", "預約已取消");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", "取消失敗：" + e.getMessage());
@@ -321,18 +383,45 @@ public class AppointmentMvcController {
     // ── GET /appointments/new ──────────────────────────────────────────────
     // 💡 作用：開啟預約表單。同樣只需登入，不限制特定角色。
     @GetMapping("/new")
-    public String newForm(HttpServletRequest request, Model model) {
+    public String newForm(HttpServletRequest request, Model model,
+                          @RequestParam(required = false) String forUsername) {
         User user = getLoginUser(request);
 
+        // 需求 20：店家/員工可代客建立預約——forUsername 有帶值時，
+        // 幫「那個會員」查寵物清單，而不是查登入者自己的寵物。
+        String targetUsername = user.getUsername();
+        com.petgrooming.pet_system.model.User targetUser = user;
+        if (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) {
+            try {
+                targetUser = userService.getUserEntityByUsername(forUsername);
+                targetUsername = targetUser.getUsername();
+            } catch (IllegalArgumentException e) {
+                return "redirect:/appointments/select-member";
+            }
+        }
+
         // 改用 PetResponse，前端才能讀到 sizeCategory、recommendedItemCodes
-        List<PetResponse> myPets = petService.getMyPets(user.getUsername());
+        List<PetResponse> myPets = petService.getMyPets(targetUsername);
         List<GroomingItemResponse> availableServices = groomingItemService.getAllItems();
 
         model.addAttribute("user", user);
         model.addAttribute("myPets", myPets);
         model.addAttribute("appointmentRequest", new AppointmentRequest());
         model.addAttribute("groomingItems", availableServices);
+        model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+        // 代客建立時，畫面要顯示「正在為誰建立」，送出時也要帶著這個值
+        model.addAttribute("forUsername", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUsername : null);
+        model.addAttribute("targetMemberName", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUser.getName() : null);
         return "appointments/form";
+    }
+
+    // ── GET /appointments/select-member ──────────────────────────────────
+    // 需求 20：店家代客建立預約——先搜尋/選定要幫哪位會員預約
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/select-member")
+    public String selectMemberForm(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        return "appointments/select-member";
     }
 
     // ── GET /appointments/slots ────────────────────────────────────────────
@@ -353,16 +442,34 @@ public class AppointmentMvcController {
     @PostMapping("/submit")
     public String submit(@Valid @ModelAttribute AppointmentRequest req,
                          BindingResult bindingResult,
+                         @RequestParam(required = false) String forUsername,
                          HttpServletRequest request,
                          RedirectAttributes redirectAttributes,
                          Model model) {
 
         User user = getLoginUser(request);
 
+        // 需求 20：代客建立時，實際預約要歸屬到目標會員，不是登入的店家帳號
+        String bookingUsername = user.getUsername();
+        String targetMemberName = null;
+        if (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) {
+            try {
+                var targetUser = userService.getUserEntityByUsername(forUsername);
+                bookingUsername = targetUser.getUsername();
+                targetMemberName = targetUser.getName();
+            } catch (IllegalArgumentException e) {
+                model.addAttribute("errorMsg", "找不到指定的會員");
+                return "redirect:/appointments/select-member";
+            }
+        }
+
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
-            model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
+            model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("forUsername", forUsername);
+            model.addAttribute("targetMemberName", targetMemberName);
             String firstError = bindingResult.getAllErrors().stream()
                     .findFirst()
                     .map(e -> e.getDefaultMessage())
@@ -372,14 +479,21 @@ public class AppointmentMvcController {
         }
 
         try {
-            appointmentService.book(req, user.getUsername());
-            redirectAttributes.addFlashAttribute("successMsg", "預約成功！");
+            AppointmentResponse res = appointmentService.book(req, bookingUsername);
+            operationLogService.log(user, "APPOINTMENT", "BOOK",
+                    "預約 " + res.getAppointmentCode(),
+                    targetMemberName != null ? "代客建立（" + targetMemberName + "）：" + res.getPetName() : res.getPetName());
+            redirectAttributes.addFlashAttribute("successMsg",
+                    targetMemberName != null ? "已為 " + targetMemberName + " 建立預約成功！" : "預約成功！");
             return "redirect:/appointments";
 
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
-            model.addAttribute("myPets", petService.getMyPets(user.getUsername()));
+            model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("forUsername", forUsername);
+            model.addAttribute("targetMemberName", targetMemberName);
             model.addAttribute("errorMsg", e.getMessage());
             return "appointments/form";
         }
@@ -392,5 +506,100 @@ public class AppointmentMvcController {
     public String adminDashboard(Model model) {
         // 這裡不需要再撈 user 來檢查了，因為警衛（RoleInterceptor）已經幫你嚴格把關！
         return "appointments/admin_dashboard";
+    }
+
+    // ── GET /appointments/slots-manage ───────────────────────────────────
+    // 需求 1：時段開關管理——查看某一天每個時段的名額上限/已預約數，
+    // 可手動調整上限或直接關閉（設為 0），只影響剩餘名額，不影響已預約紀錄。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/slots-manage")
+    public String slotsManage(HttpServletRequest request, Model model,
+                              @RequestParam(required = false)
+                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        if (date == null) date = LocalDate.now();
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("date", date);
+        model.addAttribute("slots", appointmentService.getAvailableSlots(date));
+        // 需求 16：公休日設定
+        model.addAttribute("isClosedToday", closedDateService.isClosed(date));
+        model.addAttribute("upcomingClosedDates", closedDateService.listUpcoming());
+        model.addAttribute("weeklyClosureSetting", closedDateService.getWeeklyClosureSetting());
+        return "appointments/slots-manage";
+    }
+
+    // ── POST /appointments/slots-manage/weekly-closure ─────────────────────
+    // 固定公休星期：設定每週固定哪幾天公休（跟單一天公休日的 ClosedDate 是兩套機制並存）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/weekly-closure")
+    public String updateWeeklyClosure(HttpServletRequest request,
+                                      @RequestParam(defaultValue = "false") boolean monday,
+                                      @RequestParam(defaultValue = "false") boolean tuesday,
+                                      @RequestParam(defaultValue = "false") boolean wednesday,
+                                      @RequestParam(defaultValue = "false") boolean thursday,
+                                      @RequestParam(defaultValue = "false") boolean friday,
+                                      @RequestParam(defaultValue = "false") boolean saturday,
+                                      @RequestParam(defaultValue = "false") boolean sunday,
+                                      @RequestParam(required = false)
+                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                      RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        closedDateService.updateWeeklyClosureSetting(monday, tuesday, wednesday, thursday, friday, saturday, sunday);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_WEEKLY_CLOSURE", "固定公休星期設定", null);
+        ra.addFlashAttribute("successMsg", "固定公休星期已更新");
+        return "redirect:/appointments/slots-manage" + (date != null ? "?date=" + date : "");
+    }
+
+    // ── POST /appointments/slots-manage/closed-date/add ───────────────────
+    // 需求 16：將指定日期設為公休日，當天所有時段自動不開放預約
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/closed-date/add")
+    public String addClosedDate(HttpServletRequest request,
+                                @RequestParam
+                                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                @RequestParam(required = false) String reason,
+                                RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        closedDateService.setClosed(date, reason);
+        operationLogService.log(user, "APPOINTMENT", "SET_CLOSED_DATE",
+                date.toString(), reason == null || reason.isBlank() ? "公休" : reason);
+        ra.addFlashAttribute("successMsg", date + " 已設定為公休日");
+        return "redirect:/appointments/slots-manage?date=" + date;
+    }
+
+    // ── POST /appointments/slots-manage/closed-date/remove ────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/closed-date/remove")
+    public String removeClosedDate(HttpServletRequest request,
+                                   @RequestParam
+                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                   RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        closedDateService.removeClosed(date);
+        operationLogService.log(user, "APPOINTMENT", "UNSET_CLOSED_DATE", date.toString(), "取消公休");
+        ra.addFlashAttribute("successMsg", date + " 已取消公休設定");
+        return "redirect:/appointments/slots-manage?date=" + date;
+    }
+
+    // ── POST /appointments/slots-manage/update ───────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/update")
+    public String updateSlotCapacity(HttpServletRequest request,
+                                     @RequestParam
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                     @RequestParam
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
+                                     @RequestParam int capacity,
+                                     RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            slotCapacityService.setCapacity(date, time, capacity);
+            operationLogService.log(user, "APPOINTMENT", "SET_SLOT_CAPACITY",
+                    date + " " + time, "調整為 " + capacity + " 位");
+            ra.addFlashAttribute("successMsg",
+                    date + " " + time + " 時段名額已調整為 " + capacity + " 位");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "調整失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments/slots-manage?date=" + date;
     }
 }

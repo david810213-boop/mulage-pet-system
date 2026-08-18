@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.LineLoginResponse;
 import com.petgrooming.pet_system.dto.LineVerifyResponse;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.JwtUtils;
 import jakarta.servlet.http.Cookie;
@@ -45,6 +46,12 @@ public class LineAuthController {
     private final UserService userService;
     private final JwtUtils jwtUtils;
     private final RestClient restClient = RestClient.create();
+    private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.LineBindService lineBindService; // 店員綁定 LINE 用
+
+    // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
+    @Value("${COOKIE_SECURE:false}")
+    private boolean cookieSecure;
 
     @Value("${line.channel-id}")
     private String channelId;
@@ -77,9 +84,13 @@ public class LineAuthController {
         // 4. 簽發本系統的 JWT（標記 source=LINE）
         String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "LINE");
 
+        operationLogService.log(user, "AUTH", isNewMember ? "LINE_REGISTER" : "LINE_LOGIN",
+                user.getUsername(), null);
+
         // 5. 同時寫入 Cookie，方便之後若有需要轉跳一般網頁版時沿用登入狀態
         Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
         jwtCookie.setHttpOnly(true);
+        jwtCookie.setSecure(cookieSecure); // 只在 HTTPS 連線下傳送（由 COOKIE_SECURE 環境變數控制）
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(86400);
         response.addCookie(jwtCookie);
@@ -99,5 +110,40 @@ public class LineAuthController {
                 .body(form)
                 .retrieve()
                 .body(LineVerifyResponse.class);
+    }
+
+    // ── POST /api/line/bind ──────────────────────────────────────────────
+    // 店員/店家綁定 LINE：手機上開啟綁定用的 LIFF 頁面，輸入從後台拿到的 6 位數驗證碼，
+    // 驗證通過就把這支手機的 LINE userId 寫進對應店員帳號，讓低庫存等通知發得到。
+    @PostMapping("/bind")
+    public ResponseEntity<?> bind(@RequestBody java.util.Map<String, String> body) {
+        String idToken = body.get("idToken");
+        String code = body.get("code");
+        if (idToken == null || idToken.isBlank() || code == null || code.isBlank()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "請提供驗證碼"));
+        }
+
+        LineVerifyResponse verified;
+        try {
+            verified = verifyIdToken(idToken);
+        } catch (RestClientResponseException e) {
+            log.warn("LINE idToken 驗證失敗（綁定流程）: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("message", "LINE 登入驗證失敗，請重新開啟頁面再試一次"));
+        }
+        if (!channelId.equals(verified.getAud())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("message", "idToken 不屬於本系統"));
+        }
+
+        try {
+            User bound = lineBindService.bindByCode(code, verified.getSub());
+            operationLogService.logByUsername(bound.getUsername(), "AUTH", "BIND_LINE", bound.getUsername(), null);
+            return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
+        } catch (IllegalArgumentException e) {
+            // 需求（追加）：跟成功回應一樣統一回 JSON（不要跟別的端點一個回純文字一個回 JSON，
+            // 這種不一致是這次「錯誤訊息被吞掉」問題的根源）
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 }

@@ -312,8 +312,8 @@
                 <th style="padding: 12px 16px; font-weight: 600; width: 100px">
                   目前價格
                 </th>
-                <th style="padding: 12px 16px; font-weight: 600; width: 220px">
-                  快速調整金額
+                <th style="padding: 12px 16px; font-weight: 600; width: 340px">
+                  編輯（名稱／說明／金額）
                 </th>
                 <th
                   style="
@@ -372,48 +372,73 @@
                 ></td>
 
                 <td style="padding: 8px 16px">
+                  <!-- 需求 14：改成完整可編輯名稱／描述／金額，不再是只能調金額；
+                       項目代碼不放進這個表單，從畫面上就沒有能改代碼的欄位（唯讀保護）。 -->
                   <form
                     th:action="@{/admin/grooming/update/{id}(id=${item.id})}"
                     method="post"
                     style="
                       display: flex;
-                      gap: 8px;
-                      align-items: center;
+                      flex-direction: column;
+                      gap: 6px;
                       margin: 0;
                     "
                   >
-                    <input type="hidden" name="name" th:value="${item.name}" />
                     <input
-                      type="hidden"
-                      name="description"
-                      th:value="${item.description}"
-                    />
-
-                    <input
-                      type="number"
-                      name="price"
-                      th:value="${item.price}"
+                      type="text"
+                      name="name"
+                      th:value="${item.name}"
+                      placeholder="項目名稱"
                       required
-                      min="1"
                       style="
-                        width: 90px;
+                        width: 100%;
                         padding: 4px 8px;
                         font-size: 13px;
                         border: 1px solid var(--cream-300);
                         border-radius: 4px;
                       "
                     />
-                    <button
-                      type="submit"
-                      class="btn btn-outline"
+                    <input
+                      type="text"
+                      name="description"
+                      th:value="${item.description}"
+                      placeholder="說明描述（選填）"
                       style="
-                        padding: 4px 10px;
-                        font-size: 12px;
-                        white-space: nowrap;
+                        width: 100%;
+                        padding: 4px 8px;
+                        font-size: 13px;
+                        border: 1px solid var(--cream-300);
+                        border-radius: 4px;
                       "
-                    >
-                      儲存價格
-                    </button>
+                    />
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <input
+                        type="number"
+                        name="price"
+                        th:value="${item.price}"
+                        required
+                        min="1"
+                        style="
+                          width: 90px;
+                          padding: 4px 8px;
+                          font-size: 13px;
+                          border: 1px solid var(--cream-300);
+                          border-radius: 4px;
+                        "
+                      />
+                      <input type="hidden" name="bookable" th:value="${item.bookable}" />
+                      <button
+                        type="submit"
+                        class="btn btn-outline"
+                        style="
+                          padding: 4px 10px;
+                          font-size: 12px;
+                          white-space: nowrap;
+                        "
+                      >
+                        儲存修改
+                      </button>
+                    </div>
                   </form>
                 </td>
 

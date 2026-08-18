@@ -20,6 +20,8 @@ public class PetService {
 
     private final PetRepository petRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
+    private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -44,6 +46,18 @@ public class PetService {
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
                 .owner(user)
+                // 需求 19：定型化契約要求蒐集的資料（皆選填）
+                .gender(req.getGender())
+                .isNeutered(req.getIsNeutered() != null && req.getIsNeutered())
+                .hasChip(req.getHasChip() != null && req.getHasChip())
+                .chipNumber(req.getChipNumber())
+                .personalityTags(req.getPersonalityTags())
+                .healthHistory(req.getHealthHistory())
+                .healthHistoryOther(req.getHealthHistoryOther())
+                .hasDesignatedVet(req.getHasDesignatedVet() != null && req.getHasDesignatedVet())
+                .designatedVetName(req.getDesignatedVetName())
+                .designatedVetAddress(req.getDesignatedVetAddress())
+                .designatedVetPhone(req.getDesignatedVetPhone())
                 .build();
 
         Pet saved = petRepository.save(pet);
@@ -75,5 +89,49 @@ public class PetService {
                 .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
         pet.setCoatType(coatType);
         return PetResponse.from(petRepository.save(pet));
+    }
+
+    // ── 4. 上傳/更換寵物照片（需求 17：LIFF 顧客端 + 店家後台皆可用）───────
+    // 權限（會員只能傳自己的寵物、店家可傳任何寵物）由呼叫端（Controller）檢查，
+    // 這裡只負責「換照片」這件事本身：先上傳新圖，成功後才刪舊圖並更新資料庫，
+    // 順序不能反過來——否則上傳失敗時會先把舊照片刪掉，變成沒有照片可以用。
+    @Transactional
+    public PetResponse updatePhoto(Long petId, org.springframework.web.multipart.MultipartFile file) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+
+        CloudinaryService.UploadResult result = cloudinaryService.upload(file, "pets");
+
+        String oldPublicId = pet.getPhotoPublicId();
+        pet.setPhotoUrl(result.url());
+        pet.setPhotoPublicId(result.publicId());
+        Pet saved = petRepository.save(pet);
+
+        cloudinaryService.deleteQuietly(oldPublicId);
+
+        return PetResponse.from(saved);
+    }
+
+    // 供 Controller 檢查「這隻寵物是不是這個 username 的」，避免會員上傳到別人的寵物
+    public Pet getPetEntity(Long petId) {
+        return petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+    }
+
+    // ── 5. 上傳美容狀況歷史照片（需求 18：美容歷史相簿）─────────────────
+    // 僅供店家後台使用（美容狀況備注本身就是店員在核對步驟填寫的，照片同樣由店員事後補上）。
+    @Transactional
+    public void uploadGroomingNotePhoto(Long noteId, org.springframework.web.multipart.MultipartFile file) {
+        var note = petGroomingNoteRepository.findById(noteId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到美容狀況紀錄 #" + noteId));
+
+        CloudinaryService.UploadResult result = cloudinaryService.upload(file, "grooming-notes");
+
+        String oldPublicId = note.getPhotoPublicId();
+        note.setPhotoUrl(result.url());
+        note.setPhotoPublicId(result.publicId());
+        petGroomingNoteRepository.save(note);
+
+        cloudinaryService.deleteQuietly(oldPublicId);
     }
 }

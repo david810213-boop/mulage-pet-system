@@ -86,4 +86,30 @@ public class SlotCapacityService {
         return slotRepo.findBySlotDateAndSlotTime(date, time)
                 .map(SlotCapacity::getBooked).orElse(0);
     }
+
+    /**
+     * 查某時段目前的名額上限（沒有手動調整過的話回傳預設值 5）。
+     */
+    public int getCapacity(LocalDate date, LocalTime time) {
+        return slotRepo.findBySlotDateAndSlotTime(date, time)
+                .map(SlotCapacity::getCapacity).orElse(DEFAULT_CAPACITY);
+    }
+
+    /**
+     * 需求 1：店家手動調整「特定日期＋特定時段」的名額上限，或直接關閉（設為 0）。
+     * 只影響「剩餘可預約名額」，已經預約成功的紀錄（booked 數）完全不受影響——
+     * 即使把 capacity 調到比 booked 還低，現有預約仍然有效，只是不能再新增預約進這個時段。
+     * 這個調整是單次生效（只影響這一天這個時段），不會套用重複規則。
+     */
+    @Transactional
+    public void setCapacity(LocalDate date, LocalTime time, int newCapacity) {
+        if (newCapacity < 0) {
+            throw new IllegalArgumentException("名額上限不能小於 0");
+        }
+        ensureSlot(date, time);
+        SlotCapacity slot = slotRepo.findBySlotDateAndSlotTime(date, time)
+                .orElseThrow(() -> new IllegalStateException("時段建立失敗"));
+        slot.setCapacity(newCapacity);
+        slotRepo.save(slot);
+    }
 }

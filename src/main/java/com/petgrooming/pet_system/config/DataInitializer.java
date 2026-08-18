@@ -2,8 +2,12 @@ package com.petgrooming.pet_system.config;
 
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.model.BankAccountInfo;
+import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.BankAccountInfoRepository;
+import com.petgrooming.pet_system.repository.BonusTierRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +24,9 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final GroomingItemRepository groomingItemRepository;
+    private final BonusTierRepository bonusTierRepository;
+    private final BankAccountInfoRepository bankAccountInfoRepository;
+    private final com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -29,6 +36,51 @@ public class DataInitializer implements ApplicationRunner {
         createIfNotExists("staff@pet.com", "staff123", "美容師小洪", UserRole.STAFF);
         createIfNotExists("user@pet.com", "user123", "測試會員", UserRole.CUSTOMER);
         log.info("預設帳號初始化完成");
+
+        // 需求 3：積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
+        if (bonusTierRepository.count() == 0) {
+            bonusTierRepository.save(BonusTier.builder().minPoints(3001).maxPoints(3350).bonusAmount(1200).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(3351).maxPoints(3700).bonusAmount(1600).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(3701).maxPoints(4000).bonusAmount(2200).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(4001).maxPoints(4300).bonusAmount(2800).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(4301).maxPoints(4600).bonusAmount(3600).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(4601).maxPoints(5000).bonusAmount(4400).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(5001).maxPoints(5300).bonusAmount(5600).build());
+            bonusTierRepository.save(BonusTier.builder().minPoints(5301).maxPoints(5600).bonusAmount(6600).build());
+            log.info("積分獎勵金級距種子資料初始化完成");
+        }
+
+        // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
+        // 需求（追加）：改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
+        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT).isEmpty()) {
+            bankAccountInfoRepository.save(BankAccountInfo.builder()
+                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)
+                    .bankName("請於後台設定銀行名稱")
+                    .accountNumber("請於後台設定帳號")
+                    .accountHolder("請於後台設定戶名")
+                    .build());
+            log.info("結帳收款帳號預設資料初始化完成，請記得到後台修改成實際帳號");
+        }
+        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP).isEmpty()) {
+            bankAccountInfoRepository.save(BankAccountInfo.builder()
+                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP)
+                    .bankName("請於後台設定銀行名稱")
+                    .accountNumber("請於後台設定帳號")
+                    .accountHolder("請於後台設定戶名")
+                    .build());
+            log.info("儲值金收款帳號（大額專用）預設資料初始化完成，請記得到後台修改成實際帳號");
+        }
+
+        // 固定公休星期：預設週四、週五公休，呼應契約文字本來就寫的「固定公休：週四、週五」
+        // （這段文字之前只是契約說明，系統沒有真的去擋，這裡補上讓它成為實際生效的規則）。
+        // 只在還沒有任何設定時建立這筆預設值，之後店家在後台改過的設定不會被這段覆蓋。
+        if (weeklyClosureSettingRepository.count() == 0) {
+            weeklyClosureSettingRepository.save(com.petgrooming.pet_system.model.WeeklyClosureSetting.builder()
+                    .closedThursday(true)
+                    .closedFriday(true)
+                    .build());
+            log.info("固定公休星期預設資料初始化完成（週四、週五），可到後台調整");
+        }
 
         if (groomingItemRepository.count() == 0) {
 
@@ -75,6 +127,29 @@ public class DataInitializer implements ApplicationRunner {
             saveItem("GS012", "牙齒清潔", "使用寵物酵素牙膏，基本口腔清潔與除垢", 200.0, PerformanceCategory.OTHER);
 
             log.info("✨ [系統通知] {}項美容服務項目已成功初始化入庫！", groomingItemRepository.count());
+        }
+
+        // 需求 5 修正：折扣規則改為「所有計積分的項目都可以打折」，只有 GS001~GS012
+        // 這種加值加購項目（不計積分，performanceCategory 為 OTHER）才不打折。
+        // 局部修剪／特殊項目原本被排除，這次修正後也納入可打折範圍。
+        // CHECKIN/CHECKOUT/COMPLETE 是流程記錄用項目（價格恆為 0），打不打折沒有實際差異，
+        // 為了語意清楚（它們不是真正販售的服務）維持排除，但不影響任何金額計算。
+        //
+        // 這段邏輯改成「雙向強制」而非只糾正一邊：不在排除清單內的項目一律強制改回 true，
+        // 排除清單內的一律強制改回 false，每次啟動都會重新校正一次，
+        // 不管資料庫現有狀態是什麼（不管是全新安裝、舊資料庫殘留、或曾經被舊版清單設定錯誤過），
+        // 啟動後一定會回到跟這份清單一致的正確狀態，不會再有「改過清單但舊資料沒跟著更新」的漏網之魚。
+        java.util.List<String> nonDiscountCodes = java.util.List.of(
+                "CHECKIN", "CHECKOUT", "COMPLETE",
+                "GS001", "GS002", "GS003", "GS004", "GS005", "GS006",
+                "GS007", "GS008", "GS009", "GS010", "GS011", "GS012");
+        for (GroomingItem item : groomingItemRepository.findAll()) {
+            boolean shouldBeDiscountEligible = !nonDiscountCodes.contains(item.getItemCode());
+            if (item.isDiscountEligible() != shouldBeDiscountEligible) {
+                item.setDiscountEligible(shouldBeDiscountEligible);
+                groomingItemRepository.save(item);
+                log.info("已校正項目 {} 的折扣資格為 {}", item.getItemCode(), shouldBeDiscountEligible);
+            }
         }
     }
 

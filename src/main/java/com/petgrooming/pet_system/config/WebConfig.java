@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -41,6 +42,13 @@ public class WebConfig implements WebMvcConfigurer {
                 return bean;
         }
 
+        // 打開網站根目錄（不帶任何路徑）時，導向後台首頁；
+        // 未登入的話會照常被 LoginInterceptor 攔截、轉去登入頁，行為跟直接打 /dashboard 一致。
+        @Override
+        public void addViewControllers(@NonNull ViewControllerRegistry registry) {
+                registry.addRedirectViewController("/", "/dashboard");
+        }
+
         @Override
         public void addInterceptors(@NonNull InterceptorRegistry registry) {
 
@@ -54,6 +62,7 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/auth/register/submit",
                                                 "/auth/logout",
                                                 "/api/line/login",
+                                                "/api/line/bind",
                                                 "/test/**",
                                                 "/liff/**",
                                                 "/css/**",
@@ -71,6 +80,7 @@ public class WebConfig implements WebMvcConfigurer {
                                 .excludePathPatterns(
                                                 "/auth/**",
                                                 "/api/line/login",
+                                                "/api/line/bind",
                                                 "/test/**",
                                                 "/liff/**",
                                                 "/css/**", "/js/**", "/images/**", "/static/**",

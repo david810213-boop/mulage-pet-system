@@ -102,6 +102,26 @@ public class Appointment {
     @Column(name = "contract_agreed_at")
     private LocalDateTime contractAgreedAt;
 
+    // ── 結束服務（完成美容施作，通知家長來接）───────────────────────────────
+    // 服務項目全部做完、可以請家長來店接寵物時，店員點「結束服務」：
+    // 記錄完成積分給操作者、發送 LINE 通知家長，狀態仍維持「進行中」不變。
+    // 核對（final-check）強制要求已先完成這一步，才能進行。
+    // 注意（ddl-auto 陷阱）：這是新增到「既有 appointments 資料表」的 NOT NULL 欄位，
+    // 若只寫 nullable=false 沒給資料庫層級預設值，既有列會因無值可填導致 ALTER TABLE 失敗
+    // （沿用 GroomingItem.bookable 欄位同樣的處理方式）。
+    @Column(name = "service_ended_done", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean serviceEndedDone = false;
+
+    // 負責結束服務的員工（COMPLETE 積分記給這位）
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_ended_staff_id")
+    @ToString.Exclude
+    private User serviceEndedStaff;
+
+    @Column(name = "service_ended_at")
+    private LocalDateTime serviceEndedAt;
+
     // ── 進行中核對（接待送出）相關紀錄 ─────────────────────────────────────
     // 店員從「進行中」的預約選擇核對：記錄本次美容狀況備註 + 家長現場簽名確認，
     // 核對完成才能進入結帳；同時把該店員記為「接待送出」積分。
@@ -131,6 +151,14 @@ public class Appointment {
     @Column(name = "checkin_order_confirmed", nullable = false)
     @Builder.Default
     private boolean checkinOrderConfirmed = false;
+
+    // ── 需求 13：LINE 自動推播 ───────────────────────────────────────────
+    // 前一日 19:00 排程提醒是否已發送過，避免排程重跑（例如當天重新部署）造成重複推播。
+    // 用 columnDefinition 給資料庫層級預設值，避免既有表加 NOT NULL 欄位時 ALTER 失敗
+    // （沿用 GroomingItem.bookable / Appointment.serviceEndedDone 同樣的處理方式）。
+    @Column(name = "reminder_sent", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean reminderSent = false;
 
     public boolean isCancelled() {
         return status == AppointmentStatus.CANCELLED;

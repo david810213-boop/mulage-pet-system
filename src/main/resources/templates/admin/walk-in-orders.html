@@ -45,15 +45,23 @@
               </div>
             </div>
 
-            <label style="display:block; font-size:12px; color:#666; margin-bottom:6px;">項目（可加多筆）</label>
+            <label style="display:block; font-size:12px; color:#666; margin-bottom:6px;">美容服務項目（可加多筆，純買商品可不填）</label>
             <div id="itemRows"></div>
 
             <button type="button" class="btn btn-outline" onclick="addItemRow()" style="margin-top: 6px; padding: 6px 14px; font-size: 13px;">
-              ＋ 新增項目
+              ＋ 新增服務項目
+            </button>
+
+            <!-- 需求 7-1：開單當下也能直接加零售商品，支援純零售訂單（不需要任何美容服務項目） -->
+            <label style="display:block; font-size:12px; color:#666; margin: 16px 0 6px;">零售商品（可加多筆，純美容服務可不填）</label>
+            <div id="retailItemRows"></div>
+
+            <button type="button" class="btn btn-outline" onclick="addRetailItemRow()" style="margin-top: 6px; padding: 6px 14px; font-size: 13px;">
+              ＋ 新增零售商品
             </button>
 
             <div style="margin-top: 16px;">
-              <button type="submit" class="btn" style="padding: 8px 24px;">確認開單</button>
+              <button type="submit" class="btn" style="padding: 8px 24px;" onclick="return validateOrderForm();">確認開單</button>
             </div>
           </form>
         </div>
@@ -62,14 +70,18 @@
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
         >
-          <h3 style="font-size: 15px; color: #666; margin-bottom: 14px;">⏳ 待補經手人（積分尚未計算）</h3>
+          <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 待補經手人（積分尚未計算）</h3>
+          <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
+            需求 11：逐一選好每個項目的經手人後，按最下方「統一儲存」一次寫入，不用每列都點一次。
+          </p>
+          <form id="batchOperatorForm" method="post" action="/admin/walk-in-orders/items/operator/batch">
           <table>
             <thead>
               <tr>
                 <th>項目</th>
                 <th>價格</th>
                 <th>積分</th>
-                <th>補填經手人</th>
+                <th>經手人</th>
               </tr>
             </thead>
             <tbody>
@@ -81,19 +93,19 @@
                 <td th:text="'$' + ${i.price}"></td>
                 <td th:text="${i.points}"></td>
                 <td>
-                  <form th:action="@{/admin/walk-in-orders/items/{id}/operator(id=${i.itemId})}"
-                        method="post" style="display:flex; gap:6px;">
-                    <select name="staffId" required
-                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
-                            class="pending-staff-select">
-                      <option value="">請選擇員工</option>
-                    </select>
-                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
-                  </form>
+                  <input type="hidden" name="itemIds" th:value="${i.itemId}" />
+                  <select name="staffIds"
+                          style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                          class="pending-staff-select batch-operator-select">
+                    <option value="">尚未選擇</option>
+                  </select>
                 </td>
               </tr>
             </tbody>
           </table>
+          <button type="submit" class="btn btn-primary" style="margin-top: 12px;"
+                  th:if="${!#lists.isEmpty(pendingOperatorItems)}">統一儲存</button>
+          </form>
         </div>
 
         <!-- 預約現場開單（依預約編號）：待補經手人 -->
@@ -103,7 +115,9 @@
           <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 預約現場開單 — 待補經手人（積分尚未計算）</h3>
           <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
             這裡列出的是「已預約」的訂單、店員到店核對後依現場情況開立的服務項目，跟上面現場單是分開的兩套資料。
+            需求 11：逐一選好每個項目的經手人後，按最下方「統一儲存」一次寫入。
           </p>
+          <form id="batchAppointmentOperatorForm" method="post" action="/appointments/checkin-items/operator/batch">
           <table>
             <thead>
               <tr>
@@ -112,7 +126,7 @@
                 <th>項目</th>
                 <th>價格</th>
                 <th>積分</th>
-                <th>補填經手人</th>
+                <th>經手人</th>
               </tr>
             </thead>
             <tbody>
@@ -126,19 +140,19 @@
                 <td th:text="'$' + ${i.price}"></td>
                 <td th:text="${i.points}"></td>
                 <td>
-                  <form th:action="@{/appointments/checkin-items/{id}/operator(id=${i.id})}"
-                        method="post" style="display:flex; gap:6px;">
-                    <select name="staffId" required
-                            style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
-                            class="pending-staff-select">
-                      <option value="">請選擇員工</option>
-                    </select>
-                    <button type="submit" class="btn" style="padding:5px 12px; font-size:13px;">補填</button>
-                  </form>
+                  <input type="hidden" name="itemIds" th:value="${i.id}" />
+                  <select name="staffIds"
+                          style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
+                          class="pending-staff-select batch-operator-select">
+                    <option value="">尚未選擇</option>
+                  </select>
                 </td>
               </tr>
             </tbody>
           </table>
+          <button type="submit" class="btn btn-primary" style="margin-top: 12px;"
+                  th:if="${!#lists.isEmpty(appointmentPendingItems)}">統一儲存</button>
+          </form>
         </div>
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
@@ -204,20 +218,49 @@
                 <td th:text="'$' + ${o.totalAmount}"></td>
                 <td>
                   <span th:if="${o.paid}" class="badge paid" th:text="'已' + ${o.paymentMethodLabel}"></span>
-                  <div th:unless="${o.paid}" style="display:flex; flex-direction:column; gap:4px;">
-                    <span class="badge unpaid">未結帳</span>
-                    <form th:action="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}" method="post"
-                          style="display:flex; gap:4px;"
-                          onsubmit="return confirm('確定要結帳嗎？');">
-                      <select name="paymentMethod" style="padding:3px 6px; font-size:12px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);">
-                        <option value="CASH">現金</option>
-                        <option value="CREDIT_CARD">信用卡</option>
-                        <option value="LINE_PAY">LinePay</option>
-                        <option value="WALLET" th:if="${o.memberName != null}">儲值金</option>
-                      </select>
-                      <button type="submit" class="btn" style="padding:3px 10px; font-size:12px;">結帳</button>
+
+                  <!-- 需求 15 修正：已選匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
+                  <div th:if="${o.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                    <span class="badge" style="background:#fff3e0; color:#e65100; border-color:#ffcc80;">🏦 待對帳（匯款）</span>
+                    <form th:action="@{/admin/walk-in-orders/{id}/confirm-wire-transfer(id=${o.id})}" method="post"
+                          onsubmit="return confirm('確認已收到這筆匯款款項嗎？確認後現場單將轉為已完成。');">
+                      <button type="submit" class="btn btn-outline"
+                              style="padding:3px 10px; font-size:12px; color:#2e7d32; border-color:#a5d6a7;">✅ 確認收款</button>
                     </form>
                   </div>
+
+                  <!-- 未結帳：依進度顯示 結束服務 → 核對 → 結帳（已在待對帳狀態的不再顯示這區） -->
+                  <div th:if="${!o.paid and !o.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px;">
+                    <span class="badge unpaid">未結帳</span>
+
+                    <!-- 需求 7-1 修正：純零售商品訂單（沒有美容服務項目）不用走「結束服務→核對」，直接結帳 -->
+                    <a th:if="${!o.requiresServiceFlow}"
+                       th:href="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}"
+                       class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">💰 結帳（純零售）</a>
+
+                    <form th:if="${o.requiresServiceFlow and !o.serviceEndedDone}"
+                          th:action="@{/admin/walk-in-orders/{id}/end-service(id=${o.id})}" method="post">
+                      <button type="submit" class="btn btn-outline" style="padding:3px 10px; font-size:12px;">🏁 結束服務</button>
+                    </form>
+
+                    <a th:if="${o.requiresServiceFlow and o.serviceEndedDone and !o.finalCheckDone}"
+                       th:href="@{/admin/walk-in-orders/{id}/final-check(id=${o.id})}"
+                       class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">📝 核對</a>
+
+                    <!-- 需求 15：結帳畫面統一——改連到跟預約結帳同樣風格的專屬結帳頁，不再是表格列裡的小下拉選單 -->
+                    <a th:if="${o.requiresServiceFlow and o.finalCheckDone}"
+                       th:href="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}"
+                       class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">💰 結帳</a>
+                  </div>
+
+                  <!-- 已結帳：可退款 -->
+                  <form th:if="${o.paid}"
+                        th:action="@{/admin/walk-in-orders/{id}/refund(id=${o.id})}" method="post"
+                        onsubmit="return confirm('確定要退款這張現場單嗎？退款後此筆紀錄會直接刪除，需重新開單。');"
+                        style="margin-top:4px;">
+                    <button type="submit" class="btn btn-outline"
+                            style="padding:3px 10px; font-size:12px; color:#c62828; border-color:#c67a5c;">💸 退款</button>
+                  </form>
                 </td>
                 <td th:text="${o.createdBy}"></td>
               </tr>
@@ -230,6 +273,37 @@
     <script th:inline="javascript">
       // 從後端帶入可用項目清單（含不可線上預約的調理項目），JS 動態組出下拉選單
       const GROOMING_ITEMS = /*[[${groomingItems}]]*/ [];
+      // 需求 7-1：可加購的零售商品清單
+      const RETAIL_PRODUCTS = /*[[${retailProducts}]]*/ [];
+      // 需求 4：預設只給「會計積分」的項目；勾選/選到「特殊項目」(SPECIAL) 之後，
+      // 才把不計分的加購/調理項目 (OTHER) 加進所有列的下拉選單裡。
+      const POINT_ITEMS = GROOMING_ITEMS.filter(function (i) { return i.performanceCategory !== 'OTHER'; });
+      const OTHER_ITEMS = GROOMING_ITEMS.filter(function (i) { return i.performanceCategory === 'OTHER'; });
+      let otherItemsUnlocked = false;
+
+      function appendItemOptions(select, items) {
+        items.forEach(function (item) {
+          const opt = document.createElement('option');
+          opt.value = item.itemCode;
+          opt.textContent = item.name + '（$' + item.price + '）';
+          select.appendChild(opt);
+        });
+      }
+
+      // 一旦任何一列選到「特殊項目」，把不計分項目補進所有現存的下拉選單（含之後新增的列）
+      function unlockOtherItemsIfNeeded(select) {
+        const selectedItem = GROOMING_ITEMS.find(function (i) { return i.itemCode === select.value; });
+        if (selectedItem && selectedItem.performanceCategory === 'SPECIAL' && !otherItemsUnlocked) {
+          otherItemsUnlocked = true;
+          document.querySelectorAll('select[name="itemCodes"]').forEach(function (sel) {
+            const group = document.createElement('optgroup');
+            group.label = '✨ 其他加購項目（不計分）';
+            appendItemOptions(group, OTHER_ITEMS);
+            sel.appendChild(group);
+          });
+        }
+      }
+
       // 需求：經手人綁定員工帳號，只給 id + 姓名（不含密碼等敏感欄位）
       const STAFF_LIST = /*[[${staffList}]]*/ [];
 
@@ -256,18 +330,20 @@
 
         const select = document.createElement('select');
         select.name = 'itemCodes';
-        select.required = true;
         select.style.cssText = 'flex:2; padding:7px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);';
         const emptyOpt = document.createElement('option');
         emptyOpt.value = '';
         emptyOpt.textContent = '請選擇項目';
         select.appendChild(emptyOpt);
-        GROOMING_ITEMS.forEach(function (item) {
-          const opt = document.createElement('option');
-          opt.value = item.itemCode;
-          opt.textContent = item.name + '（$' + item.price + '）';
-          select.appendChild(opt);
-        });
+        appendItemOptions(select, POINT_ITEMS);
+        // 若這一列建立時，其他列已經解鎖過不計分項目，這一列也要一併補上，維持一致
+        if (otherItemsUnlocked) {
+          const group = document.createElement('optgroup');
+          group.label = '✨ 其他加購項目（不計分）';
+          appendItemOptions(group, OTHER_ITEMS);
+          select.appendChild(group);
+        }
+        select.addEventListener('change', function () { unlockOtherItemsIfNeeded(select); });
 
         // 需求：經手人改成從員工清單選，不再自由輸入文字
         const operatorSelect = buildStaffSelect('operatorStaffIds');
@@ -282,6 +358,58 @@
         row.appendChild(operatorSelect);
         row.appendChild(removeBtn);
         document.getElementById('itemRows').appendChild(row);
+      }
+
+      // 需求 7-1：零售商品加購列（商品下拉 + 數量 + 移除鈕）
+      function addRetailItemRow() {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
+
+        const select = document.createElement('select');
+        select.name = 'retailProductIds';
+        select.style.cssText = 'flex:2; padding:7px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '請選擇商品';
+        select.appendChild(emptyOpt);
+        RETAIL_PRODUCTS.forEach(function (p) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name + '（$' + p.price + '，庫存 ' + p.stockQuantity + '）';
+          select.appendChild(opt);
+        });
+
+        const qtyInput = document.createElement('input');
+        qtyInput.type = 'number';
+        qtyInput.name = 'retailQuantities';
+        qtyInput.value = '1';
+        qtyInput.min = '1';
+        qtyInput.style.cssText = 'width:70px; padding:7px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm);';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '✕';
+        removeBtn.style.cssText = 'padding:6px 10px; border:none; background:#f5eee4; border-radius:var(--radius-sm); cursor:pointer; color:#c62828;';
+        removeBtn.onclick = function () { row.remove(); };
+
+        row.appendChild(select);
+        row.appendChild(qtyInput);
+        row.appendChild(removeBtn);
+        document.getElementById('retailItemRows').appendChild(row);
+      }
+
+      // 需求 7-1：至少要有一個「有效選擇」的美容項目或零售商品，兩者擇一或都有皆可，
+      // 純零售訂單（只買東西不做美容）現在是合法的，不再強制一定要選美容項目。
+      function validateOrderForm() {
+        const hasService = Array.from(document.querySelectorAll('select[name="itemCodes"]'))
+          .some(function (sel) { return sel.value !== ''; });
+        const hasRetail = Array.from(document.querySelectorAll('select[name="retailProductIds"]'))
+          .some(function (sel) { return sel.value !== ''; });
+        if (!hasService && !hasRetail) {
+          alert('請至少選擇一個美容服務項目或零售商品');
+          return false;
+        }
+        return true;
       }
 
       // 表單一開始至少給一行
@@ -322,28 +450,68 @@
         }
         // 防抖：停止打字 300ms 後才真的送出搜尋，避免每打一個字就打一次 API
         searchDebounce = setTimeout(function () {
-          fetch('/api/admin/members/search?keyword=' + encodeURIComponent(keyword))
-            .then(function (res) { return res.ok ? res.json() : []; })
-            .then(function (list) { renderSuggestions(list); })
-            .catch(function () { memberSuggestions.style.display = 'none'; });
+          // 需求 9：同時搜「家長姓名/帳號」跟「寵物名稱」，合併顯示
+          Promise.all([
+            fetch('/api/admin/members/search?keyword=' + encodeURIComponent(keyword))
+              .then(function (res) { return res.ok ? res.json() : []; })
+              .catch(function () { return []; }),
+            fetch('/api/admin/members/search-by-pet?keyword=' + encodeURIComponent(keyword))
+              .then(function (res) { return res.ok ? res.json() : []; })
+              .catch(function () { return []; })
+          ]).then(function (results) {
+            renderSuggestions(results[0], results[1]);
+          });
         }, 300);
       });
 
-      function renderSuggestions(list) {
+      function renderSuggestions(memberList, petList) {
         memberSuggestions.innerHTML = '';
-        if (!list.length) {
+        if (!memberList.length && !petList.length) {
           memberSuggestions.style.display = 'none';
           return;
         }
-        list.forEach(function (u) {
-          const item = document.createElement('div');
-          item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
-          item.textContent = u.name + '（' + u.username + '）';
-          item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
-          item.onmouseleave = function () { item.style.background = 'white'; };
-          item.onclick = function () { selectMember(u); };
-          memberSuggestions.appendChild(item);
-        });
+        if (memberList.length) {
+          const memberHeader = document.createElement('div');
+          memberHeader.textContent = '👤 依家長搜尋';
+          memberHeader.style.cssText = 'padding:6px 10px; font-size:11px; color:#999; background:#faf7f2;';
+          memberSuggestions.appendChild(memberHeader);
+          memberList.forEach(function (u) {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;';
+            item.textContent = u.name + '（' + u.username + '）';
+            item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
+            item.onmouseleave = function () { item.style.background = 'white'; };
+            item.onclick = function () { selectMember(u); };
+            memberSuggestions.appendChild(item);
+          });
+        }
+        if (petList.length) {
+          const petHeader = document.createElement('div');
+          petHeader.textContent = '🐾 依寵物名稱搜尋';
+          petHeader.style.cssText = 'padding:6px 10px; font-size:11px; color:#999; background:#faf7f2;';
+          memberSuggestions.appendChild(petHeader);
+          petList.forEach(function (p) {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc; display:flex; align-items:center; gap:8px;';
+            // 需求 17：搜尋結果帶出寵物照片供店員視覺核對，沒有照片就顯示預設圖示
+            const thumb = document.createElement(p.photoUrl ? 'img' : 'span');
+            if (p.photoUrl) {
+              thumb.src = p.photoUrl;
+              thumb.style.cssText = 'width:28px; height:28px; border-radius:50%; object-fit:cover; flex-shrink:0;';
+            } else {
+              thumb.textContent = '🐾';
+              thumb.style.cssText = 'width:28px; height:28px; border-radius:50%; background:#ede5d3; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;';
+            }
+            const label = document.createElement('span');
+            label.textContent = p.displayLabel;
+            item.appendChild(thumb);
+            item.appendChild(label);
+            item.onmouseenter = function () { item.style.background = '#f8f5f0'; };
+            item.onmouseleave = function () { item.style.background = 'white'; };
+            item.onclick = function () { selectMemberByPet(p); };
+            memberSuggestions.appendChild(item);
+          });
+        }
         memberSuggestions.style.display = 'block';
       }
 
@@ -357,25 +525,44 @@
         // 需求 1：選定會員後自動抓出名下寵物
         fetch('/api/admin/members/' + encodeURIComponent(u.username) + '/pets')
           .then(function (res) { return res.ok ? res.json() : []; })
-          .then(function (pets) {
-            petSelect.innerHTML = '';
-            if (!pets.length) {
-              petSelect.style.display = 'none';
-              petNameInput.placeholder = '此會員尚未登記寵物，請手動輸入';
-              return;
-            }
-            const emptyOpt = document.createElement('option');
-            emptyOpt.value = '';
-            emptyOpt.textContent = '請選擇寵物';
-            petSelect.appendChild(emptyOpt);
-            pets.forEach(function (p) {
-              const opt = document.createElement('option');
-              opt.value = p.name;
-              opt.textContent = p.name + '（' + p.petTypeLabel + '）';
-              petSelect.appendChild(opt);
-            });
-            petSelect.style.display = 'block';
-          });
+          .then(function (pets) { fillPetSelect(pets, null); });
+      }
+
+      // 需求 9：用「寵物搜尋」結果選定時，選家長的同時直接把該隻寵物預選好
+      function selectMemberByPet(p) {
+        memberSearchBox.value = p.ownerName;
+        memberUsernameField.value = p.ownerUsername;
+        memberSelectedTag.textContent = '✓ 已選定：' + p.ownerName + '（依寵物「' + p.petName + '」搜尋帶入）';
+        memberSelectedTag.style.display = 'block';
+        memberSuggestions.style.display = 'none';
+
+        fetch('/api/admin/members/' + encodeURIComponent(p.ownerUsername) + '/pets')
+          .then(function (res) { return res.ok ? res.json() : []; })
+          .then(function (pets) { fillPetSelect(pets, p.petName); });
+      }
+
+      function fillPetSelect(pets, preselectName) {
+        petSelect.innerHTML = '';
+        if (!pets.length) {
+          petSelect.style.display = 'none';
+          petNameInput.placeholder = '此會員尚未登記寵物，請手動輸入';
+          return;
+        }
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '請選擇寵物';
+        petSelect.appendChild(emptyOpt);
+        pets.forEach(function (p) {
+          const opt = document.createElement('option');
+          opt.value = p.name;
+          opt.textContent = p.name + '（' + p.petTypeLabel + '）';
+          petSelect.appendChild(opt);
+        });
+        petSelect.style.display = 'block';
+        if (preselectName) {
+          petSelect.value = preselectName;
+          petSelect.dispatchEvent(new Event('change'));
+        }
       }
 
       // 選了下拉選單裡的寵物後，同步進真正會送出的欄位

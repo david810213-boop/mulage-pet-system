@@ -20,6 +20,12 @@ spring:
     cache: false
     encoding: UTF-8
 
+  # 需求 17/18：寵物照片上傳，預設 1MB 太小，放寬到 10MB
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 # 日誌配置（開發環境輸出較多細節）
 logging:
   level:
@@ -37,3 +43,13 @@ line:
   # 還沒申請好之前留空即可，LineMessagingService 會自動跳過發送、只記 log，不會讓系統出錯。
   messaging:
     channel-access-token: ${LINE_MESSAGING_CHANNEL_ACCESS_TOKEN:}
+
+# 需求 17/18：Cloudinary 雲端圖床（免費額度）
+# 到 https://cloudinary.com 註冊後，在 Dashboard 首頁可以看到這三個值，
+# 或是直接複製它給的單一組 CLOUDINARY_URL（cloudinary://<api_key>:<api_secret>@<cloud_name>）
+# 設成環境變數 CLOUDINARY_URL 也可以，兩種設定方式擇一即可，這裡採用分開三個值的寫法方便個別覆蓋。
+# 還沒申請好之前留空即可，CloudinaryService 會自動跳過上傳、丟出清楚的錯誤訊息，不會讓系統啟動失敗。
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}

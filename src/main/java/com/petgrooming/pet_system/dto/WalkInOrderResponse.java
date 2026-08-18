@@ -17,12 +17,19 @@ public class WalkInOrderResponse {
     private String memberName;
     private String petName;
     private int totalAmount;
+    private Integer chargedAmount; // 需求 5：實際扣款金額（打折後），null 代表跟 totalAmount 相同或尚未結帳
     private String createdBy;
     private String note;
     private LocalDateTime createdAt;
     private boolean paid;
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
+    private boolean pendingWireTransfer; // 需求 15 修正：已選匯款但店家尚未確認收款（比照需求10 Appointment 的待對帳機制）
+    private boolean serviceEndedDone;
+    private boolean finalCheckDone;
+    // 需求 7-1 修正：這張單是否含有美容服務項目——true 才需要走「結束服務→核對」流程，
+    // 純零售商品訂單（false）可以直接結帳。
+    private boolean requiresServiceFlow;
     private List<ItemLine> items;
 
     @Data
@@ -35,6 +42,12 @@ public class WalkInOrderResponse {
         private Long operatorStaffId;
         private String operator;        // 經手人姓名（顯示用）
         private boolean operatorFilled;
+        private boolean discountEligible; // 需求 5：是否可享會員儲值金折扣
+        // 需求 8 修正：回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
+        private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（僅限有綁定會員、且該會員的貓距上次洗澡未滿90天）
+        private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
+        private Long retailProductId; // 需求 7-1：非 null 代表這一列是零售商品加購
+        private boolean retailItem;   // 方便前端判斷是不是零售商品（不用另外判斷 groomingItemId == null 這種間接方式）
 
         static ItemLine from(WalkInOrderItem oi) {
             ItemLine l = new ItemLine();
@@ -48,6 +61,9 @@ public class WalkInOrderResponse {
                 l.setOperator(oi.getOperatorStaff().getName());
             }
             l.setOperatorFilled(oi.isOperatorFilled());
+            l.setDiscountEligible(oi.isDiscountEligible());
+            l.setRetailProductId(oi.getRetailProductId());
+            l.setRetailItem(oi.getRetailProductId() != null);
             return l;
         }
     }
@@ -61,12 +77,19 @@ public class WalkInOrderResponse {
         }
         res.setPetName(o.getPetName());
         res.setTotalAmount(o.getTotalAmount());
+        res.setChargedAmount(o.getChargedAmount());
         res.setCreatedBy(o.getCreatedBy());
         res.setNote(o.getNote());
         res.setCreatedAt(o.getCreatedAt());
         res.setPaid(o.isPaid());
         res.setPaymentMethodLabel(o.getPaymentMethod() != null ? o.getPaymentMethod().getDisplayName() : null);
         res.setPaymentTime(o.getPaymentTime());
+        res.setPendingWireTransfer(
+                o.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
+                        && !o.isPaid());
+        res.setServiceEndedDone(o.isServiceEndedDone());
+        res.setFinalCheckDone(o.isFinalCheckDone());
+        res.setRequiresServiceFlow(o.getItems().stream().anyMatch(i -> i.getGroomingItemId() != null));
         res.setItems(o.getItems().stream().map(ItemLine::from).toList());
         return res;
     }

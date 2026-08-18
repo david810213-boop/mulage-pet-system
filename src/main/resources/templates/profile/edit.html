@@ -1,0 +1,159 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('編輯個人信息 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: 640px">
+        <h2 th:if="${!isStaffMode}">👤 編輯個人信息</h2>
+        <h2 th:if="${isStaffMode}">👤 現場客人建立/編輯個人資料</h2>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-danger" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <!-- ── 店家模式：還沒選定會員時，先顯示搜尋畫面 ─────────────────── -->
+        <div th:if="${isStaffMode and targetUsername == null}">
+          <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1rem;">
+            請先搜尋要協助填寫資料的會員（現場客人請先用 LINE 或帳號登入註冊會員，再由店員協助填寫）。
+          </p>
+          <div class="card">
+            <div class="field">
+              <label>搜尋會員（姓名或帳號）</label>
+              <input type="text" id="memberSearchBox" placeholder="輸入姓名或帳號搜尋" autocomplete="off" />
+              <div
+                id="memberSuggestions"
+                style="display:none; border:1px solid var(--cream-300); border-radius:8px; margin-top:6px; max-height:260px; overflow-y:auto; background:white;"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 表單本體（會員自己 or 店家已選定會員）───────────────────── -->
+        <div th:if="${!isStaffMode or targetUsername != null}">
+          <p th:if="${isStaffMode}" style="font-size: 13px; color: var(--brown-light); margin-bottom: 1rem;">
+            正在編輯會員「<span th:text="${targetName != null ? targetName : targetUsername}"></span>」的資料。
+            <a href="/my-profile" style="color: var(--cream-600);">重新搜尋其他會員</a>
+          </p>
+          <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+            通訊地址、緊急聯絡人姓名/電話/關係是依犬貓美容服務定型化契約規定要蒐集的資料，請務必填寫。
+          </p>
+
+          <form method="post" action="/my-profile">
+            <input type="hidden" name="targetUsername" th:value="${targetUsername}" />
+
+            <div class="card" style="margin-bottom: 1rem">
+              <h3 style="font-size: 15px; margin-bottom: 14px;">◆ 基本資料</h3>
+
+              <div class="field">
+                <label>姓名</label>
+                <input type="text" name="name" th:value="${profile.name}" />
+              </div>
+
+              <div class="field">
+                <label>電話</label>
+                <input type="tel" name="phone" th:value="${profile.phone}" placeholder="例如：0912345678" />
+              </div>
+
+              <div class="field">
+                <label>年齡 <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
+                <input type="number" name="age" min="0" max="150" th:value="${profile.age}" />
+              </div>
+
+              <div class="field">
+                <label>職業 <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
+                <input type="text" name="occupation" th:value="${profile.occupation}" placeholder="例如：上班族、自由業" />
+              </div>
+
+              <div class="field">
+                <label>居住區域 <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
+                <input type="text" name="residenceArea" th:value="${profile.residenceArea}" placeholder="例如：板橋區" />
+              </div>
+
+              <div class="field">
+                <label>從哪裡得知慕沐村的？ <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
+                <select name="source">
+                  <option value="">請選擇</option>
+                  <option
+                    th:each="s : ${sources}"
+                    th:value="${s}"
+                    th:text="${s.label}"
+                    th:selected="${profile.source != null and profile.source == s}"
+                  ></option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 style="font-size: 15px; margin-bottom: 14px;">◆ 定型化契約蒐集資料</h3>
+
+              <div class="field">
+                <label>通訊地址 <span style="color: #e53935;">*</span></label>
+                <input type="text" name="mailingAddress" th:value="${profile.mailingAddress}" placeholder="請輸入完整通訊地址" required />
+              </div>
+
+              <div class="field">
+                <label>緊急聯絡人姓名 <span style="color: #e53935;">*</span></label>
+                <input type="text" name="emergencyContactName" th:value="${profile.emergencyContactName}" placeholder="請輸入緊急聯絡人姓名" required />
+              </div>
+
+              <div class="field">
+                <label>緊急聯絡人關係 <span style="color: #e53935;">*</span></label>
+                <input type="text" name="emergencyContactRelation" th:value="${profile.emergencyContactRelation}" placeholder="例如：父母、配偶、朋友" required />
+              </div>
+
+              <div class="field">
+                <label>緊急聯絡人電話 <span style="color: #e53935;">*</span></label>
+                <input type="tel" name="emergencyContactPhone" th:value="${profile.emergencyContactPhone}" placeholder="例如：0912345678" required />
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="margin-top: 6px;">儲存</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script th:if="${isStaffMode and targetUsername == null}">
+      const searchBox = document.getElementById("memberSearchBox");
+      const suggestions = document.getElementById("memberSuggestions");
+      let searchDebounce;
+
+      searchBox.addEventListener("input", function () {
+        const keyword = this.value.trim();
+        clearTimeout(searchDebounce);
+        if (keyword.length === 0) {
+          suggestions.style.display = "none";
+          return;
+        }
+        searchDebounce = setTimeout(function () {
+          fetch("/api/admin/members/search?keyword=" + encodeURIComponent(keyword))
+            .then(function (res) { return res.ok ? res.json() : []; })
+            .then(function (list) { renderSuggestions(list); })
+            .catch(function () { suggestions.style.display = "none"; });
+        }, 300);
+      });
+
+      function renderSuggestions(list) {
+        suggestions.innerHTML = "";
+        if (!list.length) {
+          suggestions.style.display = "none";
+          return;
+        }
+        list.forEach(function (u) {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;";
+          item.textContent = u.name + "（" + u.username + "）";
+          item.onmouseenter = function () { item.style.background = "#f8f5f0"; };
+          item.onmouseleave = function () { item.style.background = "white"; };
+          item.onclick = function () {
+            window.location.href = "/my-profile?username=" + encodeURIComponent(u.username);
+          };
+          suggestions.appendChild(item);
+        });
+        suggestions.style.display = "block";
+      }
+    </script>
+  </body>
+</html>

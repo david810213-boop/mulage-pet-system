@@ -1,0 +1,109 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('零售商品管理 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🛍️ 零售商品管理</h2>
+          <a href="/admin" class="btn">← 回後台</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+          零售商品跟美容服務項目是分開管理的——這裡的商品不計績效積分，現場開單結帳時可以直接加購，結帳成功會自動扣庫存。
+        </p>
+
+        <!-- 新增商品 -->
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 12px;">➕ 新增商品</h3>
+          <form method="post" action="/admin/retail-products/create"
+                style="display: flex; gap: 12px; flex-wrap: wrap; align-items: end;">
+            <div class="field" style="margin: 0; flex: 1; min-width: 140px;">
+              <label>商品名稱</label>
+              <input type="text" name="name" placeholder="例如：潔牙骨" required />
+            </div>
+            <div class="field" style="margin: 0; width: 100px;">
+              <label>售價</label>
+              <input type="number" name="price" min="0" required />
+            </div>
+            <div class="field" style="margin: 0; width: 100px;">
+              <label>進貨成本 <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
+              <input type="number" name="unitCost" min="0" value="0" />
+            </div>
+            <div class="field" style="margin: 0; width: 100px;">
+              <label>初始庫存</label>
+              <input type="number" name="stockQuantity" min="0" value="0" />
+            </div>
+            <div class="field" style="margin: 0; flex: 1; min-width: 140px;">
+              <label>備註 <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
+              <input type="text" name="description" placeholder="例如：規格、品牌" />
+            </div>
+            <button type="submit" class="btn btn-primary">新增</button>
+          </form>
+        </div>
+
+        <!-- 商品清單 -->
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>商品名稱</th>
+                <th>售價</th>
+                <th>進貨成本</th>
+                <th>庫存量</th>
+                <th>備註</th>
+                <th style="min-width: 260px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(products)}">
+                <td colspan="6" class="empty">目前沒有商品，先在上方新增一筆</td>
+              </tr>
+              <tr th:each="p : ${products}">
+                <td th:text="${p.name}"></td>
+                <td th:text="'$' + ${p.price}"></td>
+                <td th:text="'$' + ${p.unitCost}"></td>
+                <td th:text="${p.stockQuantity}"
+                    th:style="${p.stockQuantity} lt 5 ? 'color:#c62828; font-weight:700;' : ''"></td>
+                <td th:text="${p.description} ?: '—'"></td>
+                <td>
+                  <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <!-- 修改售價／成本／備註 -->
+                    <form method="post" th:action="@{/admin/retail-products/{id}/update(id=${p.id})}"
+                          style="display: flex; gap: 4px; align-items: center;">
+                      <input type="hidden" name="name" th:value="${p.name}" />
+                      <input type="number" name="price" th:value="${p.price}" min="0"
+                             style="width: 60px; font-size: 12px;" required title="售價" />
+                      <input type="number" name="unitCost" th:value="${p.unitCost}" min="0"
+                             style="width: 60px; font-size: 12px;" title="進貨成本" />
+                      <input type="text" name="description" th:value="${p.description}"
+                             style="width: 90px; font-size: 12px;" placeholder="備註" />
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">儲存</button>
+                    </form>
+                    <!-- 調整庫存 -->
+                    <form method="post" th:action="@{/admin/retail-products/{id}/adjust-stock(id=${p.id})}"
+                          style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" name="delta" placeholder="±數量" style="width: 65px; font-size: 12px;" required />
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">調庫存</button>
+                    </form>
+                    <!-- 下架 -->
+                    <form method="post" th:action="@{/admin/retail-products/{id}/delete(id=${p.id})}"
+                          onsubmit="return confirm('確定要下架這個商品嗎？下架後不會出現在加購清單，但不影響已完成的訂單紀錄。');">
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px; color:#c62828; border-color:#c67a5c;">下架</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

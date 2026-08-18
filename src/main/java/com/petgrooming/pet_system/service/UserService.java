@@ -82,6 +82,9 @@ public class UserService {
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
         }
+        if (req.getPhone() != null) { // ← 新增這 3 行
+            user.setPhone(req.getPhone().isBlank() ? null : req.getPhone().trim());
+        }
         if (req.getAge() != null) {
             user.setAge(req.getAge());
         }
@@ -93,6 +96,19 @@ public class UserService {
         }
         if (req.getSource() != null) {
             user.setSource(req.getSource());
+        }
+        // 需求 19：定型化契約要求蒐集的資料（皆選填，只需填一次）
+        if (req.getMailingAddress() != null) {
+            user.setMailingAddress(req.getMailingAddress().isBlank() ? null : req.getMailingAddress().trim());
+        }
+        if (req.getEmergencyContactName() != null) {
+            user.setEmergencyContactName(req.getEmergencyContactName().isBlank() ? null : req.getEmergencyContactName().trim());
+        }
+        if (req.getEmergencyContactPhone() != null) {
+            user.setEmergencyContactPhone(req.getEmergencyContactPhone().isBlank() ? null : req.getEmergencyContactPhone().trim());
+        }
+        if (req.getEmergencyContactRelation() != null) {
+            user.setEmergencyContactRelation(req.getEmergencyContactRelation().isBlank() ? null : req.getEmergencyContactRelation().trim());
         }
         // 第一次完整填寫基本資料時記錄時間點，供後台判斷「已完成資料填寫」的會員數
         if (user.getProfileCompletedAt() == null
@@ -123,7 +139,8 @@ public class UserService {
     // 需求：現場開單時依姓名/帳號搜尋會員（解決 LINE 登入會員帳號是 line_xxx 內碼，
     // 店家不可能知道要打什麼的問題）
     public List<User> searchCustomers(String keyword) {
-        if (keyword == null || keyword.isBlank()) return List.of();
+        if (keyword == null || keyword.isBlank())
+            return List.of();
         String kw = keyword.trim().toLowerCase();
         return getAllCustomers().stream()
                 .filter(u -> u.getName().toLowerCase().contains(kw)
@@ -165,6 +182,7 @@ public class UserService {
 
         return new AbstractMap.SimpleEntry<>(userRepository.save(newUser), true);
     }
+
     public UserResponse createStaff(CreateStaffRequest req) {
         if (userRepository.existsByUsername(req.getUsername())) {
             throw new IllegalArgumentException("帳號已存在：" + req.getUsername());
@@ -201,5 +219,27 @@ public class UserService {
         }
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
+    }
+
+    // ── 新需求：切換使用者用的 PIN 碼 ─────────────────────────────────
+    // 員工/管理員自己設定 4 位數 PIN（需先驗證密碼，避免旁人隨便亂設）
+    public void setSwitchPin(String username, String currentPassword, String newPin) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("目前密碼不正確");
+        }
+        if (newPin == null || !newPin.matches("\\d{4}")) {
+            throw new IllegalArgumentException("PIN 碼必須是 4 位數字");
+        }
+        user.setSwitchPin(passwordEncoder.encode(newPin));
+        userRepository.save(user);
+    }
+
+    // 驗證 PIN 是否正確，用於快速切換使用者（不需要輸入完整密碼）
+    public boolean verifySwitchPin(User user, String pin) {
+        if (user.getSwitchPin() == null) return false;
+        return passwordEncoder.matches(pin, user.getSwitchPin());
     }
 }

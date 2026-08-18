@@ -54,6 +54,11 @@ public class PerformanceRecord {
     @Column(length = 200)
     private String note;
 
+    // 需求 12：若這筆是「拆分積分」產生的新紀錄，記錄原始紀錄的 id，
+    // 讓「拆分歷史」查詢能追溯「誰拆給了誰」。一般紀錄此欄位為 null。
+    @Column(name = "split_from_record_id")
+    private Long splitFromRecordId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

@@ -38,15 +38,19 @@ public class CustomerAnalysisMvcController {
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
+        if (username == null)
+            return null;
+        try {
+            return userService.getUserEntityByUsername(username);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
     public String overview(HttpServletRequest request, Model model,
-                           @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword) {
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("stats", customerAnalysisService.getOverview());
 
@@ -63,7 +67,7 @@ public class CustomerAnalysisMvcController {
 
     // ── GET /admin/customers/{username} ─────────────────────────────────────
     // 會員信息詳情：整合會員資料、寵物資料、預約紀錄、消費紀錄於同一頁
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/{username}")
     public String customerDetail(@PathVariable String username, HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
@@ -77,9 +81,12 @@ public class CustomerAnalysisMvcController {
 
         // 來源 1：預約結帳（Transaction）
         for (var t : transactionRepository.findByUserUsername(username)) {
-            if (!t.isPaid()) continue;
+            if (!t.isPaid())
+                continue;
             records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
                     .sourceLabel("預約結帳")
+                    .sourceType("APPOINTMENT")
+                    .recordId(t.getAppointment() != null ? t.getAppointment().getId() : null)
                     .code(t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—")
                     .petName(t.getAppointment() != null ? t.getAppointment().getPetName() : "—")
                     .time(t.getPaymentTime())
@@ -92,9 +99,12 @@ public class CustomerAnalysisMvcController {
 
         // 來源 2：現場開單（WalkInOrder）—— 之前沒有併入會員信息頁，這次補上
         for (var w : walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(username)) {
-            if (!w.isPaid()) continue;
+            if (!w.isPaid())
+                continue;
             records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
                     .sourceLabel("現場開單")
+                    .sourceType("WALKIN")
+                    .recordId(w.getId())
                     .code("現場單#" + w.getId())
                     .petName(w.getPetName())
                     .time(w.getPaymentTime())
@@ -106,14 +116,18 @@ public class CustomerAnalysisMvcController {
         }
 
         records.sort((a, b) -> {
-            if (a.getTime() == null && b.getTime() == null) return 0;
-            if (a.getTime() == null) return 1;
-            if (b.getTime() == null) return -1;
+            if (a.getTime() == null && b.getTime() == null)
+                return 0;
+            if (a.getTime() == null)
+                return 1;
+            if (b.getTime() == null)
+                return -1;
             return b.getTime().compareTo(a.getTime());
         });
         model.addAttribute("transactions", records);
 
-        int totalSpent = records.stream().mapToInt(com.petgrooming.pet_system.dto.ConsumptionRecordResponse::getAmount).sum();
+        int totalSpent = records.stream().mapToInt(com.petgrooming.pet_system.dto.ConsumptionRecordResponse::getAmount)
+                .sum();
         model.addAttribute("totalSpent", totalSpent);
         model.addAttribute("orderCount", records.size());
         model.addAttribute("lastPaymentTime",
@@ -127,11 +141,20 @@ public class CustomerAnalysisMvcController {
         model.addAttribute("pets", pets);
         model.addAttribute("coatTypes", CoatType.values());
         var groomingNotesByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.model.PetGroomingNote>>();
+        // 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁——依寵物名稱把上面已經整理好的
+        // 消費紀錄（records）分組。沿用需求 9 既有的「用寵物名稱文字比對」慣例
+        // （Appointment / WalkInOrder 都只存 petName 快照，沒有直接關聯 Pet 實體）。
+        var consumptionByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse>>();
         for (var p : pets) {
             groomingNotesByPetId.put(p.getId(),
                     petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(p.getId()));
+            consumptionByPetId.put(p.getId(),
+                    records.stream()
+                            .filter(r -> p.getName().equals(r.getPetName()))
+                            .toList());
         }
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
+        model.addAttribute("consumptionByPetId", consumptionByPetId);
 
         return "admin/customer-detail";
     }

@@ -41,10 +41,16 @@ public class WalkInOrder {
     @Column(name = "pet_name")
     private String petName;
 
-    // 訂單總額（各項目 price 加總）
+    // 訂單總額（各項目 price 加總，帳面金額，不含折扣）
     @Column(name = "total_amount", nullable = false)
     @Builder.Default
     private int totalAmount = 0;
+
+    // 需求 5：實際結帳扣款金額（若用儲值金付款且套用折扣，這裡會比 totalAmount 小；
+    // 其他付款方式或沒打折的話會跟 totalAmount 相同）。退款時要退這個欄位，
+    // 不能直接退 totalAmount，否則折扣過的訂單會退超過實際扣款金額。
+    @Column(name = "charged_amount")
+    private Integer chargedAmount;
 
     // 開單人（店家 / 員工姓名，快照）
     @Column(name = "created_by", length = 100)
@@ -71,6 +77,44 @@ public class WalkInOrder {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    // ── 結束服務（比照預約單邏輯）────────────────────────────────────────
+    @Column(name = "service_ended_done", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean serviceEndedDone = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_ended_staff_id")
+    @ToString.Exclude
+    private User serviceEndedStaff;
+
+    @Column(name = "service_ended_at")
+    private LocalDateTime serviceEndedAt;
+
+    // ── 核對（比照預約單邏輯，須先結束服務才能核對，核對後才能結帳）───────
+    @Column(name = "final_check_done", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean finalCheckDone = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "final_check_staff_id")
+    @ToString.Exclude
+    private User finalCheckStaff;
+
+    @Column(name = "final_check_note", columnDefinition = "TEXT")
+    private String finalCheckNote;
+
+    @Column(name = "final_check_signature_image", columnDefinition = "LONGTEXT")
+    private String finalCheckSignatureImage;
+
+    @Column(name = "final_check_at")
+    private LocalDateTime finalCheckAt;
+
+    // 開單人（店家/員工帳號，用於開單當下記 CHECKIN 積分；createdBy 只有姓名快照，這裡另存帳號方便查）
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_staff_id")
+    @ToString.Exclude
+    private User createdByStaff;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default

@@ -3,7 +3,10 @@
   <head>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>慕沐村Mulage pet</title>
@@ -18,7 +21,11 @@
         padding: 0;
       }
       body {
-        font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
+        font-family:
+          "Noto Serif TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          serif;
         background: #f6f2ea;
         min-height: 100vh;
       }
@@ -190,6 +197,7 @@
         height: 24px;
       }
     </style>
+    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
     <div class="header">
@@ -266,7 +274,7 @@
         try {
           await liff.init({ liffId: LIFF_ID });
           if (!liff.isLoggedIn()) {
-            liff.login();
+            liff.login({ redirectUri: window.location.href });
             return;
           }
 

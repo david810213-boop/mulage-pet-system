@@ -50,6 +50,13 @@ public class PetGroomingNote {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    // ── 需求 17/18：美容狀況歷史卡片照片（Cloudinary 雲端圖床）───────────
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
+    @Column(name = "photo_public_id", length = 200)
+    private String photoPublicId;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

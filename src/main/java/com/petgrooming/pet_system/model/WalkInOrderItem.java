@@ -40,6 +40,11 @@ public class WalkInOrderItem {
     @Column(name = "grooming_item_id")
     private Long groomingItemId;
 
+    // 需求 7-1：對應的零售商品 id（可為 null）。有值代表這一列是零售商品加購，
+    // 不是美容服務項目——不計積分、不用經手人、不參與折扣，結帳時會扣這個商品的庫存。
+    @Column(name = "retail_product_id")
+    private Long retailProductId;
+
     // 項目名稱（快照，避免項目日後改名或下架影響歷史單）
     @Column(name = "item_name", nullable = false)
     private String itemName;
@@ -69,6 +74,12 @@ public class WalkInOrderItem {
     @Column(name = "points_awarded", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean pointsAwarded = false;
+
+    // 需求 5：折扣資格快照（開單當下從 GroomingItem 複製），供結帳計算與消費明細顯示，
+    // 比照 price/points 的快照做法，避免項目日後改設定影響到已經開好的舊單。
+    @Column(name = "discount_eligible", nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean discountEligible = true;
 
     public boolean isOperatorFilled() {
         return operatorStaff != null;

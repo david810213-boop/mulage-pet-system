@@ -1,328 +1,446 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
-<head>
+  <head>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>慕沐村Mulage pet</title>
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
-      background: #f6f2ea;
-      min-height: 100vh;
-      padding-bottom: 90px;
-    }
-    .header {
-      background: #2b2a28;
-      color: #d9be8f;
-      padding: 20px 16px 24px;
-      text-align: center;
-    }
-    .header .logo { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
-    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 2px; }
-
-    .notice {
-      margin: 16px;
-      background: #f6f2ea;
-      border: 1px solid #ede5d3;
-      border-radius: 12px;
-      padding: 16px;
-      font-size: 13px;
-      color: #454340;
-      line-height: 1.8;
-    }
-    .notice .title {
-      font-weight: 700;
-      color: #2b2a28;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .form-card {
-      margin: 0 16px 16px;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .form-card h3 {
-      font-size: 15px;
-      color: #2b2a28;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #ede5d3;
-    }
-
-    .field { margin-bottom: 16px; }
-    .field label {
-      display: block;
-      font-size: 13px;
-      color: #454340;
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    .field label .hint { color: #8a8072; font-size: 11px; font-weight: 400; margin-left: 6px; }
-
-    .field input, .field select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #e3dccc;
-      border-radius: 8px;
-      font-size: 15px;
-      color: #2b2a28;
-      background: #fffefb;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .field input:focus, .field select:focus {
-      border-color: #b8935a;
-    }
-
-    .submit-btn {
-      display: block;
-      width: calc(100% - 32px);
-      margin: 0 16px;
-      padding: 14px;
-      background: #2b2a28;
-      color: #d9be8f;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-    .submit-btn:active { opacity: 0.8; }
-    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #2b2a28;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 24px;
-      font-size: 14px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 999;
-    }
-    .toast.show { opacity: 1; }
-    .toast.success { background: #2e7d32; }
-    .toast.error { background: #c62828; }
-
-    .loading { text-align: center; padding: 60px; color: #bbb; }
-
-    /* 固定浮動的返回首頁按鈕 */
-    .fab-home {
-      position: fixed;
-      left: 50%;
-      bottom: 20px;
-      transform: translateX(-50%);
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: #2b2a28;
-      box-shadow: 0 4px 14px rgba(44,24,16,0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      z-index: 500;
-    }
-    .fab-home-icon { font-size: 22px; line-height: 1; }
-    .fab-home:active { opacity: 0.8; }
-  </style>
-</head>
-<body>
-
-<div class="header">
-  <div class="logo">慕沐村 Mulage pet</div>
-  <h1>編輯我的資料</h1>
-</div>
-
-<a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
-  <span class="fab-home-icon">🏠</span>
-</a>
-
-<div class="notice">
-  <div class="title">💛 為什麼要填寫這些資料？</div>
-  幫助我們更了解每一位毛孩家長，提供更貼心、更適合您的服務與活動資訊。這些資料皆為選填，您可以隨時回來修改。
-</div>
-
-<div id="app"><div class="loading">載入中...</div></div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-  const LIFF_ID = "2010567973-ygHvpq7X";
-  let jwtToken = null;
-
-  const SOURCE_OPTIONS = [
-    { value: "FRIEND_REFERRAL", label: "親友介紹" },
-    { value: "SOCIAL_MEDIA",    label: "社群媒體／廣告" },
-    { value: "SEARCH_ENGINE",   label: "Google／網路搜尋" },
-    { value: "WALK_IN",         label: "路過／店面招牌" },
-    { value: "REPEAT_CUSTOMER", label: "舊客戶回訪" },
-    { value: "OTHER",           label: "其他" },
-  ];
-
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-
-      const res = await fetch('/api/line/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({ idToken: liff.getIDToken() })
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        document.getElementById('app').innerHTML = '<div class="loading" style="color:red">登入失敗</div>';
-        return;
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>慕沐村Mulage pet</title>
+    <script
+      charset="utf-8"
+      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+    ></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-      jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+      body {
+        font-family:
+          "Noto Serif TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          serif;
+        background: #f6f2ea;
+        min-height: 100vh;
+        padding-bottom: 90px;
+      }
+      .header {
+        background: #2b2a28;
+        color: #d9be8f;
+        padding: 20px 16px 24px;
+        text-align: center;
+      }
+      .header .logo {
+        font-size: 13px;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      .header h1 {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
 
-      await loadProfile();
-    } catch (e) {
-      document.getElementById('app').innerHTML =
-        '<div class="loading" style="color:red">初始化失敗：' + e.message + '</div>';
-    }
-  }
+      .notice {
+        margin: 16px;
+        background: #f6f2ea;
+        border: 1px solid #ede5d3;
+        border-radius: 12px;
+        padding: 16px;
+        font-size: 13px;
+        color: #454340;
+        line-height: 1.8;
+      }
+      .notice .title {
+        font-weight: 700;
+        color: #2b2a28;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
 
-  async function loadProfile() {
-    try {
-      const res = await fetch('/api/users/me', {
-        headers: {
-          'Authorization': 'Bearer ' + jwtToken,
-          'ngrok-skip-browser-warning': 'true'
+      .form-card {
+        margin: 0 16px 16px;
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .form-card h3 {
+        font-size: 15px;
+        color: #2b2a28;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #ede5d3;
+      }
+
+      .field {
+        margin-bottom: 16px;
+      }
+      .field label {
+        display: block;
+        font-size: 13px;
+        color: #454340;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      .field label .req {
+        color: #e53935;
+        margin-left: 2px;
+      }
+      .field label .hint {
+        color: #8a8072;
+        font-size: 11px;
+        font-weight: 400;
+        margin-left: 6px;
+      }
+
+      .field input,
+      .field select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e3dccc;
+        border-radius: 8px;
+        font-size: 15px;
+        color: #2b2a28;
+        background: #fffefb;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .field input:focus,
+      .field select:focus {
+        border-color: #b8935a;
+      }
+
+      .submit-btn {
+        display: block;
+        width: calc(100% - 32px);
+        margin: 0 16px;
+        padding: 14px;
+        background: #2b2a28;
+        color: #d9be8f;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .submit-btn:active {
+        opacity: 0.8;
+      }
+      .submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2b2a28;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 24px;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 999;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+      .toast.success {
+        background: #2e7d32;
+      }
+      .toast.error {
+        background: #c62828;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 60px;
+        color: #bbb;
+      }
+
+      /* 固定浮動的返回首頁按鈕 */
+      .fab-home {
+        position: fixed;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: #2b2a28;
+        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        z-index: 500;
+      }
+      .fab-home-icon {
+        font-size: 22px;
+        line-height: 1;
+      }
+      .fab-home:active {
+        opacity: 0.8;
+      }
+    </style>
+    <link rel="stylesheet" href="/liff/liff-warm.css" />
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">慕沐村 Mulage pet</div>
+      <h1>編輯我的資料</h1>
+    </div>
+
+    <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
+      <span class="fab-home-icon">🏠</span>
+    </a>
+
+    <div class="notice">
+      <div class="title">💛 為什麼要填寫這些資料？</div>
+      幫助我們更了解每一位毛孩家長，提供更貼心、更適合您的服務與活動資訊。這些資料皆為選填，您可以隨時回來修改。
+    </div>
+
+    <div id="app"><div class="loading">載入中...</div></div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const LIFF_ID = "2010567973-ygHvpq7X";
+      let jwtToken = null;
+
+      const SOURCE_OPTIONS = [
+        { value: "FRIEND_REFERRAL", label: "親友介紹" },
+        { value: "SOCIAL_MEDIA", label: "社群媒體／廣告" },
+        { value: "SEARCH_ENGINE", label: "Google／網路搜尋" },
+        { value: "WALK_IN", label: "路過／店面招牌" },
+        { value: "REPEAT_CUSTOMER", label: "舊客戶回訪" },
+        { value: "OTHER", label: "其他" },
+      ];
+
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            liff.login({ redirectUri: window.location.href });
+            return;
+          }
+
+          const res = await fetch("/api/line/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify({ idToken: liff.getIDToken() }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            document.getElementById("app").innerHTML =
+              '<div class="loading" style="color:red">登入失敗</div>';
+            return;
+          }
+          jwtToken = data?.token || data?.jwtToken || data?.accessToken;
+
+          await loadProfile();
+        } catch (e) {
+          document.getElementById("app").innerHTML =
+            '<div class="loading" style="color:red">初始化失敗：' +
+            e.message +
+            "</div>";
         }
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const me = await res.json();
-      renderForm(me);
-    } catch (e) {
-      document.getElementById('app').innerHTML =
-        '<div class="loading" style="color:red">載入資料失敗：' + (e.name ? e.name + ' - ' : '') + e.message + '</div>';
-    }
-  }
+      }
 
-  function renderForm(me) {
-    document.getElementById('app').innerHTML = `
+      async function loadProfile() {
+        try {
+          const res = await fetch("/api/users/me", {
+            headers: {
+              Authorization: "Bearer " + jwtToken,
+              "ngrok-skip-browser-warning": "true",
+            },
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const me = await res.json();
+          renderForm(me);
+        } catch (e) {
+          document.getElementById("app").innerHTML =
+            '<div class="loading" style="color:red">載入資料失敗：' +
+            (e.name ? e.name + " - " : "") +
+            e.message +
+            "</div>";
+        }
+      }
+
+      function renderForm(me) {
+        document.getElementById("app").innerHTML = `
       <div class="form-card">
         <h3>𖥸 基本資料</h3>
 
         <div class="field">
           <label>暱稱</label>
-          <input type="text" id="name" value="${me.name ? escapeHtml(me.name) : ''}" placeholder="您的稱呼" />
+          <input type="text" id="name" value="${me.name ? escapeHtml(me.name) : ""}" placeholder="您的稱呼" />
+        </div>
+
+        <div class="field">
+          <label>手機號碼 <span class="hint">（選填）</span></label>
+          <input type="tel" id="phone" value="${me.phone ? escapeHtml(me.phone) : ""}" placeholder="例如：0912345678" />
         </div>
 
         <div class="field">
           <label>年齡 <span class="hint">（選填）</span></label>
-          <input type="number" id="age" min="0" max="150" value="${me.age ?? ''}" placeholder="例如：30" />
+          <input type="number" id="age" min="0" max="150" value="${me.age ?? ""}" placeholder="例如：30" />
         </div>
 
         <div class="field">
           <label>職業 <span class="hint">（選填）</span></label>
-          <input type="text" id="occupation" value="${me.occupation ? escapeHtml(me.occupation) : ''}" placeholder="例如：上班族、自由業" />
+          <input type="text" id="occupation" value="${me.occupation ? escapeHtml(me.occupation) : ""}" placeholder="例如：上班族、自由業" />
         </div>
 
         <div class="field">
           <label>居住區域 <span class="hint">（選填）</span></label>
-          <input type="text" id="residenceArea" value="${me.residenceArea ? escapeHtml(me.residenceArea) : ''}" placeholder="例如：板橋區" />
+          <input type="text" id="residenceArea" value="${me.residenceArea ? escapeHtml(me.residenceArea) : ""}" placeholder="例如：板橋區" />
+        </div>
+
+        <div class="field">
+          <label>通訊地址 <span class="req">*</span></label>
+          <input type="text" id="mailingAddress" value="${me.mailingAddress ? escapeHtml(me.mailingAddress) : ""}" placeholder="請輸入完整通訊地址" required />
+        </div>
+
+        <div class="field">
+          <label>緊急聯絡人姓名 <span class="hint">（依定型化契約規定蒐集，選填）</span></label>
+          <input type="text" id="emergencyContactName" value="${me.emergencyContactName ? escapeHtml(me.emergencyContactName) : ""}" placeholder="請輸入緊急聯絡人姓名" />
+        </div>
+
+        <div class="field">
+          <label>緊急聯絡人關係 <span class="req">*</span></label>
+          <input type="text" id="emergencyContactRelation" value="${me.emergencyContactRelation ? escapeHtml(me.emergencyContactRelation) : ""}" placeholder="例如：父母、配偶、朋友" required />
+        </div>
+
+        <div class="field">
+          <label>緊急聯絡人電話 <span class="hint">（選填）</span></label>
+          <input type="tel" id="emergencyContactPhone" value="${me.emergencyContactPhone ? escapeHtml(me.emergencyContactPhone) : ""}" placeholder="例如：0912345678" />
         </div>
 
         <div class="field">
           <label>您是從哪裡得知慕沐村的？ <span class="hint">（選填）</span></label>
           <select id="source">
             <option value="">請選擇</option>
-            ${SOURCE_OPTIONS.map(o =>
-              `<option value="${o.value}" ${me.source === o.value ? 'selected' : ''}>${o.label}</option>`
-            ).join('')}
+            ${SOURCE_OPTIONS.map(
+              (o) =>
+                `<option value="${o.value}" ${me.source === o.value ? "selected" : ""}>${o.label}</option>`,
+            ).join("")}
           </select>
         </div>
       </div>
 
       <button class="submit-btn" id="submitBtn" onclick="submitForm()">儲存資料</button>
     `;
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  async function submitForm() {
-    if (!jwtToken) { showToast('請先登入', 'error'); return; }
-
-    const name          = document.getElementById('name').value.trim();
-    const ageRaw         = document.getElementById('age').value;
-    const occupation     = document.getElementById('occupation').value.trim();
-    const residenceArea  = document.getElementById('residenceArea').value.trim();
-    const source         = document.getElementById('source').value;
-
-    const body = {
-      name: name || null,
-      age: ageRaw !== '' ? parseInt(ageRaw) : null,
-      occupation: occupation || null,
-      residenceArea: residenceArea || null,
-      source: source || null,
-    };
-
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.textContent = '儲存中...';
-
-    try {
-      const res = await fetch('/api/users/me', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + jwtToken,
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        showToast('儲存失敗：' + (data?.message || data || res.status), 'error');
-        return;
       }
 
-      showToast('✅ 資料已更新', 'success');
-    } catch (e) {
-      showToast('網路錯誤，請重試', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '儲存資料';
-    }
-  }
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
 
-  function showToast(msg, type = '') {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.className = 'toast show ' + type;
-    setTimeout(() => el.classList.remove('show'), 3000);
-  }
+      async function submitForm() {
+        if (!jwtToken) {
+          showToast("請先登入", "error");
+          return;
+        }
 
-  init();
-</script>
-</body>
+        const name = document.getElementById("name").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+        const ageRaw = document.getElementById("age").value;
+        const occupation = document.getElementById("occupation").value.trim();
+        const residenceArea = document
+          .getElementById("residenceArea")
+          .value.trim();
+        const source = document.getElementById("source").value;
+        const mailingAddress = document.getElementById("mailingAddress").value.trim();
+        const emergencyContactName = document.getElementById("emergencyContactName").value.trim();
+        const emergencyContactPhone = document.getElementById("emergencyContactPhone").value.trim();
+        const emergencyContactRelation = document.getElementById("emergencyContactRelation").value.trim();
+
+        // 需求（追加）：通訊地址、緊急聯絡人關係改為必填
+        if (!mailingAddress) {
+          showToast("請填寫通訊地址", "error");
+          return;
+        }
+        if (!emergencyContactRelation) {
+          showToast("請填寫緊急聯絡人關係", "error");
+          return;
+        }
+
+        const body = {
+          name: name || null,
+          phone: phone || null,
+          age: ageRaw !== "" ? parseInt(ageRaw) : null,
+          occupation: occupation || null,
+          residenceArea: residenceArea || null,
+          source: source || null,
+          mailingAddress: mailingAddress,
+          emergencyContactName: emergencyContactName || null,
+          emergencyContactPhone: emergencyContactPhone || null,
+          emergencyContactRelation: emergencyContactRelation,
+        };
+
+        const btn = document.getElementById("submitBtn");
+        btn.disabled = true;
+        btn.textContent = "儲存中...";
+
+        try {
+          const res = await fetch("/api/users/me", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + jwtToken,
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify(body),
+          });
+
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            showToast(
+              "儲存失敗：" + (data?.message || data || res.status),
+              "error",
+            );
+            return;
+          }
+
+          showToast("✅ 資料已更新", "success");
+        } catch (e) {
+          showToast("網路錯誤，請重試", "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "儲存資料";
+        }
+      }
+
+      function showToast(msg, type = "") {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.className = "toast show " + type;
+        setTimeout(() => el.classList.remove("show"), 3000);
+      }
+
+      init();
+    </script>
+  </body>
 </html>

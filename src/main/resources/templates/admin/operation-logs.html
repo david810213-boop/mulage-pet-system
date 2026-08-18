@@ -1,0 +1,66 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('操作紀錄 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <h2 style="margin-bottom: 4px">操作紀錄</h2>
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem">
+          記錄預約、錢包、現場開單、績效、會員資料修改、帳號登入等關鍵操作。僅保留最近 60 天。
+        </p>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap">
+          <a href="/admin/operation-logs" class="btn"
+             th:classappend="${category == null or category == ''} ? ' btn-primary' : ' btn-outline'">全部</a>
+          <a href="/admin/operation-logs?category=APPOINTMENT" class="btn"
+             th:classappend="${category == 'APPOINTMENT'} ? ' btn-primary' : ' btn-outline'">預約</a>
+          <a href="/admin/operation-logs?category=WALLET" class="btn"
+             th:classappend="${category == 'WALLET'} ? ' btn-primary' : ' btn-outline'">會員錢包</a>
+          <a href="/admin/operation-logs?category=WALKIN" class="btn"
+             th:classappend="${category == 'WALKIN'} ? ' btn-primary' : ' btn-outline'">現場開單</a>
+          <a href="/admin/operation-logs?category=RETAIL" class="btn"
+             th:classappend="${category == 'RETAIL'} ? ' btn-primary' : ' btn-outline'">零售商品</a>
+          <a href="/admin/operation-logs?category=SUPPLY" class="btn"
+             th:classappend="${category == 'SUPPLY'} ? ' btn-primary' : ' btn-outline'">店用洗劑</a>
+          <a href="/admin/operation-logs?category=PERFORMANCE" class="btn"
+             th:classappend="${category == 'PERFORMANCE'} ? ' btn-primary' : ' btn-outline'">績效</a>
+          <a href="/admin/operation-logs?category=CUSTOMER" class="btn"
+             th:classappend="${category == 'CUSTOMER'} ? ' btn-primary' : ' btn-outline'">會員資料</a>
+          <a href="/admin/operation-logs?category=AUTH" class="btn"
+             th:classappend="${category == 'AUTH'} ? ' btn-primary' : ' btn-outline'">帳號登入</a>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>操作人</th>
+              <th>身分</th>
+              <th>分類</th>
+              <th>動作</th>
+              <th>對象</th>
+              <th>備註</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:if="${#lists.isEmpty(logs)}">
+              <td colspan="7" class="empty">尚無紀錄</td>
+            </tr>
+            <tr th:each="l : ${logs}">
+              <td th:text="${#temporals.format(l.createdAt, 'yyyy/MM/dd HH:mm')}"></td>
+              <td th:text="${l.actorName} + ' (' + ${l.actorUsername} + ')'"></td>
+              <td th:text="${l.actorRoleLabel}"></td>
+              <td th:text="${l.categoryLabel}"></td>
+              <td th:text="${l.actionLabel}"></td>
+              <td th:text="${l.targetDesc}"></td>
+              <td th:text="${l.detail}"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

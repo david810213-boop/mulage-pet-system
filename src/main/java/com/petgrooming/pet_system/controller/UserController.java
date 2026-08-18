@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final OperationLogService operationLogService;
 
     // ── GET /api/users/me ──────────────────────────────────────────────────
     // 查詢自己的資料，身分取自 JWT（店家帳密登入或顧客 LINE 登入皆適用）
@@ -42,6 +44,7 @@ public class UserController {
         try {
             String username = (String) request.getAttribute("tokenUsername");
             UserResponse res = userService.updateProfile(username, req);
+            operationLogService.logByUsername(username, "CUSTOMER", "UPDATE_PROFILE", "會員 " + username, null);
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -68,9 +71,11 @@ public class UserController {
     // 新增員工帳號（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/staff")
-    public ResponseEntity<?> createStaff(@Valid @RequestBody CreateStaffRequest req) {
+    public ResponseEntity<?> createStaff(@Valid @RequestBody CreateStaffRequest req, HttpServletRequest request) {
         try {
             UserResponse res = userService.createStaff(req);
+            operationLogService.logByUsername((String) request.getAttribute("tokenUsername"),
+                    "AUTH", "CREATE_STAFF", "新員工 " + res.getUsername(), null);
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

@@ -24,6 +24,31 @@
 
         <div class="cards" th:unless="${pets == null or pets.isEmpty()}">
           <div class="pet-card" th:each="p : ${pets}">
+            <!-- 需求 17（網頁版）：寵物照片顯示 + 上傳/更換 -->
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <img
+                th:if="${p.photoUrl != null}"
+                th:src="${p.photoUrl}"
+                style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--cream-300); flex-shrink: 0;"
+              />
+              <div
+                th:unless="${p.photoUrl != null}"
+                style="width: 56px; height: 56px; border-radius: 50%; background: var(--cream-100); display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid var(--cream-300); flex-shrink: 0;"
+              >🐾</div>
+              <form
+                th:action="@{/pets/{id}/photo(id=${p.id})}"
+                method="post"
+                enctype="multipart/form-data"
+                style="display: flex; flex-direction: column; gap: 4px; flex: 1;"
+              >
+                <input type="file" name="file" accept="image/*" style="font-size: 11px;" required />
+                <button type="submit" class="btn btn-outline" style="padding: 3px 10px; font-size: 11px; align-self: flex-start;">
+                  <span th:if="${p.photoUrl == null}">上傳照片</span>
+                  <span th:if="${p.photoUrl != null}">更換照片</span>
+                </button>
+              </form>
+            </div>
+
             <!-- 類型 + 體型標籤 -->
             <div
               style="

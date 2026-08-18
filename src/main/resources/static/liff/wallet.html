@@ -3,7 +3,10 @@
   <head>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>慕沐村Mulage pet</title>
@@ -19,7 +22,11 @@
         padding: 0;
       }
       body {
-        font-family: "Noto Serif TC", -apple-system, BlinkMacSystemFont, serif;
+        font-family:
+          "Noto Serif TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          serif;
         background: #f6f2ea;
         min-height: 100vh;
         padding-bottom: 90px;
@@ -280,7 +287,7 @@
         height: 52px;
         border-radius: 50%;
         background: #2b2a28;
-        box-shadow: 0 4px 14px rgba(44,24,16,0.35);
+        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -291,8 +298,11 @@
         font-size: 22px;
         line-height: 1;
       }
-      .fab-home:active { opacity: 0.8; }
+      .fab-home:active {
+        opacity: 0.8;
+      }
     </style>
+    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
     <div class="header">
@@ -319,7 +329,7 @@
         try {
           await liff.init({ liffId: LIFF_ID });
           if (!liff.isLoggedIn()) {
-            liff.login();
+            liff.login({ redirectUri: window.location.href });
             return;
           }
 
@@ -379,6 +389,7 @@
           // 3. 成功拿到資料後，渲染畫面
           render(wallet, txList);
           loadMyTopUps(); // 需求 1：載入儲值申請狀態
+          loadBankAccountInfo(); // 需求 21：載入匯款帳號資訊 + 收款 QR Code（原本是寫死的假資料）
         } catch (e) {
           // 這裡保留 e.message，如果後端真的噴 401/500，畫面上會顯示具體的 HTTP 狀態碼
           showError("載入失敗：" + (e.message || "未知錯誤"));
@@ -497,12 +508,8 @@
                 <!-- 需求 1：線上儲值僅限轉帳 -->
                 <div class="topup-card" style="margin:16px; background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <h3 style="font-size:15px; color:#2b2a28; margin-bottom:12px;">💳 線上儲值（限轉帳）</h3>
-                    <div style="background:#f6f2ea; border-radius:8px; padding:12px; font-size:13px; color:#454340; line-height:1.7; margin-bottom:14px;">
-                        轉帳資訊<br/>
-                        銀行：（822）中國信託<br/>
-                        帳號：<b>000-000-000000</b><br/>
-                        戶名：慕沐村寵物美容<br/>
-                        <span style="color:#8a8072;">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>
+                    <div id="bankAccountInfoBox" style="background:#f6f2ea; border-radius:8px; padding:12px; font-size:13px; color:#454340; line-height:1.7; margin-bottom:14px;">
+                        載入轉帳資訊中...
                     </div>
                     <div class="field" style="margin-bottom:10px;">
                         <input id="topupAmount" type="number" min="1" placeholder="儲值金額"
@@ -541,10 +548,16 @@
 
       // 需求 1：送出線上轉帳儲值申請（餘額不會立即變動，待店家核帳）
       async function submitTopUp() {
-        const amount = parseInt(document.getElementById("topupAmount").value, 10);
-        const last5  = document.getElementById("topupLast5").value.trim();
-        const note   = document.getElementById("topupNote").value.trim();
-        if (!amount || amount <= 0) { showToast("請輸入正確的儲值金額"); return; }
+        const amount = parseInt(
+          document.getElementById("topupAmount").value,
+          10,
+        );
+        const last5 = document.getElementById("topupLast5").value.trim();
+        const note = document.getElementById("topupNote").value.trim();
+        if (!amount || amount <= 0) {
+          showToast("請輸入正確的儲值金額");
+          return;
+        }
         try {
           const res = await fetch("/api/topup", {
             method: "POST",
@@ -552,9 +565,16 @@
               "Content-Type": "application/json",
               Authorization: "Bearer " + jwtToken,
             },
-            body: JSON.stringify({ amount, lastFiveDigits: last5, remitNote: note }),
+            body: JSON.stringify({
+              amount,
+              lastFiveDigits: last5,
+              remitNote: note,
+            }),
           });
-          if (!res.ok) { showToast(await res.text() || "送出失敗"); return; }
+          if (!res.ok) {
+            showToast((await res.text()) || "送出失敗");
+            return;
+          }
           document.getElementById("topupAmount").value = "";
           document.getElementById("topupLast5").value = "";
           document.getElementById("topupNote").value = "";
@@ -562,6 +582,26 @@
           loadMyTopUps();
         } catch (e) {
           showToast("送出失敗，請稍後再試");
+        }
+      }
+
+      // 需求 21：載入匯款帳號資訊 + 收款 QR Code（原本是寫死在頁面上的假資料）
+      async function loadBankAccountInfo() {
+        const box = document.getElementById("bankAccountInfoBox");
+        if (!box) return;
+        try {
+          const info = await api("/api/payments/bank-account");
+          box.innerHTML =
+            "轉帳資訊<br/>" +
+            "銀行：" + (info.bankName || "尚未設定") + "<br/>" +
+            "帳號：<b>" + (info.accountNumber || "尚未設定") + "</b><br/>" +
+            "戶名：" + (info.accountHolder || "尚未設定") + "<br/>" +
+            (info.qrCodeUrl
+              ? '<img src="' + info.qrCodeUrl + '" style="width:140px;height:140px;object-fit:contain;border:1px solid #e3dccc;border-radius:8px;margin-top:8px;display:block;" />'
+              : "") +
+            '<span style="color:#8a8072;">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>';
+        } catch (e) {
+          box.innerHTML = '<span style="color:#c62828;">轉帳資訊載入失敗，請稍後重試</span>';
         }
       }
 
@@ -575,25 +615,49 @@
           const list = await res.json();
           const box = document.getElementById("topupList");
           if (!box) return;
-          if (!list.length) { box.innerHTML = ""; return; }
+          if (!list.length) {
+            box.innerHTML = "";
+            return;
+          }
           box.innerHTML =
             '<div style="font-size:13px;color:#454340;margin-bottom:6px;">近期申請</div>' +
-            list.slice(0, 5).map(function (r) {
-              var color = r.status === "CONFIRMED" ? "#2e7d32"
-                        : r.status === "REJECTED" ? "#e53935" : "#b8860b";
-              return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #ede5d3;">'
-                   + '<span>$' + r.amount.toLocaleString() + '</span>'
-                   + '<span style="color:' + color + ';">' + r.statusLabel + '</span></div>';
-            }).join("");
-        } catch (e) { /* 靜默 */ }
+            list
+              .slice(0, 5)
+              .map(function (r) {
+                var color =
+                  r.status === "CONFIRMED"
+                    ? "#2e7d32"
+                    : r.status === "REJECTED"
+                      ? "#e53935"
+                      : "#b8860b";
+                return (
+                  '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #ede5d3;">' +
+                  "<span>$" +
+                  r.amount.toLocaleString() +
+                  "</span>" +
+                  '<span style="color:' +
+                  color +
+                  ';">' +
+                  r.statusLabel +
+                  "</span></div>"
+                );
+              })
+              .join("");
+        } catch (e) {
+          /* 靜默 */
+        }
       }
 
       function showToast(msg) {
         const t = document.getElementById("toast");
-        if (!t) { return; }
+        if (!t) {
+          return;
+        }
         t.textContent = msg;
         t.classList.add("show");
-        setTimeout(function () { t.classList.remove("show"); }, 2500);
+        setTimeout(function () {
+          t.classList.remove("show");
+        }, 2500);
       }
 
       function showError(msg) {

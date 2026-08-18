@@ -12,6 +12,7 @@
         <p class="date-label">
           日期：<strong th:text="${selectedDate}"></strong>
         </p>
+        <p th:if="${#lists.isEmpty(slots)}">當天無可預約時段（可能為公休日或尚未設定時段）</p>
         <div th:each="slot : ${slots}" class="slot">
           <span th:text="${slot.startTime + ' ~ ' + slot.endTime}"></span>
           <span class="avail" th:if="${slot.available}">✓ 可預約</span>

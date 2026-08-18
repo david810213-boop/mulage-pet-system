@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ public class TopUpMvcController {
 
     private final TopUpService topUpService;
     private final UserService userService;
+    private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -50,6 +52,8 @@ public class TopUpMvcController {
         User user = getLoginUser(request);
         try {
             var result = topUpService.confirm(id, user.getName());
+            operationLogService.log(user, "WALLET", "TOPUP_CONFIRM",
+                    "會員 " + result.getName(), "+$" + result.getAmount());
             ra.addFlashAttribute("successMsg",
                     "已確認入帳：" + result.getName() + " +$" + result.getAmount());
         } catch (IllegalArgumentException e) {
@@ -67,6 +71,7 @@ public class TopUpMvcController {
         User user = getLoginUser(request);
         try {
             topUpService.reject(id, user.getName(), reason);
+            operationLogService.log(user, "WALLET", "TOPUP_REJECT", "儲值申請 #" + id, reason);
             ra.addFlashAttribute("successMsg", "已駁回此申請");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "駁回失敗：" + e.getMessage());

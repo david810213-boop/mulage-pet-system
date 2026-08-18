@@ -125,7 +125,7 @@ public class AdminMvcController {
      */
     @PostMapping("/grooming/update/{id}")
     public String updateItem(@PathVariable Long id,
-                             @Valid @ModelAttribute("groomingItemRequest") GroomingItemRequest req,
+                             @Valid @ModelAttribute("updateGroomingItemRequest") com.petgrooming.pet_system.dto.UpdateGroomingItemRequest req,
                              BindingResult bindingResult,
                              HttpServletRequest request,
                               RedirectAttributes redirectAttributes,
@@ -186,6 +186,86 @@ public class AdminMvcController {
         model.addAttribute("user", user);
         model.addAttribute("report", paymentService.getFinancialReport());
         return "admin/report";
+    }
+
+    // ── GET /admin/report/export.xlsx ───────────────────────────────────
+    // 需求 6：財務報表匯出 Excel（當日/當月彙總 + 成本毛利 + 逐筆明細，三個工作表）
+    @GetMapping("/report/export.xlsx")
+    public void exportReport(HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        if (!isAdmin(request)) {
+            response.sendRedirect("/dashboard");
+            return;
+        }
+        var report = paymentService.getFinancialReport();
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+
+            // ── 工作表 1：彙總 ──────────────────────────────────────────
+            var summarySheet = workbook.createSheet("業績彙總");
+            String[][] summaryRows = {
+                    {"項目", "數值"},
+                    {"當日總業績", String.valueOf(report.getTodayRevenueTotal())},
+                    {"當日儲值金扣款", String.valueOf(report.getTodayRevenueWallet())},
+                    {"當日非儲值金付款", String.valueOf(report.getTodayRevenueNonWallet())},
+                    {"當日結帳筆數", String.valueOf(report.getTodayOrderCount())},
+                    {"當日儲值金額（預收款，非業績）", String.valueOf(report.getTodayTopupCollected())},
+                    {"當月總業績", String.valueOf(report.getMonthRevenueTotal())},
+                    {"當月儲值金扣款", String.valueOf(report.getMonthRevenueWallet())},
+                    {"當月非儲值金付款", String.valueOf(report.getMonthRevenueNonWallet())},
+                    {"當月結帳筆數", String.valueOf(report.getMonthOrderCount())},
+                    {"當月儲值金額（預收款，非業績）", String.valueOf(report.getMonthTopupCollected())},
+                    {"零售商品成本（估算）", String.valueOf(report.getMonthRetailCostEstimate())},
+                    {"店用洗劑成本", String.valueOf(report.getMonthSupplyCost())},
+                    {"成本合計", String.valueOf(report.getMonthTotalCost())},
+                    {"粗估毛利", String.valueOf(report.getMonthEstimatedProfit())},
+            };
+            for (int r = 0; r < summaryRows.length; r++) {
+                var row = summarySheet.createRow(r);
+                for (int c = 0; c < summaryRows[r].length; c++) {
+                    var cell = row.createCell(c);
+                    cell.setCellValue(summaryRows[r][c]);
+                    if (r == 0) cell.setCellStyle(headerStyle);
+                }
+            }
+            summarySheet.autoSizeColumn(0);
+            summarySheet.autoSizeColumn(1);
+
+            // ── 工作表 2：交易明細 ──────────────────────────────────────
+            var detailSheet = workbook.createSheet("交易明細");
+            String[] detailHeaders = {"來源", "單號", "付款方式", "金額", "付款時間", "經手人"};
+            var detailHeaderRow = detailSheet.createRow(0);
+            for (int i = 0; i < detailHeaders.length; i++) {
+                var cell = detailHeaderRow.createCell(i);
+                cell.setCellValue(detailHeaders[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            int rowIdx = 1;
+            for (var d : report.getDetails()) {
+                var row = detailSheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(d.getSourceLabel());
+                row.createCell(1).setCellValue(d.getCode());
+                row.createCell(2).setCellValue(d.getPaymentMethodLabel());
+                row.createCell(3).setCellValue(d.getAmount());
+                row.createCell(4).setCellValue(d.getPaymentTime() != null
+                        ? d.getPaymentTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
+                row.createCell(5).setCellValue(d.getHandledBy() != null ? d.getHandledBy() : "");
+            }
+            for (int i = 0; i < detailHeaders.length; i++) {
+                detailSheet.autoSizeColumn(i);
+            }
+
+            String filename = "財務報表_" + java.time.LocalDate.now() + ".xlsx";
+            String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
+            workbook.write(response.getOutputStream());
+        }
     }
 
         /**

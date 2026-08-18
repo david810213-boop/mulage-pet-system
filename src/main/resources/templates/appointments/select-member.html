@@ -1,0 +1,158 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('選擇會員 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: 560px">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2 style="margin: 0">👤 代客建立預約</h2>
+          <a href="/appointments" class="btn">← 回預約管理</a>
+        </div>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--brown-light);
+            margin-bottom: 1.25rem;
+          "
+        >
+          用來幫不方便自己上線預約的顧客（例如電話預約、現場口頭預約）代為建立預約。先搜尋要幫哪位會員預約。
+        </p>
+
+        <div class="card">
+          <div style="position: relative">
+            <input
+              type="text"
+              id="memberSearchBox"
+              placeholder="輸入會員姓名、電話、或寵物名稱搜尋"
+              autocomplete="off"
+              style="
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid var(--cream-300);
+                border-radius: 8px;
+                font-size: 14px;
+                box-sizing: border-box;
+              "
+            />
+            <div
+              id="memberSuggestions"
+              style="
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #fff;
+                border: 1px solid var(--cream-300);
+                border-radius: 8px;
+                margin-top: 4px;
+                max-height: 320px;
+                overflow-y: auto;
+                z-index: 10;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+              "
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const searchBox = document.getElementById("memberSearchBox");
+      const suggestions = document.getElementById("memberSuggestions");
+      let searchDebounce;
+
+      searchBox.addEventListener("input", function () {
+        const keyword = this.value.trim();
+        clearTimeout(searchDebounce);
+        if (keyword.length < 1) {
+          suggestions.style.display = "none";
+          return;
+        }
+        searchDebounce = setTimeout(function () {
+          Promise.all([
+            fetch(
+              "/api/admin/members/search?keyword=" +
+                encodeURIComponent(keyword),
+            )
+              .then((res) => (res.ok ? res.json() : []))
+              .catch(() => []),
+            fetch(
+              "/api/admin/members/search-by-pet?keyword=" +
+                encodeURIComponent(keyword),
+            )
+              .then((res) => (res.ok ? res.json() : []))
+              .catch(() => []),
+          ]).then(([members, pets]) => renderSuggestions(members, pets));
+        }, 300);
+      });
+
+      function renderSuggestions(members, pets) {
+        suggestions.innerHTML = "";
+        if (!members.length && !pets.length) {
+          suggestions.style.display = "none";
+          return;
+        }
+        if (members.length) {
+          const header = document.createElement("div");
+          header.textContent = "👤 依會員搜尋";
+          header.style.cssText =
+            "padding:6px 10px; font-size:11px; color:#999; background:#faf7f2;";
+          suggestions.appendChild(header);
+          members.forEach((m) => {
+            const item = document.createElement("div");
+            item.style.cssText =
+              "padding:10px 12px; cursor:pointer; font-size:14px; border-bottom:1px solid #f0e8dc;";
+            item.textContent = m.name + "（" + m.username + "）";
+            item.onmouseenter = () => (item.style.background = "#f8f5f0");
+            item.onmouseleave = () => (item.style.background = "white");
+            item.onclick = () => selectMember(m.username);
+            suggestions.appendChild(item);
+          });
+        }
+        if (pets.length) {
+          const header = document.createElement("div");
+          header.textContent = "🐾 依寵物名稱搜尋";
+          header.style.cssText =
+            "padding:6px 10px; font-size:11px; color:#999; background:#faf7f2;";
+          suggestions.appendChild(header);
+          pets.forEach((p) => {
+            const item = document.createElement("div");
+            item.style.cssText =
+              "padding:10px 12px; cursor:pointer; font-size:14px; border-bottom:1px solid #f0e8dc;";
+            item.textContent = p.displayLabel;
+            item.onmouseenter = () => (item.style.background = "#f8f5f0");
+            item.onmouseleave = () => (item.style.background = "white");
+            item.onclick = () => selectMember(p.ownerUsername);
+            suggestions.appendChild(item);
+          });
+        }
+        suggestions.style.display = "block";
+      }
+
+      function selectMember(username) {
+        window.location.href =
+          "/appointments/new?forUsername=" + encodeURIComponent(username);
+      }
+
+      document.addEventListener("click", function (e) {
+        if (
+          !e.target.closest("#memberSearchBox") &&
+          !e.target.closest("#memberSuggestions")
+        ) {
+          suggestions.style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>

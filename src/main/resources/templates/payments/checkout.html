@@ -55,6 +55,35 @@
           </p>
         </div>
 
+        <!-- 需求：結帳前逐項目消費明細，標示哪些項目有折扣、哪些沒有 -->
+        <div class="card" th:if="${detailItems != null and !detailItems.isEmpty()}" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 15px; margin-bottom: 10px;">📋 消費明細</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>價格</th>
+                <th>折扣資格</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="it : ${detailItems}">
+                <td th:text="${it.name}"></td>
+                <td th:text="'$' + ${it.price}"></td>
+                <td>
+                  <span th:if="${it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
+                  <span th:if="${it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
+                  <span th:if="${!it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
+                  <span th:if="${!it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px; margin-bottom: 0;">
+            回洗優惠與會員折扣只能擇一（取較優惠者），不會疊加；只有選擇儲值金付款時才會套用會員折扣，回洗優惠則不限付款方式。不打折的項目一律以原價計入結帳金額。
+          </p>
+        </div>
+
         <div class="card">
           <form
             method="post"
@@ -62,12 +91,12 @@
           >
             <div class="field">
               <label>付款方式</label>
-              <select name="paymentMethod" required>
+              <select name="paymentMethod" id="paymentMethodSelect" required>
                 <option value="" disabled selected>請選擇付款方式</option>
                 <option
                   th:each="m : ${paymentMethods}"
                   th:value="${m.name()}"
-                  th:text="${m.name() == 'CASH' ? '現金' : m.name() == 'CREDIT_CARD' ? '信用卡（加收 2%）' : m.name() == 'LINE_PAY' ? 'Line Pay' : '儲值金（套用會員折扣）'}"
+                  th:text="${m.name() == 'CASH' ? '現金' : m.name() == 'LINE_PAY' ? 'Line Pay' : m.name() == 'WIRE_TRANSFER' ? '匯款' : '儲值金（套用會員折扣）'}"
                   th:selected="${checkoutRequest?.paymentMethod?.name() == m.name()}"
                 ></option>
               </select>
@@ -75,6 +104,35 @@
                 不同付款方式手續費不同，結帳後可於交易紀錄查看實付金額。選擇「儲值金」將依會員等級套用折扣後，直接從會員儲值餘額中扣除，餘額不足將無法結帳。
               </p>
             </div>
+
+            <!-- 需求 10：選「匯款」時自動顯示店家帳號資訊，選其他方式則隱藏 -->
+            <div
+              id="wireTransferInfo"
+              style="display: none; margin-top: 10px; padding: 12px 14px; background: var(--cream-100); border: 1px solid var(--cream-300); border-radius: var(--radius-sm);"
+            >
+              <p style="font-size: 13px; font-weight: 700; color: var(--brown-dark); margin-bottom: 6px;">
+                請匯款至以下帳戶，並提醒顧客保留匯款憑證
+              </p>
+              <p style="font-size: 13px; margin: 2px 0;">銀行：<span th:text="${bankAccountInfo.bankName}"></span></p>
+              <p style="font-size: 13px; margin: 2px 0;">帳號：<span th:text="${bankAccountInfo.accountNumber}"></span></p>
+              <p style="font-size: 13px; margin: 2px 0;">戶名：<span th:text="${bankAccountInfo.accountHolder}"></span></p>
+              <!-- 需求 21：有設定 QR Code 就顯示，方便掃碼轉帳 -->
+              <img
+                th:if="${bankAccountInfo.qrCodeUrl != null}"
+                th:src="${bankAccountInfo.qrCodeUrl}"
+                style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--cream-300); border-radius: 8px; margin-top: 8px; display: block;"
+              />
+              <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px;">
+                送出後訂單會先進入「待對帳」狀態，需要店家在確認收到款項後另外按「確認收款」，訂單才會正式轉為已完成。
+              </p>
+            </div>
+            <script>
+              document.getElementById('paymentMethodSelect').addEventListener('change', function () {
+                document.getElementById('wireTransferInfo').style.display =
+                  this.value === 'WIRE_TRANSFER' ? 'block' : 'none';
+              });
+            </script>
+
             <div style="display: flex; gap: 10px; margin-top: 0.5rem">
               <button type="submit" class="btn">確認付款</button>
               <a href="/appointments" class="btn btn-outline">取消</a>

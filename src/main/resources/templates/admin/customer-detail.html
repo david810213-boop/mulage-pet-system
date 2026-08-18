@@ -12,7 +12,9 @@
         align-items: start;
       }
       @media (max-width: 900px) {
-        .cd-layout { grid-template-columns: 1fr; }
+        .cd-layout {
+          grid-template-columns: 1fr;
+        }
       }
       .cd-avatar {
         width: 64px;
@@ -37,7 +39,9 @@
         border-top: 0.5px solid var(--cream-200);
         color: var(--brown-mid);
       }
-      .cd-info-row:first-of-type { border-top: none; }
+      .cd-info-row:first-of-type {
+        border-top: none;
+      }
       .cd-info-row span:first-child {
         color: var(--brown-light);
         flex-shrink: 0;
@@ -64,8 +68,12 @@
         color: #fff;
         font-weight: 600;
       }
-      .cd-tab-panel { display: none; }
-      .cd-tab-panel.active { display: block; }
+      .cd-tab-panel {
+        display: none;
+      }
+      .cd-tab-panel.active {
+        display: block;
+      }
       .cd-stat {
         background: var(--cream-100);
         border: 0.5px solid var(--cream-300);
@@ -73,52 +81,281 @@
         padding: 12px 16px;
         text-align: center;
       }
-      .cd-stat .label { font-size: 11.5px; color: var(--brown-light); margin-bottom: 4px; }
-      .cd-stat .value { font-size: 20px; font-weight: 600; color: var(--brown-dark); }
+      .cd-stat .label {
+        font-size: 11.5px;
+        color: var(--brown-light);
+        margin-bottom: 4px;
+      }
+      .cd-stat .value {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--brown-dark);
+      }
+
+      /* 消費紀錄列可點擊查看明細 */
+      #tab-consume tbody tr.is-clickable {
+        cursor: pointer;
+      }
+      #tab-consume tbody tr.is-clickable:hover td {
+        background: var(--cream-100);
+      }
+
+      /* 消費明細彈窗 */
+      .cd-detail-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(32, 30, 29, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+      }
+      .cd-detail-backdrop.show {
+        display: flex;
+      }
+      .cd-detail-sheet {
+        background: #fff;
+        width: 100%;
+        max-width: 520px;
+        max-height: 85vh;
+        overflow-y: auto;
+        border-radius: var(--radius-lg, 12px);
+        padding: 22px 24px;
+      }
+      .cd-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--cream-300);
+      }
+      .cd-detail-header h3 {
+        font-size: 16px;
+        color: var(--brown-dark);
+        margin: 0;
+      }
+      .cd-detail-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: var(--brown-light);
+        cursor: pointer;
+        padding: 2px 6px;
+      }
+      .cd-detail-loading,
+      .cd-detail-error {
+        text-align: center;
+        padding: 30px 0;
+        font-size: 13.5px;
+        color: var(--brown-light);
+      }
+      .cd-detail-error {
+        color: #c62828;
+      }
+      .cd-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--cream-200);
+        font-size: 13.5px;
+        color: var(--brown-dark);
+      }
+      .cd-detail-row:last-child {
+        border-bottom: none;
+      }
+      .cd-detail-row .name {
+        flex: 1;
+      }
+      .cd-detail-row .operator {
+        font-size: 11px;
+        color: var(--brown-light);
+        margin-left: 6px;
+      }
+      .cd-detail-row .price {
+        font-weight: 700;
+        margin-left: 10px;
+        white-space: nowrap;
+      }
+      .cd-detail-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 10px;
+        margin-top: 6px;
+        border-top: 2px solid var(--brown-dark);
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--brown-dark);
+      }
+      .cd-detail-section {
+        margin-bottom: 14px;
+      }
+      .cd-detail-section .label {
+        font-size: 11.5px;
+        color: var(--brown-light);
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      .cd-detail-payment {
+        margin-top: 12px;
+        padding: 10px 12px;
+        background: var(--cream-100);
+        border-radius: var(--radius-sm);
+        font-size: 12.5px;
+        color: var(--brown-mid);
+        line-height: 1.8;
+      }
     </style>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
 
-      <div class="content">
+      <div class="content" style="max-width: 1200px">
         <a
           href="/admin/customers"
           class="btn"
-          style="margin-bottom: 1.25rem; text-decoration: none; display: inline-block; background: var(--cream-500); color: #fff; border-color: var(--cream-500);"
+          style="
+            margin-bottom: 1.25rem;
+            text-decoration: none;
+            display: inline-block;
+            background: var(--cream-500);
+            color: #fff;
+            border-color: var(--cream-500);
+          "
           >← 返回會員清單</a
         >
 
-        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
-        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+        <div
+          class="alert alert-success"
+          th:if="${successMsg}"
+          th:text="${successMsg}"
+        ></div>
+        <div
+          class="alert alert-error"
+          th:if="${errorMsg}"
+          th:text="${errorMsg}"
+        ></div>
 
         <div class="cd-layout">
           <!-- ══════════ 左側：會員資料卡 ══════════ -->
           <div class="card" style="padding: 1.4rem">
-            <div class="cd-avatar" th:text="${#strings.substring(customer.name, 0, 1)}">名</div>
-            <h3 style="margin: 0 0 4px; font-size: 18px" th:text="${customer.name}">會員姓名</h3>
+            <div
+              class="cd-avatar"
+              th:text="${#strings.substring(customer.name, 0, 1)}"
+            >
+              名
+            </div>
+            <h3
+              style="margin: 0 0 4px; font-size: 18px"
+              th:text="${customer.name}"
+            >
+              會員姓名
+            </h3>
             <div style="margin-bottom: 10px">
-              <span th:if="${customer.lineUserId != null}" class="badge" style="background: #06c755; color: #fff;">LINE 已綁定</span>
-              <span th:if="${customer.lineUserId == null}" class="badge" style="background: var(--brown-light); color: #fff;">帳號密碼登入</span>
-              <span th:if="${wallet != null}" class="badge" style="background: var(--cream-500); color: #fff;" th:text="${wallet.cardTierLabel}">等級</span>
+              <span
+                th:if="${customer.lineUserId != null}"
+                class="badge"
+                style="background: #06c755; color: #fff"
+                >LINE 已綁定</span
+              >
+              <span
+                th:if="${customer.lineUserId == null}"
+                class="badge"
+                style="background: var(--brown-light); color: #fff"
+                >帳號密碼登入</span
+              >
+              <span
+                th:if="${wallet != null}"
+                class="badge"
+                style="background: var(--cream-500); color: #fff"
+                th:text="${wallet.cardTierLabel}"
+                >等級</span
+              >
             </div>
 
-            <div class="cd-info-row"><span>手機號碼</span><span th:text="${customer.phone} ?: '尚未填寫'"></span></div>
-            <div class="cd-info-row" th:if="${customer.email != null}"><span>Email</span><span th:text="${customer.email}"></span></div>
-            <div class="cd-info-row" th:if="${customer.age != null}"><span>年齡</span><span th:text="${customer.age} + ' 歲'"></span></div>
-            <div class="cd-info-row" th:if="${customer.occupation != null}"><span>職業</span><span th:text="${customer.occupation}"></span></div>
-            <div class="cd-info-row" th:if="${customer.residenceArea != null}"><span>居住區域</span><span th:text="${customer.residenceArea}"></span></div>
-            <div class="cd-info-row" th:if="${customer.source != null}"><span>得知來源</span><span th:text="${customer.source.label}"></span></div>
-            <div class="cd-info-row"><span>加入日期</span><span th:text="${#temporals.format(customer.createdAt, 'yyyy/MM/dd')}"></span></div>
-            <div class="cd-info-row" th:if="${wallet != null}"><span>錢包餘額</span><span th:text="'$' + ${#numbers.formatInteger(wallet.balance, 0, 'COMMA')}"></span></div>
+            <div class="cd-info-row">
+              <span>手機號碼</span
+              ><span th:text="${customer.phone} ?: '尚未填寫'"></span>
+            </div>
+            <div class="cd-info-row" th:if="${customer.email != null}">
+              <span>Email</span><span th:text="${customer.email}"></span>
+            </div>
+            <div class="cd-info-row" th:if="${customer.age != null}">
+              <span>年齡</span><span th:text="${customer.age} + ' 歲'"></span>
+            </div>
+            <div class="cd-info-row" th:if="${customer.occupation != null}">
+              <span>職業</span><span th:text="${customer.occupation}"></span>
+            </div>
+            <div class="cd-info-row" th:if="${customer.residenceArea != null}">
+              <span>居住區域</span
+              ><span th:text="${customer.residenceArea}"></span>
+            </div>
+            <div class="cd-info-row" th:if="${customer.source != null}">
+              <span>得知來源</span
+              ><span th:text="${customer.source.label}"></span>
+            </div>
+            <div class="cd-info-row">
+              <span>加入日期</span
+              ><span
+                th:text="${#temporals.format(customer.createdAt, 'yyyy/MM/dd')}"
+              ></span>
+            </div>
+            <div class="cd-info-row" th:if="${wallet != null}">
+              <span>錢包餘額</span
+              ><span
+                th:text="'$' + ${#numbers.formatInteger(wallet.balance, 0, 'COMMA')}"
+              ></span>
+            </div>
 
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--cream-300)">
-              <h4 style="font-size: 13px; color: var(--brown-dark); margin-bottom: 8px">🐾 會員備註（店家專用）</h4>
-              <form th:action="@{/admin/wallets/{u}/note(u=${customer.username})}" method="post">
-                <input type="hidden" name="returnTo" th:value="@{/admin/customers/{u}(u=${customer.username})}" />
-                <textarea name="adminNote" rows="4"
-                          placeholder="例如：都會自己攜帶寵物使用的用品，寵物梳下來的毛都要幫她留著"
-                          style="width:100%; font-size:12.5px; padding:8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box; resize:vertical;"
-                          th:text="${customer.adminNote}"></textarea>
-                <button type="submit" class="btn" style="margin-top: 8px; padding: 5px 14px; font-size: 12.5px;">儲存備註</button>
+            <div
+              style="
+                margin-top: 16px;
+                padding-top: 12px;
+                border-top: 1px solid var(--cream-300);
+              "
+            >
+              <h4
+                style="
+                  font-size: 13px;
+                  color: var(--brown-dark);
+                  margin-bottom: 8px;
+                "
+              >
+                🐾 會員備註（店家專用）
+              </h4>
+              <form
+                th:action="@{/admin/wallets/{u}/note(u=${customer.username})}"
+                method="post"
+              >
+                <input
+                  type="hidden"
+                  name="returnTo"
+                  th:value="@{/admin/customers/{u}(u=${customer.username})}"
+                />
+                <textarea
+                  name="adminNote"
+                  rows="4"
+                  placeholder="例如：都會自己攜帶寵物使用的用品，寵物梳下來的毛都要幫她留著"
+                  style="
+                    width: 100%;
+                    font-size: 12.5px;
+                    padding: 8px;
+                    border: 1px solid var(--cream-300);
+                    border-radius: var(--radius-sm);
+                    box-sizing: border-box;
+                    resize: vertical;
+                  "
+                  th:text="${customer.adminNote}"
+                ></textarea>
+                <button
+                  type="submit"
+                  class="btn"
+                  style="margin-top: 8px; padding: 5px 14px; font-size: 12.5px"
+                >
+                  儲存備註
+                </button>
               </form>
             </div>
           </div>
@@ -126,19 +363,59 @@
           <!-- ══════════ 右側：分頁內容 ══════════ -->
           <div>
             <div style="display: flex; gap: 2px">
-              <button type="button" class="cd-tab-btn active" data-tab="tab-consume" onclick="switchTab(this)">💰 消費記錄</button>
-              <button type="button" class="cd-tab-btn" data-tab="tab-pets" onclick="switchTab(this)">🐾 寵物資料</button>
-              <button type="button" class="cd-tab-btn" data-tab="tab-appt" onclick="switchTab(this)">📅 預約紀錄</button>
+              <button
+                type="button"
+                class="cd-tab-btn active"
+                data-tab="tab-consume"
+                onclick="switchTab(this)"
+              >
+                💰 消費記錄
+              </button>
+              <button
+                type="button"
+                class="cd-tab-btn"
+                data-tab="tab-pets"
+                onclick="switchTab(this)"
+              >
+                🐾 寵物資料
+              </button>
+              <button
+                type="button"
+                class="cd-tab-btn"
+                data-tab="tab-appt"
+                onclick="switchTab(this)"
+              >
+                📅 預約紀錄
+              </button>
             </div>
 
-            <div style="background: #fff; border: 1px solid var(--cream-300); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); padding: 1.2rem 1.4rem;">
-
+            <div
+              style="
+                background: #fff;
+                border: 1px solid var(--cream-300);
+                border-radius: 0 var(--radius-md) var(--radius-md)
+                  var(--radius-md);
+                padding: 1.2rem 1.4rem;
+              "
+            >
               <!-- 消費記錄 -->
               <div id="tab-consume" class="cd-tab-panel active">
-                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.2rem;">
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 10px;
+                    margin-bottom: 1.2rem;
+                  "
+                >
                   <div class="cd-stat">
                     <div class="label">累積消費</div>
-                    <div class="value" th:text="'$' + ${#numbers.formatInteger(totalSpent, 0, 'COMMA')}">$0</div>
+                    <div
+                      class="value"
+                      th:text="'$' + ${#numbers.formatInteger(totalSpent, 0, 'COMMA')}"
+                    >
+                      $0
+                    </div>
                   </div>
                   <div class="cd-stat">
                     <div class="label">累積訂單數</div>
@@ -146,30 +423,54 @@
                   </div>
                   <div class="cd-stat">
                     <div class="label">近期消費時間</div>
-                    <div class="value" style="font-size:14px;"
-                         th:text="${lastPaymentTime != null ? #temporals.format(lastPaymentTime, 'yyyy/MM/dd HH:mm') : '—'}">—</div>
+                    <div
+                      class="value"
+                      style="font-size: 14px"
+                      th:text="${lastPaymentTime != null ? #temporals.format(lastPaymentTime, 'yyyy/MM/dd HH:mm') : '—'}"
+                    >
+                      —
+                    </div>
                   </div>
                 </div>
 
                 <table>
                   <thead>
-                    <tr><th>來源</th><th>編號</th><th>寵物</th><th>消費時間</th><th>經手人</th><th>付款方式</th><th>金額</th></tr>
+                    <tr>
+                      <th>來源</th>
+                      <th>編號</th>
+                      <th>寵物</th>
+                      <th>消費時間</th>
+                      <th>經手人</th>
+                      <th>付款方式</th>
+                      <th>金額</th>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr th:if="${#lists.isEmpty(transactions)}">
                       <td colspan="7" class="empty">尚無消費紀錄</td>
                     </tr>
-                    <tr th:each="t : ${transactions}">
+                    <tr
+                      th:each="t : ${transactions}"
+                      th:classappend="${t.recordId != null} ? 'is-clickable' : ''"
+                      th:attr="data-source-type=${t.sourceType},data-record-id=${t.recordId}"
+                    >
                       <td>
-                        <span class="badge" th:style="${t.sourceLabel == '現場開單'} ? 'background:var(--cream-400); color:#4a3620;' : 'background:var(--cream-200); color:var(--brown-mid);'"
-                              th:text="${t.sourceLabel}"></span>
+                        <span
+                          class="badge"
+                          th:style="${t.sourceLabel == '現場開單'} ? 'background:var(--cream-400); color:#4a3620;' : 'background:var(--cream-200); color:var(--brown-mid);'"
+                          th:text="${t.sourceLabel}"
+                        ></span>
                       </td>
                       <td th:text="${t.code}"></td>
                       <td th:text="${t.petName} ?: '—'"></td>
-                      <td th:text="${t.time != null ? #temporals.format(t.time, 'yyyy/MM/dd HH:mm') : '—'}"></td>
+                      <td
+                        th:text="${t.time != null ? #temporals.format(t.time, 'yyyy/MM/dd HH:mm') : '—'}"
+                      ></td>
                       <td th:text="${t.handledBy} ?: '—'"></td>
                       <td th:text="${t.paymentMethodLabel}"></td>
-                      <td th:text="'$' + ${#numbers.formatInteger(t.amount, 0, 'COMMA')}"></td>
+                      <td
+                        th:text="'$' + ${#numbers.formatInteger(t.amount, 0, 'COMMA')}"
+                      ></td>
                     </tr>
                   </tbody>
                 </table>
@@ -177,40 +478,220 @@
 
               <!-- 寵物資料 -->
               <div id="tab-pets" class="cd-tab-panel">
-                <div th:if="${#lists.isEmpty(pets)}" class="empty" style="text-align:center; padding:2rem 0;">此會員尚未新增寵物</div>
-                <div th:each="p : ${pets}" style="border:0.5px solid var(--cream-300); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:12px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <div>
-                      <span style="font-weight:600; color:var(--brown-dark); font-size:14.5px;" th:text="${p.name}"></span>
-                      <span style="font-size:12px; color:var(--brown-light); margin-left:6px;"
-                            th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"></span>
+                <div
+                  th:if="${#lists.isEmpty(pets)}"
+                  class="empty"
+                  style="text-align: center; padding: 2rem 0"
+                >
+                  此會員尚未新增寵物
+                </div>
+                <div
+                  th:each="p : ${pets}"
+                  style="
+                    border: 0.5px solid var(--cream-300);
+                    border-radius: var(--radius-md);
+                    padding: 14px 16px;
+                    margin-bottom: 12px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      flex-wrap: wrap;
+                      gap: 8px;
+                    "
+                  >
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <!-- 需求 17：寵物大頭照，沒有照片就顯示預設圖示 -->
+                      <img
+                        th:if="${p.photoUrl != null}"
+                        th:src="${p.photoUrl}"
+                        style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--cream-300);"
+                      />
+                      <div
+                        th:unless="${p.photoUrl != null}"
+                        style="width: 44px; height: 44px; border-radius: 50%; background: var(--cream-100); display:flex; align-items:center; justify-content:center; font-size:20px; border: 1px solid var(--cream-300);"
+                      >🐾</div>
+                      <div>
+                        <span
+                          style="
+                            font-weight: 600;
+                            color: var(--brown-dark);
+                            font-size: 14.5px;
+                          "
+                          th:text="${p.name}"
+                        ></span>
+                        <span
+                          style="
+                            font-size: 12px;
+                            color: var(--brown-light);
+                            margin-left: 6px;
+                          "
+                          th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"
+                        ></span>
+                        <form
+                          th:action="@{/admin/wallets/{u}/pets/{id}/photo(u=${customer.username},id=${p.id})}"
+                          method="post"
+                          enctype="multipart/form-data"
+                          style="margin-top: 4px;"
+                        >
+                          <input
+                            type="hidden"
+                            name="returnTo"
+                            th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                          />
+                          <input type="file" name="file" accept="image/*" style="font-size: 11px; max-width: 180px;" required />
+                          <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;">上傳照片</button>
+                        </form>
+                      </div>
                     </div>
-                    <form th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
-                          method="post" style="display:flex; align-items:center; gap:6px;">
-                      <input type="hidden" name="returnTo" th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'" />
-                      <span th:text="${p.coatTypeLabel}"
-                            th:style="${p.coatType.name() == 'UNDEFINED'} ? 'color:#e53935; font-size:11.5px;' : 'color:#43a047; font-size:11.5px;'"></span>
-                      <select name="coatType" style="padding:4px 6px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:12.5px;">
-                        <option th:each="c : ${coatTypes}" th:value="${c}" th:text="${c.label}"
-                                th:selected="${c == p.coatType}"></option>
+                    <form
+                      th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
+                      method="post"
+                      style="display: flex; align-items: center; gap: 6px"
+                    >
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                      />
+                      <span
+                        th:text="${p.coatTypeLabel}"
+                        th:style="${p.coatType.name() == 'UNDEFINED'} ? 'color:#e53935; font-size:11.5px;' : 'color:#43a047; font-size:11.5px;'"
+                      ></span>
+                      <select
+                        name="coatType"
+                        style="
+                          padding: 4px 6px;
+                          border: 1px solid var(--cream-300);
+                          border-radius: var(--radius-sm);
+                          font-size: 12.5px;
+                        "
+                      >
+                        <option
+                          th:each="c : ${coatTypes}"
+                          th:value="${c}"
+                          th:text="${c.label}"
+                          th:selected="${c == p.coatType}"
+                        ></option>
                       </select>
-                      <button type="submit" class="btn" style="padding:4px 10px; font-size:12px;">儲存</button>
+                      <button
+                        type="submit"
+                        class="btn"
+                        style="padding: 4px 10px; font-size: 12px"
+                      >
+                        儲存
+                      </button>
                     </form>
                   </div>
-                  <details style="margin-top:8px;" th:if="${groomingNotesByPetId != null and !#lists.isEmpty(groomingNotesByPetId.get(p.id))}">
-                    <summary style="cursor:pointer; font-size:12.5px; color:var(--cream-600);">
-                      美容狀況歷史（<span th:text="${groomingNotesByPetId.get(p.id).size()}"></span> 筆）
+                  <details
+                    style="margin-top: 8px"
+                    th:if="${groomingNotesByPetId != null and !#lists.isEmpty(groomingNotesByPetId.get(p.id))}"
+                  >
+                    <summary
+                      style="
+                        cursor: pointer;
+                        font-size: 12.5px;
+                        color: var(--cream-600);
+                      "
+                    >
+                      美容狀況歷史（<span
+                        th:text="${groomingNotesByPetId.get(p.id).size()}"
+                      ></span>
+                      筆）
                     </summary>
-                    <div th:each="n : ${groomingNotesByPetId.get(p.id)}"
-                         style="font-size:12px; color:var(--brown-mid); border-top:0.5px solid var(--cream-200); padding:6px 0;">
-                      <div style="color:var(--brown-light);">
-                        <span th:text="${n.serviceDate}"></span> · <span th:text="${n.staff.name}"></span>
+                    <div
+                      th:each="n : ${groomingNotesByPetId.get(p.id)}"
+                      style="
+                        font-size: 12px;
+                        color: var(--brown-mid);
+                        border-top: 0.5px solid var(--cream-200);
+                        padding: 6px 0;
+                      "
+                    >
+                      <div style="color: var(--brown-light)">
+                        <span th:text="${n.serviceDate}"></span> ·
+                        <span th:text="${n.staff.name}"></span>
                       </div>
                       <div th:text="${n.note}"></div>
+                      <!-- 需求 18：美容狀況歷史相簿 -->
+                      <img
+                        th:if="${n.photoUrl != null}"
+                        th:src="${n.photoUrl}"
+                        style="width: 100%; max-width: 220px; border-radius: 8px; margin-top: 6px; display: block;"
+                      />
+                      <form
+                        th:action="@{/admin/wallets/{u}/grooming-notes/{id}/photo(u=${customer.username},id=${n.id})}"
+                        method="post"
+                        enctype="multipart/form-data"
+                        style="margin-top: 6px; display: flex; align-items: center; gap: 6px;"
+                      >
+                        <input
+                          type="hidden"
+                          name="returnTo"
+                          th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                        />
+                        <input type="file" name="file" accept="image/*" style="font-size: 11px; max-width: 160px;" required />
+                        <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;">
+                          <span th:if="${n.photoUrl == null}">加照片</span>
+                          <span th:if="${n.photoUrl != null}">換照片</span>
+                        </button>
+                      </form>
                     </div>
                   </details>
-                  <p th:if="${groomingNotesByPetId == null or #lists.isEmpty(groomingNotesByPetId.get(p.id))}"
-                     style="font-size:12px; color:var(--brown-light); margin-top:8px;">尚無美容狀況紀錄</p>
+                  <p
+                    th:if="${groomingNotesByPetId == null or #lists.isEmpty(groomingNotesByPetId.get(p.id))}"
+                    style="
+                      font-size: 12px;
+                      color: var(--brown-light);
+                      margin-top: 8px;
+                    "
+                  >
+                    尚無美容狀況紀錄
+                  </p>
+
+                  <!-- 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁 -->
+                  <details
+                    style="margin-top: 8px"
+                    th:if="${consumptionByPetId != null and !#lists.isEmpty(consumptionByPetId.get(p.id))}"
+                  >
+                    <summary
+                      style="
+                        cursor: pointer;
+                        font-size: 12.5px;
+                        color: var(--cream-600);
+                      "
+                    >
+                      消費項目明細（<span
+                        th:text="${consumptionByPetId.get(p.id).size()}"
+                      ></span>
+                      筆）
+                    </summary>
+                    <div
+                      th:each="c : ${consumptionByPetId.get(p.id)}"
+                      style="
+                        font-size: 12px;
+                        color: var(--brown-mid);
+                        border-top: 0.5px solid var(--cream-200);
+                        padding: 6px 0;
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 8px;
+                      "
+                    >
+                      <div>
+                        <span th:text="${c.sourceLabel}"></span> ·
+                        <span th:text="${c.code}"></span>
+                        <div
+                          style="color: var(--brown-light)"
+                          th:text="${c.time != null ? #temporals.format(c.time, 'yyyy-MM-dd HH:mm') : '—'} + ' · ' + ${c.handledBy} + ' · ' + ${c.paymentMethodLabel}"
+                        ></div>
+                      </div>
+                      <div style="font-weight: 600; white-space: nowrap" th:text="'$' + ${c.amount}"></div>
+                    </div>
+                  </details>
                 </div>
               </div>
 
@@ -218,7 +699,15 @@
               <div id="tab-appt" class="cd-tab-panel">
                 <table>
                   <thead>
-                    <tr><th>預約編號</th><th>寵物</th><th>日期</th><th>時間</th><th>項目</th><th>金額</th><th>狀態</th></tr>
+                    <tr>
+                      <th>預約編號</th>
+                      <th>寵物</th>
+                      <th>日期</th>
+                      <th>時間</th>
+                      <th>項目</th>
+                      <th>金額</th>
+                      <th>狀態</th>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr th:if="${#lists.isEmpty(appointments)}">
@@ -231,10 +720,13 @@
                       <td th:text="${a.startTime} + ' ~ ' + ${a.endTime}"></td>
                       <td>
                         <span th:each="item, iter : ${a.selectedItems}">
-                          <span th:text="${item.name}"></span><span th:if="${!iter.last}">、</span>
+                          <span th:text="${item.name}"></span
+                          ><span th:if="${!iter.last}">、</span>
                         </span>
                       </td>
-                      <td th:text="'$' + ${#numbers.formatInteger(a.totalAmount, 0, 'COMMA')}"></td>
+                      <td
+                        th:text="'$' + ${#numbers.formatInteger(a.totalAmount, 0, 'COMMA')}"
+                      ></td>
                       <td th:text="${a.statusLabel}"></td>
                     </tr>
                   </tbody>
@@ -246,22 +738,209 @@
       </div>
     </div>
 
+    <!-- 消費明細彈窗 -->
+    <div
+      class="cd-detail-backdrop"
+      id="cdDetailBackdrop"
+      onclick="closeConsumeDetailOnBackdrop(event)"
+    >
+      <div class="cd-detail-sheet">
+        <div class="cd-detail-header">
+          <h3>消費明細</h3>
+          <button
+            class="cd-detail-close"
+            onclick="closeConsumeDetail()"
+            aria-label="關閉"
+          >
+            ✕
+          </button>
+        </div>
+        <div id="cdDetailBody">
+          <div class="cd-detail-loading">載入中...</div>
+        </div>
+      </div>
+    </div>
+
     <script>
       function switchTab(btn) {
-        document.querySelectorAll('.cd-tab-btn').forEach(function (b) { b.classList.remove('active'); });
-        document.querySelectorAll('.cd-tab-panel').forEach(function (p) { p.classList.remove('active'); });
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+        document.querySelectorAll(".cd-tab-btn").forEach(function (b) {
+          b.classList.remove("active");
+        });
+        document.querySelectorAll(".cd-tab-panel").forEach(function (p) {
+          p.classList.remove("active");
+        });
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
       }
 
       // 若網址帶 #tab-xxx（例如儲存毛長設定後導回），自動切到對應分頁
       (function () {
-        const hash = window.location.hash.replace('#', '');
+        const hash = window.location.hash.replace("#", "");
         if (hash) {
-          const btn = document.querySelector('.cd-tab-btn[data-tab="' + hash + '"]');
+          const btn = document.querySelector(
+            '.cd-tab-btn[data-tab="' + hash + '"]',
+          );
           if (btn) switchTab(btn);
         }
       })();
+
+      // ── 消費明細彈窗 ─────────────────────────────────────────────────
+      // 用事件代理讀取 data-source-type / data-record-id，避免在 Thymeleaf
+      // 樣板裡用字串拼接組出 inline onclick（SpEL 對單引號跳脫處理跟 JS 不同，容易解析失敗）
+      document.addEventListener("DOMContentLoaded", function () {
+        var tbody = document.querySelector("#tab-consume tbody");
+        if (!tbody) return;
+        tbody.addEventListener("click", function (e) {
+          var row = e.target.closest("tr.is-clickable");
+          if (!row) return;
+          var sourceType = row.getAttribute("data-source-type");
+          var recordId = row.getAttribute("data-record-id");
+          if (!sourceType || !recordId) return;
+          openConsumeDetail(sourceType, recordId);
+        });
+      });
+
+      function petIconOf(type) {
+        if (type === "DOG") return "🐶";
+        if (type === "CAT") return "🐱";
+        return "🐾";
+      }
+
+      async function openConsumeDetail(sourceType, recordId) {
+        const backdrop = document.getElementById("cdDetailBackdrop");
+        const body = document.getElementById("cdDetailBody");
+        body.innerHTML = '<div class="cd-detail-loading">載入中...</div>';
+        backdrop.classList.add("show");
+
+        const url =
+          sourceType === "WALKIN"
+            ? "/api/admin/walk-in-orders/" + recordId
+            : "/api/appointments/" + recordId + "/detail";
+
+        try {
+          const res = await fetch(url, {
+            headers: { "ngrok-skip-browser-warning": "true" },
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            body.innerHTML =
+              '<div class="cd-detail-error">載入明細失敗：' +
+              (typeof data === "string"
+                ? data
+                : (data && data.message) || res.status) +
+              "</div>";
+            return;
+          }
+          if (sourceType === "WALKIN") {
+            renderWalkInDetail(data);
+          } else {
+            renderAppointmentDetail(data);
+          }
+        } catch (e) {
+          body.innerHTML =
+            '<div class="cd-detail-error">網路錯誤，請重試</div>';
+        }
+      }
+
+      function renderAppointmentDetail(d) {
+        const body = document.getElementById("cdDetailBody");
+        const itemsHtml = (d.items || [])
+          .map(
+            (it) => `
+          <div class="cd-detail-row">
+            <span class="name">${it.name}${it.operatorName ? `<span class="operator">・${it.operatorName}</span>` : ""}${it.appliedDiscountType === "REWASH" ? '<span class="operator" style="color:#2e7d32;">・回洗優惠</span>' : it.appliedDiscountType === "MEMBER" ? '<span class="operator" style="color:#2e7d32;">・會員折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="price">$${it.price}</span>
+          </div>`,
+          )
+          .join("");
+
+        const paymentHtml = d.paymentMethodLabel
+          ? `
+          <div class="cd-detail-payment">
+            付款方式：${d.paymentMethodLabel}<br>
+            ${d.paymentTime ? `付款時間：${d.paymentTime.replace("T", " ").substring(0, 16)}<br>` : ""}
+            ${d.handledBy ? `經手人：${d.handledBy}` : ""}
+          </div>`
+          : "";
+
+        body.innerHTML = `
+          <div class="cd-detail-section">
+            <div class="label">${d.appointmentCode}　${petIconOf(d.petType)}${d.petName}（預約結帳）</div>
+            <div class="cd-detail-row">
+              <span class="name">預約時間</span>
+              <span class="price">${d.date} ${d.startTime.substring(0, 5)}-${d.endTime.substring(0, 5)}</span>
+            </div>
+            <div class="cd-detail-row">
+              <span class="name">狀態</span>
+              <span class="price">${d.cancelled ? "已取消" : d.statusLabel}</span>
+            </div>
+            ${d.memberNote ? `<div class="cd-detail-row"><span class="name">備註</span><span class="price">${d.memberNote}</span></div>` : ""}
+          </div>
+
+          <div class="cd-detail-section">
+            <div class="label">服務項目</div>
+            ${itemsHtml || '<div class="cd-detail-row"><span class="name">（無項目資料）</span></div>'}
+            <div class="cd-detail-total">
+              <span>合計</span>
+              <span>$${d.totalAmount}</span>
+            </div>
+          </div>
+
+          ${paymentHtml}
+        `;
+      }
+
+      function renderWalkInDetail(d) {
+        const body = document.getElementById("cdDetailBody");
+        const itemsHtml = (d.items || [])
+          .map(
+            (it) => `
+          <div class="cd-detail-row">
+            <span class="name">${it.itemName}${it.operator ? `<span class="operator">・${it.operator}</span>` : ""}${it.appliedDiscountType === "REWASH" ? '<span class="operator" style="color:#2e7d32;">・回洗優惠</span>' : it.appliedDiscountType === "MEMBER" ? '<span class="operator" style="color:#2e7d32;">・會員折扣</span>' : '<span class="operator">・原價（不打折）</span>'}</span>
+            <span class="price">$${it.price}</span>
+          </div>`,
+          )
+          .join("");
+
+        const paymentHtml = d.paymentMethodLabel
+          ? `
+          <div class="cd-detail-payment">
+            付款方式：${d.paymentMethodLabel}<br>
+            ${d.paymentTime ? `付款時間：${d.paymentTime.replace("T", " ").substring(0, 16)}<br>` : ""}
+            經手人／開單人：${d.createdBy || "—"}
+          </div>`
+          : "";
+
+        const hasDiscountAmount = d.chargedAmount != null && d.chargedAmount !== d.totalAmount;
+
+        body.innerHTML = `
+          <div class="cd-detail-section">
+            <div class="label">現場單 #${d.id}　${d.petName || ""}（現場開單）</div>
+            ${d.memberName ? `<div class="cd-detail-row"><span class="name">會員</span><span class="price">${d.memberName}</span></div>` : ""}
+            ${d.note ? `<div class="cd-detail-row"><span class="name">備註</span><span class="price">${d.note}</span></div>` : ""}
+          </div>
+
+          <div class="cd-detail-section">
+            <div class="label">服務項目</div>
+            ${itemsHtml || '<div class="cd-detail-row"><span class="name">（無項目資料）</span></div>'}
+            <div class="cd-detail-total">
+              <span>帳面合計</span>
+              <span>$${d.totalAmount}</span>
+            </div>
+            ${hasDiscountAmount ? `<div class="cd-detail-total" style="border-top:none; padding-top:2px; color:#2e7d32;"><span>實際扣款（已套用折扣）</span><span>$${d.chargedAmount}</span></div>` : ""}
+          </div>
+
+          ${paymentHtml}
+        `;
+      }
+
+      function closeConsumeDetail() {
+        document.getElementById("cdDetailBackdrop").classList.remove("show");
+      }
+
+      function closeConsumeDetailOnBackdrop(e) {
+        if (e.target.id === "cdDetailBackdrop") closeConsumeDetail();
+      }
     </script>
   </body>
 </html>

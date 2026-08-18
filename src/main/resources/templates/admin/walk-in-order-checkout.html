@@ -1,0 +1,168 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('現場單結帳 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <h2>結帳（現場單）</h2>
+        <div class="alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <div th:if="${order != null}">
+          <div class="card" style="margin-bottom: 1rem;">
+            <p style="margin: 0; font-size: 14px;">
+              單號：<strong th:text="'#' + ${order.id}"></strong>　
+              寵物：<span th:text="${order.petName} ?: '—'"></span>　
+              會員：<span th:text="${order.memberName} ?: '（非會員）'"></span>
+            </p>
+          </div>
+
+          <div
+            class="card"
+            th:if="${walletBalance != null}"
+            th:style="${walletLowBalance}
+                 ? 'border:1px solid #e53935;background:#fdecec;margin-bottom:1rem;'
+                 : 'border:1px solid #e0e0e0;background:#f8f9fa;margin-bottom:1rem;'"
+          >
+            <p style="margin: 0; font-size: 14px">
+              會員儲值金餘額：
+              <strong th:text="'$' + ${walletBalance}"></strong>
+            </p>
+            <p
+              th:if="${walletLowBalance}"
+              style="margin: 6px 0 0; color: #c62828; font-size: 13px; font-weight: 600;"
+            >
+              ⚠ 餘額低於 $2,000，建議提醒會員儲值
+            </p>
+            <p style="margin: 8px 0 0; font-size: 13px; color: #666">
+              若使用「儲值金」付款：原價 $<span th:text="${order.totalAmount}"></span>
+              <span th:if="${walletDiscountActive}">
+                → 折扣後 $<strong th:text="${walletFinalAmount}" style="color: #2e7d32"></strong>
+              </span>
+              <span th:unless="${walletDiscountActive}">（無會員折扣）</span>
+            </p>
+          </div>
+
+          <!-- 需求 15：結帳前逐項目消費明細，跟預約結帳同樣風格 -->
+          <div class="card" th:if="${order.items != null and !order.items.isEmpty()}" style="margin-bottom: 1rem;">
+            <h3 style="font-size: 15px; margin-bottom: 10px;">📋 消費明細</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  <th>價格</th>
+                  <th>折扣資格</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="it : ${order.items}">
+                  <td th:text="${it.itemName} + (${it.retailItem} ? '（零售）' : '')"></td>
+                  <td th:text="'$' + ${it.price}"></td>
+                  <td>
+                    <span th:if="${it.retailItem}" style="color:#999;">零售商品（不打折）</span>
+                    <span th:unless="${it.retailItem}">
+                      <span th:if="${it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
+                      <span th:if="${it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
+                      <span th:if="${!it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
+                      <span th:if="${!it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                    </span>
+                  </td>
+                  <td>
+                    <form th:if="${it.retailItem}" method="post"
+                          th:action="@{/admin/walk-in-orders/{id}/remove-retail-item(id=${order.id})}">
+                      <input type="hidden" name="itemId" th:value="${it.itemId}" />
+                      <button type="submit" class="btn btn-outline" style="padding:2px 8px; font-size:11px; color:#c62828; border-color:#c67a5c;">移除</button>
+                    </form>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px; margin-bottom: 0;">
+              回洗優惠與會員折扣只能擇一（取較優惠者），不會疊加；只有選擇儲值金付款時才會套用會員折扣，回洗優惠則不限付款方式。不打折的項目一律以原價計入結帳金額。零售商品不參與任何折扣，一律原價。
+            </p>
+          </div>
+
+          <!-- 需求 7-1：結帳前直接加購零售商品 -->
+          <div class="card" style="margin-bottom: 1rem;">
+            <h3 style="font-size: 15px; margin-bottom: 10px;">🛍️ 加購商品</h3>
+            <form th:if="${retailProducts != null and !retailProducts.isEmpty()}" method="post"
+                  th:action="@{/admin/walk-in-orders/{id}/add-retail-item(id=${order.id})}"
+                  style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+              <div class="field" style="margin: 0; flex: 1; min-width: 160px;">
+                <label>選擇商品</label>
+                <select name="retailProductId" required>
+                  <option th:each="p : ${retailProducts}" th:value="${p.id}"
+                          th:text="${p.name} + '（$' + ${p.price} + '，庫存 ' + ${p.stockQuantity} + '）'"></option>
+                </select>
+              </div>
+              <div class="field" style="margin: 0; width: 90px;">
+                <label>數量</label>
+                <input type="number" name="quantity" value="1" min="1" required />
+              </div>
+              <button type="submit" class="btn btn-primary">加入</button>
+            </form>
+            <p th:if="${retailProducts == null or retailProducts.isEmpty()}" style="font-size: 13px; color: var(--brown-light); margin: 0;">
+              目前沒有可加購的商品，可以到「零售商品」頁面新增。
+            </p>
+          </div>
+
+          <div class="card">
+            <form method="post" th:action="@{/admin/walk-in-orders/{id}/checkout(id=${order.id})}">
+              <div class="field">
+                <label>付款方式</label>
+                <select name="paymentMethod" id="wioPaymentMethodSelect" required>
+                  <option value="" disabled selected>請選擇付款方式</option>
+                  <option
+                    th:each="m : ${paymentMethods}"
+                    th:if="${m.name() != 'WALLET' or order.memberUsername != null}"
+                    th:value="${m.name()}"
+                    th:text="${m.name() == 'CASH' ? '現金' : m.name() == 'LINE_PAY' ? 'Line Pay' : m.name() == 'WIRE_TRANSFER' ? '匯款' : '儲值金（套用會員折扣／回洗優惠，兩者擇優）'}"
+                  ></option>
+                </select>
+                <p class="method-hint">
+                  結帳後可於交易紀錄查看實付金額。選擇「儲值金」僅限有綁定會員的單，會依會員折扣或回洗優惠（取較優惠者）扣款，餘額不足將無法結帳。
+                </p>
+              </div>
+
+              <!-- 需求 15 修正：選「匯款」時自動顯示店家帳號資訊，選其他方式則隱藏 -->
+              <div
+                id="wioWireTransferInfo"
+                style="display: none; margin-top: 10px; padding: 12px 14px; background: var(--cream-100); border: 1px solid var(--cream-300); border-radius: var(--radius-sm);"
+              >
+                <p style="font-size: 13px; font-weight: 700; color: var(--brown-dark); margin-bottom: 6px;">
+                  請匯款至以下帳戶，並提醒顧客保留匯款憑證
+                </p>
+                <p style="font-size: 13px; margin: 2px 0;">銀行：<span th:text="${bankAccountInfo.bankName}"></span></p>
+                <p style="font-size: 13px; margin: 2px 0;">帳號：<span th:text="${bankAccountInfo.accountNumber}"></span></p>
+                <p style="font-size: 13px; margin: 2px 0;">戶名：<span th:text="${bankAccountInfo.accountHolder}"></span></p>
+                <!-- 需求 21：有設定 QR Code 就顯示，方便掃碼轉帳 -->
+                <img
+                  th:if="${bankAccountInfo.qrCodeUrl != null}"
+                  th:src="${bankAccountInfo.qrCodeUrl}"
+                  style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--cream-300); border-radius: 8px; margin-top: 8px; display: block;"
+                />
+                <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px;">
+                  送出後這張現場單會先進入「待對帳」狀態，需要店家在確認收到款項後另外按「確認收款」，才會正式轉為已完成。
+                </p>
+              </div>
+              <script>
+                document.getElementById('wioPaymentMethodSelect').addEventListener('change', function () {
+                  document.getElementById('wioWireTransferInfo').style.display =
+                    this.value === 'WIRE_TRANSFER' ? 'block' : 'none';
+                });
+              </script>
+
+              <div style="display: flex; gap: 10px; margin-top: 0.5rem">
+                <button type="submit" class="btn" onclick="return confirm('確定要結帳嗎？');">確認付款</button>
+                <a href="/admin/walk-in-orders" class="btn btn-outline">取消</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

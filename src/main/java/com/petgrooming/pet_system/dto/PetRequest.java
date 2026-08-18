@@ -36,4 +36,17 @@ public class PetRequest {
 
     private String notes;               // 注意事項
     // 體型（sizeCategory）不由前端傳入，系統依 petType + weight 自動判斷
+
+    // ── 需求 19：定型化契約要求蒐集的資料（皆選填）───────────────────────
+    private String gender;
+    private Boolean isNeutered;
+    private Boolean hasChip;
+    private String chipNumber;
+    private String personalityTags;
+    private String healthHistory;
+    private String healthHistoryOther;
+    private Boolean hasDesignatedVet;
+    private String designatedVetName;
+    private String designatedVetAddress;
+    private String designatedVetPhone;
 }

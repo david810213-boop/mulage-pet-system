@@ -106,6 +106,30 @@ public class WalletService {
         walletRepository.save(wallet);
     }
 
+    // ── 退款補回儲值金（僅限原本用儲值金付款的訂單退款時呼叫）──────────────
+    @Transactional
+    public void refund(String username, int amount, Long appointmentId, String note) {
+        User user = userService.getUserEntityByUsername(username);
+        getOrCreateWallet(username);
+
+        // 加鎖重新讀取，避免跟同一時間其他扣款/退款動作互相覆蓋
+        Wallet wallet = walletRepository.lockByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("找不到錢包"));
+
+        wallet.setBalance(wallet.getBalance() + amount);
+
+        WalletTransaction tx = WalletTransaction.builder()
+                .wallet(wallet)
+                .type(WalletTransactionType.REFUND)
+                .amount(amount)
+                .balanceAfter(wallet.getBalance())
+                .note(note)
+                .appointmentId(appointmentId)
+                .build();
+        txRepository.save(tx);
+        walletRepository.save(wallet);
+    }
+
     // ── 取得或建立錢包（加 @Transactional 防止並發重複建立）──────────────
     @Transactional
     public Wallet getOrCreateWallet(String username) {

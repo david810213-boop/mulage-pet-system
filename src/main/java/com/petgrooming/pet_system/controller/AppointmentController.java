@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.OperationLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,6 +23,8 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final OperationLogService operationLogService;
+    private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16
 
     // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
     private String currentUsername(HttpServletRequest request) {
@@ -36,6 +39,8 @@ public class AppointmentController {
             HttpServletRequest request) {
         try {
             AppointmentResponse res = appointmentService.book(req, currentUsername(request));
+            operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "BOOK",
+                    "預約 " + res.getAppointmentCode(), res.getPetName());
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             // 時間超出營業時間、時段重疊等錯誤
@@ -52,7 +57,7 @@ public class AppointmentController {
 
     // ── GET /api/appointments ──────────────────────────────────────────────
     // 查詢所有預約（STAFF / ADMIN，對應原本 viewAllAppointments）
-    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> getAllAppointments() {
         return ResponseEntity.ok(appointmentService.getAllAppointments());
@@ -67,6 +72,9 @@ public class AppointmentController {
             HttpServletRequest request) {
         try {
             AppointmentResponse res = appointmentService.cancel(id, req, currentUsername(request));
+            operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "CANCEL",
+                    "預約 " + res.getAppointmentCode(),
+                    req != null && req.getReason() != null ? req.getReason() : "顧客自行取消");
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -80,5 +88,26 @@ public class AppointmentController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(appointmentService.getAvailableSlots(date));
     }
-}
 
+    // ── GET /api/appointments/closed-dates ───────────────────────────────
+    // 需求 16：查詢今天以後的公休日清單，供 LIFF 預約頁在選日期後即時提示「公休」，
+    // 不用等 /slots 回傳空清單才知道，UX 更明確。
+    @GetMapping("/closed-dates")
+    public ResponseEntity<List<String>> getClosedDates() {
+        return ResponseEntity.ok(
+                closedDateService.listUpcoming().stream()
+                        .map(cd -> cd.getDate().toString())
+                        .toList());
+    }
+
+    // ── GET /api/appointments/{id}/detail ──────────────────────────────────
+    // 取得某筆預約的完整消費明細（服務項目、金額、付款方式、經手人等），供 LIFF 點擊查看用
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<?> getDetail(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, currentUsername(request)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+}
