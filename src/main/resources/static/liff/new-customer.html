@@ -258,8 +258,8 @@
           const res = await fetch("/api/users/me", { headers: authHeaders() });
           if (!res.ok) return;
           const me = await res.json();
-          // 通訊地址、緊急聯絡人關係都有填才算完成（跟後端必填欄位一致）
-          profileDone = !!(me.mailingAddress && me.emergencyContactRelation);
+          // 姓名、電話、通訊地址、緊急聯絡人姓名/電話/關係都有填才算完成（跟後端必填欄位一致）
+          profileDone = !!(me.name && me.phone && me.mailingAddress && me.emergencyContactName && me.emergencyContactPhone && me.emergencyContactRelation);
           markStep("stepProfile", profileDone);
         } catch (e) {
           /* 查詢失敗就維持「尚未完成」預設狀態，不影響其他步驟 */

@@ -11,8 +11,11 @@ import lombok.Data;
 @Data
 public class UpdateProfileRequest {
 
-    private String name; // 允許順便修改顯示名稱（選填，不填則不更動）
+    // 需求（追加，配合定型化契約家長資料）：姓名、電話改為必填
+    @NotBlank(message = "請填寫姓名")
+    private String name;
 
+    @NotBlank(message = "請填寫電話")
     @Pattern(regexp = "^[0-9+\\-() ]{0,20}$", message = "電話號碼格式不正確")
     private String phone;
 

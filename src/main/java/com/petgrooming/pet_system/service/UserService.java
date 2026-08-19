@@ -82,9 +82,7 @@ public class UserService {
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
         }
-        if (req.getPhone() != null) { // ← 新增這 3 行
-            user.setPhone(req.getPhone().isBlank() ? null : req.getPhone().trim());
-        }
+        user.setPhone(req.getPhone().trim()); // 需求（追加）：電話改為必填，不再是「填了才更新」
         if (req.getAge() != null) {
             user.setAge(req.getAge());
         }
