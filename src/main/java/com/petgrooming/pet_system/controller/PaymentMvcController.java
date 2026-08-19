@@ -35,6 +35,7 @@ public class PaymentMvcController {
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
+    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
 
     /**
      * JWT 版獲取當前登入使用者
@@ -133,6 +134,7 @@ public class PaymentMvcController {
         model.addAttribute("checkoutRequest", new CheckoutRequest());
         model.addAttribute("bankAccountInfo",
                 paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
+        model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -161,6 +163,41 @@ public class PaymentMvcController {
         }
 
         return "payments/checkout";
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/add-retail-item ────────────
+    @PostMapping("/checkout/{appointmentId}/add-retail-item")
+    public String addRetailItem(@PathVariable Long appointmentId,
+                                @RequestParam Long retailProductId,
+                                @RequestParam(defaultValue = "1") int quantity,
+                                HttpServletRequest request,
+                                RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/payments/checkout/" + appointmentId;
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/remove-retail-item ─────────
+    @PostMapping("/checkout/{appointmentId}/remove-retail-item")
+    public String removeRetailItem(@PathVariable Long appointmentId,
+                                   @RequestParam Long itemId,
+                                   HttpServletRequest request,
+                                   RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.removeRetailItem(appointmentId, itemId, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/payments/checkout/" + appointmentId;
     }
 
     // 處理結帳表單提交

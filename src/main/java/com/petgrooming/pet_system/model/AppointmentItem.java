@@ -39,6 +39,12 @@ public class AppointmentItem {
     @Column(name = "grooming_item_id")
     private Long groomingItemId;
 
+    // 需求（追加）：預約結帳頁加購零售商品用，跟 WalkInOrderItem 同樣設計。
+    // 有值代表這筆是零售商品加購項目（不是美容服務），groomingItemId 會是 null，
+    // 折扣資格判斷沿用既有「groomingItemId == null → 不可享會員折扣」的邏輯，不用額外欄位。
+    @Column(name = "retail_product_id")
+    private Long retailProductId;
+
     // 項目名稱（快照，避免項目日後改名或下架影響歷史單）
     @Column(name = "item_name", nullable = false)
     private String itemName;

@@ -50,6 +50,7 @@ public class AppointmentService {
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
+    private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
 
     private static final LocalTime OPENING = LocalTime.of(11, 0);
     private static final LocalTime CLOSING = LocalTime.of(19, 0);
@@ -516,6 +517,66 @@ public class AppointmentService {
         return AppointmentResponse.from(saved);
     }
 
+    // ── 需求（追加）：預約結帳頁加購零售商品 ────────────────────────────
+    // 結帳前都可以加購（不受核對/checkinOrderConfirmed 限制，零售商品不是美容服務，
+    // 走的是不同的完成判定邏輯）；quantity 幾件就建幾筆項目列，沿用 WalkInOrderItem
+    // 「一列 = 一份，price 是單價」的慣例，不加 quantity 欄位，降低牽連風險。
+    @Transactional
+    public void addRetailItem(Long appointmentId, Long retailProductId, int quantity, String username) {
+        if (quantity <= 0) throw new IllegalArgumentException("加購數量必須大於 0");
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        if (appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約已結帳，無法再加購商品");
+        }
+
+        var product = retailProductService.getById(retailProductId);
+
+        int addedTotal = 0;
+        for (int i = 0; i < quantity; i++) {
+            com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
+                    .builder()
+                    .appointment(appointment)
+                    .retailProductId(product.getId())
+                    .itemName(product.getName())
+                    .price(product.getPrice())
+                    .points(0.0)
+                    .performanceCategory(PerformanceCategory.OTHER)
+                    .build();
+            appointmentItemRepository.save(item);
+            addedTotal += product.getPrice();
+        }
+        appointment.setTotalAmount(appointment.getTotalAmount() + addedTotal);
+        appointmentRepository.save(appointment);
+
+        log.info("預約 #{} 加購商品「{}」x{}", appointmentId, product.getName(), quantity);
+    }
+
+    // 移除一筆已加購的零售商品（結帳前加錯可以移除；只能移除零售商品項目，
+    // 不能拿來移除美容服務項目，避免誤刪動到績效/預約相關資料）。
+    @Transactional
+    public void removeRetailItem(Long appointmentId, Long itemId, String username) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        if (appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約已結帳，無法再移除商品");
+        }
+
+        com.petgrooming.pet_system.model.AppointmentItem item = appointmentItemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到項目 #" + itemId));
+        if (item.getRetailProductId() == null) {
+            throw new IllegalArgumentException("只能移除零售商品項目");
+        }
+        if (!item.getAppointment().getId().equals(appointmentId)) {
+            throw new IllegalArgumentException("項目不屬於這筆預約");
+        }
+
+        appointment.setTotalAmount(appointment.getTotalAmount() - item.getPrice());
+        appointmentItemRepository.delete(item);
+        appointmentRepository.save(appointment);
+    }
+
     // ── 待補經手人清單（現場開單項目中 operatorStaff 為 null 的）─────────────
     public List<com.petgrooming.pet_system.dto.AppointmentItemResponse> pendingItemOperators() {
         return appointmentItemRepository.findByOperatorStaffIsNull().stream()
@@ -703,11 +764,13 @@ public class AppointmentService {
                         boolean rewashApplicable = rewashEligible
                                 && catRewashDiscountService.isCatBathCategory(ci.getPerformanceCategory());
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                                .itemId(ci.getId())
                                 .name(ci.getItemName())
                                 .price(ci.getPrice())
                                 .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
                                 .discountEligible(memberEligible)
                                 .rewashEligible(rewashApplicable)
+                                .retailItem(ci.getRetailProductId() != null)
                                 .appliedDiscountType(transactionOpt.isPresent()
                                         ? resolveAppliedDiscountType(rewashApplicable, memberEligible && paidByWallet, memberDiscountRate)
                                         : null)

@@ -45,6 +45,7 @@ public class PaymentService {
     private final com.petgrooming.pet_system.repository.TopUpRequestRepository topUpRequestRepository; // 需求 6
     private final com.petgrooming.pet_system.repository.RetailProductRepository retailProductRepository; // 需求 6
     private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
+    private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品，結帳時扣庫存
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -82,6 +83,17 @@ public class PaymentService {
         // 1d. 確認沒有重複交易紀錄
         if (transactionRepository.findByAppointmentId(appointmentId).isPresent()) {
             throw new IllegalArgumentException("此預約已有交易紀錄");
+        }
+
+        // 1d-2. 需求（追加）：結帳成功才真的扣加購零售商品的庫存（不管付款方式是不是匯款待對帳，
+        // 因為顧客結完帳當下商品就會實際帶走，不是等匯款核對完成才拿走）。
+        // 故意在真正寫入交易紀錄之前先做，扣庫存失敗（例如庫存被其他單搶先扣完）
+        // 就直接整筆結帳拋例外中止，不會留下「已收款但庫存沒扣成功」的不一致狀態。
+        for (com.petgrooming.pet_system.model.AppointmentItem item
+                : appointmentItemRepository.findByAppointmentId(appointmentId)) {
+            if (item.getRetailProductId() != null) {
+                retailProductService.deductStock(item.getRetailProductId(), 1);
+            }
         }
 
         // 1e. 計算最終金額
