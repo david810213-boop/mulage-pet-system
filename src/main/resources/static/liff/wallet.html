@@ -512,8 +512,15 @@
                         載入轉帳資訊中...
                     </div>
                     <div class="field" style="margin-bottom:10px;">
-                        <input id="topupAmount" type="number" min="1" placeholder="儲值金額"
-                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px;" />
+                        <select id="topupAmount"
+                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px; background:white;">
+                            <option value="">請選擇儲值金額</option>
+                            <option value="5000">$5,000（村民優惠方案）</option>
+                            <option value="8000">$8,000（普卡）</option>
+                            <option value="15000">$15,000（金卡）</option>
+                            <option value="30000">$30,000（鑽石卡）</option>
+                            <option value="50000">$50,000（慕沐村VIP）</option>
+                        </select>
                     </div>
                     <div class="field" style="margin-bottom:10px;">
                         <input id="topupLast5" type="text" maxlength="5" placeholder="匯款帳號後五碼"
@@ -555,7 +562,7 @@
         const last5 = document.getElementById("topupLast5").value.trim();
         const note = document.getElementById("topupNote").value.trim();
         if (!amount || amount <= 0) {
-          showToast("請輸入正確的儲值金額");
+          showToast("請選擇儲值金額");
           return;
         }
         try {

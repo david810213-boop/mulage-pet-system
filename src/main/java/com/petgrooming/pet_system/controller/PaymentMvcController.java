@@ -15,6 +15,7 @@ import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/payments")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentMvcController {
 
     private final PaymentService paymentService;
@@ -184,25 +186,42 @@ public class PaymentMvcController {
             model.addAttribute("paymentMethods", PaymentMethod.values());
             model.addAttribute("errorMsg", e.getMessage());
 
-            Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
-            if (appointment != null && appointment.getUser() != null) {
-                var wallet = walletService.getWallet(appointment.getUser().getUsername());
-                model.addAttribute("walletBalance", wallet.getBalance());
-                model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-                model.addAttribute("walletDiscount", wallet.getDiscount());
-                model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-                model.addAttribute("baseAmount", appointment.getTotalAmount());
-                // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
-                var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
-                model.addAttribute("detailItems", detail.getItems());
-                double walletPreview = detail.getItems().stream()
-                        .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
-                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
-                        .sum();
-                model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+            // 需求（追加）：組錯誤頁預覽資料本身如果又出錯（例如這筆預約資料本身有異常），
+            // 不能讓第二個例外蓋掉使用者原本該看到的錯誤訊息，變成一片空白的 500 錯誤頁。
+            // 這裡包一層 try/catch，最差情況就是錯誤頁少了金額預覽，但至少使用者看得到
+            // 「為什麼結帳失敗」這句話，店家也才能照著訊息判斷下一步。
+            try {
+                Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+                if (appointment != null && appointment.getUser() != null) {
+                    var wallet = walletService.getWallet(appointment.getUser().getUsername());
+                    model.addAttribute("walletBalance", wallet.getBalance());
+                    model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
+                    model.addAttribute("walletDiscount", wallet.getDiscount());
+                    model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
+                    model.addAttribute("baseAmount", appointment.getTotalAmount());
+                    // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
+                    var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
+                    model.addAttribute("detailItems", detail.getItems());
+                    double walletPreview = detail.getItems().stream()
+                            .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                            .sum();
+                    model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+                }
+            } catch (Exception previewError) {
+                log.warn("結帳錯誤頁組金額預覽時另外出錯，預約 #{}，僅顯示原始錯誤訊息：{}",
+                        appointmentId, previewError.getMessage(), previewError);
             }
 
             return "payments/checkout";
+        } catch (Exception e) {
+            // 保底：checkout() 本身如果拋出非預期的例外（不是業務規則的 IllegalArgumentException），
+            // 原本會直接變成一片空白的 Whitelabel 500 錯誤頁，使用者跟店家都看不出發生什麼事。
+            // 這裡攔下來，把完整堆疊記到 log（Railway Logs 搜尋「結帳發生未預期錯誤」就找得到），
+            // 畫面則導回結帳頁顯示友善訊息，至少能重試或回報。
+            log.error("結帳發生未預期錯誤，預約 #{}，操作人：{}", appointmentId, user.getUsername(), e);
+            redirectAttributes.addFlashAttribute("errorMsg", "結帳發生未預期的錯誤，請重新整理後再試一次；如持續發生請聯繫系統管理員");
+            return "redirect:/payments/checkout/" + appointmentId;
         }
     }
 
