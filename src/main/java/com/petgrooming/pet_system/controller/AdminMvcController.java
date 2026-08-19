@@ -233,8 +233,11 @@ public class AdminMvcController {
                     if (r == 0) cell.setCellStyle(headerStyle);
                 }
             }
-            summarySheet.autoSizeColumn(0);
-            summarySheet.autoSizeColumn(1);
+            // 需求（追加）：autoSizeColumn() 底層要呼叫 Java AWT 字型系統量測文字寬度，
+            // Railway 的容器沒有安裝 libfreetype 等字型函式庫，一呼叫就會直接噴
+            // UnsatisfiedLinkError 導致整個匯出失敗。改成固定欄寬，不依賴字型系統。
+            summarySheet.setColumnWidth(0, 32 * 256);
+            summarySheet.setColumnWidth(1, 14 * 256);
 
             // ── 工作表 2：交易明細 ──────────────────────────────────────
             var detailSheet = workbook.createSheet("交易明細");
@@ -256,8 +259,9 @@ public class AdminMvcController {
                         ? d.getPaymentTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
                 row.createCell(5).setCellValue(d.getHandledBy() != null ? d.getHandledBy() : "");
             }
+            int[] detailColWidths = {10, 12, 12, 10, 20, 16};
             for (int i = 0; i < detailHeaders.length; i++) {
-                detailSheet.autoSizeColumn(i);
+                detailSheet.setColumnWidth(i, detailColWidths[i] * 256);
             }
 
             String filename = "財務報表_" + java.time.LocalDate.now() + ".xlsx";

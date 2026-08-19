@@ -100,8 +100,11 @@ public class CatRewashMvcController {
                 row.createCell(4).setCellValue(c.getDaysSinceLastBath());
                 row.createCell(5).setCellValue(c.isWithinDiscountWindow() ? "是" : "否（已超過90天）");
             }
+            // 需求（追加）：autoSizeColumn() 在 Railway 容器上會因缺少字型函式庫（libfreetype）
+            // 直接噴 UnsatisfiedLinkError 導致匯出失敗，改成固定欄寬。
+            int[] colWidths = {10, 12, 14, 14, 10, 18};
             for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
+                sheet.setColumnWidth(i, colWidths[i] * 256);
             }
 
             String filename = "貓咪回洗名單.xlsx";
