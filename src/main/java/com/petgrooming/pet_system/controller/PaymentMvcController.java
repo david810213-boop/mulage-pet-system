@@ -65,7 +65,7 @@ public class PaymentMvcController {
                     .sourceType("APPOINTMENT")
                     .recordId(t.getAppointmentId())
                     .code(t.getAppointmentCode())
-                    .petName(null)
+                    .petName(t.getPetName())
                     .time(t.getPaymentTime())
                     .handledBy(t.getHandledBy())
                     .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
