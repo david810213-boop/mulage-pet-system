@@ -397,8 +397,6 @@ public class PaymentService {
         }
 
         // ── 儲值總額（預收款，不計入業績，僅供參考）──────────────────────────
-        // 用「核帳確認時間」（reviewedAt）判斷屬於哪一天/哪個月，不是用顧客送出申請的時間，
-        // 因為錢真正入帳的時間點是店家核帳確認那一刻，不是顧客填表單那一刻。
         List<com.petgrooming.pet_system.model.TopUpRequest> confirmedTopups =
                 topUpRequestRepository.findByStatusOrderByCreatedAtAsc(
                         com.petgrooming.pet_system.enums.TopUpStatus.CONFIRMED);
@@ -409,9 +407,35 @@ public class PaymentService {
             if (!tu.getReviewedAt().isBefore(todayStart)) todayTopup += tu.getAmount();
         }
 
+        // ── 需求（追加）：零售商品營收——已含在上面的業績總額裡，這裡單獨拆出來看，
+        // 方便店家知道業績裡「賣商品」跟「做服務」各佔多少。用售價（item.getPrice()）
+        // 加總，來源涵蓋現場開單（WalkInOrderItem）跟預約結帳頁加購（AppointmentItem）。
+        int todayRetailRevenue = 0, monthRetailRevenue = 0;
+        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+            if (w.getPaymentTime() == null) continue;
+            int retailSum = w.getItems().stream()
+                    .filter(i -> i.getRetailProductId() != null)
+                    .mapToInt(com.petgrooming.pet_system.model.WalkInOrderItem::getPrice)
+                    .sum();
+            if (retailSum == 0) continue;
+            if (!w.getPaymentTime().isBefore(monthStart)) monthRetailRevenue += retailSum;
+            if (!w.getPaymentTime().isBefore(todayStart)) todayRetailRevenue += retailSum;
+        }
+        for (Transaction t : paidTransactions) {
+            if (t.getPaymentTime() == null || t.getAppointment() == null) continue;
+            int retailSum = appointmentItemRepository.findByAppointmentId(t.getAppointment().getId()).stream()
+                    .filter(i -> i.getRetailProductId() != null)
+                    .mapToInt(com.petgrooming.pet_system.model.AppointmentItem::getPrice)
+                    .sum();
+            if (retailSum == 0) continue;
+            if (!t.getPaymentTime().isBefore(monthStart)) monthRetailRevenue += retailSum;
+            if (!t.getPaymentTime().isBefore(todayStart)) todayRetailRevenue += retailSum;
+        }
+
         // ── 成本（需求 7 庫存資料帶入，當月）─────────────────────────────────
         // 零售商品成本：用「目前」進貨單價回推本月賣出的數量 × 單價（近似值，
-        // 因為 WalkInOrderItem 賣出當下沒有存成本快照，只存了售價）。
+        // 因為零售項目賣出當下沒有存成本快照，只存了售價）。
+        // 需求（追加）：來源除了現場開單，也要涵蓋預約結帳頁加購（否則加購功能上線後成本會低估）。
         int monthRetailCost = 0;
         var retailProducts = retailProductRepository.findAll();
         java.util.Map<Long, Integer> retailUnitCostById = new java.util.HashMap<>();
@@ -419,6 +443,14 @@ public class PaymentService {
         for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
             if (w.getPaymentTime() == null || w.getPaymentTime().isBefore(monthStart)) continue;
             for (var item : w.getItems()) {
+                if (item.getRetailProductId() == null) continue;
+                Integer unitCost = retailUnitCostById.get(item.getRetailProductId());
+                if (unitCost != null) monthRetailCost += unitCost;
+            }
+        }
+        for (Transaction t : paidTransactions) {
+            if (t.getPaymentTime() == null || t.getPaymentTime().isBefore(monthStart) || t.getAppointment() == null) continue;
+            for (var item : appointmentItemRepository.findByAppointmentId(t.getAppointment().getId())) {
                 if (item.getRetailProductId() == null) continue;
                 Integer unitCost = retailUnitCostById.get(item.getRetailProductId());
                 if (unitCost != null) monthRetailCost += unitCost;
@@ -441,11 +473,13 @@ public class PaymentService {
         report.setTodayRevenueNonWallet(todayNonWallet);
         report.setTodayOrderCount(todayCount);
         report.setTodayTopupCollected(todayTopup);
+        report.setTodayRetailRevenue(todayRetailRevenue);
         report.setMonthRevenueTotal(monthTotal);
         report.setMonthRevenueWallet(monthWallet);
         report.setMonthRevenueNonWallet(monthNonWallet);
         report.setMonthOrderCount(monthCount);
         report.setMonthTopupCollected(monthTopup);
+        report.setMonthRetailRevenue(monthRetailRevenue);
         report.setMonthRetailCostEstimate(monthRetailCost);
         report.setMonthSupplyCost(monthSupplyCost);
         report.setMonthTotalCost(monthTotalCost);

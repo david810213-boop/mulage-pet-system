@@ -500,10 +500,13 @@ public class WalkInOrderService {
     }
 
     // ── 需求 6：待補經手人清單（operatorStaff 為 null 的項目）──────────────
+    // 需求（追加）：只列出「有積分可算」的項目——零售商品加購（points 固定 0）
+    // 不會產生績效，補了經手人也沒有計算意義，不需要出現在這份待辦清單裡。
     public List<WalkInOrderResponse.ItemLine> pendingOperatorItems() {
         List<WalkInOrderItem> pending = orderItemRepository.findByOperatorStaffIsNull();
         List<WalkInOrderResponse.ItemLine> result = new ArrayList<>();
         for (WalkInOrderItem oi : pending) {
+            if (oi.getPoints() <= 0) continue;
             WalkInOrderResponse.ItemLine line = new WalkInOrderResponse.ItemLine();
             line.setItemId(oi.getId());
             line.setGroomingItemId(oi.getGroomingItemId());

@@ -578,8 +578,11 @@ public class AppointmentService {
     }
 
     // ── 待補經手人清單（現場開單項目中 operatorStaff 為 null 的）─────────────
+    // 需求（追加）：只列出「有積分可算」的項目——零售商品加購（points 固定 0）
+    // 不會產生績效，補了經手人也沒有計算意義，不需要出現在這份待辦清單裡。
     public List<com.petgrooming.pet_system.dto.AppointmentItemResponse> pendingItemOperators() {
         return appointmentItemRepository.findByOperatorStaffIsNull().stream()
+                .filter(item -> item.getPoints() > 0)
                 .map(com.petgrooming.pet_system.dto.AppointmentItemResponse::from)
                 .toList();
     }

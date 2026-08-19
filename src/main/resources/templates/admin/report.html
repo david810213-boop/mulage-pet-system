@@ -48,6 +48,10 @@
             <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="${report.todayOrderCount}"></div>
           </div>
           <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">零售商品營收<span style="font-weight:400;">（已含在總業績內）</span></div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="'$' + ${report.todayRetailRevenue}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
             <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">當日儲值金額<span style="font-weight:400;">（預收款，非業績）</span></div>
             <div style="font-size: 22px; font-weight: 700; color: #8a8072;" th:text="'$' + ${report.todayTopupCollected}"></div>
           </div>
@@ -78,6 +82,10 @@
           <div class="card" style="padding: 1.2rem 1.5rem">
             <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">結帳筆數</div>
             <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="${report.monthOrderCount}"></div>
+          </div>
+          <div class="card" style="padding: 1.2rem 1.5rem">
+            <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">零售商品營收<span style="font-weight:400;">（已含在總業績內）</span></div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--brown-dark);" th:text="'$' + ${report.monthRetailRevenue}"></div>
           </div>
           <div class="card" style="padding: 1.2rem 1.5rem">
             <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">本月儲值金額<span style="font-weight:400;">（預收款，非業績）</span></div>
