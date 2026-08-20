@@ -42,6 +42,14 @@ public class GroomingServiceImpl implements GroomingService {
         item.setBookable(request.getBookable() != null && request.getBookable()); // 需求 4
         item.setDiscountEligible(request.getDiscountEligible() == null || request.getDiscountEligible()); // 需求（追加）
 
+        // 需求（追加）：分類決定積分（每個分類都有預設積分，不用手動輸入），也決定
+        // 這個項目會不會被回洗優惠/首次體驗優惠這類「依分類判斷」的邏輯認得到。
+        var category = request.getPerformanceCategory() != null
+                ? request.getPerformanceCategory()
+                : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
+        item.setPerformanceCategory(category);
+        item.setPoints(category.getDefaultPoints());
+
         // 3. 實質寫入資料庫
         groomingItemRepository.save(item);
     }

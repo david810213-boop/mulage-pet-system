@@ -185,7 +185,7 @@
               <div
                 style="
                   display: grid;
-                  grid-template-columns: 100px 180px 1fr 120px 110px auto;
+                  grid-template-columns: 100px 180px 1fr 150px 120px 110px auto;
                   gap: 12px;
                   align-items: end;
                 "
@@ -264,6 +264,25 @@
                     min="1"
                     style="width: 100%; padding: 6px"
                   />
+                </div>
+
+                <div class="field" style="margin: 0">
+                  <label
+                    style="
+                      display: block;
+                      font-size: 12px;
+                      color: var(--brown-mid);
+                      margin-bottom: 4px;
+                    "
+                    >績效分類</label
+                  >
+                  <select name="performanceCategory" required style="width: 100%; padding: 6px">
+                    <option th:each="cat : ${T(com.petgrooming.pet_system.enums.PerformanceCategory).values()}"
+                            th:if="${cat.name() != 'CHECKIN' and cat.name() != 'CHECKOUT' and cat.name() != 'COMPLETE'}"
+                            th:value="${cat.name()}"
+                            th:text="${cat.label} + '（' + ${cat.defaultPoints} + '分)'"
+                            th:selected="${cat.name() == 'OTHER'}"></option>
+                  </select>
                 </div>
 
                 <div class="field" style="margin: 0">

@@ -29,4 +29,9 @@ public class GroomingItemRequest {
     // 店家不希望被折扣掉，所以開放建立時就能決定要不要參與折扣，預設維持原本行為（可享）。
     private Boolean discountEligible = true;
 
+    // 需求（追加）：可享折扣/回洗優惠/首次體驗優惠都要看這個分類判斷，
+    // 之前的表單沒有開放選這欄，新增的項目一律預設「其他」（不計分），
+    // 導致無法建立像「小型犬洗吹」這種需要對應正確分類的項目。
+    private com.petgrooming.pet_system.enums.PerformanceCategory performanceCategory;
+
 }
