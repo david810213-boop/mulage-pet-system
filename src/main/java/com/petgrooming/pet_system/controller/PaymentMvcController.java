@@ -35,6 +35,7 @@ public class PaymentMvcController {
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
+    private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
 
@@ -158,8 +159,11 @@ public class PaymentMvcController {
             // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
             // 不再是舊版的「符合會員折扣就直接乘」。
             double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
-                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
+                    .mapToDouble(it -> it.isFirstVisitEligible()
+                            ? dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), true, it.isDiscountEligible(), discount).price()
+                            : catRewashDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
                     .sum();
             model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
         }
@@ -277,8 +281,11 @@ public class PaymentMvcController {
                     var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
                     model.addAttribute("detailItems", detail.getItems());
                     double walletPreview = detail.getItems().stream()
-                            .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                            .mapToDouble(it -> it.isFirstVisitEligible()
+                                    ? dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price()
+                                    : catRewashDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
                             .sum();
                     model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
                 }
@@ -417,5 +424,26 @@ public class PaymentMvcController {
     public java.util.Map<String, String> getCompanySignatureApi() {
         String image = paymentService.getCompanySignatureImage();
         return java.util.Collections.singletonMap("signatureImage", image);
+    }
+
+    // ── GET /payments/pricing-settings ──────────────────────────────────
+    // 需求（追加）：貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
+    @RequireRole(UserRole.ADMIN)
+    @GetMapping("/pricing-settings")
+    public String pricingSettingsForm(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("settings", paymentService.getPricingSettings());
+        return "payments/pricing-settings";
+    }
+
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/pricing-settings")
+    public String updatePricingSettings(@ModelAttribute com.petgrooming.pet_system.model.PricingSettings settings,
+                                        HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        paymentService.updatePricingSettings(settings);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_PRICING_SETTINGS", "體重定價門檻設定", null);
+        ra.addFlashAttribute("successMsg", "已更新體重定價門檻");
+        return "redirect:/payments/pricing-settings";
     }
 }

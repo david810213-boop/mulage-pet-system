@@ -43,6 +43,7 @@ public class AppointmentDetailResponse {
         private boolean discountEligible; // 需求 5：這個項目是否可享會員折扣（僅代表項目本身的靜態設定，不代表本次是否真的有打折）
         // 需求 8-1 修正：90天回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
         private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（貓咪洗澡 + 距上次洗澡未滿90天）
+        private boolean firstVisitEligible; // 需求（追加）：這個項目是否符合狗狗首次體驗優惠資格
         private boolean retailItem; // 需求（追加）：是否為結帳頁加購的零售商品（不打折、不算回洗優惠）
         private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳的預約：實際套用的折扣種類；未結帳（尚未選付款方式）則為 null
     }

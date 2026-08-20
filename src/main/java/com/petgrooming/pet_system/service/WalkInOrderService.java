@@ -44,6 +44,7 @@ public class WalkInOrderService {
     private final PerformanceRecordRepository performanceRecordRepository;
     private final LineMessagingService lineMessagingService;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
@@ -505,8 +506,10 @@ public class WalkInOrderService {
     // 需求 8 修正：消費明細要能看出每個項目實際套用的是回洗優惠還是會員折扣，
     // 邏輯比照 AppointmentService.getAppointmentDetail()：只有已結帳的單才反推得出「實際」套用哪一種，
     // 未結帳（尚未決定付款方式）則只標示 rewashEligible，不填 appliedDiscountType。
+    // 需求（追加）：狗狗首次體驗優惠比照同樣模式，跟回洗優惠是互斥品種、不會同一個項目都符合。
     private void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
         boolean paidByWallet = order.isPaid()
                 && order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET;
         double memberDiscountRate = paidByWallet
@@ -520,11 +523,20 @@ public class WalkInOrderService {
             WalkInOrderResponse.ItemLine line = lines.get(i);
             boolean rewashApplicable = rewashEligible
                     && catRewashDiscountService.isCatBathCategory(entity.getPerformanceCategory());
+            boolean firstVisitApplicable = firstVisitEligible
+                    && dogFirstVisitDiscountService.isDogPackageCategory(entity.getPerformanceCategory());
             line.setRewashEligible(rewashApplicable);
+            line.setFirstVisitEligible(firstVisitApplicable);
             if (order.isPaid()) {
-                line.setAppliedDiscountType(catRewashDiscountService.resolvePreferredDiscount(
-                        entity.getPrice(), rewashApplicable,
-                        entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+                if (firstVisitApplicable) {
+                    line.setAppliedDiscountType(dogFirstVisitDiscountService.resolvePreferredDiscount(
+                            entity.getPrice(), true,
+                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+                } else {
+                    line.setAppliedDiscountType(catRewashDiscountService.resolvePreferredDiscount(
+                            entity.getPrice(), rewashApplicable,
+                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+                }
             }
         }
     }
@@ -611,10 +623,19 @@ public class WalkInOrderService {
     // ── 需求 5：現場單儲值金結帳金額計算，逐項目判斷是否可享折扣 ─────────
     // 用開單當下存的 discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
     // 需求 8 修正：貓咪回洗優惠（若有會員）與會員儲值折扣只能擇一，取較優惠者。
+    // 需求（追加）：狗狗首次體驗優惠同樣邏輯，兩者依品種分類互斥不會同時套用在同一項目。
     private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order);
         double total = 0;
         for (WalkInOrderItem item : order.getItems()) {
+            boolean firstVisitApplicable = firstVisitEligible
+                    && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
+            if (firstVisitApplicable) {
+                total += dogFirstVisitDiscountService.resolvePreferredDiscount(
+                        item.getPrice(), true, item.isDiscountEligible(), discount).price();
+                continue;
+            }
             boolean rewashApplicable = rewashEligible
                     && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
             total += catRewashDiscountService.resolvePreferredDiscount(
@@ -625,15 +646,19 @@ public class WalkInOrderService {
 
     // ── 需求 8 修正：非儲值金付款的現場單結帳金額計算，套用貓咪回洗優惠 ──
     // 邏輯比照 PaymentService.calculateAmountWithRewashDiscount：沒有會員等級折扣，
-    // 只套用回洗優惠（不符合資格的話金額等同原本的 order.getTotalAmount()）。
+    // 只套用回洗優惠／狗狗首次體驗優惠（不符合資格的話金額等同原本的 order.getTotalAmount()）。
     private int calculateAmountWithRewashDiscount(WalkInOrder order) {
-        if (!catRewashDiscountService.isRewashEligible(order)) {
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order);
+        if (!rewashEligible && !firstVisitEligible) {
             return order.getTotalAmount();
         }
         double total = 0;
         for (WalkInOrderItem item : order.getItems()) {
             double price = item.getPrice();
-            if (catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+            if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
+                price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+            } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
                 price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
             }
             total += price;

@@ -49,6 +49,7 @@ public class AppointmentService {
     private final PerformanceService performanceService; // 進行中核對：接待送出積分
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
 
@@ -784,6 +785,7 @@ public class AppointmentService {
                 ? walletService.getWallet(appointment.getUser().getUsername()).getDiscount()
                 : 1.0;
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
 
         List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems = appointmentItemRepository
                 .findByAppointmentId(appointmentId);
@@ -798,6 +800,8 @@ public class AppointmentService {
                                         .orElse(true);
                         boolean rewashApplicable = rewashEligible
                                 && catRewashDiscountService.isCatBathCategory(ci.getPerformanceCategory());
+                        boolean firstVisitApplicable = firstVisitEligible
+                                && dogFirstVisitDiscountService.isDogPackageCategory(ci.getPerformanceCategory());
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
                                 .itemId(ci.getId())
                                 .name(ci.getItemName())
@@ -805,9 +809,10 @@ public class AppointmentService {
                                 .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
                                 .discountEligible(memberEligible)
                                 .rewashEligible(rewashApplicable)
+                                .firstVisitEligible(firstVisitApplicable)
                                 .retailItem(ci.getRetailProductId() != null)
                                 .appliedDiscountType(transactionOpt.isPresent()
-                                        ? resolveAppliedDiscountType(rewashApplicable, memberEligible && paidByWallet, memberDiscountRate)
+                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, memberEligible && paidByWallet, memberDiscountRate)
                                         : null)
                                 .build();
                     })
@@ -816,14 +821,16 @@ public class AppointmentService {
             items = appointment.getSelectedItems().stream()
                     .map(gi -> {
                         boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(gi);
+                        boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(gi);
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
                                 .name(gi.getName())
                                 .price((int) Math.round(gi.getPrice()))
                                 .operatorName(null)
                                 .discountEligible(gi.isDiscountEligible())
                                 .rewashEligible(rewashApplicable)
+                                .firstVisitEligible(firstVisitApplicable)
                                 .appliedDiscountType(transactionOpt.isPresent()
-                                        ? resolveAppliedDiscountType(rewashApplicable, gi.isDiscountEligible() && paidByWallet, memberDiscountRate)
+                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, gi.isDiscountEligible() && paidByWallet, memberDiscountRate)
                                         : null)
                                 .build();
                     })
@@ -860,8 +867,16 @@ public class AppointmentService {
     // 需求 8-1 修正：只回傳「實際套用哪一種折扣」的標籤，不重算金額
     // （金額計算仍以 PaymentService.checkout() 當下算出、存入 Transaction.finalAmount 的為準，
     // 這裡只是為了消費明細顯示用途、用同一套「擇一」規則反推標籤）。
+    // 需求（追加）：firstVisitApplicable 為 true 時優先用狗狗首次體驗優惠的判斷結果
+    // （跟 calculateAmountWithRewashDiscount 一致：一個項目不可能同時符合兩種資格，
+    // 因為分屬貓/狗互斥的品種分類，這裡優先分支不影響正確性）。
     private com.petgrooming.pet_system.enums.DiscountType resolveAppliedDiscountType(
-            boolean rewashApplicable, boolean memberApplicable, double memberDiscountRate) {
+            boolean rewashApplicable, boolean firstVisitApplicable, boolean memberApplicable, double memberDiscountRate) {
+        if (firstVisitApplicable) {
+            return dogFirstVisitDiscountService
+                    .resolvePreferredDiscount(100.0, true, memberApplicable, memberDiscountRate)
+                    .type();
+        }
         return catRewashDiscountService
                 .resolvePreferredDiscount(100.0, rewashApplicable, memberApplicable, memberDiscountRate)
                 .type();

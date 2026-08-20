@@ -45,6 +45,7 @@ public class WalkInOrderResponse {
         private boolean discountEligible; // 需求 5：是否可享會員儲值金折扣
         // 需求 8 修正：回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
         private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（僅限有綁定會員、且該會員的貓距上次洗澡未滿90天）
+        private boolean firstVisitEligible; // 需求（追加）：這個項目是否符合狗狗首次體驗優惠資格
         private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
         private Long retailProductId; // 需求 7-1：非 null 代表這一列是零售商品加購
         private boolean retailItem;   // 方便前端判斷是不是零售商品（不用另外判斷 groomingItemId == null 這種間接方式）

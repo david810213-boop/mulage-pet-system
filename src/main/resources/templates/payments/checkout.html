@@ -74,10 +74,12 @@
                 <td>
                   <span th:if="${it.retailItem}" style="color:#999;">零售商品（不打折）</span>
                   <span th:unless="${it.retailItem}">
-                    <span th:if="${it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
-                    <span th:if="${it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
-                    <span th:if="${!it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
-                    <span th:if="${!it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                    <span th:if="${it.firstVisitEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合首次體驗／會員折扣（擇優適用）</span>
+                    <span th:if="${it.firstVisitEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合首次體驗優惠（9折）</span>
+                    <span th:if="${!it.firstVisitEligible and it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
+                    <span th:if="${!it.firstVisitEligible and it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
+                    <span th:if="${!it.firstVisitEligible and !it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
+                    <span th:if="${!it.firstVisitEligible and !it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
                   </span>
                 </td>
                 <td>

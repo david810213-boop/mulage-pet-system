@@ -39,8 +39,10 @@ public class PaymentService {
     private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
     private final CloudinaryService cloudinaryService; // 需求 21：匯款/儲值 QR Code 上傳
     private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
+    private final com.petgrooming.pet_system.repository.PricingSettingsRepository pricingSettingsRepository; // 需求（追加）：體重定價門檻
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final com.petgrooming.pet_system.repository.WalkInOrderRepository walkInOrderRepository; // 需求 6
     private final com.petgrooming.pet_system.repository.TopUpRequestRepository topUpRequestRepository; // 需求 6
     private final com.petgrooming.pet_system.repository.RetailProductRepository retailProductRepository; // 需求 6
@@ -529,11 +531,14 @@ public class PaymentService {
     // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────
     // 優先用現場開單（依預約編號）的實際項目；沒有的話退回顧客線上勾選的項目。
     // 需求 8-1 修正：回洗優惠與會員折扣只能擇一（取較優惠者），不再疊加相乘。
+    // 需求（追加）：狗狗首次體驗優惠比照同樣邏輯，兩種優惠依品種各自的分類互斥，
+    // 不會同時套用在同一個項目上，判斷哪個適用後交給對應 service 算「跟會員折扣擇優」。
     private int calculateWalletAmountPerItem(Appointment appointment, double discount) {
         List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
                 appointmentItemRepository.findByAppointmentId(appointment.getId());
 
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
 
         double total = 0;
         if (!checkinItems.isEmpty()) {
@@ -542,6 +547,13 @@ public class PaymentService {
                         && groomingItemRepository.findById(item.getGroomingItemId())
                                 .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
                                 .orElse(true);
+                boolean firstVisitApplicable = firstVisitEligible
+                        && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
+                if (firstVisitApplicable) {
+                    total += dogFirstVisitDiscountService.resolvePreferredDiscount(
+                            item.getPrice(), true, memberEligible, discount).price();
+                    continue;
+                }
                 boolean rewashApplicable = rewashEligible
                         && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
                 total += catRewashDiscountService.resolvePreferredDiscount(
@@ -550,6 +562,12 @@ public class PaymentService {
         } else {
             for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
                 double price = item.getPrice() != null ? item.getPrice() : 0;
+                boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item);
+                if (firstVisitApplicable) {
+                    total += dogFirstVisitDiscountService.resolvePreferredDiscount(
+                            price, true, item.isDiscountEligible(), discount).price();
+                    continue;
+                }
                 boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(item);
                 total += catRewashDiscountService.resolvePreferredDiscount(
                         price, rewashApplicable, item.isDiscountEligible(), discount).price();
@@ -560,10 +578,11 @@ public class PaymentService {
 
     // ── 需求 8-1：非儲值金付款的一般結帳金額計算，套用貓咪 90 天回洗優惠 ──
     // 邏輯與 calculateWalletAmountPerItem 同樣優先用現場開單項目，但沒有會員等級折扣，
-    // 只套用回洗優惠（不符合資格的話金額等同原本的 appointment.getTotalAmount()）。
+    // 只套用回洗優惠／狗狗首次體驗優惠（不符合資格的話金額等同原本的 totalAmount）。
     private int calculateAmountWithRewashDiscount(Appointment appointment) {
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment);
-        if (!rewashEligible) {
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
+        if (!rewashEligible && !firstVisitEligible) {
             return appointment.getTotalAmount();
         }
 
@@ -574,7 +593,9 @@ public class PaymentService {
         if (!checkinItems.isEmpty()) {
             for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
                 double price = item.getPrice();
-                if (catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+                if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
+                    price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+                } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
                     price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
                 }
                 total += price;
@@ -582,7 +603,9 @@ public class PaymentService {
         } else {
             for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
                 double price = item.getPrice() != null ? item.getPrice() : 0;
-                if (catRewashDiscountService.isCatBathItem(item)) {
+                if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item)) {
+                    price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+                } else if (rewashEligible && catRewashDiscountService.isCatBathItem(item)) {
                     price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
                 }
                 total += price;
@@ -606,5 +629,27 @@ public class PaymentService {
                 .orElse(com.petgrooming.pet_system.model.CompanySignature.builder().build());
         sig.setSignatureImage(base64Image);
         companySignatureRepository.save(sig);
+    }
+
+    // ── 需求（追加）：體重定價門檻設定（單例，同 CompanySignature 做法）─────
+    public com.petgrooming.pet_system.model.PricingSettings getPricingSettings() {
+        return pricingSettingsRepository.findAll().stream()
+                .findFirst()
+                .orElse(com.petgrooming.pet_system.model.PricingSettings.builder().build());
+    }
+
+    @Transactional
+    public void updatePricingSettings(com.petgrooming.pet_system.model.PricingSettings updated) {
+        com.petgrooming.pet_system.model.PricingSettings settings = pricingSettingsRepository.findAll()
+                .stream().findFirst()
+                .orElse(com.petgrooming.pet_system.model.PricingSettings.builder().build());
+        settings.setCatBaseWeightLimit(updated.getCatBaseWeightLimit());
+        settings.setCatMidWeightLimit(updated.getCatMidWeightLimit());
+        settings.setCatMidSurcharge(updated.getCatMidSurcharge());
+        settings.setCatHighWeightLimit(updated.getCatHighWeightLimit());
+        settings.setCatHighSurcharge(updated.getCatHighSurcharge());
+        settings.setDogLongCoatWeightLimit(updated.getDogLongCoatWeightLimit());
+        settings.setDogShortCoatWeightLimit(updated.getDogShortCoatWeightLimit());
+        pricingSettingsRepository.save(settings);
     }
 }
