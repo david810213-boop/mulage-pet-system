@@ -131,6 +131,50 @@
             </table>
           </div>
 
+          <!-- 需求（追加）：編輯訂單——核對過程中就能補漏開/開錯的項目，不用等核對完到結帳頁才能改 -->
+          <div class="card" style="margin-bottom: 1.25rem">
+            <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 12px">✏️ 編輯本次服務項目</h3>
+            <div th:each="ci : ${checkinItems}" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:13px;">
+              <span th:text="${ci.itemName} + '　$' + ${ci.price}"></span>
+              <form method="post" th:action="@{/payments/checkout/{id}/remove-item(id=${appointment.id})}">
+                <input type="hidden" name="itemId" th:value="${ci.id}" />
+                <input type="hidden" name="from" value="final-check" />
+                <button type="submit" class="btn btn-outline" style="padding:2px 8px; font-size:11px; color:#c62828; border-color:#c67a5c;">移除</button>
+              </form>
+            </div>
+            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--cream-200);">
+              <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
+                    th:action="@{/payments/checkout/{id}/add-grooming-item(id=${appointment.id})}"
+                    style="display:flex; gap:8px; align-items:end; flex:1; min-width:220px;">
+                <input type="hidden" name="from" value="final-check" />
+                <div class="field" style="margin:0; flex:1;">
+                  <label style="font-size:12px;">新增服務項目</label>
+                  <select name="groomingItemId" required>
+                    <option th:each="g : ${groomingItems}" th:value="${g.id}"
+                            th:text="${g.name} + '（$' + ${#numbers.formatDecimal(g.price, 0, 0)} + '）'"></option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-outline" style="padding:6px 14px; font-size:12px;">加入</button>
+              </form>
+            </div>
+            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:8px;">
+              <form th:if="${retailProducts != null and !retailProducts.isEmpty()}" method="post"
+                    th:action="@{/payments/checkout/{id}/add-retail-item(id=${appointment.id})}"
+                    style="display:flex; gap:8px; align-items:end; flex:1; min-width:220px;">
+                <input type="hidden" name="from" value="final-check" />
+                <div class="field" style="margin:0; flex:1;">
+                  <label style="font-size:12px;">加購商品</label>
+                  <select name="retailProductId" required>
+                    <option th:each="p : ${retailProducts}" th:value="${p.id}"
+                            th:text="${p.name} + '（$' + ${p.price} + '）'"></option>
+                  </select>
+                </div>
+                <input type="number" name="quantity" value="1" min="1" style="width:60px;" required />
+                <button type="submit" class="btn btn-outline" style="padding:6px 14px; font-size:12px;">加入</button>
+              </form>
+            </div>
+          </div>
+
           <form
             method="post"
             th:action="@{/appointments/{id}/final-check(id=${appointment.id})}"

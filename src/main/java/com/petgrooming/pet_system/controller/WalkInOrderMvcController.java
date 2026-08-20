@@ -232,11 +232,13 @@ public class WalkInOrderMvcController {
 
     // ── POST /admin/walk-in-orders/{id}/add-retail-item ─────────────────
     // 需求 7-1：結帳頁直接加購零售商品
+    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-retail-item")
     public String addRetailItem(@PathVariable Long id, HttpServletRequest request,
                                 @RequestParam Long retailProductId,
                                 @RequestParam(defaultValue = "1") int quantity,
+                                @RequestParam(defaultValue = "checkout") String from,
                                 RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
@@ -245,7 +247,7 @@ public class WalkInOrderMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "加購失敗：" + e.getMessage());
         }
-        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
     }
 
     // ── POST /admin/walk-in-orders/{id}/add-grooming-item ────────────────
@@ -254,6 +256,7 @@ public class WalkInOrderMvcController {
     @PostMapping("/{id}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long id, HttpServletRequest request,
                                   @RequestParam Long groomingItemId,
+                                  @RequestParam(defaultValue = "checkout") String from,
                                   RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
@@ -262,7 +265,7 @@ public class WalkInOrderMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
         }
-        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
     }
 
     // ── POST /admin/walk-in-orders/{id}/remove-item ──────────────────────
@@ -272,6 +275,7 @@ public class WalkInOrderMvcController {
     @PostMapping("/{id}/remove-item")
     public String removeItem(@PathVariable Long id, HttpServletRequest request,
                              @RequestParam Long itemId,
+                             @RequestParam(defaultValue = "checkout") String from,
                              RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
@@ -280,7 +284,7 @@ public class WalkInOrderMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "移除失敗：" + e.getMessage());
         }
-        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
     }
 
     // ── POST /admin/walk-in-orders/{id}/checkout ────────────────────────────
@@ -325,6 +329,8 @@ public class WalkInOrderMvcController {
     @GetMapping("/{id}/final-check")
     public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("groomingItems", groomingService.getAllItems()); // 需求（追加）：核對頁也能直接編輯訂單項目
+        model.addAttribute("retailProducts", retailProductService.listActive());
         try {
             model.addAttribute("order", walkInOrderService.getById(id));
         } catch (IllegalArgumentException e) {

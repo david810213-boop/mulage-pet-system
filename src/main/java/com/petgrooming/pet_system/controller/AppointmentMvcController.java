@@ -40,6 +40,7 @@ public class AppointmentMvcController {
     private final SlotCapacityService slotCapacityService;
     private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16：公休日設定
     private final com.petgrooming.pet_system.service.PaymentService paymentService;
+    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
 
     /**
      * JWT 版獲取當前登入使用者
@@ -321,6 +322,8 @@ public class AppointmentMvcController {
         }
         model.addAttribute("appointment", target);
         model.addAttribute("checkinItems", appointmentService.getCheckinItems(id));
+        model.addAttribute("groomingItems", groomingItemService.getAllItems()); // 需求（追加）：核對頁也能直接編輯訂單項目
+        model.addAttribute("retailProducts", retailProductService.listActive());
         return "appointments/final-check";
     }
 

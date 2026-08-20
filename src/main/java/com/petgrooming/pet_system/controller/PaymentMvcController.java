@@ -168,10 +168,12 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-retail-item ────────────
+    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
     @PostMapping("/checkout/{appointmentId}/add-retail-item")
     public String addRetailItem(@PathVariable Long appointmentId,
                                 @RequestParam Long retailProductId,
                                 @RequestParam(defaultValue = "1") int quantity,
+                                @RequestParam(defaultValue = "checkout") String from,
                                 HttpServletRequest request,
                                 RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
@@ -182,7 +184,7 @@ public class PaymentMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/payments/checkout/" + appointmentId;
+        return redirectAfterEdit(appointmentId, from);
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
@@ -190,6 +192,7 @@ public class PaymentMvcController {
     @PostMapping("/checkout/{appointmentId}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long appointmentId,
                                   @RequestParam Long groomingItemId,
+                                  @RequestParam(defaultValue = "checkout") String from,
                                   HttpServletRequest request,
                                   RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
@@ -200,7 +203,7 @@ public class PaymentMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/payments/checkout/" + appointmentId;
+        return redirectAfterEdit(appointmentId, from);
     }
 
     // ── POST /payments/checkout/{appointmentId}/remove-item ────────────────
@@ -209,6 +212,7 @@ public class PaymentMvcController {
     @PostMapping("/checkout/{appointmentId}/remove-item")
     public String removeItem(@PathVariable Long appointmentId,
                              @RequestParam Long itemId,
+                             @RequestParam(defaultValue = "checkout") String from,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
@@ -218,6 +222,15 @@ public class PaymentMvcController {
             appointmentService.removeItem(appointmentId, itemId, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return redirectAfterEdit(appointmentId, from);
+    }
+
+    // 需求（追加）：編輯訂單的三個端點共用的導回邏輯——from=final-check 導回核對頁，
+    // 其餘（預設 checkout）導回結帳頁，避免同一段字串重複寫三次。
+    private String redirectAfterEdit(Long appointmentId, String from) {
+        if ("final-check".equals(from)) {
+            return "redirect:/appointments/" + appointmentId + "/final-check";
         }
         return "redirect:/payments/checkout/" + appointmentId;
     }
