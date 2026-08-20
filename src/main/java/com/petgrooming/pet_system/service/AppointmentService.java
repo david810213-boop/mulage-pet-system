@@ -553,23 +553,55 @@ public class AppointmentService {
         log.info("預約 #{} 加購商品「{}」x{}", appointmentId, product.getName(), quantity);
     }
 
-    // 移除一筆已加購的零售商品（結帳前加錯可以移除；只能移除零售商品項目，
-    // 不能拿來移除美容服務項目，避免誤刪動到績效/預約相關資料）。
+    // ── 需求（追加）：編輯訂單——結帳前新增一筆美容服務項目 ────────────────
+    // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
+    // 不用整筆退款重開，直接在這裡補上即可。
     @Transactional
-    public void removeRetailItem(Long appointmentId, Long itemId, String username) {
+    public void addGroomingItem(Long appointmentId, Long groomingItemId, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
         if (appointment.isPaid()) {
-            throw new IllegalArgumentException("此預約已結帳，無法再移除商品");
+            throw new IllegalArgumentException("此預約已結帳，無法再編輯項目，請改用退款重開");
+        }
+
+        GroomingItem gi = groomingItemRepository.findById(groomingItemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到服務項目"));
+
+        com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
+                .builder()
+                .appointment(appointment)
+                .groomingItemId(gi.getId())
+                .itemName(gi.getName())
+                .price((int) Math.round(gi.getPrice()))
+                .points(gi.getPoints())
+                .performanceCategory(gi.getPerformanceCategory())
+                .build();
+        appointmentItemRepository.save(item);
+
+        appointment.setTotalAmount(appointment.getTotalAmount() + item.getPrice());
+        appointment.setCheckinOrderConfirmed(true); // 保險起見一併標記，避免極少數尚未開過單的情況卡在後續流程
+        appointmentRepository.save(appointment);
+
+        log.info("預約 #{} 編輯新增服務項目「{}」", appointmentId, gi.getName());
+    }
+
+    // 移除一筆項目（結帳前都可以移除，不管是零售商品還是美容服務項目；
+    // 結帳後只能整筆退款重開，這裡的「已結帳」防呆維持不變）。
+    @Transactional
+    public void removeItem(Long appointmentId, Long itemId, String username) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        if (appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約已結帳，無法再編輯項目，請改用退款重開");
         }
 
         com.petgrooming.pet_system.model.AppointmentItem item = appointmentItemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到項目 #" + itemId));
-        if (item.getRetailProductId() == null) {
-            throw new IllegalArgumentException("只能移除零售商品項目");
-        }
         if (!item.getAppointment().getId().equals(appointmentId)) {
             throw new IllegalArgumentException("項目不屬於這筆預約");
+        }
+        if (appointmentItemRepository.findByAppointmentId(appointmentId).size() <= 1) {
+            throw new IllegalArgumentException("這是最後一筆項目，無法移除；如果整筆都要取消，請改用退款流程");
         }
 
         appointment.setTotalAmount(appointment.getTotalAmount() - item.getPrice());

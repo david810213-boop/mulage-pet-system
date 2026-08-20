@@ -281,23 +281,53 @@ public class WalkInOrderService {
                 .build();
     }
 
-    // 移除一筆已加購的零售商品（結帳前加錯可以移除；只能移除零售商品項目，
-    // 不能拿來移除美容服務項目，避免誤刪動到績效/預約相關資料）。
+    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     @Transactional
-    public WalkInOrderResponse removeRetailItem(Long orderId, Long orderItemId, String username) {
+    public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
-            throw new IllegalArgumentException("此單已結帳，無法再移除商品");
+            throw new IllegalArgumentException("此單已結帳，無法再編輯項目，請改用退款重開");
+        }
+
+        GroomingItem gi = groomingItemRepository.findById(groomingItemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到服務項目"));
+
+        WalkInOrderItem item = WalkInOrderItem.builder()
+                .groomingItemId(gi.getId())
+                .itemName(gi.getName())
+                .price((int) Math.round(gi.getPrice()))
+                .points(gi.getPoints())
+                .performanceCategory(gi.getPerformanceCategory())
+                .discountEligible(gi.isDiscountEligible())
+                .build();
+        order.addItem(item);
+        order.setTotalAmount(order.getTotalAmount() + item.getPrice());
+        WalkInOrder saved = orderRepository.save(order);
+
+        log.info("現場單 #{} 編輯新增服務項目「{}」", orderId, gi.getName());
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
+    }
+
+    // 移除一筆項目（結帳前都可以移除，不管是零售商品還是美容服務項目；
+    // 結帳後只能整筆退款重開，這裡的「已結帳」防呆維持不變）。
+    @Transactional
+    public WalkInOrderResponse removeItem(Long orderId, Long orderItemId, String username) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已結帳，無法再編輯項目，請改用退款重開");
         }
 
         WalkInOrderItem item = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到項目 #" + orderItemId));
-        if (item.getRetailProductId() == null) {
-            throw new IllegalArgumentException("只能移除零售商品項目");
-        }
         if (!item.getOrder().getId().equals(orderId)) {
             throw new IllegalArgumentException("項目不屬於這張現場單");
+        }
+        if (order.getItems().size() <= 1) {
+            throw new IllegalArgumentException("這是最後一筆項目，無法移除；如果整張單都要取消，請改用退款流程");
         }
 
         order.setTotalAmount(order.getTotalAmount() - item.getPrice());

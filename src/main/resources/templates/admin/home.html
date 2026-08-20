@@ -185,7 +185,7 @@
               <div
                 style="
                   display: grid;
-                  grid-template-columns: 100px 180px 1fr 120px auto;
+                  grid-template-columns: 100px 180px 1fr 120px 110px auto;
                   gap: 12px;
                   align-items: end;
                 "
@@ -264,6 +264,37 @@
                     min="1"
                     style="width: 100%; padding: 6px"
                   />
+                </div>
+
+                <div class="field" style="margin: 0">
+                  <label
+                    style="
+                      display: block;
+                      font-size: 12px;
+                      color: var(--brown-mid);
+                      margin-bottom: 4px;
+                    "
+                    >可享折扣</label
+                  >
+                  <label
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      padding: 6px 0;
+                      font-size: 13px;
+                      color: var(--brown-mid);
+                    "
+                  >
+                    <input type="hidden" name="discountEligible" value="false" />
+                    <input
+                      type="checkbox"
+                      name="discountEligible"
+                      value="true"
+                      checked
+                    />
+                    會員折扣/回洗優惠
+                  </label>
                 </div>
 
                 <button

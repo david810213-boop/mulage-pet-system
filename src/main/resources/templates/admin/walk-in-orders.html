@@ -66,92 +66,96 @@
           </form>
         </div>
 
-        <!-- 待補經手人 -->
+        <!-- 需求（追加）：矩陣式待補經手人表單——現場開單 -->
         <div
-          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; overflow-x: auto;"
         >
           <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 待補經手人（積分尚未計算）</h3>
           <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
-            逐一選好每個項目的經手人後，按最下方「統一儲存」一次寫入，不用每列都點一次。
+            點寵物那一列，本次消費有出現的項目那一格才能選經手人；逐一選好後，按最下方「統一儲存」一次寫入，不用每格都點一次。
           </p>
           <form id="batchOperatorForm" method="post" action="/admin/walk-in-orders/items/operator/batch">
-          <table>
+          <table style="min-width: 1100px;">
             <thead>
               <tr>
-                <th>項目</th>
-                <th>價格</th>
-                <th>積分</th>
-                <th>經手人</th>
+                <th style="white-space:nowrap;">寵物</th>
+                <th th:each="col : ${matrixColumns}" th:text="${col.label}" style="white-space:nowrap; text-align:center;"></th>
               </tr>
             </thead>
             <tbody>
-              <tr th:if="${#lists.isEmpty(pendingOperatorItems)}">
-                <td colspan="4" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
+              <tr th:if="${#lists.isEmpty(walkInMatrixRows)}">
+                <td th:attr="colspan=${matrixColumns.size() + 1}" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
               </tr>
-              <tr th:each="i : ${pendingOperatorItems}">
-                <td th:text="${i.itemName}"></td>
-                <td th:text="'$' + ${i.price}"></td>
-                <td th:text="${i.points}"></td>
-                <td>
-                  <input type="hidden" name="itemIds" th:value="${i.itemId}" />
-                  <select name="staffIds"
-                          style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
-                          class="pending-staff-select batch-operator-select">
-                    <option value="">尚未選擇</option>
-                  </select>
+              <tr th:each="row : ${walkInMatrixRows}">
+                <td style="white-space:nowrap;">
+                  <strong th:text="${row.petName}"></strong>
+                  <div style="font-size:11px; color:var(--brown-light);" th:text="${row.code}"></div>
+                </td>
+                <td th:each="cell : ${row.cells}" style="text-align:center;">
+                  <span th:if="${cell.itemId == null}" style="color:#ccc;">無</span>
+                  <div th:if="${cell.itemId != null}">
+                    <div style="font-size:11px; color:var(--brown-light); white-space:nowrap;"
+                         th:text="'$' + ${cell.price} + ' / ' + ${cell.points} + '分'"></div>
+                    <input type="hidden" name="itemIds" th:value="${cell.itemId}" />
+                    <select name="staffIds"
+                            style="padding:4px 6px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:12px; width:110px;"
+                            class="pending-staff-select batch-operator-select">
+                      <option value="">尚未選擇</option>
+                    </select>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
           <button type="submit" class="btn btn-primary" style="margin-top: 12px;"
-                  th:if="${!#lists.isEmpty(pendingOperatorItems)}">統一儲存</button>
+                  th:if="${!#lists.isEmpty(walkInMatrixRows)}">統一儲存</button>
           </form>
         </div>
 
-        <!-- 預約現場開單（依預約編號）：待補經手人 -->
+        <!-- 需求（追加）：矩陣式待補經手人表單——預約現場開單 -->
         <div
-          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;"
+          style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; overflow-x: auto;"
         >
           <h3 style="font-size: 15px; color: #666; margin-bottom: 6px;">⏳ 預約現場開單 — 待補經手人（積分尚未計算）</h3>
           <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 14px;">
             這裡列出的是「已預約」的訂單、店員到店核對後依現場情況開立的服務項目，跟上面現場單是分開的兩套資料。
-            逐一選好每個項目的經手人後，按最下方「統一儲存」一次寫入。
+            點寵物那一列，本次消費有出現的項目那一格才能選經手人，逐一選好後按最下方「統一儲存」一次寫入。
           </p>
           <form id="batchAppointmentOperatorForm" method="post" action="/appointments/checkin-items/operator/batch">
-          <table>
+          <table style="min-width: 1100px;">
             <thead>
               <tr>
-                <th>預約編號</th>
-                <th>寵物</th>
-                <th>項目</th>
-                <th>價格</th>
-                <th>積分</th>
-                <th>經手人</th>
+                <th style="white-space:nowrap;">寵物</th>
+                <th th:each="col : ${matrixColumns}" th:text="${col.label}" style="white-space:nowrap; text-align:center;"></th>
               </tr>
             </thead>
             <tbody>
-              <tr th:if="${#lists.isEmpty(appointmentPendingItems)}">
-                <td colspan="6" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
+              <tr th:if="${#lists.isEmpty(appointmentMatrixRows)}">
+                <td th:attr="colspan=${matrixColumns.size() + 1}" style="text-align:center; color:#aaa;">目前沒有待補的項目</td>
               </tr>
-              <tr th:each="i : ${appointmentPendingItems}">
-                <td th:text="${i.appointmentCode}"></td>
-                <td th:text="${i.petName}"></td>
-                <td th:text="${i.itemName}"></td>
-                <td th:text="'$' + ${i.price}"></td>
-                <td th:text="${i.points}"></td>
-                <td>
-                  <input type="hidden" name="itemIds" th:value="${i.id}" />
-                  <select name="staffIds"
-                          style="padding:5px 8px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:13px; width:140px;"
-                          class="pending-staff-select batch-operator-select">
-                    <option value="">尚未選擇</option>
-                  </select>
+              <tr th:each="row : ${appointmentMatrixRows}">
+                <td style="white-space:nowrap;">
+                  <strong th:text="${row.petName}"></strong>
+                  <div style="font-size:11px; color:var(--brown-light);" th:text="${row.code}"></div>
+                </td>
+                <td th:each="cell : ${row.cells}" style="text-align:center;">
+                  <span th:if="${cell.itemId == null}" style="color:#ccc;">無</span>
+                  <div th:if="${cell.itemId != null}">
+                    <div style="font-size:11px; color:var(--brown-light); white-space:nowrap;"
+                         th:text="'$' + ${cell.price} + ' / ' + ${cell.points} + '分'"></div>
+                    <input type="hidden" name="itemIds" th:value="${cell.itemId}" />
+                    <select name="staffIds"
+                            style="padding:4px 6px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:12px; width:110px;"
+                            class="pending-staff-select batch-operator-select">
+                      <option value="">尚未選擇</option>
+                    </select>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
           <button type="submit" class="btn btn-primary" style="margin-top: 12px;"
-                  th:if="${!#lists.isEmpty(appointmentPendingItems)}">統一儲存</button>
+                  th:if="${!#lists.isEmpty(appointmentMatrixRows)}">統一儲存</button>
           </form>
         </div>
         <div

@@ -22,6 +22,7 @@ public enum PerformanceCategory {
     HC          ("特殊（HC）",  15.0),
     PARTIAL     ("局部修剪",     5.0),
     SPECIAL     ("特殊項目",     5.0),
+    SPECIAL2    ("特殊項目-2",   5.0), // 需求（追加）：矩陣式待補經手人表單，特殊項目有時會重疊，多留一欄
     CHECKIN     ("接進",         5.0),
     CHECKOUT    ("接出",         5.0),
     COMPLETE    ("完成",         5.0),

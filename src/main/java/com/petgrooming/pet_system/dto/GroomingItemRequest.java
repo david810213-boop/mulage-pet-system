@@ -25,4 +25,8 @@ public class GroomingItemRequest {
     // 需求 4：是否可線上預約（大美容/小美容/精緻洗/定製洗 = true）
     private Boolean bookable = false;
 
+    // 需求（追加）：是否可享會員儲值折扣/回洗優惠——像清潔費這種帶懲罰性質的附加費用，
+    // 店家不希望被折扣掉，所以開放建立時就能決定要不要參與折扣，預設維持原本行為（可享）。
+    private Boolean discountEligible = true;
+
 }

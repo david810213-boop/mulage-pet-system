@@ -40,6 +40,7 @@ public class GroomingServiceImpl implements GroomingService {
         item.setPrice(request.getPrice());
         item.setDeleted(false); // 新增的項目預設就是直接上架使用
         item.setBookable(request.getBookable() != null && request.getBookable()); // 需求 4
+        item.setDiscountEligible(request.getDiscountEligible() == null || request.getDiscountEligible()); // 需求（追加）
 
         // 3. 實質寫入資料庫
         groomingItemRepository.save(item);

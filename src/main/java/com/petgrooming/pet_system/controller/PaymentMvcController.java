@@ -36,6 +36,7 @@ public class PaymentMvcController {
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
+    private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
 
     /**
      * JWT 版獲取當前登入使用者
@@ -135,6 +136,7 @@ public class PaymentMvcController {
         model.addAttribute("bankAccountInfo",
                 paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
+        model.addAttribute("groomingItems", groomingService.getAllItems()); // 需求（追加）：編輯訂單可新增的服務項目清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -183,17 +185,37 @@ public class PaymentMvcController {
         return "redirect:/payments/checkout/" + appointmentId;
     }
 
-    // ── POST /payments/checkout/{appointmentId}/remove-retail-item ─────────
-    @PostMapping("/checkout/{appointmentId}/remove-retail-item")
-    public String removeRetailItem(@PathVariable Long appointmentId,
-                                   @RequestParam Long itemId,
-                                   HttpServletRequest request,
-                                   RedirectAttributes redirectAttributes) {
+    // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
+    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    @PostMapping("/checkout/{appointmentId}/add-grooming-item")
+    public String addGroomingItem(@PathVariable Long appointmentId,
+                                  @RequestParam Long groomingItemId,
+                                  HttpServletRequest request,
+                                  RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.removeRetailItem(appointmentId, itemId, user.getUsername());
+            appointmentService.addGroomingItem(appointmentId, groomingItemId, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/payments/checkout/" + appointmentId;
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/remove-item ────────────────
+    // 需求（追加）：從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
+    // 供編輯訂單使用；路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
+    @PostMapping("/checkout/{appointmentId}/remove-item")
+    public String removeItem(@PathVariable Long appointmentId,
+                             @RequestParam Long itemId,
+                             HttpServletRequest request,
+                             RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.removeItem(appointmentId, itemId, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -221,6 +243,8 @@ public class PaymentMvcController {
             model.addAttribute("user", user);
             model.addAttribute("appointmentId", appointmentId);
             model.addAttribute("paymentMethods", PaymentMethod.values());
+            model.addAttribute("retailProducts", retailProductService.listActive());
+            model.addAttribute("groomingItems", groomingService.getAllItems());
             model.addAttribute("errorMsg", e.getMessage());
 
             // 需求（追加）：組錯誤頁預覽資料本身如果又出錯（例如這筆預約資料本身有異常），
