@@ -403,17 +403,25 @@
       async function loadCompanySignature() {
         try {
           const res = await fetch("/api/company-signature", { headers: authHeaders() });
-          if (!res.ok) return;
+          if (!res.ok) {
+            showToast("簽名檔除錯：API 回應 " + res.status, "error"); // 暫時除錯用，之後會移除
+            return;
+          }
           const data = await res.json();
           const img = document.getElementById("companySignatureImg");
           const fallback = document.getElementById("companySignatureFallback");
+          showToast(
+            "簽名檔除錯：img=" + (img ? "有找到" : "null") +
+            "，data.signatureImage=" + (data && data.signatureImage ? "有值(長度" + data.signatureImage.length + ")" : "空"),
+            "error"
+          ); // 暫時除錯用，之後會移除
           if (data && data.signatureImage && img) {
             img.src = data.signatureImage;
             img.style.display = "block";
             if (fallback) fallback.style.display = "none";
           }
         } catch (e) {
-          // 簽名檔載入失敗不影響整體預約流程，靜默失敗即可
+          showToast("簽名檔除錯：發生例外 " + e.message, "error"); // 暫時除錯用，之後會移除
         }
       }
 
