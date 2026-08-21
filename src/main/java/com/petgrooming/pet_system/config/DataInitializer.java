@@ -24,6 +24,7 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final GroomingItemRepository groomingItemRepository;
+    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final BonusTierRepository bonusTierRepository;
     private final BankAccountInfoRepository bankAccountInfoRepository;
     private final com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
@@ -297,6 +298,79 @@ public class DataInitializer implements ApplicationRunner {
             log.info("✨ [系統通知] 狗狗 36 項固定價格服務項目已成功初始化入庫！");
         }
 
+        // ── 需求（追加）：套餐化——回填「適用物種」+ 建立套餐組成 ─────────────
+        // 這兩段都是每次啟動都會跑（不是只在全新安裝時跑一次），確保不管上面的
+        // CAT001/DOG001 判斷式有沒有觸發過，這裡都會把缺的資料補齊，
+        // 也不會覆蓋已經跑過的資料（用「存不存在」判斷，不會重複新增）。
+
+        // 貓咪 26+2 項、狗狗 36 項回填適用物種（之前建立時漏設，null 代表兩者皆可，
+        // 導致貓狗選單過濾對這批舊資料完全沒作用）。
+        for (String code : java.util.List.of(
+                "CAT001","CAT002","CAT003","CAT004","CAT005","CAT006","CAT007","CAT008","CAT009","CAT010",
+                "CAT011","CAT012","CAT013","CAT014","CAT015","CAT016","CAT017","CAT018","CAT019","CAT020",
+                "CAT021","CAT022","CAT023","CAT024","CAT025","CAT026","CAT027","CAT028")) {
+            groomingItemRepository.findByItemCode(code).ifPresent(item -> {
+                if (item.getApplicablePetType() != com.petgrooming.pet_system.enums.PetType.CAT) {
+                    item.setApplicablePetType(com.petgrooming.pet_system.enums.PetType.CAT);
+                    groomingItemRepository.save(item);
+                }
+            });
+        }
+        for (int i = 1; i <= 36; i++) {
+            String code = String.format("DOG%03d", i);
+            groomingItemRepository.findByItemCode(code).ifPresent(item -> {
+                if (item.getApplicablePetType() != com.petgrooming.pet_system.enums.PetType.DOG) {
+                    item.setApplicablePetType(com.petgrooming.pet_system.enums.PetType.DOG);
+                    groomingItemRepository.save(item);
+                }
+            });
+        }
+
+        // 套餐組成：貓咪 24 項（CAT001~024），依「服務深度」決定副組成——
+        // 小美容=吹貓+基礎美容；大美容=+剪毛；頂級專業定制洗護=+AD；大美容+定制洗護=+剪毛+AD。
+        // 吹貓的大小（BLOW_CAT_S/L）要跟主組成（洗貓）的大小一致。
+        addComponents("CAT001", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC);
+        addComponents("CAT002", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC);
+        addComponents("CAT003", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC);
+        addComponents("CAT004", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM);
+        addComponents("CAT005", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM);
+        addComponents("CAT006", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC, PerformanceCategory.TRIM);
+        addComponents("CAT007", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.AD);
+        addComponents("CAT008", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.AD);
+        addComponents("CAT009", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC, PerformanceCategory.AD);
+        addComponents("CAT010", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM, PerformanceCategory.AD);
+        addComponents("CAT011", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM, PerformanceCategory.AD);
+        addComponents("CAT012", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC, PerformanceCategory.TRIM, PerformanceCategory.AD);
+        addComponents("CAT013", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC);
+        addComponents("CAT014", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC);
+        addComponents("CAT015", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC);
+        addComponents("CAT016", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM);
+        addComponents("CAT017", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM);
+        addComponents("CAT018", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC, PerformanceCategory.TRIM);
+        addComponents("CAT019", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.AD);
+        addComponents("CAT020", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.AD);
+        addComponents("CAT021", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC, PerformanceCategory.AD);
+        addComponents("CAT022", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM, PerformanceCategory.AD);
+        addComponents("CAT023", PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BASIC, PerformanceCategory.TRIM, PerformanceCategory.AD);
+        addComponents("CAT024", PerformanceCategory.BLOW_CAT_L, PerformanceCategory.BASIC, PerformanceCategory.TRIM, PerformanceCategory.AD);
+        // CAT025~028 是加購/低銷單一分類項目，沒有副組成。
+
+        // 套餐組成：狗狗 36 項（DOG001~036），每 3 筆一組（精緻洗／基礎定制調理／中階定制調理），
+        // 精緻洗跟基礎定制調理組成相同（只差在積分分類/價格反映服務深度，不是分類本身），
+        // 中階定制調理額外加 AD。吹狗大小跟著主組成（洗狗）的大小走。
+        addDogTripletComponents(1, PerformanceCategory.BATH_SMALL);   // DOG001-003 小型-短毛
+        addDogTripletComponents(4, PerformanceCategory.BATH_SMALL);   // DOG004-006 小型-長毛
+        addDogTripletComponents(7, PerformanceCategory.BATH_SMALL);   // DOG007-009 中小型-短毛
+        addDogTripletComponents(10, PerformanceCategory.BATH_SMALL);  // DOG010-012 中小型-長毛
+        addDogTripletComponents(13, PerformanceCategory.BATH_SMALL);  // DOG013-015 中型-短毛
+        addDogTripletComponents(16, PerformanceCategory.BATH_SMALL);  // DOG016-018 中型-長毛
+        addDogTripletComponents(19, PerformanceCategory.BATH_SMALL);  // DOG019-021 中大型-短毛（依23kg門檻算小狗）
+        addDogTripletComponents(22, PerformanceCategory.BATH_LARGE);  // DOG022-024 中大型-長毛
+        addDogTripletComponents(25, PerformanceCategory.BATH_LARGE);  // DOG025-027 大型-短毛
+        addDogTripletComponents(28, PerformanceCategory.BATH_LARGE);  // DOG028-030 大型-長毛
+        addDogTripletComponents(31, PerformanceCategory.BATH_LARGE);  // DOG031-033 特大型-短毛
+        addDogTripletComponents(34, PerformanceCategory.BATH_LARGE);  // DOG034-036 特大型-長毛
+
         // 需求 5 修正：折扣規則改為「所有計積分的項目都可以打折」，只有 GS001~GS012
         // 這種加值加購項目（不計積分，performanceCategory 為 OTHER）才不打折。
         // 局部修剪／特殊項目原本被排除，這次修正後也納入可打折範圍。
@@ -332,6 +406,31 @@ public class DataInitializer implements ApplicationRunner {
                 .points(category.getDefaultPoints())
                 .build();
         groomingItemRepository.save(item);
+    }
+
+    // 需求（追加）：套餐化——幫某個服務項目建立副組成（不重複建，已經有組成資料的項目跳過）。
+    private void addComponents(String itemCode, PerformanceCategory... categories) {
+        var itemOpt = groomingItemRepository.findByItemCode(itemCode);
+        if (itemOpt.isEmpty()) return;
+        var item = itemOpt.get();
+        if (!groomingItemComponentRepository.findByGroomingItemId(item.getId()).isEmpty()) return;
+        for (PerformanceCategory cat : categories) {
+            groomingItemComponentRepository.save(com.petgrooming.pet_system.model.GroomingItemComponent.builder()
+                    .groomingItem(item)
+                    .performanceCategory(cat)
+                    .points(cat.getDefaultPoints())
+                    .build());
+        }
+    }
+
+    // 需求（追加）：狗狗價目表每 3 筆一組（精緻洗／基礎定制調理／中階定制調理），
+    // 前兩筆組成相同，第三筆多一個 AD；吹狗大小跟著傳入的 size（BATH_SMALL/BATH_LARGE）決定。
+    private void addDogTripletComponents(int startIndex, PerformanceCategory size) {
+        PerformanceCategory blow = size == PerformanceCategory.BATH_SMALL
+                ? PerformanceCategory.BLOW_SMALL : PerformanceCategory.BLOW_LARGE;
+        addComponents(String.format("DOG%03d", startIndex), blow, PerformanceCategory.BASIC);
+        addComponents(String.format("DOG%03d", startIndex + 1), blow, PerformanceCategory.BASIC);
+        addComponents(String.format("DOG%03d", startIndex + 2), blow, PerformanceCategory.BASIC, PerformanceCategory.AD);
     }
 
     private void createIfNotExists(String username, String password, String name, UserRole role) {

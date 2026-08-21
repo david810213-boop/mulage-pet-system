@@ -43,4 +43,7 @@ public class GroomingItemRequest {
     // 需求（追加）：僅限既有客戶（例如貓咪基礎保養不適用初次來店寵物）
     private Boolean requiresExistingCustomer = false;
 
+    // 需求（追加）：適用物種（貓咪預約只顯示貓的項目，狗狗預約只顯示狗的項目）
+    private com.petgrooming.pet_system.enums.PetType applicablePetType;
+
 }

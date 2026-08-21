@@ -137,7 +137,13 @@ public class PaymentMvcController {
         model.addAttribute("bankAccountInfo",
                 paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
-        model.addAttribute("groomingItems", groomingService.getAllItems()); // 需求（追加）：編輯訂單可新增的服務項目清單
+        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
+        String petType = appointmentService.getPetTypeForAppointment(appointmentId);
+        model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -269,7 +275,12 @@ public class PaymentMvcController {
             model.addAttribute("appointmentId", appointmentId);
             model.addAttribute("paymentMethods", PaymentMethod.values());
             model.addAttribute("retailProducts", retailProductService.listActive());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            boolean isExistingErr = appointmentService.isExistingCustomerPet(appointmentId);
+            String petTypeErr = appointmentService.getPetTypeForAppointment(appointmentId);
+            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                    .filter(i -> isExistingErr || !i.isRequiresExistingCustomer())
+                    .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petTypeErr))
+                    .toList());
             model.addAttribute("errorMsg", e.getMessage());
 
             // 需求（追加）：組錯誤頁預覽資料本身如果又出錯（例如這筆預約資料本身有異常），

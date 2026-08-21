@@ -46,6 +46,8 @@ public class WalkInOrderService {
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
+    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
+    private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（追加）：查現場單寵物物種
     private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
@@ -115,6 +117,19 @@ public class WalkInOrderService {
 
                 order.addItem(item);
                 total += item.getPrice();
+
+                // 需求（追加）：套餐化——展開副組成（price固定0，純粹供待補經手人矩陣拆分用）
+                for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+                    WalkInOrderItem sub = WalkInOrderItem.builder()
+                            .groomingItemId(gi.getId())
+                            .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
+                            .price(0)
+                            .points(component.getPoints())
+                            .performanceCategory(component.getPerformanceCategory())
+                            .discountEligible(false)
+                            .build();
+                    order.addItem(sub);
+                }
             }
         }
 
@@ -303,6 +318,17 @@ public class WalkInOrderService {
                 order.getMember().getId(), order.getPetName(), orderId);
     }
 
+    // 需求（追加）：這張現場單的寵物種類（供畫面過濾「適用物種」項目用）；
+    // 沒綁會員或查不到對應的寵物資料就回傳 null（無法判斷，畫面上不濾掉任何物種，避免誤擋）。
+    public String getPetTypeForOrder(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.getMember() == null) return null;
+        return petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
+                .map(pet -> pet.getPetType().name())
+                .orElse(null);
+    }
+
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, String username) {
@@ -336,6 +362,19 @@ public class WalkInOrderService {
                 .build();
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + item.getPrice());
+
+        // 需求（追加）：套餐化——展開副組成
+        for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+            WalkInOrderItem sub = WalkInOrderItem.builder()
+                    .groomingItemId(gi.getId())
+                    .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
+                    .price(0)
+                    .points(component.getPoints())
+                    .performanceCategory(component.getPerformanceCategory())
+                    .discountEligible(false)
+                    .build();
+            order.addItem(sub);
+        }
         WalkInOrder saved = orderRepository.save(order);
 
         log.info("現場單 #{} 編輯新增服務項目「{}」", orderId, gi.getName());

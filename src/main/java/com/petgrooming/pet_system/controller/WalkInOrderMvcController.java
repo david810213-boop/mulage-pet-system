@@ -201,7 +201,13 @@ public class WalkInOrderMvcController {
             var order = walkInOrderService.getById(id);
             model.addAttribute("order", order);
             model.addAttribute("retailProducts", retailProductService.listActive()); // 需求 7-1：加購商品清單
-            model.addAttribute("groomingItems", groomingService.getAllItems()); // 需求（追加）：編輯訂單可新增的服務項目清單
+            // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+            boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
+            String petType = walkInOrderService.getPetTypeForOrder(id);
+            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                    .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                    .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                    .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
             model.addAttribute("bankAccountInfo",
                     paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)); // 需求 15 修正
 
@@ -333,7 +339,13 @@ public class WalkInOrderMvcController {
     @GetMapping("/{id}/final-check")
     public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
-        model.addAttribute("groomingItems", groomingService.getAllItems()); // 需求（追加）：核對頁也能直接編輯訂單項目
+        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
+        String petType = walkInOrderService.getPetTypeForOrder(id);
+        model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .toList()); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
         try {
             model.addAttribute("order", walkInOrderService.getById(id));

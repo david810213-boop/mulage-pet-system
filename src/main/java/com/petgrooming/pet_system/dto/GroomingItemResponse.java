@@ -17,6 +17,7 @@ public class GroomingItemResponse {
     private String performanceCategory; // 需求 4：積分分類名稱（例如 OTHER / SPECIAL），供前端判斷是否為特殊/不計分項目
     private Double points; // 需求（追加）：這個項目實際的積分（已考慮個別覆寫，不是分類預設值）
     private boolean requiresExistingCustomer; // 需求（追加）：僅限既有客戶
+    private String applicablePetType; // 需求（追加）：適用物種（DOG/CAT/null=兩者皆可）
 
     // 靜態工廠：將 Entity 映射成 DTO
     public static GroomingItemResponse from(GroomingItem item) {
@@ -30,6 +31,7 @@ public class GroomingItemResponse {
         res.setPerformanceCategory(item.getPerformanceCategory() != null ? item.getPerformanceCategory().name() : null);
         res.setPoints(item.getPoints());
         res.setRequiresExistingCustomer(item.isRequiresExistingCustomer());
+        res.setApplicablePetType(item.getApplicablePetType() != null ? item.getApplicablePetType().name() : null);
         return res;
     }
 }

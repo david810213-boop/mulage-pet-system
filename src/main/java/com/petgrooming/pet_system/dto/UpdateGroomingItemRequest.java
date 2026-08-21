@@ -36,4 +36,7 @@ public class UpdateGroomingItemRequest {
 
     // 需求（追加）：僅限既有客戶
     private Boolean requiresExistingCustomer = false;
+
+    // 需求（追加）：適用物種
+    private com.petgrooming.pet_system.enums.PetType applicablePetType;
 }

@@ -76,4 +76,10 @@ public class GroomingItem {
     @Column(name = "requires_existing_customer", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean requiresExistingCustomer = false;
+
+    // 需求（追加）：適用物種——貓咪預約只顯示貓的項目，狗狗預約只顯示狗的項目。
+    // null = 兩種都適用（例如清潔費這類共用加購項目），允許 null 不用給資料庫層級預設值。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "applicable_pet_type")
+    private com.petgrooming.pet_system.enums.PetType applicablePetType;
 }

@@ -51,6 +51,7 @@ public class AppointmentService {
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
+    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
 
@@ -525,6 +526,7 @@ public class AppointmentService {
                     .performanceCategory(gi.getPerformanceCategory())
                     .build();
             appointmentItemRepository.save(item);
+            expandPackageComponents(appointment, gi); // 需求（追加）：套餐化——展開副組成
             total += item.getPrice();
         }
 
@@ -579,6 +581,13 @@ public class AppointmentService {
                 appointment.getUser().getId(), appointment.getPetName(), appointmentId);
     }
 
+    // 需求（追加）：這筆預約的寵物種類（供畫面過濾「適用物種」項目用）
+    public String getPetTypeForAppointment(Long appointmentId) {
+        return appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"))
+                .getPetType();
+    }
+
     // ── 需求（追加）：編輯訂單——結帳前新增一筆美容服務項目 ────────────────
     // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
     // 不用整筆退款重開，直接在這裡補上即可。
@@ -611,12 +620,32 @@ public class AppointmentService {
                 .performanceCategory(gi.getPerformanceCategory())
                 .build();
         appointmentItemRepository.save(item);
+        expandPackageComponents(appointment, gi); // 需求（追加）：套餐化——展開副組成
 
         appointment.setTotalAmount(appointment.getTotalAmount() + item.getPrice());
         appointment.setCheckinOrderConfirmed(true); // 保險起見一併標記，避免極少數尚未開過單的情況卡在後續流程
         appointmentRepository.save(appointment);
 
         log.info("預約 #{} 編輯新增服務項目「{}」", appointmentId, gi.getName());
+    }
+
+    // 需求（追加）：套餐化——一個套餐項目結帳/開單時，除了自己的主組成（已經記錄在
+    // AppointmentItem 本身），如果後台有設定「副組成」，這裡一併展開成額外的待補經手人
+    // 紀錄（price 固定 0，不重複計價，純粹是為了矩陣待補經手人表單能拆出每個積分分類，
+    // 可能由不同美容師分開處理）。
+    private void expandPackageComponents(Appointment appointment, GroomingItem gi) {
+        for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+            com.petgrooming.pet_system.model.AppointmentItem sub = com.petgrooming.pet_system.model.AppointmentItem
+                    .builder()
+                    .appointment(appointment)
+                    .groomingItemId(gi.getId())
+                    .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
+                    .price(0)
+                    .points(component.getPoints())
+                    .performanceCategory(component.getPerformanceCategory())
+                    .build();
+            appointmentItemRepository.save(sub);
+        }
     }
 
     // 移除一筆項目（結帳前都可以移除，不管是零售商品還是美容服務項目；

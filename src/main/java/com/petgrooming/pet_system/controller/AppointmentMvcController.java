@@ -199,13 +199,21 @@ public class AppointmentMvcController {
             return "redirect:/appointments?status=CONFIRMED";
         }
         model.addAttribute("appointment", target);
-        // 需求（追加）：僅限既有客戶的項目，這隻寵物還沒消費過的話直接從選單濾掉
+        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
-        var filteredItems = groomingItemService.getAllItems().stream()
-                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
-                .toList();
+        var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
         model.addAttribute("groomingItems", filteredItems);
         return "appointments/checkin-order";
+    }
+
+    // 需求（追加）：套餐化——「僅限既有客戶」+「適用物種」共用的選單過濾邏輯，
+    // 這個 controller 裡好幾個 GET handler 都要用，抽成一個小方法避免重複寫。
+    private List<com.petgrooming.pet_system.dto.GroomingItemResponse> filterItemsFor(
+            List<com.petgrooming.pet_system.dto.GroomingItemResponse> items, boolean isExisting, String petType) {
+        return items.stream()
+                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .toList();
     }
 
     // ── POST /appointments/{id}/checkin-order ───────────────────────────────
@@ -327,11 +335,9 @@ public class AppointmentMvcController {
         }
         model.addAttribute("appointment", target);
         model.addAttribute("checkinItems", appointmentService.getCheckinItems(id));
-        // 需求（追加）：僅限既有客戶的項目，這隻寵物還沒消費過的話直接從選單濾掉
+        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
-        var filteredItems = groomingItemService.getAllItems().stream()
-                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
-                .toList();
+        var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
         model.addAttribute("groomingItems", filteredItems); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
         return "appointments/final-check";
@@ -355,8 +361,7 @@ public class AppointmentMvcController {
             model.addAttribute("appointment", target);
             model.addAttribute("checkinItems", appointmentService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
             boolean isExisting1 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
-            model.addAttribute("groomingItems", groomingItemService.getAllItems().stream()
-                    .filter(i -> isExisting1 || !i.isRequiresExistingCustomer()).toList());
+            model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting1, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
             return "appointments/final-check";
@@ -375,8 +380,7 @@ public class AppointmentMvcController {
             model.addAttribute("appointment", target);
             model.addAttribute("checkinItems", appointmentService.getCheckinItems(id)); // 需求（追加）修正：同上
             boolean isExisting2 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
-            model.addAttribute("groomingItems", groomingItemService.getAllItems().stream()
-                    .filter(i -> isExisting2 || !i.isRequiresExistingCustomer()).toList());
+            model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting2, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", e.getMessage());
             return "appointments/final-check";
