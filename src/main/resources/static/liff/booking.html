@@ -663,7 +663,7 @@
 
       function itemRowHtml(item) {
         return `
-      <div class="item-row" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}">
+      <div class="item-row" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -688,15 +688,19 @@
           );
         }
 
-        // 需求（追加）：僅限既有客戶的項目，這隻寵物不是既有客戶就整列隱藏（連同勾選一起清掉）
+        // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
         const isExisting = !!(pet && pet.isExistingCustomer);
+        const petType = pet && pet.petType ? String(pet.petType).toUpperCase() : null;
         document
           .getElementById("itemsContainer")
           .querySelectorAll(".item-row")
           .forEach((row) => {
             const requiresExisting = row.dataset.requiresExisting === "true";
+            const applicable = row.dataset.applicablePetType || "";
             const cb = row.querySelector("input[type=checkbox]");
-            if (requiresExisting && !isExisting) {
+            const blockedByExisting = requiresExisting && !isExisting;
+            const blockedBySpecies = applicable && petType && applicable !== petType;
+            if (blockedByExisting || blockedBySpecies) {
               row.style.display = "none";
               if (cb) cb.checked = false;
             } else {

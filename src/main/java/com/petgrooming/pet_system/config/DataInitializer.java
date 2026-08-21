@@ -150,18 +150,18 @@ public class DataInitializer implements ApplicationRunner {
             saveItem("CAT012", "大美容+定制洗護-長毛貓-初體驗", "長毛貓咪初次到店價格", 2700.0, PerformanceCategory.BATH_CAT_L);
 
             // 單次服務價目表（12 項）
-            saveItem("CAT013", "小美容-單層毛-單次", "精緻洗，單層毛貓咪回訪價格", 1100.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT014", "小美容-雙層毛-單次", "精緻洗，雙層毛貓咪回訪價格", 1300.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT015", "小美容-長毛貓-單次", "精緻洗，長毛貓咪回訪價格", 1600.0, PerformanceCategory.BATH_CAT_L);
-            saveItem("CAT016", "大美容-單層毛-單次", "洗+剃，單層毛貓咪回訪價格", 2200.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT017", "大美容-雙層毛-單次", "洗+剃，雙層毛貓咪回訪價格", 2200.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT018", "大美容-長毛貓-單次", "洗+剃，長毛貓咪回訪價格", 2400.0, PerformanceCategory.BATH_CAT_L);
-            saveItem("CAT019", "頂級專業定制洗護-單層毛-單次", "單層毛貓咪回訪價格", 2000.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT020", "頂級專業定制洗護-雙層毛-單次", "雙層毛貓咪回訪價格", 2400.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT021", "頂級專業定制洗護-長毛貓-單次", "長毛貓咪回訪價格", 2800.0, PerformanceCategory.BATH_CAT_L);
-            saveItem("CAT022", "大美容+定制洗護-單層毛-單次", "單層毛貓咪回訪價格", 2800.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT023", "大美容+定制洗護-雙層毛-單次", "雙層毛貓咪回訪價格", 2800.0, PerformanceCategory.BATH_CAT_S);
-            saveItem("CAT024", "大美容+定制洗護-長毛貓-單次", "長毛貓咪回訪價格", 3000.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT013", "小美容-單層毛-單次", "精緻洗，單層毛貓咪單次服務價格", 1100.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT014", "小美容-雙層毛-單次", "精緻洗，雙層毛貓咪單次服務價格", 1300.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT015", "小美容-長毛貓-單次", "精緻洗，長毛貓咪單次服務價格", 1600.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT016", "大美容-單層毛-單次", "洗+剃，單層毛貓咪單次服務價格", 2200.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT017", "大美容-雙層毛-單次", "洗+剃，雙層毛貓咪單次服務價格", 2200.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT018", "大美容-長毛貓-單次", "洗+剃，長毛貓咪單次服務價格", 2400.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT019", "頂級專業定制洗護-單層毛-單次", "單層毛貓咪單次服務價格", 2000.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT020", "頂級專業定制洗護-雙層毛-單次", "雙層毛貓咪單次服務價格", 2400.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT021", "頂級專業定制洗護-長毛貓-單次", "長毛貓咪單次服務價格", 2800.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT022", "大美容+定制洗護-單層毛-單次", "單層毛貓咪單次服務價格", 2800.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT023", "大美容+定制洗護-雙層毛-單次", "雙層毛貓咪單次服務價格", 2800.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT024", "大美容+定制洗護-長毛貓-單次", "長毛貓咪單次服務價格", 3000.0, PerformanceCategory.BATH_CAT_L);
 
             // 加購項目（2 項，不計積分、不打折）
             saveItem("CAT025", "牙齒清潔（進階）", "貓咪加購項目", 100.0, PerformanceCategory.OTHER);
@@ -203,6 +203,47 @@ public class DataInitializer implements ApplicationRunner {
             groomingItemRepository.save(catBasicCareAddon);
 
             log.info("✨ [系統通知] 貓咪基礎保養（低銷）+ 長毛貓加購項目已成功初始化入庫！");
+        }
+
+        // 需求（追加）：CAT013~024 描述文字裡原本寫「回訪價格」，容易讓人誤以為選這個
+        // 項目本身就代表回洗優惠有沒有觸發——這是兩件事，折扣資格是系統依「距上次洗澡
+        // 是否在90天內」自動判斷（回洗名單那套邏輯），跟店員/顧客選了哪個價格級距無關。
+        // 每次啟動都校正，不用等全新安裝才生效。
+        java.util.Map<String, String> catDescriptionFix = new java.util.HashMap<>();
+        catDescriptionFix.put("CAT013", "精緻洗，單層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT014", "精緻洗，雙層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT015", "精緻洗，長毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT016", "洗+剃，單層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT017", "洗+剃，雙層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT018", "洗+剃，長毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT019", "單層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT020", "雙層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT021", "長毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT022", "單層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT023", "雙層毛貓咪單次服務價格");
+        catDescriptionFix.put("CAT024", "長毛貓咪單次服務價格");
+        catDescriptionFix.forEach((code, desc) ->
+                groomingItemRepository.findByItemCode(code).ifPresent(item -> {
+                    if (!desc.equals(item.getDescription())) {
+                        item.setDescription(desc);
+                        groomingItemRepository.save(item);
+                    }
+                }));
+
+        // 需求（追加）：菜單只顯示套餐，不要讓「洗澡/吹毛」這種單一積分分類的舊項目
+        // 混在選單裡跟套餐並列選——這些是套餐化改版之前的舊資料（BATH_S/BATH_L/
+        // BATH_CS/BATH_CL/BLOW_S/BLOW_L/BLOW_CS/BLOW_CL），現在積分已經改成套餐
+        // 自動展開的副組成在算，不需要也不該讓人單獨選這幾項。用「下架」（isDeleted=true）
+        // 處理，沿用既有的下架機制，歷史交易紀錄不受影響（品項名稱/價格本來就是快照）。
+        for (String code : java.util.List.of(
+                "BATH_S", "BATH_L", "BATH_CS", "BATH_CL", "BLOW_S", "BLOW_L", "BLOW_CS", "BLOW_CL")) {
+            groomingItemRepository.findByItemCode(code).ifPresent(item -> {
+                if (!item.isDeleted()) {
+                    item.setDeleted(true);
+                    groomingItemRepository.save(item);
+                    log.info("已下架舊版單一積分分類項目：{}", code);
+                }
+            });
         }
 
         // 需求（追加）：CAT025/CAT026 是加購項目，不應該參與任何折扣，跟 GS001~GS012 一樣道理，
