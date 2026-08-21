@@ -343,6 +343,9 @@ public class AppointmentMvcController {
                     .findFirst().orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
+            model.addAttribute("checkinItems", appointmentService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
+            model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
             return "appointments/final-check";
         }
@@ -358,6 +361,9 @@ public class AppointmentMvcController {
                     .findFirst().orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
+            model.addAttribute("checkinItems", appointmentService.getCheckinItems(id)); // 需求（追加）修正：同上
+            model.addAttribute("groomingItems", groomingItemService.getAllItems());
+            model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", e.getMessage());
             return "appointments/final-check";
         }

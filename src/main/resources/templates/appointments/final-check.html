@@ -176,6 +176,7 @@
           </div>
 
           <form
+            id="finalCheckForm"
             method="post"
             th:action="@{/appointments/{id}/final-check(id=${appointment.id})}"
           >
@@ -400,7 +401,7 @@
         submitBtn.disabled = !hasSigned;
       }
 
-      const formEl = document.querySelector("form");
+      const formEl = document.getElementById("finalCheckForm");
       if (formEl) {
         formEl.addEventListener("submit", function (e) {
           if (!hasSigned) {

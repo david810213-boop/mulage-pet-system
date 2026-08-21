@@ -616,16 +616,14 @@ public class PaymentService {
 
     // ── 需求 22：乙方（店家）固定電子簽名檔，顯示在顧客端契約最下方 ──────
     public String getCompanySignatureImage() {
-        return companySignatureRepository.findAll().stream()
-                .findFirst()
+        return companySignatureRepository.findFirstByOrderByIdDesc()
                 .map(com.petgrooming.pet_system.model.CompanySignature::getSignatureImage)
                 .orElse(null);
     }
 
     @Transactional
     public void updateCompanySignature(String base64Image) {
-        com.petgrooming.pet_system.model.CompanySignature sig = companySignatureRepository.findAll()
-                .stream().findFirst()
+        com.petgrooming.pet_system.model.CompanySignature sig = companySignatureRepository.findFirstByOrderByIdDesc()
                 .orElse(com.petgrooming.pet_system.model.CompanySignature.builder().build());
         sig.setSignatureImage(base64Image);
         companySignatureRepository.save(sig);
@@ -633,15 +631,13 @@ public class PaymentService {
 
     // ── 需求（追加）：體重定價門檻設定（單例，同 CompanySignature 做法）─────
     public com.petgrooming.pet_system.model.PricingSettings getPricingSettings() {
-        return pricingSettingsRepository.findAll().stream()
-                .findFirst()
+        return pricingSettingsRepository.findFirstByOrderByIdDesc()
                 .orElse(com.petgrooming.pet_system.model.PricingSettings.builder().build());
     }
 
     @Transactional
     public void updatePricingSettings(com.petgrooming.pet_system.model.PricingSettings updated) {
-        com.petgrooming.pet_system.model.PricingSettings settings = pricingSettingsRepository.findAll()
-                .stream().findFirst()
+        com.petgrooming.pet_system.model.PricingSettings settings = pricingSettingsRepository.findFirstByOrderByIdDesc()
                 .orElse(com.petgrooming.pet_system.model.PricingSettings.builder().build());
         settings.setCatBaseWeightLimit(updated.getCatBaseWeightLimit());
         settings.setCatMidWeightLimit(updated.getCatMidWeightLimit());

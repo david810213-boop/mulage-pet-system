@@ -251,11 +251,19 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            paymentService.checkout(appointmentId, req, user.getUsername());
+            var result = paymentService.checkout(appointmentId, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
-            redirectAttributes.addFlashAttribute("successMsg", "結帳成功！");
-            return "redirect:/payments";
+            // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
+            // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
+            // 導回預約列表，等店家之後在儲值管理/匯款頁確認收款才算真的完成。
+            if (result.isPaid()) {
+                redirectAttributes.addFlashAttribute("successMsg", "結帳成功！");
+                return "redirect:/payments";
+            } else {
+                redirectAttributes.addFlashAttribute("successMsg", "已送出，進入待對帳狀態，確認收到匯款後記得回來點「確認收款」");
+                return "redirect:/appointments";
+            }
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
             model.addAttribute("appointmentId", appointmentId);

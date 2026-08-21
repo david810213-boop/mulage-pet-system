@@ -453,11 +453,6 @@
       <h3>𖥸 家長資料</h3>
 
       <div class="field">
-        <label>家長手機 <span class="req">*</span></label>
-        <input type="tel" id="ownerPhone" placeholder="例如：0912-345-678" />
-      </div>
-
-      <div class="field">
         <label>毛孩有無分離焦慮 <span class="req">*</span></label>
         <div class="radio-group" id="anxietyGroup">
           <div
@@ -495,6 +490,7 @@
     <script>
       const LIFF_ID = "2010567973-Sgmd1A5a";
       let jwtToken = null;
+      let myPhone = ""; // 需求（追加）：從個人資料帶入，不用在這頁重複填
       const formData = {
         petType: null,
         anxiety: null,
@@ -525,6 +521,20 @@
             return;
           }
           jwtToken = data.token;
+
+          // 需求（追加）：家長手機不用再重複填一次，直接沿用「編輯個人信息」裡
+          // 已經填過的電話，這裡靜默抓取，不另外顯示欄位讓使用者填寫。
+          try {
+            const meRes = await fetch("/api/users/me", {
+              headers: { Authorization: "Bearer " + jwtToken },
+            });
+            if (meRes.ok) {
+              const me = await meRes.json();
+              myPhone = me.phone || "";
+            }
+          } catch (e) {
+            // 抓不到就留空，不影響新增毛孩本身
+          }
         } catch (e) {
           showToast("初始化失敗", "error");
         }
@@ -609,7 +619,6 @@
         const breed = document.getElementById("breed").value.trim();
         const weight = parseFloat(document.getElementById("weight").value);
         const age = parseInt(document.getElementById("age").value);
-        const phone = document.getElementById("ownerPhone").value.trim();
         const notes = document.getElementById("notes").value.trim();
 
         if (!formData.petType) {
@@ -630,10 +639,6 @@
         }
         if (age === null || isNaN(age)) {
           showToast("請填寫年齡", "error");
-          return;
-        }
-        if (!phone) {
-          showToast("請填寫家長手機", "error");
           return;
         }
         if (formData.anxiety === null) {
@@ -659,7 +664,7 @@
               age,
               petType: formData.petType,
               hasSeparationAnxiety: formData.anxiety === "true",
-              ownerPhone: phone,
+              ownerPhone: myPhone,
               notes: notes || null,
               gender: formData.gender || null,
               isNeutered: formData.neutered === "true",
@@ -727,7 +732,6 @@
             document.getElementById("age").value = "";
             document.getElementById("petPhoto").value = "";
             document.getElementById("petPhotoPreview").style.display = "none";
-            document.getElementById("ownerPhone").value = "";
             document.getElementById("notes").value = "";
             document
               .querySelectorAll(".radio-btn")

@@ -90,7 +90,7 @@
             </div>
           </div>
 
-          <form method="post" th:action="@{/admin/walk-in-orders/{id}/final-check(id=${order.id})}">
+          <form id="finalCheckForm" method="post" th:action="@{/admin/walk-in-orders/{id}/final-check(id=${order.id})}">
             <div class="card" style="margin-bottom: 1rem">
               <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 12px">
                 本次毛孩美容狀況備注 *
@@ -275,7 +275,7 @@
         submitBtn.disabled = !hasSigned;
       }
 
-      const formEl = document.querySelector("form");
+      const formEl = document.getElementById("finalCheckForm");
       if (formEl) {
         formEl.addEventListener("submit", function (e) {
           if (!hasSigned) {
