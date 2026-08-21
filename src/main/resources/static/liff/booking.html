@@ -379,16 +379,21 @@
           jwtToken = data?.token || data?.jwtToken || data?.accessToken;
           window.currentUserName = (data && data.user && data.user.name) || "";
 
-          // 平行載入毛孩清單 + 美容項目清單 + 乙方簽名檔
+          // 平行載入毛孩清單 + 美容項目清單
           const [pets, items] = await Promise.all([
             fetchMyPets(),
             fetchGroomingItems(),
-            loadCompanySignature(),
           ]);
           myPets = pets;
           groomingItems = items;
 
           renderForm();
+
+          // 需求（追加）：簽名檔要抓的 <img>/<p> 元素是 renderForm() 動態產生的 HTML，
+          // 之前跟 fetchMyPets/fetchGroomingItems 一起 Promise.all 平行呼叫，
+          // renderForm() 都還沒跑、DOM 裡根本還沒有這兩個元素，抓 getElementById 一定是 null，
+          // 圖片永遠貼不上去。改成表單畫出來之後才呼叫。
+          loadCompanySignature();
         } catch (e) {
           renderError("初始化失敗：" + e.message);
         }
