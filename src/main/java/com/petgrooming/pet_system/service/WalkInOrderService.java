@@ -45,6 +45,7 @@ public class WalkInOrderService {
     private final LineMessagingService lineMessagingService;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
@@ -85,6 +86,16 @@ public class WalkInOrderService {
                 GroomingItem gi = groomingItemRepository.findByItemCode(line.getItemCode())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "找不到項目代碼：" + line.getItemCode()));
+
+                // 需求（追加）：僅限既有客戶的項目，沒綁會員無法查歷史消費紀錄，保守擋下。
+                if (gi.isRequiresExistingCustomer()) {
+                    boolean isExisting = order.getMember() != null
+                            && petConsumptionHistoryService.hasPriorPaidService(
+                                    order.getMember().getId(), req.getPetName(), null);
+                    if (!isExisting) {
+                        throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，無法加入此項目");
+                    }
+                }
 
                 WalkInOrderItem item = WalkInOrderItem.builder()
                         .groomingItemId(gi.getId())
@@ -293,6 +304,17 @@ public class WalkInOrderService {
 
         GroomingItem gi = groomingItemRepository.findById(groomingItemId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到服務項目"));
+
+        // 需求（追加）：僅限既有客戶的項目，沒綁會員的現場單無法查歷史消費紀錄，
+        // 保守起見一律擋下（不確定是不是既有客戶時，不開放使用這類項目）。
+        if (gi.isRequiresExistingCustomer()) {
+            boolean isExisting = order.getMember() != null
+                    && petConsumptionHistoryService.hasPriorPaidService(
+                            order.getMember().getId(), order.getPetName(), orderId);
+            if (!isExisting) {
+                throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，無法加入此項目");
+            }
+        }
 
         WalkInOrderItem item = WalkInOrderItem.builder()
                 .groomingItemId(gi.getId())

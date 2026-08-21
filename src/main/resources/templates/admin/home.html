@@ -185,7 +185,7 @@
               <div
                 style="
                   display: grid;
-                  grid-template-columns: 100px 180px 1fr 150px 120px 150px 120px auto;
+                  grid-template-columns: 100px 160px 1fr 130px 120px 140px 110px 130px auto;
                   gap: 12px;
                   align-items: end;
                 "
@@ -333,6 +333,36 @@
                       checked
                     />
                     會員折扣/回洗優惠
+                  </label>
+                </div>
+
+                <div class="field" style="margin: 0">
+                  <label
+                    style="
+                      display: block;
+                      font-size: 12px;
+                      color: var(--brown-mid);
+                      margin-bottom: 4px;
+                    "
+                    >僅限既有客戶</label
+                  >
+                  <label
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      padding: 6px 0;
+                      font-size: 13px;
+                      color: var(--brown-mid);
+                    "
+                  >
+                    <input type="hidden" name="requiresExistingCustomer" value="false" />
+                    <input
+                      type="checkbox"
+                      name="requiresExistingCustomer"
+                      value="true"
+                    />
+                    不適用初次來店
                   </label>
                 </div>
 

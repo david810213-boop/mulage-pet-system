@@ -6,9 +6,7 @@ import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.WalkInOrder;
-import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +30,9 @@ import java.util.Set;
  *
  * 資料來源涵蓋範圍：跟 CatRewashDiscountService 一致——預約（Appointment）
  * 與現場開單（WalkInOrder，須有綁定會員）都納入判斷是否為首次消費。
+ *
+ * 需求（追加）：「是不是既有客戶」的查詢邏輯已抽成 {@link PetConsumptionHistoryService}
+ * 共用，這裡不再自己重複實作，改成呼叫共用 service。
  */
 @Service
 @RequiredArgsConstructor
@@ -42,9 +43,8 @@ public class DogFirstVisitDiscountService {
     private static final Set<PerformanceCategory> DOG_PACKAGE_CATEGORIES =
             EnumSet.of(PerformanceCategory.BATH_SMALL, PerformanceCategory.BATH_LARGE);
 
-    private final AppointmentRepository appointmentRepository;
-    private final WalkInOrderRepository walkInOrderRepository;
     private final PetRepository petRepository;
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）
 
     public boolean isDogPackageItem(GroomingItem item) {
         return item != null && DOG_PACKAGE_CATEGORIES.contains(item.getPerformanceCategory());
@@ -57,7 +57,8 @@ public class DogFirstVisitDiscountService {
     /** 這筆預約結帳時，這隻狗是否符合「首次消費」資格。只有狗（petType == DOG）才可能符合。 */
     public boolean isFirstVisitEligible(Appointment appointment) {
         if (!"DOG".equalsIgnoreCase(appointment.getPetType())) return false;
-        return !hasPriorPaidService(appointment.getUser().getId(), appointment.getPetName(), appointment.getId());
+        return !petConsumptionHistoryService.hasPriorPaidService(
+                appointment.getUser().getId(), appointment.getPetName(), appointment.getId());
     }
 
     /** 現場開單（有綁定會員）結帳時，是否符合首次消費資格；沒綁會員無法識別歷史，一律不適用。 */
@@ -67,20 +68,8 @@ public class DogFirstVisitDiscountService {
                 .map(pet -> pet.getPetType() == PetType.DOG)
                 .orElse(false);
         if (!isDog) return false;
-        return !hasPriorPaidService(order.getMember().getId(), order.getPetName(), order.getId());
-    }
-
-    // 這隻狗名下（同一飼主 + 同寵物名）有沒有任何一筆已結帳的預約或現場開單
-    // （排除正在處理的這一筆本身，理由跟 CatRewashDiscountService 一致：防呆用）。
-    private boolean hasPriorPaidService(Long personId, String petName, Long excludeId) {
-        boolean hasAppointment = appointmentRepository.findByUserIdAndPetNameAndPaidTrue(personId, petName)
-                .stream()
-                .anyMatch(a -> excludeId == null || !a.getId().equals(excludeId));
-        if (hasAppointment) return true;
-
-        return walkInOrderRepository.findByMemberIdAndPetNameAndPaidTrue(personId, petName)
-                .stream()
-                .anyMatch(w -> excludeId == null || !w.getId().equals(excludeId));
+        return !petConsumptionHistoryService.hasPriorPaidService(
+                order.getMember().getId(), order.getPetName(), order.getId());
     }
 
     /**
@@ -110,3 +99,4 @@ public class DogFirstVisitDiscountService {
 
     public record DiscountResolution(double price, DiscountType type) {}
 }
+

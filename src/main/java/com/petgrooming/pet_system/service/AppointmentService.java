@@ -50,6 +50,7 @@ public class AppointmentService {
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
 
@@ -123,6 +124,15 @@ public class AppointmentService {
                         .orElseThrow(() -> new IllegalArgumentException("找不到有效的服務項目代碼：" + itemCode)))
                 .filter(item -> !item.isDeleted())
                 .toList();
+
+        // 需求（追加）：僅限既有客戶的項目（例如貓咪基礎保養），這隻寵物完全沒有
+        // 消費紀錄的話不能線上預約這個項目。
+        for (GroomingItem item : actualItems) {
+            if (item.isRequiresExistingCustomer()
+                    && !petConsumptionHistoryService.hasPriorPaidService(user.getId(), pet.getName(), null)) {
+                throw new IllegalArgumentException("「" + item.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法預約此項目");
+            }
+        }
 
         // ⚡ 4. 動態計算總金額
         int total = (int) actualItems.stream()
@@ -498,6 +508,13 @@ public class AppointmentService {
             GroomingItem gi = groomingItemRepository.findByItemCode(code)
                     .orElseThrow(() -> new IllegalArgumentException("找不到項目代碼：" + code));
 
+            // 需求（追加）：僅限既有客戶的項目，這隻寵物完全沒有消費紀錄的話不能選這個項目。
+            if (gi.isRequiresExistingCustomer()
+                    && !petConsumptionHistoryService.hasPriorPaidService(
+                            appointment.getUser().getId(), appointment.getPetName(), appointmentId)) {
+                throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法選擇此項目");
+            }
+
             com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
                     .builder()
                     .appointment(appointment)
@@ -567,6 +584,14 @@ public class AppointmentService {
 
         GroomingItem gi = groomingItemRepository.findById(groomingItemId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到服務項目"));
+
+        // 需求（追加）：僅限既有客戶的項目（例如貓咪基礎保養），這隻寵物完全沒有
+        // 消費紀錄的話不能加入這個項目。
+        if (gi.isRequiresExistingCustomer()
+                && !petConsumptionHistoryService.hasPriorPaidService(
+                        appointment.getUser().getId(), appointment.getPetName(), appointmentId)) {
+            throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法加入此項目");
+        }
 
         com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
                 .builder()

@@ -40,4 +40,7 @@ public class GroomingItemRequest {
     // 哪一個積分分類，不填的話才退回用 performanceCategory 的預設積分（維持舊行為）。
     private Double points;
 
+    // 需求（追加）：僅限既有客戶（例如貓咪基礎保養不適用初次來店寵物）
+    private Boolean requiresExistingCustomer = false;
+
 }
