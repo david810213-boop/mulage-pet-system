@@ -129,6 +129,124 @@ public class DataInitializer implements ApplicationRunner {
             log.info("✨ [系統通知] {}項美容服務項目已成功初始化入庫！", groomingItemRepository.count());
         }
 
+        // ── 需求（追加）：貓咪 24 種組合服務項目 + 2 個加購項目（種子資料）──────
+        // 用獨立的 CAT### 代碼區段，跟既有的 GS001~GS012、BATH_S 等代碼完全不會撞號。
+        // 只在還沒建過的時候才建（用第一筆 CAT001 判斷），店家之後在後台改名/改價都不受影響，
+        // 不會被這段種子資料覆蓋回去。
+        if (!groomingItemRepository.existsByItemCode("CAT001")) {
+            // 初體驗價目表（12 項）
+            saveItem("CAT001", "小美容-單層毛-初體驗", "精緻洗，單層毛貓咪初次到店價格", 990.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT002", "小美容-雙層毛-初體驗", "精緻洗，雙層毛貓咪初次到店價格", 1150.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT003", "小美容-長毛貓-初體驗", "精緻洗，長毛貓咪初次到店價格", 1400.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT004", "大美容-單層毛-初體驗", "洗+剃，單層毛貓咪初次到店價格", 1980.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT005", "大美容-雙層毛-初體驗", "洗+剃，雙層毛貓咪初次到店價格", 1980.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT006", "大美容-長毛貓-初體驗", "洗+剃，長毛貓咪初次到店價格", 2150.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT007", "頂級專業定制洗護-單層毛-初體驗", "單層毛貓咪初次到店價格", 1800.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT008", "頂級專業定制洗護-雙層毛-初體驗", "雙層毛貓咪初次到店價格", 2150.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT009", "頂級專業定制洗護-長毛貓-初體驗", "長毛貓咪初次到店價格", 2500.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT010", "大美容+定制洗護-單層毛-初體驗", "單層毛貓咪初次到店價格", 2500.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT011", "大美容+定制洗護-雙層毛-初體驗", "雙層毛貓咪初次到店價格", 2500.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT012", "大美容+定制洗護-長毛貓-初體驗", "長毛貓咪初次到店價格", 2700.0, PerformanceCategory.BATH_CAT_L);
+
+            // 單次服務價目表（12 項）
+            saveItem("CAT013", "小美容-單層毛-單次", "精緻洗，單層毛貓咪回訪價格", 1100.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT014", "小美容-雙層毛-單次", "精緻洗，雙層毛貓咪回訪價格", 1300.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT015", "小美容-長毛貓-單次", "精緻洗，長毛貓咪回訪價格", 1600.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT016", "大美容-單層毛-單次", "洗+剃，單層毛貓咪回訪價格", 2200.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT017", "大美容-雙層毛-單次", "洗+剃，雙層毛貓咪回訪價格", 2200.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT018", "大美容-長毛貓-單次", "洗+剃，長毛貓咪回訪價格", 2400.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT019", "頂級專業定制洗護-單層毛-單次", "單層毛貓咪回訪價格", 2000.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT020", "頂級專業定制洗護-雙層毛-單次", "雙層毛貓咪回訪價格", 2400.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT021", "頂級專業定制洗護-長毛貓-單次", "長毛貓咪回訪價格", 2800.0, PerformanceCategory.BATH_CAT_L);
+            saveItem("CAT022", "大美容+定制洗護-單層毛-單次", "單層毛貓咪回訪價格", 2800.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT023", "大美容+定制洗護-雙層毛-單次", "雙層毛貓咪回訪價格", 2800.0, PerformanceCategory.BATH_CAT_S);
+            saveItem("CAT024", "大美容+定制洗護-長毛貓-單次", "長毛貓咪回訪價格", 3000.0, PerformanceCategory.BATH_CAT_L);
+
+            // 加購項目（2 項，不計積分、不打折）
+            saveItem("CAT025", "牙齒清潔（進階）", "貓咪加購項目", 100.0, PerformanceCategory.OTHER);
+            saveItem("CAT026", "天然草本泥浴", "貓咪加購項目", 1200.0, PerformanceCategory.OTHER);
+
+            log.info("✨ [系統通知] 貓咪 26 項服務/加購項目已成功初始化入庫！");
+        }
+
+        // 需求（追加）：CAT025/CAT026 是加購項目，不應該參與任何折扣，跟 GS001~GS012 一樣道理，
+        // 這裡比照上面既有的雙向校正邏輯，一併補進不打折清單，每次啟動都會重新校正。
+        java.util.List<String> catNonDiscountCodes = java.util.List.of("CAT025", "CAT026");
+        for (String code : catNonDiscountCodes) {
+            groomingItemRepository.findByItemCode(code).ifPresent(item -> {
+                if (item.isDiscountEligible()) {
+                    item.setDiscountEligible(false);
+                    groomingItemRepository.save(item);
+                    log.info("已校正項目 {} 的折扣資格為 false", code);
+                }
+            });
+        }
+
+        // TODO（待補）：狗狗洗吹 package（小型犬/大型犬各一項，分類要用 BATH_SMALL/BATH_LARGE
+        // 首次體驗優惠才認得到）+ 3 個加購項目（耳道調理、接送、除廢毛），價格還沒確認，
+        // 確認後比照上面貓咪的模式加進來（記得換一個新的代碼區段，例如 DOG001~DOG005）。
+
+        // ── 需求（追加）：狗狗初體驗單次價目表——固定價格部分（36 項）─────────
+        // 6 個體重級距 × 短毛/長毛 × 3 個服務等級（精緻洗／基礎定制調理／中階定制調理）。
+        // 「基礎/中階定制調理」欄位在價目表上是「加價多少」，這裡已經換算成「精緻洗價格 + 加價」
+        // 的實際總價存進去，不是店家看到的那個加價數字本身。
+        // 體型分類：小型/中小型/中型 → BATH_SMALL；中大型/大型/特大型 → BATH_LARGE
+        // （對應「體重定價門檻設定」裡小型犬/大型犬的分野，只影響積分分類跟首次體驗優惠判斷，
+        // 不影響這裡每一項各自的實際定價）。
+        // ⚠️ 「高階定制調理」（Xup，開放式報價）跟各種浮動加價（厚毛/長毛/剪毛方式/特殊情況）
+        // 目前系統沒有「現場自訂金額加購」的機制，先不建這部分，等這個新功能做完再處理。
+        if (!groomingItemRepository.existsByItemCode("DOG001")) {
+            // 小型 5kg以下
+            saveItem("DOG001", "小型犬-短毛-精緻洗", "體重5kg以下，短毛", 700.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG002", "小型犬-短毛-基礎定制調理", "體重5kg以下，短毛（精緻洗+300）", 1000.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG003", "小型犬-短毛-中階定制調理", "體重5kg以下，短毛（精緻洗+500）", 1200.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG004", "小型犬-長毛-精緻洗", "體重5kg以下，長毛", 800.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG005", "小型犬-長毛-基礎定制調理", "體重5kg以下，長毛（精緻洗+300）", 1100.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG006", "小型犬-長毛-中階定制調理", "體重5kg以下，長毛（精緻洗+500）", 1300.0, PerformanceCategory.BATH_SMALL);
+
+            // 中小型 6-10kg
+            saveItem("DOG007", "中小型犬-短毛-精緻洗", "體重6-10kg，短毛", 800.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG008", "中小型犬-短毛-基礎定制調理", "體重6-10kg，短毛（精緻洗+1100）", 1900.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG009", "中小型犬-短毛-中階定制調理", "體重6-10kg，短毛（精緻洗+1300）", 2100.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG010", "中小型犬-長毛-精緻洗", "體重6-10kg，長毛", 1200.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG011", "中小型犬-長毛-基礎定制調理", "體重6-10kg，長毛（精緻洗+1500）", 2700.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG012", "中小型犬-長毛-中階定制調理", "體重6-10kg，長毛（精緻洗+1700）", 2900.0, PerformanceCategory.BATH_SMALL);
+
+            // 中型 11-16kg
+            saveItem("DOG013", "中型犬-短毛-精緻洗", "體重11-16kg，短毛", 1000.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG014", "中型犬-短毛-基礎定制調理", "體重11-16kg，短毛（精緻洗+1300）", 2300.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG015", "中型犬-短毛-中階定制調理", "體重11-16kg，短毛（精緻洗+1500）", 2500.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG016", "中型犬-長毛-精緻洗", "體重11-16kg，長毛", 1400.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG017", "中型犬-長毛-基礎定制調理", "體重11-16kg，長毛（精緻洗+1700）", 3100.0, PerformanceCategory.BATH_SMALL);
+            saveItem("DOG018", "中型犬-長毛-中階定制調理", "體重11-16kg，長毛（精緻洗+2000）", 3400.0, PerformanceCategory.BATH_SMALL);
+
+            // 中大型 17-22kg
+            saveItem("DOG019", "中大型犬-短毛-精緻洗", "體重17-22kg，短毛", 1200.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG020", "中大型犬-短毛-基礎定制調理", "體重17-22kg，短毛（精緻洗+1500）", 2700.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG021", "中大型犬-短毛-中階定制調理", "體重17-22kg，短毛（精緻洗+1800）", 3000.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG022", "中大型犬-長毛-精緻洗", "體重17-22kg，長毛", 1800.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG023", "中大型犬-長毛-基礎定制調理", "體重17-22kg，長毛（精緻洗+2200）", 4000.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG024", "中大型犬-長毛-中階定制調理", "體重17-22kg，長毛（精緻洗+2600）", 4400.0, PerformanceCategory.BATH_LARGE);
+
+            // 大型 23-27kg
+            saveItem("DOG025", "大型犬-短毛-精緻洗", "體重23-27kg，短毛", 1600.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG026", "大型犬-短毛-基礎定制調理", "體重23-27kg，短毛（精緻洗+2000）", 3600.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG027", "大型犬-短毛-中階定制調理", "體重23-27kg，短毛（精緻洗+2400）", 4000.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG028", "大型犬-長毛-精緻洗", "體重23-27kg，長毛", 2200.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG029", "大型犬-長毛-基礎定制調理", "體重23-27kg，長毛（精緻洗+2600）", 4800.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG030", "大型犬-長毛-中階定制調理", "體重23-27kg，長毛（精緻洗+3000）", 5200.0, PerformanceCategory.BATH_LARGE);
+
+            // 特大型 28-33kg
+            saveItem("DOG031", "特大型犬-短毛-精緻洗", "體重28-33kg，短毛", 2000.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG032", "特大型犬-短毛-基礎定制調理", "體重28-33kg，短毛（精緻洗+2400）", 4400.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG033", "特大型犬-短毛-中階定制調理", "體重28-33kg，短毛（精緻洗+3000）", 5000.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG034", "特大型犬-長毛-精緻洗", "體重28-33kg，長毛", 2600.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG035", "特大型犬-長毛-基礎定制調理", "體重28-33kg，長毛（精緻洗+3200）", 5800.0, PerformanceCategory.BATH_LARGE);
+            saveItem("DOG036", "特大型犬-長毛-中階定制調理", "體重28-33kg，長毛（精緻洗+3800）", 6400.0, PerformanceCategory.BATH_LARGE);
+
+            log.info("✨ [系統通知] 狗狗 36 項固定價格服務項目已成功初始化入庫！");
+        }
+
         // 需求 5 修正：折扣規則改為「所有計積分的項目都可以打折」，只有 GS001~GS012
         // 這種加值加購項目（不計積分，performanceCategory 為 OTHER）才不打折。
         // 局部修剪／特殊項目原本被排除，這次修正後也納入可打折範圍。
