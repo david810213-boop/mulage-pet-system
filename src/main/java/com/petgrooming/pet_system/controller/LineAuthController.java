@@ -8,7 +8,6 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.JwtUtils;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -88,12 +87,11 @@ public class LineAuthController {
                 user.getUsername(), null);
 
         // 5. 同時寫入 Cookie，方便之後若有需要轉跳一般網頁版時沿用登入狀態
-        Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(cookieSecure); // 只在 HTTPS 連線下傳送（由 COOKIE_SECURE 環境變數控制）
-        jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(86400);
-        response.addCookie(jwtCookie);
+        // 資安修正：改用 CookieUtils 帶上 SameSite=Lax，跟 AuthMvcController 的
+        // 網頁版登入/登出保持一致做法。
+        response.addHeader("Set-Cookie",
+                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                        "JWT_TOKEN", token, 86400, cookieSecure));
 
         LineLoginResponse body = new LineLoginResponse(token, UserResponse.from(user), isNewMember);
         return ResponseEntity.ok(body);

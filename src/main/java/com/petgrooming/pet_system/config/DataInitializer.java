@@ -38,6 +38,16 @@ public class DataInitializer implements ApplicationRunner {
         createIfNotExists("user@pet.com", "user123", "測試會員", UserRole.CUSTOMER);
         log.info("預設帳號初始化完成");
 
+        // 資安修正：這三組帳密是寫死在原始碼裡的固定值，而且這個 repo 是公開的，
+        // 任何人都能在 GitHub 上看到。只在「本來就沒有這個帳號」時才會建立
+        // （createIfNotExists 本身已經保證這件事），但如果店家從來沒有登入
+        // 把密碼改掉，正式站等於任何人都能直接用這組公開密碼登入拿到對應權限。
+        // 每次啟動都檢查一次目前密碼是否仍是這組已公開的預設值，是的話在啟動
+        // log 印出無法忽略的警告，提醒店家立刻上後台改密碼。
+        warnIfDefaultPasswordStillActive("admin@pet.com", "admin123", "系統管理員（ADMIN，權限最高）");
+        warnIfDefaultPasswordStillActive("staff@pet.com", "staff123", "美容師小洪（STAFF）");
+        warnIfDefaultPasswordStillActive("user@pet.com", "user123", "測試會員（CUSTOMER）");
+
         // 需求 3：積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
         if (bonusTierRepository.count() == 0) {
             bonusTierRepository.save(BonusTier.builder().minPoints(3001).maxPoints(3350).bonusAmount(1200).build());
@@ -472,6 +482,19 @@ public class DataInitializer implements ApplicationRunner {
         addComponents(String.format("DOG%03d", startIndex), blow, PerformanceCategory.BASIC);
         addComponents(String.format("DOG%03d", startIndex + 1), blow, PerformanceCategory.BASIC);
         addComponents(String.format("DOG%03d", startIndex + 2), blow, PerformanceCategory.BASIC, PerformanceCategory.AD);
+    }
+
+    // 資安修正：檢查目前密碼是否仍等於原始碼裡寫死、且已公開在 GitHub 上的預設值。
+    // 用 passwordEncoder.matches() 而不是直接比對雜湊字串，因為 bcrypt 每次加鹽結果不同，
+    // 沒辦法用字串相等判斷，一定要透過 encoder 本身的比對方法。
+    private void warnIfDefaultPasswordStillActive(String username, String defaultPassword, String roleDescription) {
+        userRepository.findByUsername(username).ifPresent(user -> {
+            if (passwordEncoder.matches(defaultPassword, user.getPassword())) {
+                log.warn("⚠️⚠️⚠️ 帳號 {}（{}）目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上，" +
+                        "任何人都看得到！請立刻登入後台（帳號設定 → 修改密碼）改成一組別人猜不到的新密碼。",
+                        username, roleDescription);
+            }
+        });
     }
 
     private void createIfNotExists(String username, String password, String name, UserRole role) {
