@@ -402,26 +402,21 @@
       // 需求 22：抓取乙方固定電子簽名檔，顯示在契約最下方
       async function loadCompanySignature() {
         try {
-          const res = await fetch("/api/company-signature", { headers: authHeaders() });
-          if (!res.ok) {
-            showToast("簽名檔除錯：API 回應 " + res.status, "error"); // 暫時除錯用，之後會移除
-            return;
-          }
+          // 需求（追加）修正：這支 API 實際掛在 PaymentMvcController（class 層級是
+          // @RequestMapping("/payments")），正確路徑其實是 /payments/api/company-signature，
+          // 之前寫成 /api/company-signature 一直是 404，簽名檔永遠貼不上去。
+          const res = await fetch("/payments/api/company-signature", { headers: authHeaders() });
+          if (!res.ok) return;
           const data = await res.json();
           const img = document.getElementById("companySignatureImg");
           const fallback = document.getElementById("companySignatureFallback");
-          showToast(
-            "簽名檔除錯：img=" + (img ? "有找到" : "null") +
-            "，data.signatureImage=" + (data && data.signatureImage ? "有值(長度" + data.signatureImage.length + ")" : "空"),
-            "error"
-          ); // 暫時除錯用，之後會移除
           if (data && data.signatureImage && img) {
             img.src = data.signatureImage;
             img.style.display = "block";
             if (fallback) fallback.style.display = "none";
           }
         } catch (e) {
-          showToast("簽名檔除錯：發生例外 " + e.message, "error"); // 暫時除錯用，之後會移除
+          // 簽名檔載入失敗不影響整體預約流程，靜默失敗即可
         }
       }
 

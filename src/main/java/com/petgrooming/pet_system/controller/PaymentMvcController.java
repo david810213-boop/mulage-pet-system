@@ -424,9 +424,12 @@ public class PaymentMvcController {
         return "redirect:/payments/company-signature";
     }
 
-    // ── GET /api/company-signature ────────────────────────────────────────
+    // ── GET /payments/api/company-signature ─────────────────────────────
     // 需求 22：公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
     // 不需要登入即可讀取——簽名檔本身不是敏感資訊，是要公開展示給顧客看的。
+    // 注意：這個 controller class 層級是 @RequestMapping("/payments")，所以完整路徑
+    // 是 /payments/api/company-signature，不是看起來很直覺的 /api/company-signature
+    // （之前 booking.html 就是因為呼叫錯路徑，一直 404，簽名檔顯示不出來）。
     @GetMapping("/api/company-signature")
     @ResponseBody
     public java.util.Map<String, String> getCompanySignatureApi() {
