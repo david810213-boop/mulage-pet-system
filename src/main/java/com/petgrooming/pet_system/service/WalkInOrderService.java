@@ -293,6 +293,16 @@ public class WalkInOrderService {
                 .build();
     }
 
+    // ── 需求（追加）：這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
+    // 現場單沒綁會員的話沒辦法查歷史消費紀錄，保守回傳 false（視為不是既有客戶）。
+    public boolean isExistingCustomerPet(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.getMember() == null) return false;
+        return petConsumptionHistoryService.hasPriorPaidService(
+                order.getMember().getId(), order.getPetName(), orderId);
+    }
+
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, String username) {

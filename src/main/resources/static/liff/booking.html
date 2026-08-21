@@ -663,7 +663,7 @@
 
       function itemRowHtml(item) {
         return `
-      <div class="item-row">
+      <div class="item-row" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -687,6 +687,23 @@
             selectedItemCodes.add(code),
           );
         }
+
+        // 需求（追加）：僅限既有客戶的項目，這隻寵物不是既有客戶就整列隱藏（連同勾選一起清掉）
+        const isExisting = !!(pet && pet.isExistingCustomer);
+        document
+          .getElementById("itemsContainer")
+          .querySelectorAll(".item-row")
+          .forEach((row) => {
+            const requiresExisting = row.dataset.requiresExisting === "true";
+            const cb = row.querySelector("input[type=checkbox]");
+            if (requiresExisting && !isExisting) {
+              row.style.display = "none";
+              if (cb) cb.checked = false;
+            } else {
+              row.style.display = "";
+            }
+          });
+
         document
           .getElementById("itemsContainer")
           .querySelectorAll("input[type=checkbox]")

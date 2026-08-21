@@ -571,6 +571,14 @@ public class AppointmentService {
         log.info("預約 #{} 加購商品「{}」x{}", appointmentId, product.getName(), quantity);
     }
 
+    // ── 需求（追加）：這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
+    public boolean isExistingCustomerPet(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        return petConsumptionHistoryService.hasPriorPaidService(
+                appointment.getUser().getId(), appointment.getPetName(), appointmentId);
+    }
+
     // ── 需求（追加）：編輯訂單——結帳前新增一筆美容服務項目 ────────────────
     // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
     // 不用整筆退款重開，直接在這裡補上即可。

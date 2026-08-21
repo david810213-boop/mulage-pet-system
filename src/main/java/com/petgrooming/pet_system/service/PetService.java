@@ -22,6 +22,7 @@ public class PetService {
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
     private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -69,12 +70,18 @@ public class PetService {
     public List<PetResponse> getMyPets(String username) {
 
         // 確認 user 存在，避免靜默回傳空清單讓呼叫端誤以為「此人只是沒有寵物」
-        userRepository.findByUsername(username)
+        User owner = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("找不到該使用者：" + username));
 
         return petRepository.findByOwnerUsername(username)
                 .stream()
-                .map(PetResponse::from)
+                .map(pet -> {
+                    PetResponse res = PetResponse.from(pet);
+                    // 需求（追加）：帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
+                    res.setIsExistingCustomer(
+                            petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pet.getName(), null));
+                    return res;
+                })
                 .toList();
     }
 
