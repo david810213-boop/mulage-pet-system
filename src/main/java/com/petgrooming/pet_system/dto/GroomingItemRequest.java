@@ -34,4 +34,10 @@ public class GroomingItemRequest {
     // 導致無法建立像「小型犬洗吹」這種需要對應正確分類的項目。
     private com.petgrooming.pet_system.enums.PerformanceCategory performanceCategory;
 
+    // 需求（追加）：積分分類——同一個績效分類（例如 BATH_SMALL）現在會對應到很多不同
+    // 價格的項目（貓咪/狗狗各種體型級距），如果積分都直接沿用分類的固定預設值，
+    // 價差好幾倍的項目會拿到一樣的積分，不合理。開放店家自己指定這個項目對應
+    // 哪一個積分分類，不填的話才退回用 performanceCategory 的預設積分（維持舊行為）。
+    private Double points;
+
 }

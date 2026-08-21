@@ -48,7 +48,8 @@ public class GroomingServiceImpl implements GroomingService {
                 ? request.getPerformanceCategory()
                 : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
         item.setPerformanceCategory(category);
-        item.setPoints(category.getDefaultPoints());
+        // 需求（追加）：積分分類——店家有指定就用指定值，沒指定才退回分類預設值（維持舊行為）
+        item.setPoints(request.getPoints() != null ? request.getPoints() : category.getDefaultPoints());
 
         // 3. 實質寫入資料庫
         groomingItemRepository.save(item);
@@ -102,6 +103,7 @@ public class GroomingServiceImpl implements GroomingService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         if (request.getBookable() != null) item.setBookable(request.getBookable()); // 需求 4
+        if (request.getPoints() != null) item.setPoints(request.getPoints()); // 需求（追加）：積分分類可個別調整
         
         GroomingItem updatedItem = groomingItemRepository.save(item);
         return GroomingItemResponse.from(updatedItem);
