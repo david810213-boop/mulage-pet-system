@@ -9,7 +9,10 @@
       <div class="content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
           <h2 style="margin: 0">🛍️ 零售商品管理</h2>
-          <a href="/admin" class="btn">← 回後台</a>
+          <div style="display:flex; gap:8px;">
+            <a href="/admin/retail-products/cost-backfill" class="btn btn-outline">💰 成本回填</a>
+            <a href="/admin" class="btn">← 回後台</a>
+          </div>
         </div>
 
         <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('零售商品成本回填 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">💰 零售商品成本回填</h2>
+          <a href="/admin/retail-products" class="btn">← 回零售商品管理</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+          這裡只列出「進貨成本」還沒設定（目前是 $0）的上架商品，一次補完就好，不用從完整商品清單裡自己找。
+          財務報表的獲利估算要靠這個成本欄位才會準確，成本補齊之前，那些商品的估算會偏高。
+          <br />
+          不用一次全部填完——只填你現在知道成本的幾筆，剩下的空著送出也沒關係，之後想到了再回來這頁繼續補，
+          填了才會被記錄，沒填的欄位不會被強制存成 0。
+        </p>
+
+        <div class="card" th:if="${#lists.isEmpty(pendingProducts)}">
+          <p style="text-align:center; padding: 24px; color: var(--brown-light);">
+            🎉 目前所有上架商品都已經設定過成本了，沒有需要回填的項目。
+          </p>
+        </div>
+
+        <form method="post" action="/admin/retail-products/cost-backfill/submit"
+              th:if="${!#lists.isEmpty(pendingProducts)}">
+          <div class="card">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>商品名稱</th>
+                  <th>售價</th>
+                  <th>備註</th>
+                  <th style="width: 160px;">進貨成本（填這欄）</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="p : ${pendingProducts}">
+                  <td th:text="${p.name}"></td>
+                  <td th:text="'$' + ${p.price}"></td>
+                  <td th:text="${p.description} ?: '—'"></td>
+                  <td>
+                    <input type="number" th:name="'cost_' + ${p.id}" min="0"
+                           placeholder="尚未設定" style="width: 100px;" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+              儲存本頁已填寫的成本
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

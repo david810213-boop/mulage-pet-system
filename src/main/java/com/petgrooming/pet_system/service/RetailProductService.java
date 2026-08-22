@@ -21,6 +21,30 @@ public class RetailProductService {
         return retailProductRepository.findByIsDeletedFalseOrderByNameAsc();
     }
 
+    // 需求（追加）：成本回填清單，只列出 unitCost 還是 0 的上架商品
+    public List<RetailProduct> listPendingCostBackfill() {
+        return retailProductRepository.findByIsDeletedFalseAndUnitCostOrderByNameAsc(0);
+    }
+
+    // 需求（追加）：批次回填成本——一次送整頁的 id→成本 對照表，逐筆寫入。
+    // 跳過負數（防呆，理論上前端 input min="0" 已經擋掉，這裡後端再擋一次）
+    // 跟金額沒填/沒改的（維持 0，不強迫店家一定要填滿整頁才能送出，可以分批補）。
+    // 回傳實際更新的筆數，讓畫面能提示店家「這次補了幾筆」。
+    @Transactional
+    public int bulkUpdateCost(java.util.Map<Long, Integer> idToCost) {
+        int updated = 0;
+        for (var entry : idToCost.entrySet()) {
+            Integer cost = entry.getValue();
+            if (cost == null || cost <= 0) continue; // 沒填或填 0 就跳過，不算一次更新
+            RetailProduct product = retailProductRepository.findById(entry.getKey()).orElse(null);
+            if (product == null || product.isDeleted()) continue;
+            product.setUnitCost(cost);
+            retailProductRepository.save(product);
+            updated++;
+        }
+        return updated;
+    }
+
     public RetailProduct getById(Long id) {
         return retailProductRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("找不到商品 #" + id));
