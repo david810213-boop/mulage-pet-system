@@ -43,6 +43,42 @@ public class RetailProductMvcController {
         return "admin/retail-products";
     }
 
+    // 需求（追加）：成本回填專用畫面——只列出還沒設定進貨成本的商品，
+    // 一次全部填完，不用從完整商品清單裡自己找哪些還是 0。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/cost-backfill")
+    public String costBackfill(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("pendingProducts", retailProductService.listPendingCostBackfill());
+        return "admin/retail-product-cost-backfill";
+    }
+
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/cost-backfill/submit")
+    public String submitCostBackfill(HttpServletRequest request,
+                                      @RequestParam java.util.Map<String, String> allParams,
+                                      RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        // 表單欄位命名為 cost_{id}，例如 cost_17=120，逐一解析成 Map<商品id, 成本>
+        java.util.Map<Long, Integer> idToCost = new java.util.HashMap<>();
+        for (var entry : allParams.entrySet()) {
+            if (!entry.getKey().startsWith("cost_")) continue;
+            try {
+                Long id = Long.parseLong(entry.getKey().substring(5));
+                String raw = entry.getValue();
+                if (raw == null || raw.isBlank()) continue;
+                idToCost.put(id, Integer.parseInt(raw.trim()));
+            } catch (NumberFormatException ignored) {
+                // 格式錯誤的欄位直接跳過，不讓單一筆輸入錯誤擋掉其他筆的回填
+            }
+        }
+        int updated = retailProductService.bulkUpdateCost(idToCost);
+        operationLogService.log(user, "RETAIL", "BULK_BACKFILL_UNIT_COST",
+                "批次回填零售商品成本，共 " + updated + " 筆", null);
+        ra.addFlashAttribute("successMsg", "已回填 " + updated + " 筆商品成本");
+        return "redirect:/admin/retail-products/cost-backfill";
+    }
+
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/create")
     public String create(HttpServletRequest request,
