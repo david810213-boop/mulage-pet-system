@@ -14,6 +14,19 @@ spring:
         "[hibernate.format_sql]": true
         "[hibernate.dialect]": org.hibernate.dialect.MySQLDialect
 
+  # Flyway：只用來管理「資料種子/回填」，schema 仍由上面的 ddl-auto=update 負責。
+  # enabled: false 是關掉 Spring Boot 內建那套「App 啟動最早期、搶在 Hibernate
+  # 建表之前執行」的自動機制——如果讓它照預設跑，在全新資料庫（例如本機第一次
+  # 建立、或未來換資料庫）上，INSERT 種子資料時 table 根本還不存在，會直接報錯。
+  # 改成 DataSeedMigrationRunner（ApplicationRunner）手動呼叫 Flyway.migrate()，
+  # 確保 Hibernate 已經把 table 建好之後才執行，兩邊順序才不會衝突。
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    table: flyway_schema_history
+
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
