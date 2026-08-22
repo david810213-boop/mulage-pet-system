@@ -335,6 +335,18 @@
       let selectedSlot = null; // { startTime, endTime }
       let closedDatesCache = null; // 需求 16：公休日清單快取（本次頁面停留期間有效）
 
+      // 資安修正：寵物名稱/品種是顧客自己填的，服務項目名稱/描述雖然是店家設定，
+      // 一律統一跳脫，插入 innerHTML 前先過一手，避免存放型 XSS。
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
       // 需求 16：抓取公休日清單（只抓一次，快取起來），回傳 Set<string> 方便查詢
       async function loadClosedDates() {
         if (closedDatesCache) return closedDatesCache;
@@ -477,7 +489,7 @@
           <label>預約毛孩 <span class="req">*</span></label>
           <select id="petSelect" onchange="onPetChange()">
             <option value="">請選擇毛孩</option>
-            ${myPets.map((p) => `<option value="${p.id}">${p.name}（${p.breed}）</option>`).join("")}
+            ${myPets.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}（${escapeHtml(p.breed)}）</option>`).join("")}
           </select>
         </div>
       </div>
@@ -667,8 +679,8 @@
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
-            <div class="item-name">${item.name}</div>
-            ${item.description ? `<div class="item-desc">${item.description}</div>` : ""}
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ""}
           </div>
         </label>
         <div class="item-price">$${item.price}</div>

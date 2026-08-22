@@ -69,13 +69,11 @@ public class AuthMvcController {
             operationLogService.log(user, "AUTH", "LOGIN", user.getUsername(), null);
 
             // 5. 將 Token 包進 Cookie 中送給瀏覽器
-            Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
-            jwtCookie.setHttpOnly(true); // 防止前端 JavaScript 竊取，防範 XSS 攻擊
-            jwtCookie.setSecure(cookieSecure); // 只在 HTTPS 連線下傳送（由 COOKIE_SECURE 環境變數控制）
-            jwtCookie.setPath("/"); // 整個專案路徑都有效
-            jwtCookie.setMaxAge(86400); // 有效期設為 1 天（單位：秒，與 Token 的 24 小時同步）
-
-            response.addCookie(jwtCookie); // 真正寫入瀏覽器
+            // 資安修正：改用 CookieUtils 手動組 Set-Cookie 標頭，帶上 SameSite=Lax
+            // （jakarta.servlet.http.Cookie 這個舊版 API 不支援設定 SameSite）。
+            response.addHeader("Set-Cookie",
+                    com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                            "JWT_TOKEN", token, 86400, cookieSecure));
 
             if (redirect != null && !redirect.isBlank() && !redirect.startsWith("/auth")) {
                 return "redirect:" + redirect;
@@ -135,12 +133,11 @@ public class AuthMvcController {
         operationLogService.logByUsername(username, "AUTH", "LOGOUT", username, null);
 
         // 6. 登出的做法：弄一個同名、時效為 0 的 Cookie 覆蓋過去，瀏覽器就會自動刪除它
-        Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
-        jwtCookie.setPath("/");
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(cookieSecure); // 屬性需跟登入時設定的一致，瀏覽器才能正確比對並清除
-        jwtCookie.setMaxAge(0); // 設為 0 代表立即失效
-        response.addCookie(jwtCookie);
+        // 資安修正：比照登入時的做法，改用 CookieUtils 帶上 SameSite=Lax
+        // （屬性要跟登入時設定的一致，瀏覽器才能正確比對並清除）。
+        response.addHeader("Set-Cookie",
+                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                        "JWT_TOKEN", "", 0, cookieSecure));
 
         return "redirect:/auth/login";
     }

@@ -581,6 +581,18 @@
       let allAppointments = [];
       let currentTab = "upcoming";
 
+      // 資安修正：寵物名稱是顧客自己填的，直接塞進 innerHTML 樣板字串會有存放型
+      // XSS 風險，顯示前一律先跳脫成純文字。
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
       async function init() {
         try {
           await liff.init({ liffId: LIFF_ID });
@@ -767,7 +779,7 @@
         }
 
         const itemsHtml = (a.selectedItems || [])
-          .map((it) => `<span class="item-chip">${it.name}</span>`)
+          .map((it) => `<span class="item-chip">${escapeHtml(it.name)}</span>`)
           .join("");
 
         // 可取消條件：尚未取消、尚未付款、且預約時間還沒到（過去的不給取消）
@@ -781,7 +793,7 @@
         <div class="appt-top">
           <div>
             <div class="appt-code">${a.appointmentCode}</div>
-            <div class="appt-pet"><span class="pet-type-icon">${petIcon(a.petType)}</span>${a.petName}</div>
+            <div class="appt-pet"><span class="pet-type-icon">${petIcon(a.petType)}</span>${escapeHtml(a.petName)}</div>
           </div>
           ${badge}
         </div>
@@ -892,7 +904,7 @@
           .map(
             (it) => `
           <div class="detail-row">
-            <span class="item-name">${it.name}${it.operatorName ? `<span class="item-operator">・${it.operatorName}</span>` : ""}</span>
+            <span class="item-name">${escapeHtml(it.name)}${it.operatorName ? `<span class="item-operator">・${escapeHtml(it.operatorName)}</span>` : ""}</span>
             <span class="item-price">$${it.price}</span>
           </div>`,
           )
@@ -903,13 +915,13 @@
           <div class="detail-payment">
             付款方式：${d.paymentMethodLabel}<br>
             ${d.paymentTime ? `付款時間：${d.paymentTime.replace("T", " ").substring(0, 16)}<br>` : ""}
-            ${d.handledBy ? `經手人：${d.handledBy}` : ""}
+            ${d.handledBy ? `經手人：${escapeHtml(d.handledBy)}` : ""}
           </div>`
           : "";
 
         body.innerHTML = `
           <div class="detail-section">
-            <div class="label">${d.appointmentCode}　${petIcon(d.petType)}${d.petName}</div>
+            <div class="label">${d.appointmentCode}　${petIcon(d.petType)}${escapeHtml(d.petName)}</div>
             <div class="detail-row">
               <span class="item-name">預約時間</span>
               <span class="item-price">${d.date} ${d.startTime.substring(0, 5)}-${d.endTime.substring(0, 5)}</span>

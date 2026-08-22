@@ -234,6 +234,19 @@
       const LIFF_ID = "2010567973-W8pQ5ZqI";
       let jwtToken = null;
 
+      // 資安修正：寵物名稱/品種/注意事項是顧客自己填的，直接塞進 innerHTML
+      // 樣板字串會有存放型 XSS 風險（例如把寵物名字設成 <img onerror=...>）。
+      // 顯示前一律先跳脫成純文字，跟後端 Thymeleaf th:text 的自動跳脫是同樣道理。
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
       // --- 初始化流程 ---
       async function init() {
         try {
@@ -298,8 +311,8 @@
           <div class="pet-header">
             <div class="pet-icon">${p.photoUrl ? `<img src="${p.photoUrl}" />` : p.petType === "DOG" ? "🐶" : p.petType === "CAT" ? "🐱" : "🐾"}</div>
             <div>
-              <div class="pet-name">${p.name}</div>
-              <div class="pet-breed">${p.breed}</div>
+              <div class="pet-name">${escapeHtml(p.name)}</div>
+              <div class="pet-breed">${escapeHtml(p.breed)}</div>
             </div>
           </div>
           <div class="tags">
@@ -312,7 +325,7 @@
           <div class="pet-info">
             體重：<span>${p.weight} kg</span> 
             年齡：<span>${p.age} 歲</span>
-            ${p.notes ? "<br>注意事項：<span>" + p.notes + "</span>" : ""}
+            ${p.notes ? "<br>注意事項：<span>" + escapeHtml(p.notes) + "</span>" : ""}
           </div>
           ${
             p.recommendedItemCodes && p.recommendedItemCodes.length
