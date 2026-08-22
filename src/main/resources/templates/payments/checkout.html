@@ -64,23 +64,77 @@
                 <th>項目</th>
                 <th>價格</th>
                 <th>折扣資格</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               <tr th:each="it : ${detailItems}">
-                <td th:text="${it.name}"></td>
+                <td th:text="${it.name} + (${it.retailItem} ? '（零售）' : '')"></td>
                 <td th:text="'$' + ${it.price}"></td>
                 <td>
-                  <span th:if="${it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
-                  <span th:if="${it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
-                  <span th:if="${!it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
-                  <span th:if="${!it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                  <span th:if="${it.retailItem}" style="color:#999;">零售商品（不打折）</span>
+                  <span th:unless="${it.retailItem}">
+                    <span th:if="${it.firstVisitEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合首次體驗／會員折扣（擇優適用）</span>
+                    <span th:if="${it.firstVisitEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合首次體驗優惠（9折）</span>
+                    <span th:if="${!it.firstVisitEligible and it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
+                    <span th:if="${!it.firstVisitEligible and it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
+                    <span th:if="${!it.firstVisitEligible and !it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
+                    <span th:if="${!it.firstVisitEligible and !it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                  </span>
+                </td>
+                <td>
+                  <form method="post"
+                        th:action="@{/payments/checkout/{id}/remove-item(id=${appointmentId})}">
+                    <input type="hidden" name="itemId" th:value="${it.itemId}" />
+                    <button type="submit" class="btn btn-outline" style="padding:2px 8px; font-size:11px; color:#c62828; border-color:#c67a5c;" th:disabled="${it.itemId == null}">移除</button>
+                  </form>
                 </td>
               </tr>
             </tbody>
           </table>
           <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px; margin-bottom: 0;">
-            回洗優惠與會員折扣只能擇一（取較優惠者），不會疊加；只有選擇儲值金付款時才會套用會員折扣，回洗優惠則不限付款方式。不打折的項目一律以原價計入結帳金額。
+            回洗優惠與會員折扣只能擇一（取較優惠者），不會疊加；只有選擇儲值金付款時才會套用會員折扣，回洗優惠則不限付款方式。不打折的項目一律以原價計入結帳金額。零售商品不參與任何折扣，一律原價。結帳前發現項目填錯或漏掉，可以直接在下面新增/移除項目，不用整筆退款重開。
+          </p>
+        </div>
+
+        <!-- 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的服務項目 -->
+        <div class="card" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 15px; margin-bottom: 10px;">✏️ 新增服務項目</h3>
+          <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
+                th:action="@{/payments/checkout/{id}/add-grooming-item(id=${appointmentId})}"
+                style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+            <div class="field" style="margin: 0; flex: 1; min-width: 220px;">
+              <label>選擇項目</label>
+              <select name="groomingItemId" required>
+                <option th:each="g : ${groomingItems}" th:value="${g.id}"
+                        th:text="${g.name} + '（$' + ${#numbers.formatDecimal(g.price, 0, 0)} + '）'"></option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">加入</button>
+          </form>
+        </div>
+
+        <!-- 需求（追加）：結帳前直接加購零售商品，跟現場開單結帳頁同樣邏輯 -->
+        <div class="card" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 15px; margin-bottom: 10px;">🛍️ 加購商品</h3>
+          <form th:if="${retailProducts != null and !retailProducts.isEmpty()}" method="post"
+                th:action="@{/payments/checkout/{id}/add-retail-item(id=${appointmentId})}"
+                style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+            <div class="field" style="margin: 0; flex: 1; min-width: 160px;">
+              <label>選擇商品</label>
+              <select name="retailProductId" required>
+                <option th:each="p : ${retailProducts}" th:value="${p.id}"
+                        th:text="${p.name} + '（$' + ${p.price} + '，庫存 ' + ${p.stockQuantity} + '）'"></option>
+              </select>
+            </div>
+            <div class="field" style="margin: 0; width: 90px;">
+              <label>數量</label>
+              <input type="number" name="quantity" value="1" min="1" required />
+            </div>
+            <button type="submit" class="btn btn-primary">加入</button>
+          </form>
+          <p th:if="${retailProducts == null or retailProducts.isEmpty()}" style="font-size: 13px; color: var(--brown-light); margin: 0;">
+            目前沒有可加購的商品，可以到「零售商品」頁面新增。
           </p>
         </div>
 

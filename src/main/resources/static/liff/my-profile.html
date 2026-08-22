@@ -213,7 +213,7 @@
 
     <div class="notice">
       <div class="title">💛 為什麼要填寫這些資料？</div>
-      幫助我們更了解每一位毛孩家長，提供更貼心、更適合您的服務與活動資訊。這些資料皆為選填，您可以隨時回來修改。
+      幫助我們更了解每一位毛孩家長，提供更貼心、更適合您的服務與活動資訊。標示 * 的欄位為必填（依犬貓美容服務定型化契約規定蒐集），其餘為選填，您可以隨時回來修改。
     </div>
 
     <div id="app"><div class="loading">載入中...</div></div>
@@ -221,7 +221,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-      const LIFF_ID = "2010567973-ygHvpq7X";
+      const LIFF_ID = "2010567973-oT7VRQnN";
       let jwtToken = null;
 
       const SOURCE_OPTIONS = [
@@ -292,13 +292,13 @@
         <h3>𖥸 基本資料</h3>
 
         <div class="field">
-          <label>暱稱</label>
-          <input type="text" id="name" value="${me.name ? escapeHtml(me.name) : ""}" placeholder="您的稱呼" />
+          <label>姓名 <span class="req">*</span></label>
+          <input type="text" id="name" value="${me.name ? escapeHtml(me.name) : ""}" placeholder="您的稱呼" required />
         </div>
 
         <div class="field">
-          <label>手機號碼 <span class="hint">（選填）</span></label>
-          <input type="tel" id="phone" value="${me.phone ? escapeHtml(me.phone) : ""}" placeholder="例如：0912345678" />
+          <label>手機號碼 <span class="req">*</span></label>
+          <input type="tel" id="phone" value="${me.phone ? escapeHtml(me.phone) : ""}" placeholder="例如：0912345678" required />
         </div>
 
         <div class="field">
@@ -322,8 +322,8 @@
         </div>
 
         <div class="field">
-          <label>緊急聯絡人姓名 <span class="hint">（依定型化契約規定蒐集，選填）</span></label>
-          <input type="text" id="emergencyContactName" value="${me.emergencyContactName ? escapeHtml(me.emergencyContactName) : ""}" placeholder="請輸入緊急聯絡人姓名" />
+          <label>緊急聯絡人姓名 <span class="req">*</span></label>
+          <input type="text" id="emergencyContactName" value="${me.emergencyContactName ? escapeHtml(me.emergencyContactName) : ""}" placeholder="請輸入緊急聯絡人姓名" required />
         </div>
 
         <div class="field">
@@ -332,8 +332,8 @@
         </div>
 
         <div class="field">
-          <label>緊急聯絡人電話 <span class="hint">（選填）</span></label>
-          <input type="tel" id="emergencyContactPhone" value="${me.emergencyContactPhone ? escapeHtml(me.emergencyContactPhone) : ""}" placeholder="例如：0912345678" />
+          <label>緊急聯絡人電話 <span class="req">*</span></label>
+          <input type="tel" id="emergencyContactPhone" value="${me.emergencyContactPhone ? escapeHtml(me.emergencyContactPhone) : ""}" placeholder="例如：0912345678" required />
         </div>
 
         <div class="field">
@@ -377,9 +377,26 @@
         const emergencyContactPhone = document.getElementById("emergencyContactPhone").value.trim();
         const emergencyContactRelation = document.getElementById("emergencyContactRelation").value.trim();
 
-        // 需求（追加）：通訊地址、緊急聯絡人關係改為必填
+        // 需求（追加，配合定型化契約家長資料）：姓名、電話、通訊地址、
+        // 緊急聯絡人姓名/電話改為必填；緊急聯絡人關係維持選填。
+        if (!name) {
+          showToast("請填寫姓名", "error");
+          return;
+        }
+        if (!phone) {
+          showToast("請填寫手機號碼", "error");
+          return;
+        }
         if (!mailingAddress) {
           showToast("請填寫通訊地址", "error");
+          return;
+        }
+        if (!emergencyContactName) {
+          showToast("請填寫緊急聯絡人姓名", "error");
+          return;
+        }
+        if (!emergencyContactPhone) {
+          showToast("請填寫緊急聯絡人電話", "error");
           return;
         }
         if (!emergencyContactRelation) {

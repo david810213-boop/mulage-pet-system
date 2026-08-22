@@ -1,0 +1,78 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('體重定價門檻設定 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content" style="max-width: 760px">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2 style="margin: 0">⚖️ 體重定價門檻設定</h2>
+          <a href="/appointments" class="btn">← 回預約管理</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+          這裡的數字是給店員核對/開單時參考用的門檻——貓咪體重加價需要店員自行透過「新增服務項目」加購對應金額的項目；
+          狗狗依這裡的體重切點判斷該選小型犬還是大型犬的服務項目。系統不會自動運算，純粹是把門檻集中在這裡設定，
+          不用把數字寫死在程式碼裡，之後價格調整不用重新部署。
+        </p>
+
+        <form method="post" action="/payments/pricing-settings">
+          <div class="card" style="margin-bottom: 1.25rem">
+            <h3 style="font-size: 15px; margin-bottom: 12px">🐱 貓咪體重加價</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px 20px; align-items: start;">
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">基礎價門檻（公斤，此體重含以下不加價）</label>
+                <input type="number" step="0.1" name="catBaseWeightLimit" th:value="${settings.catBaseWeightLimit}" required />
+              </div>
+              <div class="field"></div>
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">中間門檻（公斤，達此體重起加價）</label>
+                <input type="number" step="0.1" name="catMidWeightLimit" th:value="${settings.catMidWeightLimit}" required />
+              </div>
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">加價金額（元）</label>
+                <input type="number" name="catMidSurcharge" th:value="${settings.catMidSurcharge}" required />
+              </div>
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">高門檻（公斤，達此體重起改用下面金額）</label>
+                <input type="number" step="0.1" name="catHighWeightLimit" th:value="${settings.catHighWeightLimit}" required />
+              </div>
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">加價金額（元）</label>
+                <input type="number" name="catHighSurcharge" th:value="${settings.catHighSurcharge}" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 1.25rem">
+            <h3 style="font-size: 15px; margin-bottom: 12px">🐶 狗狗小型犬／大型犬體重切點</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px 20px; align-items: start;">
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">長毛（公斤，此體重以下算小型犬）</label>
+                <input type="number" step="0.1" name="dogLongCoatWeightLimit" th:value="${settings.dogLongCoatWeightLimit}" required />
+              </div>
+              <div class="field">
+                <label style="display:block; min-height:2.4em; line-height:1.3;">短毛／厚短毛（此體重以下算小型犬）</label>
+                <input type="number" step="0.1" name="dogShortCoatWeightLimit" th:value="${settings.dogShortCoatWeightLimit}" required />
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">儲存設定</button>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

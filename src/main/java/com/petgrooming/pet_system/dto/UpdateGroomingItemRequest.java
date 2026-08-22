@@ -29,4 +29,14 @@ public class UpdateGroomingItemRequest {
 
     // 需求 4：是否可線上預約
     private Boolean bookable = false;
+
+    // 需求（追加）：積分分類，同 GroomingItemRequest 的說明——同一個績效分類底下
+    // 現在有很多不同價格的項目，積分要能個別調整，不再完全綁死分類固定值。
+    private Double points;
+
+    // 需求（追加）：僅限既有客戶
+    private Boolean requiresExistingCustomer = false;
+
+    // 需求（追加）：適用物種
+    private com.petgrooming.pet_system.enums.PetType applicablePetType;
 }

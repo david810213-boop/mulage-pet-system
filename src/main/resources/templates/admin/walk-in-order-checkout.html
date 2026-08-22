@@ -64,15 +64,17 @@
                   <td>
                     <span th:if="${it.retailItem}" style="color:#999;">零售商品（不打折）</span>
                     <span th:unless="${it.retailItem}">
-                      <span th:if="${it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
-                      <span th:if="${it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
-                      <span th:if="${!it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
-                      <span th:if="${!it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
+                      <span th:if="${it.firstVisitEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合首次體驗／會員折扣（擇優適用）</span>
+                      <span th:if="${it.firstVisitEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合首次體驗優惠（9折）</span>
+                      <span th:if="${!it.firstVisitEligible and it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠／會員折扣（擇優適用）</span>
+                      <span th:if="${!it.firstVisitEligible and it.rewashEligible and !it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 符合回洗優惠（9折）</span>
+                      <span th:if="${!it.firstVisitEligible and !it.rewashEligible and it.discountEligible}" style="color:#2e7d32; font-weight:600;">✓ 可享會員折扣</span>
+                      <span th:if="${!it.firstVisitEligible and !it.rewashEligible and !it.discountEligible}" style="color:#999;">原價（不打折）</span>
                     </span>
                   </td>
                   <td>
-                    <form th:if="${it.retailItem}" method="post"
-                          th:action="@{/admin/walk-in-orders/{id}/remove-retail-item(id=${order.id})}">
+                    <form method="post"
+                          th:action="@{/admin/walk-in-orders/{id}/remove-item(id=${order.id})}">
                       <input type="hidden" name="itemId" th:value="${it.itemId}" />
                       <button type="submit" class="btn btn-outline" style="padding:2px 8px; font-size:11px; color:#c62828; border-color:#c67a5c;">移除</button>
                     </form>
@@ -81,8 +83,25 @@
               </tbody>
             </table>
             <p style="font-size: 12px; color: var(--brown-light); margin-top: 8px; margin-bottom: 0;">
-              回洗優惠與會員折扣只能擇一（取較優惠者），不會疊加；只有選擇儲值金付款時才會套用會員折扣，回洗優惠則不限付款方式。不打折的項目一律以原價計入結帳金額。零售商品不參與任何折扣，一律原價。
+              回洗優惠與會員折扣只能擇一（取較優惠者），不會疊加；只有選擇儲值金付款時才會套用會員折扣，回洗優惠則不限付款方式。不打折的項目一律以原價計入結帳金額。零售商品不參與任何折扣，一律原價。結帳前發現項目填錯或漏掉，可以直接在下面新增/移除項目，不用整筆退款重開。
             </p>
+          </div>
+
+          <!-- 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的服務項目 -->
+          <div class="card" style="margin-bottom: 1rem;">
+            <h3 style="font-size: 15px; margin-bottom: 10px;">✏️ 新增服務項目</h3>
+            <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
+                  th:action="@{/admin/walk-in-orders/{id}/add-grooming-item(id=${order.id})}"
+                  style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+              <div class="field" style="margin: 0; flex: 1; min-width: 220px;">
+                <label>選擇項目</label>
+                <select name="groomingItemId" required>
+                  <option th:each="g : ${groomingItems}" th:value="${g.id}"
+                          th:text="${g.name} + '（$' + ${#numbers.formatDecimal(g.price, 0, 0)} + '）'"></option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">加入</button>
+            </form>
           </div>
 
           <!-- 需求 7-1：結帳前直接加購零售商品 -->

@@ -12,6 +12,7 @@ public class TransactionResponse {
     private Long id;
     private Long appointmentId;         // 需求：交易紀錄列表點擊查看明細用
     private String appointmentCode;     // AP001 格式
+    private String petName;
     private String ownerEmail;
     private PaymentMethod paymentMethod;
     private int baseAmount;             // 原始金額
@@ -25,6 +26,7 @@ public class TransactionResponse {
         res.setId(t.getId());
         res.setAppointmentId(t.getAppointment().getId());
         res.setAppointmentCode(String.format("AP%03d", t.getAppointment().getId()));
+        res.setPetName(t.getAppointment().getPetName());
         res.setOwnerEmail(t.getUser().getUsername());
         res.setPaymentMethod(t.getPaymentMethod());
         res.setBaseAmount(t.getBaseAmount());

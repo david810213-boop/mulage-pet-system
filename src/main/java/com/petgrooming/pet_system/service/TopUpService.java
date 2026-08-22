@@ -112,4 +112,21 @@ public class TopUpService {
         log.info("儲值申請 #{} 已由 {} 駁回，原因：{}", id, reviewerName, reason);
         return TopUpRequestResponse.from(topUp);
     }
+
+    // ── 店家：手動記錄一筆已入帳的儲值（現場收現金／匯款，不走 LIFF 申請流程）─
+    // 供 WalletMvcController / CustomerWalletAdminController「幫顧客儲值」共用：
+    // 錢包餘額已經由 WalletService.deposit() 加值完成，這裡只是「補登」一筆
+    // 狀態直接是 CONFIRMED 的申請紀錄，讓財務報表「本月儲值金額」統計得到。
+    @Transactional
+    public void recordManualTopup(User user, int amount, String reviewedBy, String note) {
+        TopUpRequest topUp = TopUpRequest.builder()
+                .user(user)
+                .amount(amount)
+                .remitNote(note != null && !note.isBlank() ? note : "店家現場收款儲值")
+                .status(TopUpStatus.CONFIRMED)
+                .reviewedAt(LocalDateTime.now())
+                .reviewedBy(reviewedBy)
+                .build();
+        topUpRepository.save(topUp);
+    }
 }

@@ -28,6 +28,7 @@ public class FinancialReportResponse {
     private int todayRevenueNonWallet;   // 當日業績中，非儲值金付款的部分（現金/LinePay/匯款）
     private int todayOrderCount;         // 當日結帳筆數（預約+現場單合計）
     private int todayTopupCollected;     // 當日儲值總額（預收款，不計入業績，僅供參考）
+    private int todayRetailRevenue;      // 需求（追加）：當日零售商品營收（已含在 todayRevenueTotal 業績裡，這裡單獨拆出來看）
 
     // ── 當月 ──────────────────────────────────────────────────────────
     private int monthRevenueTotal;
@@ -35,6 +36,7 @@ public class FinancialReportResponse {
     private int monthRevenueNonWallet;
     private int monthOrderCount;
     private int monthTopupCollected;
+    private int monthRetailRevenue;      // 需求（追加）：當月零售商品營收（已含在 monthRevenueTotal 業績裡）
 
     // ── 成本（需求 7 庫存資料帶入，當月）──────────────────────────────────
     private int monthRetailCostEstimate;  // 零售商品成本估算（用目前進貨單價回推，非逐筆歷史成本）

@@ -652,8 +652,10 @@
                     尚無美容狀況紀錄
                   </p>
 
-                  <!-- 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁 -->
+                  <!-- 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁——直接展開列出服務項目，
+                       美容師不用點進去看，一眼就能判斷寵物過往做過什麼、下次該安排什麼 -->
                   <details
+                    open
                     style="margin-top: 8px"
                     th:if="${consumptionByPetId != null and !#lists.isEmpty(consumptionByPetId.get(p.id))}"
                   >
@@ -672,24 +674,64 @@
                     <div
                       th:each="c : ${consumptionByPetId.get(p.id)}"
                       style="
-                        font-size: 12px;
-                        color: var(--brown-mid);
                         border-top: 0.5px solid var(--cream-200);
-                        padding: 6px 0;
-                        display: flex;
-                        justify-content: space-between;
-                        gap: 8px;
+                        padding: 7px 0;
                       "
                     >
-                      <div>
-                        <span th:text="${c.sourceLabel}"></span> ·
-                        <span th:text="${c.code}"></span>
-                        <div
-                          style="color: var(--brown-light)"
+                      <div
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          gap: 8px;
+                          font-size: 11.5px;
+                          color: var(--brown-light);
+                        "
+                      >
+                        <span th:text="${c.sourceLabel} + ' · ' + ${c.code}"></span>
+                        <span
                           th:text="${c.time != null ? #temporals.format(c.time, 'yyyy-MM-dd HH:mm') : '—'} + ' · ' + ${c.handledBy} + ' · ' + ${c.paymentMethodLabel}"
-                        ></div>
+                        ></span>
                       </div>
-                      <div style="font-weight: 600; white-space: nowrap" th:text="'$' + ${c.amount}"></div>
+                      <div
+                        th:each="it : ${c.items}"
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          gap: 8px;
+                          font-size: 12.5px;
+                          color: var(--brown-mid);
+                          padding: 4px 0 4px 10px;
+                        "
+                      >
+                        <span>
+                          <span th:text="${it.name}"></span>
+                          <span
+                            th:if="${it.staffName != null}"
+                            style="color: var(--brown-light)"
+                            th:text="'・' + ${it.staffName}"
+                          ></span>
+                          <span
+                            th:if="${it.discountLabel != null}"
+                            th:style="${it.discountLabel == '原價（不打折）'} ? 'color: var(--brown-light);' : 'color:#2e7d32;'"
+                            th:text="'・' + ${it.discountLabel}"
+                          ></span>
+                        </span>
+                        <span
+                          style="font-weight: 600; white-space: nowrap"
+                          th:text="'$' + ${it.price}"
+                        ></span>
+                      </div>
+                      <p
+                        th:if="${c.items == null or #lists.isEmpty(c.items)}"
+                        style="
+                          font-size: 12px;
+                          color: var(--brown-light);
+                          padding-left: 10px;
+                          margin: 4px 0 0;
+                        "
+                      >
+                        （無項目資料）
+                      </p>
                     </div>
                   </details>
                 </div>

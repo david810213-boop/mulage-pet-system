@@ -44,6 +44,10 @@ public class WalkInOrderService {
     private final PerformanceRecordRepository performanceRecordRepository;
     private final LineMessagingService lineMessagingService;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
+    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
+    private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（追加）：查現場單寵物物種
     private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
@@ -85,6 +89,16 @@ public class WalkInOrderService {
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "找不到項目代碼：" + line.getItemCode()));
 
+                // 需求（追加）：僅限既有客戶的項目，沒綁會員無法查歷史消費紀錄，保守擋下。
+                if (gi.isRequiresExistingCustomer()) {
+                    boolean isExisting = order.getMember() != null
+                            && petConsumptionHistoryService.hasPriorPaidService(
+                                    order.getMember().getId(), req.getPetName(), null);
+                    if (!isExisting) {
+                        throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，無法加入此項目");
+                    }
+                }
+
                 WalkInOrderItem item = WalkInOrderItem.builder()
                         .groomingItemId(gi.getId())
                         .itemName(gi.getName())
@@ -103,6 +117,19 @@ public class WalkInOrderService {
 
                 order.addItem(item);
                 total += item.getPrice();
+
+                // 需求（追加）：套餐化——展開副組成（price固定0，純粹供待補經手人矩陣拆分用）
+                for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+                    WalkInOrderItem sub = WalkInOrderItem.builder()
+                            .groomingItemId(gi.getId())
+                            .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
+                            .price(0)
+                            .points(component.getPoints())
+                            .performanceCategory(component.getPerformanceCategory())
+                            .discountEligible(false)
+                            .build();
+                    order.addItem(sub);
+                }
             }
         }
 
@@ -281,23 +308,98 @@ public class WalkInOrderService {
                 .build();
     }
 
-    // 移除一筆已加購的零售商品（結帳前加錯可以移除；只能移除零售商品項目，
-    // 不能拿來移除美容服務項目，避免誤刪動到績效/預約相關資料）。
+    // ── 需求（追加）：這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
+    // 現場單沒綁會員的話沒辦法查歷史消費紀錄，保守回傳 false（視為不是既有客戶）。
+    public boolean isExistingCustomerPet(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.getMember() == null) return false;
+        return petConsumptionHistoryService.hasPriorPaidService(
+                order.getMember().getId(), order.getPetName(), orderId);
+    }
+
+    // 需求（追加）：這張現場單的寵物種類（供畫面過濾「適用物種」項目用）；
+    // 沒綁會員或查不到對應的寵物資料就回傳 null（無法判斷，畫面上不濾掉任何物種，避免誤擋）。
+    public String getPetTypeForOrder(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.getMember() == null) return null;
+        return petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
+                .map(pet -> pet.getPetType().name())
+                .orElse(null);
+    }
+
+    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     @Transactional
-    public WalkInOrderResponse removeRetailItem(Long orderId, Long orderItemId, String username) {
+    public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
-            throw new IllegalArgumentException("此單已結帳，無法再移除商品");
+            throw new IllegalArgumentException("此單已結帳，無法再編輯項目，請改用退款重開");
+        }
+
+        GroomingItem gi = groomingItemRepository.findById(groomingItemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到服務項目"));
+
+        // 需求（追加）：僅限既有客戶的項目，沒綁會員的現場單無法查歷史消費紀錄，
+        // 保守起見一律擋下（不確定是不是既有客戶時，不開放使用這類項目）。
+        if (gi.isRequiresExistingCustomer()) {
+            boolean isExisting = order.getMember() != null
+                    && petConsumptionHistoryService.hasPriorPaidService(
+                            order.getMember().getId(), order.getPetName(), orderId);
+            if (!isExisting) {
+                throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，無法加入此項目");
+            }
+        }
+
+        WalkInOrderItem item = WalkInOrderItem.builder()
+                .groomingItemId(gi.getId())
+                .itemName(gi.getName())
+                .price((int) Math.round(gi.getPrice()))
+                .points(gi.getPoints())
+                .performanceCategory(gi.getPerformanceCategory())
+                .discountEligible(gi.isDiscountEligible())
+                .build();
+        order.addItem(item);
+        order.setTotalAmount(order.getTotalAmount() + item.getPrice());
+
+        // 需求（追加）：套餐化——展開副組成
+        for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+            WalkInOrderItem sub = WalkInOrderItem.builder()
+                    .groomingItemId(gi.getId())
+                    .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
+                    .price(0)
+                    .points(component.getPoints())
+                    .performanceCategory(component.getPerformanceCategory())
+                    .discountEligible(false)
+                    .build();
+            order.addItem(sub);
+        }
+        WalkInOrder saved = orderRepository.save(order);
+
+        log.info("現場單 #{} 編輯新增服務項目「{}」", orderId, gi.getName());
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
+    }
+
+    // 移除一筆項目（結帳前都可以移除，不管是零售商品還是美容服務項目；
+    // 結帳後只能整筆退款重開，這裡的「已結帳」防呆維持不變）。
+    @Transactional
+    public WalkInOrderResponse removeItem(Long orderId, Long orderItemId, String username) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已結帳，無法再編輯項目，請改用退款重開");
         }
 
         WalkInOrderItem item = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到項目 #" + orderItemId));
-        if (item.getRetailProductId() == null) {
-            throw new IllegalArgumentException("只能移除零售商品項目");
-        }
         if (!item.getOrder().getId().equals(orderId)) {
             throw new IllegalArgumentException("項目不屬於這張現場單");
+        }
+        if (order.getItems().size() <= 1) {
+            throw new IllegalArgumentException("這是最後一筆項目，無法移除；如果整張單都要取消，請改用退款流程");
         }
 
         order.setTotalAmount(order.getTotalAmount() - item.getPrice());
@@ -475,8 +577,10 @@ public class WalkInOrderService {
     // 需求 8 修正：消費明細要能看出每個項目實際套用的是回洗優惠還是會員折扣，
     // 邏輯比照 AppointmentService.getAppointmentDetail()：只有已結帳的單才反推得出「實際」套用哪一種，
     // 未結帳（尚未決定付款方式）則只標示 rewashEligible，不填 appliedDiscountType。
+    // 需求（追加）：狗狗首次體驗優惠比照同樣模式，跟回洗優惠是互斥品種、不會同一個項目都符合。
     private void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
         boolean paidByWallet = order.isPaid()
                 && order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET;
         double memberDiscountRate = paidByWallet
@@ -490,20 +594,32 @@ public class WalkInOrderService {
             WalkInOrderResponse.ItemLine line = lines.get(i);
             boolean rewashApplicable = rewashEligible
                     && catRewashDiscountService.isCatBathCategory(entity.getPerformanceCategory());
+            boolean firstVisitApplicable = firstVisitEligible
+                    && dogFirstVisitDiscountService.isDogPackageCategory(entity.getPerformanceCategory());
             line.setRewashEligible(rewashApplicable);
+            line.setFirstVisitEligible(firstVisitApplicable);
             if (order.isPaid()) {
-                line.setAppliedDiscountType(catRewashDiscountService.resolvePreferredDiscount(
-                        entity.getPrice(), rewashApplicable,
-                        entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+                if (firstVisitApplicable) {
+                    line.setAppliedDiscountType(dogFirstVisitDiscountService.resolvePreferredDiscount(
+                            entity.getPrice(), true,
+                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+                } else {
+                    line.setAppliedDiscountType(catRewashDiscountService.resolvePreferredDiscount(
+                            entity.getPrice(), rewashApplicable,
+                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
+                }
             }
         }
     }
 
     // ── 需求 6：待補經手人清單（operatorStaff 為 null 的項目）──────────────
+    // 需求（追加）：只列出「有積分可算」的項目——零售商品加購（points 固定 0）
+    // 不會產生績效，補了經手人也沒有計算意義，不需要出現在這份待辦清單裡。
     public List<WalkInOrderResponse.ItemLine> pendingOperatorItems() {
         List<WalkInOrderItem> pending = orderItemRepository.findByOperatorStaffIsNull();
         List<WalkInOrderResponse.ItemLine> result = new ArrayList<>();
         for (WalkInOrderItem oi : pending) {
+            if (oi.getPoints() <= 0) continue;
             WalkInOrderResponse.ItemLine line = new WalkInOrderResponse.ItemLine();
             line.setItemId(oi.getId());
             line.setGroomingItemId(oi.getGroomingItemId());
@@ -578,10 +694,19 @@ public class WalkInOrderService {
     // ── 需求 5：現場單儲值金結帳金額計算，逐項目判斷是否可享折扣 ─────────
     // 用開單當下存的 discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
     // 需求 8 修正：貓咪回洗優惠（若有會員）與會員儲值折扣只能擇一，取較優惠者。
+    // 需求（追加）：狗狗首次體驗優惠同樣邏輯，兩者依品種分類互斥不會同時套用在同一項目。
     private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order);
         double total = 0;
         for (WalkInOrderItem item : order.getItems()) {
+            boolean firstVisitApplicable = firstVisitEligible
+                    && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
+            if (firstVisitApplicable) {
+                total += dogFirstVisitDiscountService.resolvePreferredDiscount(
+                        item.getPrice(), true, item.isDiscountEligible(), discount).price();
+                continue;
+            }
             boolean rewashApplicable = rewashEligible
                     && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
             total += catRewashDiscountService.resolvePreferredDiscount(
@@ -592,15 +717,19 @@ public class WalkInOrderService {
 
     // ── 需求 8 修正：非儲值金付款的現場單結帳金額計算，套用貓咪回洗優惠 ──
     // 邏輯比照 PaymentService.calculateAmountWithRewashDiscount：沒有會員等級折扣，
-    // 只套用回洗優惠（不符合資格的話金額等同原本的 order.getTotalAmount()）。
+    // 只套用回洗優惠／狗狗首次體驗優惠（不符合資格的話金額等同原本的 order.getTotalAmount()）。
     private int calculateAmountWithRewashDiscount(WalkInOrder order) {
-        if (!catRewashDiscountService.isRewashEligible(order)) {
+        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
+        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order);
+        if (!rewashEligible && !firstVisitEligible) {
             return order.getTotalAmount();
         }
         double total = 0;
         for (WalkInOrderItem item : order.getItems()) {
             double price = item.getPrice();
-            if (catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+            if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
+                price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+            } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
                 price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
             }
             total += price;

@@ -333,8 +333,11 @@ public class PerformanceMvcController {
             }
             totalsPointsRow.createCell(categories.size() + 1).setCellValue(matrix.getGrandTotal());
 
-            for (int i = 0; i <= categories.size() + 1; i++) {
-                sheet.autoSizeColumn(i);
+            // 需求（追加）：autoSizeColumn() 在 Railway 容器上會因缺少字型函式庫（libfreetype）
+            // 直接噴 UnsatisfiedLinkError 導致匯出失敗，改成固定欄寬。
+            sheet.setColumnWidth(0, 14 * 256); // 第一欄是人名/類別標籤，留寬一點
+            for (int i = 1; i <= categories.size() + 1; i++) {
+                sheet.setColumnWidth(i, 12 * 256);
             }
 
             String filename = year + "年" + month + "月積分項目統計.xlsx";

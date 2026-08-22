@@ -16,7 +16,15 @@
           "
         >
           <h2 style="margin: 0">🏆 員工績效月報</h2>
-          <a href="/admin/performance" class="btn">← 回日報</a>
+          <div style="display: flex; gap: 8px">
+            <a
+              href="/admin/performance/staff-breakdown"
+              class="btn btn-outline"
+              th:if="${user != null and user.admin}"
+              >📊 積分項目統計</a
+            >
+            <a href="/admin/performance" class="btn">← 回日報</a>
+          </div>
         </div>
 
         <div
@@ -88,9 +96,22 @@
             margin-bottom: 1.5rem;
           "
         >
-          <h3 style="font-size: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <h3
+            style="
+              font-size: 15px;
+              margin-bottom: 12px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            "
+          >
             <span>💰 積分獎勵金對照表（不含接待）</span>
-            <a href="/admin/performance/bonus-tiers" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 400;">⚙️ 編輯級距</a>
+            <a
+              href="/admin/performance/bonus-tiers"
+              class="btn btn-outline"
+              style="padding: 4px 10px; font-size: 12px; font-weight: 400"
+              >⚙️ 編輯級距</a
+            >
           </h3>
           <div style="display: flex; gap: 8px; flex-wrap: wrap">
             <div
@@ -104,7 +125,9 @@
               "
             >
               <span th:text="${t.minPoints} + '–' + ${t.maxPoints}"></span> →
-              <strong th:text="'$' + ${#numbers.formatInteger(t.bonusAmount, 0, 'COMMA')}"></strong>
+              <strong
+                th:text="'$' + ${#numbers.formatInteger(t.bonusAmount, 0, 'COMMA')}"
+              ></strong>
             </div>
           </div>
         </div>
@@ -123,7 +146,14 @@
             📊
             <span th:text="${ym.year + '年' + ym.monthValue + '月'}">月份</span>
             績效排行
-            <span style="font-size: 12px; font-weight: 400; color: var(--brown-light)">（依每日累加積分即時更新，未結算也會顯示）</span>
+            <span
+              style="
+                font-size: 12px;
+                font-weight: 400;
+                color: var(--brown-light);
+              "
+              >（依每日累加積分即時更新，未結算也會顯示）</span
+            >
           </h3>
           <table>
             <thead>
@@ -254,7 +284,11 @@
             method="post"
             action="/admin/performance/cancel-settle"
             style="margin-top: 10px"
-            onsubmit="return confirm('確定要取消本月結算嗎？取消後可以重新執行結算復原，不會影響原始積分紀錄。');"
+            onsubmit="
+              return confirm(
+                '確定要取消本月結算嗎？取消後可以重新執行結算復原，不會影響原始積分紀錄。',
+              );
+            "
           >
             <input type="hidden" name="year" th:value="${ym.year}" />
             <input type="hidden" name="month" th:value="${ym.monthValue}" />

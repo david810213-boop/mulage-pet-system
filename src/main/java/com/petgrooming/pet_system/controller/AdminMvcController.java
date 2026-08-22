@@ -214,11 +214,13 @@ public class AdminMvcController {
                     {"當日儲值金扣款", String.valueOf(report.getTodayRevenueWallet())},
                     {"當日非儲值金付款", String.valueOf(report.getTodayRevenueNonWallet())},
                     {"當日結帳筆數", String.valueOf(report.getTodayOrderCount())},
+                    {"當日零售商品營收（已含在總業績內）", String.valueOf(report.getTodayRetailRevenue())},
                     {"當日儲值金額（預收款，非業績）", String.valueOf(report.getTodayTopupCollected())},
                     {"當月總業績", String.valueOf(report.getMonthRevenueTotal())},
                     {"當月儲值金扣款", String.valueOf(report.getMonthRevenueWallet())},
                     {"當月非儲值金付款", String.valueOf(report.getMonthRevenueNonWallet())},
                     {"當月結帳筆數", String.valueOf(report.getMonthOrderCount())},
+                    {"當月零售商品營收（已含在總業績內）", String.valueOf(report.getMonthRetailRevenue())},
                     {"當月儲值金額（預收款，非業績）", String.valueOf(report.getMonthTopupCollected())},
                     {"零售商品成本（估算）", String.valueOf(report.getMonthRetailCostEstimate())},
                     {"店用洗劑成本", String.valueOf(report.getMonthSupplyCost())},
@@ -233,8 +235,11 @@ public class AdminMvcController {
                     if (r == 0) cell.setCellStyle(headerStyle);
                 }
             }
-            summarySheet.autoSizeColumn(0);
-            summarySheet.autoSizeColumn(1);
+            // 需求（追加）：autoSizeColumn() 底層要呼叫 Java AWT 字型系統量測文字寬度，
+            // Railway 的容器沒有安裝 libfreetype 等字型函式庫，一呼叫就會直接噴
+            // UnsatisfiedLinkError 導致整個匯出失敗。改成固定欄寬，不依賴字型系統。
+            summarySheet.setColumnWidth(0, 32 * 256);
+            summarySheet.setColumnWidth(1, 14 * 256);
 
             // ── 工作表 2：交易明細 ──────────────────────────────────────
             var detailSheet = workbook.createSheet("交易明細");
@@ -256,8 +261,9 @@ public class AdminMvcController {
                         ? d.getPaymentTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
                 row.createCell(5).setCellValue(d.getHandledBy() != null ? d.getHandledBy() : "");
             }
+            int[] detailColWidths = {10, 12, 12, 10, 20, 16};
             for (int i = 0; i < detailHeaders.length; i++) {
-                detailSheet.autoSizeColumn(i);
+                detailSheet.setColumnWidth(i, detailColWidths[i] * 256);
             }
 
             String filename = "財務報表_" + java.time.LocalDate.now() + ".xlsx";

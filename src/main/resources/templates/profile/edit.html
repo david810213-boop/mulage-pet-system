@@ -37,7 +37,7 @@
             <a href="/my-profile" style="color: var(--cream-600);">重新搜尋其他會員</a>
           </p>
           <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
-            通訊地址、緊急聯絡人姓名/電話/關係是依犬貓美容服務定型化契約規定要蒐集的資料，請務必填寫。
+            通訊地址、緊急聯絡人姓名/電話/關係是依犬貓美容服務定型化契約規定要蒐集的資料，請務必填寫；姓名、電話為會員基本資料，也請確認填寫完整。
           </p>
 
           <form method="post" action="/my-profile">
@@ -47,13 +47,13 @@
               <h3 style="font-size: 15px; margin-bottom: 14px;">◆ 基本資料</h3>
 
               <div class="field">
-                <label>姓名</label>
-                <input type="text" name="name" th:value="${profile.name}" />
+                <label>姓名 <span style="color: #e53935;">*</span></label>
+                <input type="text" name="name" th:value="${profile.name}" required />
               </div>
 
               <div class="field">
-                <label>電話</label>
-                <input type="tel" name="phone" th:value="${profile.phone}" placeholder="例如：0912345678" />
+                <label>電話 <span style="color: #e53935;">*</span></label>
+                <input type="tel" name="phone" th:value="${profile.phone}" placeholder="例如：0912345678" required />
               </div>
 
               <div class="field">

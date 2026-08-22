@@ -68,4 +68,18 @@ public class GroomingItem {
     @Column(name = "discount_eligible", nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
     private boolean discountEligible = true;
+
+    // 需求（追加）：僅限既有客戶——例如「貓咪基礎保養」這種低銷項目，店家規定
+    // 不適用初次來店的寵物，這隻寵物完全沒有任何已結帳消費紀錄的話，這個項目
+    // 不能被選（預約/開單畫面上直接濾掉，後端送出時也會再擋一次）。
+    // 跟 discountEligible 一樣是新增到既有資料表的 NOT NULL 欄位，給資料庫層級預設值。
+    @Column(name = "requires_existing_customer", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean requiresExistingCustomer = false;
+
+    // 需求（追加）：適用物種——貓咪預約只顯示貓的項目，狗狗預約只顯示狗的項目。
+    // null = 兩種都適用（例如清潔費這類共用加購項目），允許 null 不用給資料庫層級預設值。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "applicable_pet_type")
+    private com.petgrooming.pet_system.enums.PetType applicablePetType;
 }

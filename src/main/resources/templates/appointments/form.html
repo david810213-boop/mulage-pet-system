@@ -111,7 +111,7 @@
                   th:each="pet : ${myPets}"
                   th:value="${pet.id}"
                   th:text="${pet.name + '（' + pet.sizeCategoryLabel + '・' + pet.coatTypeLabel + '）'}"
-                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')}"
+                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')},data-existing=${pet.isExistingCustomer},data-pettype=${pet.petType}"
                 ></option>
               </select>
               <p
@@ -215,6 +215,7 @@
                   th:each="item : ${groomingItems}"
                   th:if="${item.performanceCategory != 'OTHER'}"
                   th:class="${item.performanceCategory == 'SPECIAL'} ? 'special-trigger-label' : ''"
+                  th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType}"
                   style="
                     display: flex;
                     align-items: center;
@@ -274,6 +275,7 @@
                   <label
                     th:each="item : ${groomingItems}"
                     th:if="${item.performanceCategory == 'OTHER'}"
+                    th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType}"
                     style="
                       display: flex;
                       align-items: center;
@@ -454,11 +456,7 @@
                 <label
                   style="font-size: 13px; margin-bottom: 4px; display: block"
                 >
-                  請在下方簽名板親筆簽上「<span
-                    th:text="${user.name}"
-                    style="font-weight: 600; color: var(--brown-dark)"
-                  ></span
-                  >」正楷簽名 *
+                  請在下方簽名板親筆簽上本人正楷簽名 *
                 </label>
                 <div
                   style="
@@ -761,6 +759,23 @@
         const select = document.getElementById("petSelect");
         const selected = select.options[select.selectedIndex];
         const recommend = selected.dataset.recommend || "";
+        const isExisting = selected.dataset.existing === "true"; // 需求（追加）
+        const petType = (selected.dataset.pettype || "").toUpperCase(); // 需求（追加）
+
+        // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
+        document.querySelectorAll("label[data-requires-existing]").forEach((label) => {
+          const requiresExisting = label.dataset.requiresExisting === "true";
+          const applicable = label.dataset.applicablePetType || "";
+          const cb = label.querySelector('input[name="selectedItems"]');
+          const blockedByExisting = requiresExisting && !isExisting;
+          const blockedBySpecies = applicable && petType && applicable.toUpperCase() !== petType;
+          if (blockedByExisting || blockedBySpecies) {
+            label.style.display = "none";
+            if (cb) cb.checked = false;
+          } else {
+            label.style.display = "flex";
+          }
+        });
 
         // 先全部取消勾選
         document

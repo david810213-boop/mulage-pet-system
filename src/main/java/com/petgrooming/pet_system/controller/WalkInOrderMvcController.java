@@ -35,8 +35,10 @@ public class WalkInOrderMvcController {
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.WalletService walletService; // 需求 15
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 15
+    private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
     private final com.petgrooming.pet_system.service.PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求 7-1
+    private final com.petgrooming.pet_system.service.PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -70,8 +72,10 @@ public class WalkInOrderMvcController {
                 .map(s -> java.util.Map.of("id", s.getId(), "name", s.getName()))
                 .toList());
         model.addAttribute("orders", walkInOrderService.listAll());
-        model.addAttribute("pendingOperatorItems", walkInOrderService.pendingOperatorItems());
-        model.addAttribute("appointmentPendingItems", appointmentService.pendingItemOperators());
+        // 需求（追加）：待補經手人改成矩陣式表單，取代原本一列一項目的清單
+        model.addAttribute("walkInMatrixRows", pendingOperatorMatrixService.buildWalkInMatrix());
+        model.addAttribute("appointmentMatrixRows", pendingOperatorMatrixService.buildAppointmentMatrix());
+        model.addAttribute("matrixColumns", com.petgrooming.pet_system.service.PendingOperatorMatrixService.COLUMNS);
         model.addAttribute("pointsReport", walkInOrderService.operatorPointsReport());
         return "admin/walk-in-orders";
     }
@@ -197,6 +201,13 @@ public class WalkInOrderMvcController {
             var order = walkInOrderService.getById(id);
             model.addAttribute("order", order);
             model.addAttribute("retailProducts", retailProductService.listActive()); // 需求 7-1：加購商品清單
+            // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+            boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
+            String petType = walkInOrderService.getPetTypeForOrder(id);
+            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                    .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                    .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                    .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
             model.addAttribute("bankAccountInfo",
                     paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)); // 需求 15 修正
 
@@ -215,8 +226,11 @@ public class WalkInOrderMvcController {
                 model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
 
                 double walletPreview = order.getItems().stream()
-                        .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
-                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                        .mapToDouble(it -> it.isFirstVisitEligible()
+                                ? dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                        it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price()
+                                : catRewashDiscountService.resolvePreferredDiscount(
+                                        it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
                         .sum();
                 model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
             }
@@ -228,11 +242,13 @@ public class WalkInOrderMvcController {
 
     // ── POST /admin/walk-in-orders/{id}/add-retail-item ─────────────────
     // 需求 7-1：結帳頁直接加購零售商品
+    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-retail-item")
     public String addRetailItem(@PathVariable Long id, HttpServletRequest request,
                                 @RequestParam Long retailProductId,
                                 @RequestParam(defaultValue = "1") int quantity,
+                                @RequestParam(defaultValue = "checkout") String from,
                                 RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
@@ -241,23 +257,44 @@ public class WalkInOrderMvcController {
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "加購失敗：" + e.getMessage());
         }
-        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
     }
 
-    // ── POST /admin/walk-in-orders/{id}/remove-retail-item ──────────────
+    // ── POST /admin/walk-in-orders/{id}/add-grooming-item ────────────────
+    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PostMapping("/{id}/remove-retail-item")
-    public String removeRetailItem(@PathVariable Long id, HttpServletRequest request,
-                                   @RequestParam Long itemId,
-                                   RedirectAttributes ra) {
+    @PostMapping("/{id}/add-grooming-item")
+    public String addGroomingItem(@PathVariable Long id, HttpServletRequest request,
+                                  @RequestParam Long groomingItemId,
+                                  @RequestParam(defaultValue = "checkout") String from,
+                                  RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.removeRetailItem(id, itemId, user.getUsername());
-            ra.addFlashAttribute("successMsg", "已移除商品");
+            walkInOrderService.addGroomingItem(id, groomingItemId, user.getUsername());
+            ra.addFlashAttribute("successMsg", "已新增項目");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/remove-item ──────────────────────
+    // 需求（追加）：從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
+    // 路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/remove-item")
+    public String removeItem(@PathVariable Long id, HttpServletRequest request,
+                             @RequestParam Long itemId,
+                             @RequestParam(defaultValue = "checkout") String from,
+                             RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.removeItem(id, itemId, user.getUsername());
+            ra.addFlashAttribute("successMsg", "已移除項目");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "移除失敗：" + e.getMessage());
         }
-        return "redirect:/admin/walk-in-orders/" + id + "/checkout";
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
     }
 
     // ── POST /admin/walk-in-orders/{id}/checkout ────────────────────────────
@@ -302,6 +339,14 @@ public class WalkInOrderMvcController {
     @GetMapping("/{id}/final-check")
     public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
+        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
+        String petType = walkInOrderService.getPetTypeForOrder(id);
+        model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .toList()); // 需求（追加）：核對頁也能直接編輯訂單項目
+        model.addAttribute("retailProducts", retailProductService.listActive());
         try {
             model.addAttribute("order", walkInOrderService.getById(id));
         } catch (IllegalArgumentException e) {

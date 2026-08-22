@@ -33,6 +33,10 @@ public class PetResponse {
     // 系統根據體型自動推薦的服務 itemCode（預約時直接帶入）
     private List<String> recommendedItemCodes;
 
+    // 需求（追加）：這隻寵物是不是既有客戶（有沒有任何一筆已結帳消費紀錄），
+    // 供預約表單 JS 判斷「僅限既有客戶」的項目要不要顯示在選單裡。
+    private Boolean isExistingCustomer;
+
     public static PetResponse from(Pet pet) {
         PetResponse res = new PetResponse();
         res.setId(pet.getId());

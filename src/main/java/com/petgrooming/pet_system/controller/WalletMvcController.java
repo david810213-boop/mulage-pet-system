@@ -46,12 +46,27 @@ public class WalletMvcController {
                                 @RequestParam(required = false) String keyword) {
         model.addAttribute("user", getLoginUser(request));
 
-        var customers = userService.getAllCustomers(); // 下面 UserService 補這個方法
+        var allCustomers = userService.getAllCustomers(); // 下面 UserService 補這個方法
+
+        // 需求（追加）：搜尋範圍擴大到寵物名稱、手機號碼，先把每位顧客的寵物名單準備好
+        // （寵物名稱要拿來比對關鍵字，也要顯示在列表上，一次查好兩用）
+        var petsByUsername = new java.util.HashMap<String, java.util.List<String>>();
+        for (var c : allCustomers) {
+            petsByUsername.put(c.getUsername(),
+                    petService.getMyPets(c.getUsername()).stream()
+                            .map(com.petgrooming.pet_system.dto.PetResponse::getName)
+                            .toList());
+        }
+
+        var customers = allCustomers;
         if (keyword != null && !keyword.isBlank()) {
             String kw = keyword.toLowerCase();
-            customers = customers.stream()
+            customers = allCustomers.stream()
                     .filter(u -> u.getName().toLowerCase().contains(kw)
-                            || u.getUsername().toLowerCase().contains(kw))
+                            || u.getUsername().toLowerCase().contains(kw)
+                            || (u.getPhone() != null && u.getPhone().toLowerCase().contains(kw))
+                            || petsByUsername.get(u.getUsername()).stream()
+                                    .anyMatch(petName -> petName != null && petName.toLowerCase().contains(kw)))
                     .toList();
         }
         // 帶入每位顧客的錢包資料，讓列表可直接標示低餘額（< $2,000）會員
@@ -63,6 +78,7 @@ public class WalletMvcController {
         model.addAttribute("customers", customers);
         model.addAttribute("keyword", keyword);
         model.addAttribute("walletsByUsername", walletsByUsername);
+        model.addAttribute("petsByUsername", petsByUsername);
         // 統整需求：儲值管理頁一併帶出待審核的線上轉帳儲值申請
         model.addAttribute("pendingTopups", topUpService.pending());
         return "admin/wallets";
@@ -194,6 +210,13 @@ public class WalletMvcController {
         User user = getLoginUser(request);
         try {
             var result = walletService.deposit(username, req);
+            try {
+                User targetCustomer = userService.getUserEntityByUsername(username);
+                topUpService.recordManualTopup(targetCustomer, req.getAmount(),
+                        user != null ? user.getName() : "系統管理員", req.getNote());
+            } catch (Exception ignored) {
+                // 補登儲值申請紀錄失敗不影響已完成的儲值本身，僅財務報表統計可能漏這一筆
+            }
             operationLogService.log(user, "WALLET", "DEPOSIT", "會員 " + username,
                     "+$" + req.getAmount() + "（目前餘額 $" + result.getBalance() + "）");
             ra.addFlashAttribute("successMsg",

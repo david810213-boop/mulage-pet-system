@@ -15,6 +15,7 @@ import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/payments")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentMvcController {
 
     private final PaymentService paymentService;
@@ -33,6 +35,9 @@ public class PaymentMvcController {
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
+    private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
+    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
+    private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
 
     /**
      * JWT 版獲取當前登入使用者
@@ -65,7 +70,7 @@ public class PaymentMvcController {
                     .sourceType("APPOINTMENT")
                     .recordId(t.getAppointmentId())
                     .code(t.getAppointmentCode())
-                    .petName(null)
+                    .petName(t.getPetName())
                     .time(t.getPaymentTime())
                     .handledBy(t.getHandledBy())
                     .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
@@ -131,6 +136,14 @@ public class PaymentMvcController {
         model.addAttribute("checkoutRequest", new CheckoutRequest());
         model.addAttribute("bankAccountInfo",
                 paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
+        model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
+        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
+        String petType = appointmentService.getPetTypeForAppointment(appointmentId);
+        model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -152,13 +165,84 @@ public class PaymentMvcController {
             // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
             // 不再是舊版的「符合會員折扣就直接乘」。
             double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
-                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
+                    .mapToDouble(it -> it.isFirstVisitEligible()
+                            ? dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), true, it.isDiscountEligible(), discount).price()
+                            : catRewashDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
                     .sum();
             model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
         }
 
         return "payments/checkout";
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/add-retail-item ────────────
+    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
+    @PostMapping("/checkout/{appointmentId}/add-retail-item")
+    public String addRetailItem(@PathVariable Long appointmentId,
+                                @RequestParam Long retailProductId,
+                                @RequestParam(defaultValue = "1") int quantity,
+                                @RequestParam(defaultValue = "checkout") String from,
+                                HttpServletRequest request,
+                                RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return redirectAfterEdit(appointmentId, from);
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
+    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    @PostMapping("/checkout/{appointmentId}/add-grooming-item")
+    public String addGroomingItem(@PathVariable Long appointmentId,
+                                  @RequestParam Long groomingItemId,
+                                  @RequestParam(defaultValue = "checkout") String from,
+                                  HttpServletRequest request,
+                                  RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.addGroomingItem(appointmentId, groomingItemId, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return redirectAfterEdit(appointmentId, from);
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/remove-item ────────────────
+    // 需求（追加）：從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
+    // 供編輯訂單使用；路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
+    @PostMapping("/checkout/{appointmentId}/remove-item")
+    public String removeItem(@PathVariable Long appointmentId,
+                             @RequestParam Long itemId,
+                             @RequestParam(defaultValue = "checkout") String from,
+                             HttpServletRequest request,
+                             RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.removeItem(appointmentId, itemId, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return redirectAfterEdit(appointmentId, from);
+    }
+
+    // 需求（追加）：編輯訂單的三個端點共用的導回邏輯——from=final-check 導回核對頁，
+    // 其餘（預設 checkout）導回結帳頁，避免同一段字串重複寫三次。
+    private String redirectAfterEdit(Long appointmentId, String from) {
+        if ("final-check".equals(from)) {
+            return "redirect:/appointments/" + appointmentId + "/final-check";
+        }
+        return "redirect:/payments/checkout/" + appointmentId;
     }
 
     // 處理結帳表單提交
@@ -173,36 +257,71 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            paymentService.checkout(appointmentId, req, user.getUsername());
+            var result = paymentService.checkout(appointmentId, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
-            redirectAttributes.addFlashAttribute("successMsg", "結帳成功！");
-            return "redirect:/payments";
+            // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
+            // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
+            // 導回預約列表，等店家之後在儲值管理/匯款頁確認收款才算真的完成。
+            if (result.isPaid()) {
+                redirectAttributes.addFlashAttribute("successMsg", "結帳成功！");
+                return "redirect:/payments";
+            } else {
+                redirectAttributes.addFlashAttribute("successMsg", "已送出，進入待對帳狀態，確認收到匯款後記得回來點「確認收款」");
+                return "redirect:/appointments";
+            }
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
             model.addAttribute("appointmentId", appointmentId);
             model.addAttribute("paymentMethods", PaymentMethod.values());
+            model.addAttribute("retailProducts", retailProductService.listActive());
+            boolean isExistingErr = appointmentService.isExistingCustomerPet(appointmentId);
+            String petTypeErr = appointmentService.getPetTypeForAppointment(appointmentId);
+            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+                    .filter(i -> isExistingErr || !i.isRequiresExistingCustomer())
+                    .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petTypeErr))
+                    .toList());
             model.addAttribute("errorMsg", e.getMessage());
 
-            Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
-            if (appointment != null && appointment.getUser() != null) {
-                var wallet = walletService.getWallet(appointment.getUser().getUsername());
-                model.addAttribute("walletBalance", wallet.getBalance());
-                model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-                model.addAttribute("walletDiscount", wallet.getDiscount());
-                model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-                model.addAttribute("baseAmount", appointment.getTotalAmount());
-                // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
-                var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
-                model.addAttribute("detailItems", detail.getItems());
-                double walletPreview = detail.getItems().stream()
-                        .mapToDouble(it -> catRewashDiscountService.resolvePreferredDiscount(
-                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
-                        .sum();
-                model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+            // 需求（追加）：組錯誤頁預覽資料本身如果又出錯（例如這筆預約資料本身有異常），
+            // 不能讓第二個例外蓋掉使用者原本該看到的錯誤訊息，變成一片空白的 500 錯誤頁。
+            // 這裡包一層 try/catch，最差情況就是錯誤頁少了金額預覽，但至少使用者看得到
+            // 「為什麼結帳失敗」這句話，店家也才能照著訊息判斷下一步。
+            try {
+                Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+                if (appointment != null && appointment.getUser() != null) {
+                    var wallet = walletService.getWallet(appointment.getUser().getUsername());
+                    model.addAttribute("walletBalance", wallet.getBalance());
+                    model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
+                    model.addAttribute("walletDiscount", wallet.getDiscount());
+                    model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
+                    model.addAttribute("baseAmount", appointment.getTotalAmount());
+                    // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
+                    var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
+                    model.addAttribute("detailItems", detail.getItems());
+                    double walletPreview = detail.getItems().stream()
+                            .mapToDouble(it -> it.isFirstVisitEligible()
+                                    ? dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price()
+                                    : catRewashDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                            .sum();
+                    model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+                }
+            } catch (Exception previewError) {
+                log.warn("結帳錯誤頁組金額預覽時另外出錯，預約 #{}，僅顯示原始錯誤訊息：{}",
+                        appointmentId, previewError.getMessage(), previewError);
             }
 
             return "payments/checkout";
+        } catch (Exception e) {
+            // 保底：checkout() 本身如果拋出非預期的例外（不是業務規則的 IllegalArgumentException），
+            // 原本會直接變成一片空白的 Whitelabel 500 錯誤頁，使用者跟店家都看不出發生什麼事。
+            // 這裡攔下來，把完整堆疊記到 log（Railway Logs 搜尋「結帳發生未預期錯誤」就找得到），
+            // 畫面則導回結帳頁顯示友善訊息，至少能重試或回報。
+            log.error("結帳發生未預期錯誤，預約 #{}，操作人：{}", appointmentId, user.getUsername(), e);
+            redirectAttributes.addFlashAttribute("errorMsg", "結帳發生未預期的錯誤，請重新整理後再試一次；如持續發生請聯繫系統管理員");
+            return "redirect:/payments/checkout/" + appointmentId;
         }
     }
 
@@ -316,13 +435,37 @@ public class PaymentMvcController {
         return "redirect:/payments/company-signature";
     }
 
-    // ── GET /api/company-signature ────────────────────────────────────────
+    // ── GET /payments/api/company-signature ─────────────────────────────
     // 需求 22：公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
     // 不需要登入即可讀取——簽名檔本身不是敏感資訊，是要公開展示給顧客看的。
+    // 注意：這個 controller class 層級是 @RequestMapping("/payments")，所以完整路徑
+    // 是 /payments/api/company-signature，不是看起來很直覺的 /api/company-signature
+    // （之前 booking.html 就是因為呼叫錯路徑，一直 404，簽名檔顯示不出來）。
     @GetMapping("/api/company-signature")
     @ResponseBody
     public java.util.Map<String, String> getCompanySignatureApi() {
         String image = paymentService.getCompanySignatureImage();
         return java.util.Collections.singletonMap("signatureImage", image);
+    }
+
+    // ── GET /payments/pricing-settings ──────────────────────────────────
+    // 需求（追加）：貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
+    @RequireRole(UserRole.ADMIN)
+    @GetMapping("/pricing-settings")
+    public String pricingSettingsForm(HttpServletRequest request, Model model) {
+        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("settings", paymentService.getPricingSettings());
+        return "payments/pricing-settings";
+    }
+
+    @RequireRole(UserRole.ADMIN)
+    @PostMapping("/pricing-settings")
+    public String updatePricingSettings(@ModelAttribute com.petgrooming.pet_system.model.PricingSettings settings,
+                                        HttpServletRequest request, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        paymentService.updatePricingSettings(settings);
+        operationLogService.log(user, "APPOINTMENT", "UPDATE_PRICING_SETTINGS", "體重定價門檻設定", null);
+        ra.addFlashAttribute("successMsg", "已更新體重定價門檻");
+        return "redirect:/payments/pricing-settings";
     }
 }

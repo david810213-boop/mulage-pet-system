@@ -910,6 +910,77 @@ img.grayscale {
   text-transform: uppercase;
 }
 
+/* ── Nav category (hover flyout) ─────────────────────────────────────── */
+.nav-cat {
+  display: flex;
+  flex-direction: column;
+}
+.nav-cat-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #d7d3d3;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.nav-cat-label::after {
+  content: "\203A";
+  font-size: 13px;
+  opacity: 0.5;
+  transition: transform 0.15s ease;
+}
+.nav-cat:hover .nav-cat-label,
+.nav-cat.is-open .nav-cat-label {
+  background: var(--ink-soft);
+  color: var(--ground);
+}
+.nav-cat.has-active .nav-cat-label {
+  color: var(--accent);
+  font-weight: 800;
+}
+.nav-cat:hover .nav-cat-label::after,
+.nav-cat.is-open .nav-cat-label::after {
+  transform: rotate(90deg);
+}
+.nav-cat-flyout {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.18s ease;
+}
+.nav-cat:hover .nav-cat-flyout,
+.nav-cat.is-open .nav-cat-flyout {
+  grid-template-rows: 1fr;
+}
+.nav-cat-flyout-inner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 10px;
+}
+.nav-cat-flyout .nav-link {
+  font-size: 12.5px;
+  padding: 9px 14px 9px 20px;
+  color: #c2bdbd;
+  position: relative;
+}
+.nav-cat-flyout .nav-link::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  transform: translateY(-50%);
+}
+
 .nav-foot {
   border-top: 1px solid var(--ink-soft);
   padding: 14px 18px 0;
@@ -976,7 +1047,23 @@ img.grayscale {
 }
 
 /* ── 行動裝置 ──────────────────────────────────────────────────────────── */
-@media (max-width: 820px) {
+/* ── 平板（iPad 等）：側欄固定顯示不攤平，維持垂直排列，
+   只是把子分類展開方式從「滑鼠 hover」交給下面 JS 的點擊手風琴接手，
+   這裡只加大觸控熱區，不改變版面結構 ── */
+@media (min-width: 641px) and (max-width: 1194px) {
+  .nav-link {
+    padding: 13px 14px;
+  }
+  .nav-cat-label {
+    padding: 13px 14px;
+  }
+  .nav-cat-flyout .nav-link {
+    padding: 11px 14px 11px 22px;
+  }
+}
+
+/* ── 手機：螢幕窄到放不下垂直側欄，攤平成上方橫向捲動列 ── */
+@media (max-width: 640px) {
   .page-wrapper {
     flex-direction: column;
   }
@@ -1005,6 +1092,31 @@ img.grayscale {
   }
   .nav-group,
   .nav-foot {
+    display: none;
+  }
+  .nav-cat {
+    flex-direction: row;
+    align-items: center;
+  }
+  .nav-cat-label {
+    display: none;
+  }
+  .nav-cat-label::after {
+    display: none;
+  }
+  .nav-cat-flyout {
+    grid-template-rows: 1fr;
+  }
+  .nav-cat-flyout-inner {
+    flex-direction: row;
+    padding-left: 0;
+    overflow: visible;
+  }
+  .nav-cat-flyout .nav-link {
+    padding: 11px 14px;
+    white-space: nowrap;
+  }
+  .nav-cat-flyout .nav-link::before {
     display: none;
   }
   .content,

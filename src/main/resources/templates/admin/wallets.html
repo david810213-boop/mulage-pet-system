@@ -101,7 +101,7 @@
             type="text"
             name="keyword"
             th:value="${keyword}"
-            placeholder="搜尋顧客姓名或帳號..."
+            placeholder="搜尋顧客姓名、帳號、寵物名稱或手機號碼..."
             style="
               flex: 1;
               padding: 8px 12px;
@@ -118,6 +118,8 @@
             <tr>
               <th>顧客姓名</th>
               <th>帳號</th>
+              <th>寵物</th>
+              <th>手機號碼</th>
               <th>登入方式</th>
               <th>儲值金餘額</th>
               <th>操作</th>
@@ -125,11 +127,13 @@
           </thead>
           <tbody>
             <tr th:if="${#lists.isEmpty(customers)}">
-              <td colspan="5" class="empty">尚無顧客資料</td>
+              <td colspan="7" class="empty">尚無顧客資料</td>
             </tr>
             <tr th:each="c : ${customers}">
               <td th:text="${c.name}">姓名</td>
               <td th:text="${c.username}">帳號</td>
+              <td th:text="${#lists.isEmpty(petsByUsername.get(c.username)) ? '—' : #strings.listJoin(petsByUsername.get(c.username), '、')}"></td>
+              <td th:text="${c.phone} ?: '—'"></td>
               <td>
                 <span th:if="${c.lineUserId != null}" class="badge" style="background: #06c755; color: #fff;">LINE</span>
                 <span th:if="${c.lineUserId == null}" class="badge" style="background: var(--brown-light); color: #fff;">帳密</span>

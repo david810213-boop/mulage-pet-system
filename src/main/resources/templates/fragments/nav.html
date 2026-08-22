@@ -10,26 +10,75 @@
       </a>
 
       <div class="nav-list">
-        <a href="/appointments" class="nav-link">預約管理</a>
-        <a href="/appointments/slots-manage" class="nav-link" th:if="${user != null and user.staffOrAdmin}">時段管理</a>
+        <!-- 預約管理：非員工/管理員只有一項，直接顯示單一連結；員工/管理員收進分類 -->
+        <a href="/appointments" class="nav-link" th:if="${user == null or !user.staffOrAdmin}">預約管理</a>
+        <div class="nav-cat" th:if="${user != null and user.staffOrAdmin}">
+          <div class="nav-cat-label">預約管理</div>
+          <div class="nav-cat-flyout">
+            <div class="nav-cat-flyout-inner">
+              <a href="/appointments" class="nav-link">預約列表</a>
+              <a href="/appointments/slots-manage" class="nav-link">時段管理</a>
+            </div>
+          </div>
+        </div>
+
         <a href="/pets" class="nav-link" th:if="${user != null and user.customer}">我的寵物</a>
-        <a href="/my-profile" class="nav-link" th:if="${user != null}">編輯個人信息</a>
+        <a href="/my-profile" class="nav-link" th:if="${user != null and !user.staffOrAdmin}">編輯個人信息</a>
         <a href="/payments" class="nav-link">交易紀錄</a>
 
-        <div class="nav-group" th:if="${user != null and user.staffOrAdmin}">店務管理</div>
-        <a href="/admin/wallets" class="nav-link" th:if="${user != null and user.staffOrAdmin}">儲值管理</a>
-        <a href="/admin/walk-in-orders" class="nav-link" th:if="${user != null and user.staffOrAdmin}">現場開單</a>
-        <a href="/admin/retail-products" class="nav-link" th:if="${user != null and user.staffOrAdmin}">零售商品</a>
-        <a href="/admin/store-supplies" class="nav-link" th:if="${user != null and user.staffOrAdmin}">店用洗劑</a>
-        <a href="/admin/performance" class="nav-link" th:if="${user != null and user.staffOrAdmin}">績效管理</a>
-        <a href="/admin/performance/my" class="nav-link" th:if="${user != null and user.staffOrAdmin}">我的績效</a>
-        <a href="/admin/performance/staff-breakdown" class="nav-link" th:if="${user != null and user.admin}">積分項目統計</a>
-        <a href="/admin/customers" class="nav-link" th:if="${user != null and user.staffOrAdmin}">會員信息</a>
-        <a href="/admin/cat-rewash" class="nav-link" th:if="${user != null and user.staffOrAdmin}">貓咪回洗名單</a>
-        <a href="/admin" class="nav-link" th:if="${user != null and user.admin}">管理後台</a>
-        <a href="/payments/bank-account" class="nav-link" th:if="${user != null and user.admin}">匯款帳號設定</a>
-        <a href="/payments/company-signature" class="nav-link" th:if="${user != null and user.admin}">乙方簽名檔設定</a>
-        <a href="/admin/operation-logs" class="nav-link" th:if="${user != null and user.admin}">操作紀錄</a>
+        <div class="nav-cat" th:if="${user != null and user.staffOrAdmin}">
+          <div class="nav-cat-label">會員管理</div>
+          <div class="nav-cat-flyout">
+            <div class="nav-cat-flyout-inner">
+              <a href="/admin/customers" class="nav-link">會員信息</a>
+              <a href="/my-profile" class="nav-link">編輯個人信息</a>
+              <a href="/admin/cat-rewash" class="nav-link">貓咪回洗名單</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-cat" th:if="${user != null and user.staffOrAdmin}">
+          <div class="nav-cat-label">現場營運</div>
+          <div class="nav-cat-flyout">
+            <div class="nav-cat-flyout-inner">
+              <a href="/admin/walk-in-orders" class="nav-link">現場開單</a>
+              <a href="/admin/wallets" class="nav-link">儲值管理</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-cat" th:if="${user != null and user.staffOrAdmin}">
+          <div class="nav-cat-label">庫存管理</div>
+          <div class="nav-cat-flyout">
+            <div class="nav-cat-flyout-inner">
+              <a href="/admin/retail-products" class="nav-link">零售商品</a>
+              <a href="/admin/store-supplies" class="nav-link">店用洗劑</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-cat" th:if="${user != null and user.staffOrAdmin}">
+          <div class="nav-cat-label">績效管理</div>
+          <div class="nav-cat-flyout">
+            <div class="nav-cat-flyout-inner">
+              <a href="/admin/performance" class="nav-link">績效管理</a>
+              <a href="/admin/performance/my" class="nav-link">我的績效</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-cat" th:if="${user != null and user.admin}">
+          <div class="nav-cat-label">後台管理</div>
+          <div class="nav-cat-flyout">
+            <div class="nav-cat-flyout-inner">
+              <a href="/admin" class="nav-link">管理後台</a>
+              <a href="/payments/bank-account" class="nav-link">匯款帳號設定</a>
+              <a href="/payments/company-signature" class="nav-link">乙方簽名檔設定</a>
+              <a href="/payments/pricing-settings" class="nav-link">體重定價門檻設定</a>
+              <a href="/admin/operation-logs" class="nav-link">操作紀錄</a>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="nav-foot" th:if="${user != null}">
@@ -53,7 +102,29 @@
               if (!best || href.length > best.getAttribute("href").length) best = links[i];
             }
           }
-          if (best) best.classList.add("is-active");
+          if (best) {
+            best.classList.add("is-active");
+            var cat = best.closest(".nav-cat");
+            if (cat) {
+              cat.classList.add("has-active");
+              cat.classList.add("is-open"); // 目前所在的分類，載入時預設展開
+            }
+          }
+
+          // 分類點擊手風琴：觸控裝置沒有 hover，靠點擊展開/收合；
+          // 同時間只留一個分類展開，忙的時候不用一直捲頁面找功能。
+          var catLabels = document.querySelectorAll(".nav-side .nav-cat-label");
+          for (var j = 0; j < catLabels.length; j++) {
+            catLabels[j].addEventListener("click", function () {
+              var thisCat = this.closest(".nav-cat");
+              var wasOpen = thisCat.classList.contains("is-open");
+              var allCats = document.querySelectorAll(".nav-side .nav-cat");
+              for (var k = 0; k < allCats.length; k++) {
+                allCats[k].classList.remove("is-open");
+              }
+              if (!wasOpen) thisCat.classList.add("is-open");
+            });
+          }
         })();
       </script>
     </nav>
