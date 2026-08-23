@@ -172,6 +172,22 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
+    // ── 3之1. 店家後台手動修正貓咪毛髮分類（新增）─────────────────────────
+    // 用途：自動判斷抓不到品種（品種不在對照表裡，變成 SPECIAL）時，店家實際
+    // 看過這隻貓之後，可以在後台手動指定正確分類，不用透過改品種名稱間接觸發。
+    // 只給貓咪用——狗狗沒有這個分類概念，呼叫端（Controller）應先確認物種是貓
+    // 再呼叫這個方法，這裡不重複檢查（避免二次查資料庫），只單純防呆 category 不能空。
+    @Transactional
+    public PetResponse setCatCoatCategory(Long petId, com.petgrooming.pet_system.enums.CatCoatCategory category) {
+        if (category == null) {
+            throw new IllegalArgumentException("毛髮分類不能為空");
+        }
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setCatCoatCategory(category);
+        return PetResponse.from(petRepository.save(pet));
+    }
+
     // ── 4. 上傳/更換寵物照片（需求 17：LIFF 顧客端 + 店家後台皆可用）───────
     // 權限（會員只能傳自己的寵物、店家可傳任何寵物）由呼叫端（Controller）檢查，
     // 這裡只負責「換照片」這件事本身：先上傳新圖，成功後才刪舊圖並更新資料庫，

@@ -547,7 +547,52 @@
                         </form>
                       </div>
                     </div>
+                    <!-- 需求（追加）：貓咪改成編輯毛髮分類（單層毛/雙層毛/長毛/特殊貓種），
+                         取代原本的「定義毛長」——貓咪的服務項目菜單依這個分類篩選，
+                         比通用毛長更有實際用途。多半是新增寵物時依品種自動判斷好的，
+                         這裡是給店家在自動判斷抓不到品種（SPECIAL）時手動修正用的。
+                         狗狗沒有這個分類概念，維持原本的「定義毛長」表單不變。 -->
                     <form
+                      th:if="${p.petType.name() == 'CAT'}"
+                      th:action="@{/admin/wallets/{u}/pets/{id}/cat-coat-category(u=${customer.username},id=${p.id})}"
+                      method="post"
+                      style="display: flex; align-items: center; gap: 6px"
+                    >
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                      />
+                      <span
+                        th:text="${p.catCoatCategoryLabel} ?: '尚未判斷'"
+                        th:style="${p.catCoatCategory == null or p.catCoatCategory.name() == 'SPECIAL'} ? 'color:#e53935; font-size:11.5px;' : 'color:#43a047; font-size:11.5px;'"
+                      ></span>
+                      <select
+                        name="catCoatCategory"
+                        style="
+                          padding: 4px 6px;
+                          border: 1px solid var(--cream-300);
+                          border-radius: var(--radius-sm);
+                          font-size: 12.5px;
+                        "
+                      >
+                        <option
+                          th:each="c : ${catCoatCategories}"
+                          th:value="${c}"
+                          th:text="${c.label}"
+                          th:selected="${c == p.catCoatCategory}"
+                        ></option>
+                      </select>
+                      <button
+                        type="submit"
+                        class="btn"
+                        style="padding: 4px 10px; font-size: 12px"
+                      >
+                        儲存
+                      </button>
+                    </form>
+                    <form
+                      th:unless="${p.petType.name() == 'CAT'}"
                       th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
                       method="post"
                       style="display: flex; align-items: center; gap: 6px"
@@ -589,9 +634,8 @@
 
                   <!-- 需求（追加）：編輯寵物基本資料（名字/品種/體重/年齡），
                        物種不開放修改（見 PetService.updatePet 的說明）。
-                       品種欄位貓咪跟狗狗共用同一個文字輸入框，跟 LIFF 那邊改成
-                       下拉選單不同——店家後台這裡量體小、店員本來就熟悉品種名稱，
-                       維持文字輸入即可，不用另外做下拉選單資料綁定。 -->
+                       貓咪品種改成下拉選單（跟 LIFF「我的毛孩」編輯一致，選了
+                       系統會自動重新判斷毛髮分類），狗狗維持文字輸入。 -->
                   <details style="margin-top: 8px">
                     <summary style="cursor: pointer; font-size: 12.5px; color: var(--cream-600);">
                       ✏️ 編輯基本資料
@@ -613,7 +657,36 @@
                       </div>
                       <div>
                         <label style="display:block; font-size:11px; color: var(--brown-light);">品種</label>
-                        <input type="text" name="breed" th:value="${p.breed}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                        <select
+                          th:if="${p.petType.name() == 'CAT'}"
+                          name="breed"
+                          required
+                          style="width:100%; padding:4px; font-size:12.5px;"
+                        >
+                          <option value="">請選擇</option>
+                          <option
+                            th:each="b : ${catBreeds}"
+                            th:value="${b.breedName}"
+                            th:text="${b.breedName} + '（' + ${b.coatCategory.label} + '）'"
+                            th:selected="${b.breedName == p.breed}"
+                          ></option>
+                          <!-- 這隻貓現有品種不在對照表裡（例如舊資料、特殊貓種），
+                               補一個選項讓它至少能被選到、不會被下拉選單清空覆蓋掉。 -->
+                          <option
+                            th:if="${!catBreeds.![breedName].contains(p.breed)}"
+                            th:value="${p.breed}"
+                            th:text="${p.breed} + '（目前值，不在對照表）'"
+                            selected
+                          ></option>
+                        </select>
+                        <input
+                          th:unless="${p.petType.name() == 'CAT'}"
+                          type="text"
+                          name="breed"
+                          th:value="${p.breed}"
+                          required
+                          style="width:100%; padding:4px; font-size:12.5px;"
+                        />
                       </div>
                       <div>
                         <label style="display:block; font-size:11px; color: var(--brown-light);">體重(kg)</label>
