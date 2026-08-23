@@ -1,0 +1,101 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('貓咪品種毛髮分類對照表 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🐱 貓咪品種毛髮分類對照表</h2>
+          <a href="/admin" class="btn">← 回後台</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+          顧客在 LIFF「新增毛孩」選品種時，這份對照表就是下拉選單的資料來源；選好之後，
+          系統會依這裡設定的分類，自動幫這隻貓歸類成單層毛/雙層毛/長毛，預約頁只會顯示
+          對應分類的套餐項目。品種不在這份清單裡的話，LIFF 上會顯示「找不到品種/其他特殊貓種」，
+          預約時會顯示全部貓咪套餐項目讓店家人工協助判斷，不會擋住顧客預約。
+        </p>
+
+        <div class="card" style="margin-bottom: 20px;">
+          <h3 style="margin-top: 0">新增品種</h3>
+          <form method="post" action="/admin/cat-breed-coat-mapping/add"
+                style="display:grid; grid-template-columns: 1fr 200px 100px auto; gap: 12px; align-items:end;">
+            <div class="field" style="margin:0">
+              <label style="display:block; font-size:12px; color: var(--brown-mid); margin-bottom:4px;">品種名稱</label>
+              <input type="text" name="breedName" required placeholder="例如：美國短毛貓" style="width:100%; padding:6px;" />
+            </div>
+            <div class="field" style="margin:0">
+              <label style="display:block; font-size:12px; color: var(--brown-mid); margin-bottom:4px;">毛髮分類</label>
+              <select name="coatCategory" required style="width:100%; padding:6px;">
+                <option th:each="c : ${categories}" th:if="${c.name() != 'SPECIAL'}"
+                        th:value="${c.name()}" th:text="${c.label}"></option>
+              </select>
+            </div>
+            <div class="field" style="margin:0">
+              <label style="display:block; font-size:12px; color: var(--brown-mid); margin-bottom:4px;">排序</label>
+              <input type="number" name="sortOrder" value="0" style="width:100%; padding:6px;" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">新增</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 40%">品種名稱</th>
+                <th style="width: 20%">毛髮分類</th>
+                <th style="width: 10%">排序</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(mappings)}">
+                <td colspan="4" style="text-align:center; padding:24px; color: var(--brown-light);">
+                  目前沒有任何品種對照資料
+                </td>
+              </tr>
+              <tr th:each="m : ${mappings}">
+                <td>
+                  <input type="text" th:form="'update-' + ${m.id}" name="breedName"
+                         th:value="${m.breedName}" style="width:100%; padding:4px;" />
+                </td>
+                <td>
+                  <select th:form="'update-' + ${m.id}" name="coatCategory" style="width:100%; padding:4px;">
+                    <option th:each="c : ${categories}" th:if="${c.name() != 'SPECIAL'}"
+                            th:value="${c.name()}" th:text="${c.label}"
+                            th:selected="${c == m.coatCategory}"></option>
+                  </select>
+                </td>
+                <td>
+                  <input type="number" th:form="'update-' + ${m.id}" name="sortOrder"
+                         th:value="${m.sortOrder}" style="width:80px; padding:4px;" />
+                </td>
+                <td style="display:flex; gap:8px;">
+                  <button type="submit" th:form="'update-' + ${m.id}" class="btn btn-outline"
+                          style="padding:4px 10px; font-size:12px;">儲存</button>
+                  <button type="submit" th:form="'delete-' + ${m.id}" class="btn btn-outline"
+                          style="padding:4px 10px; font-size:12px; color:#b23c3c;"
+                          onclick="return confirm('確定要刪除這個品種對照嗎？');">刪除</button>
+                </td>
+                <!-- HTML5 form 屬性讓上面的輸入欄位/按鈕關聯到下面這兩個表單元素，
+                     不用把表單巢狀塞進表格列/儲存格裡（那樣結構容易寫壞），
+                     這兩個表單本身放在列裡但不含任何欄位，純粹提供 action/method。 -->
+                <form th:id="'update-' + ${m.id}"
+                      th:action="@{/admin/cat-breed-coat-mapping/{id}/update(id=${m.id})}" method="post"></form>
+                <form th:id="'delete-' + ${m.id}"
+                      th:action="@{/admin/cat-breed-coat-mapping/{id}/delete(id=${m.id})}" method="post"></form>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -48,6 +48,16 @@ public class Pet {
     @Builder.Default
     private CoatType coatType = CoatType.UNDEFINED;                // 毛長（未定義 → 店家定義後：短/中長/長）
 
+    // 需求（追加）：菜單簡化——貓咪專用，新增/編輯毛孩時依品種（下拉選單）自動查
+    // CatBreedCoatMapping 對照表算出來，寫進這裡。null 代表這隻是狗、或是品種不在
+    // 對照表裡的特殊貓種（LIFF 預約頁遇到 null 會顯示全部貓咪套餐項目，不會篩選，
+    // 讓店家人工協助判斷，不會擋住顧客預約）。
+    // 跟 sizeCategory/coatType 一樣是系統自動判斷欄位，顧客不會直接填這個值，
+    // 只能透過選品種間接觸發。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cat_coat_category")
+    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+
     // ── 預約須知相關欄位 ──────────────────────────────────────────────────
     @Column(name = "has_separation_anxiety", nullable = false)
     @Builder.Default

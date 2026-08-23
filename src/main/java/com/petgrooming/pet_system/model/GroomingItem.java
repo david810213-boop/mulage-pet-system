@@ -82,4 +82,13 @@ public class GroomingItem {
     @Enumerated(EnumType.STRING)
     @Column(name = "applicable_pet_type")
     private com.petgrooming.pet_system.enums.PetType applicablePetType;
+
+    // 需求（追加）：菜單簡化——貓咪套餐項目（CAT001~024）依「單層毛/雙層毛/長毛」
+    // 進一步細分，LIFF 預約頁依所選毛孩的品種自動判斷結果篩選菜單，顧客只會看到
+    // 符合自己貓咪毛髮分類的那 3 項套餐，不用在 24 項裡自己挑。
+    // null = 跟毛髮分類無關的項目（貓咪加購 CAT025~028、所有狗狗項目、通用加購），
+    // 這種項目不受這個欄位篩選影響，任何毛髮分類的貓都看得到（如果本身是貓咪適用的話）。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cat_coat_category")
+    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
 }

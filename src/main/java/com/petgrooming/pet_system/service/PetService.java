@@ -23,6 +23,7 @@ public class PetService {
     private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
     private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
+    private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -34,6 +35,16 @@ public class PetService {
         // 自動依 petType + weight 判斷體型分類
         PetSizeCategory sizeCategory = PetSizeCategory.determine(req.getPetType(), req.getWeight());
 
+        // 需求（追加）：菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
+        // LIFF 預約頁靠這個欄位篩選菜單。狗/其他物種、或品種不在對照表裡的特殊貓種，
+        // 一律是 null（LIFF 端遇到 null 顯示全部貓咪套餐項目，不擋顧客預約）。
+        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory = null;
+        if (req.getPetType() == com.petgrooming.pet_system.enums.PetType.CAT && req.getBreed() != null) {
+            catCoatCategory = catBreedCoatMappingRepository.findByBreedName(req.getBreed().trim())
+                    .map(com.petgrooming.pet_system.model.CatBreedCoatMapping::getCoatCategory)
+                    .orElse(null);
+        }
+
         Pet pet = Pet.builder()
                 .name(req.getName())
                 .petType(req.getPetType())
@@ -43,6 +54,7 @@ public class PetService {
                 .sizeCategory(sizeCategory)
                 // 需求 2：毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
                 .coatType(CoatType.UNDEFINED)
+                .catCoatCategory(catCoatCategory)
                 .hasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety())
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
@@ -63,6 +75,11 @@ public class PetService {
 
         Pet saved = petRepository.save(pet);
         return PetResponse.from(saved);
+    }
+
+    // 需求（追加）：LIFF 新增毛孩頁面的品種下拉選單資料來源
+    public List<com.petgrooming.pet_system.model.CatBreedCoatMapping> listCatBreedOptions() {
+        return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
     }
 
     // ── 2. 查詢自己的所有寵物 ────────────────────────────────────────────

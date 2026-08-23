@@ -99,9 +99,17 @@ public class WalkInOrderService {
                     }
                 }
 
+                // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照
+                // 副組成加上分類標籤，避免店家看待補經手人矩陣時誤以為主分類的積分不見了
+                // （其實一直都有記錄，只是原本沒有標籤，容易被誤認成普通項目名稱）。
+                var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
+                String mainItemName = itemComponents.isEmpty()
+                        ? gi.getName()
+                        : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+
                 WalkInOrderItem item = WalkInOrderItem.builder()
                         .groomingItemId(gi.getId())
-                        .itemName(gi.getName())
+                        .itemName(mainItemName)
                         .price((int) Math.round(gi.getPrice()))
                         .points(gi.getPoints())
                         .performanceCategory(gi.getPerformanceCategory())
@@ -119,7 +127,7 @@ public class WalkInOrderService {
                 total += item.getPrice();
 
                 // 需求（追加）：套餐化——展開副組成（price固定0，純粹供待補經手人矩陣拆分用）
-                for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+                for (var component : itemComponents) {
                     WalkInOrderItem sub = WalkInOrderItem.builder()
                             .groomingItemId(gi.getId())
                             .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
@@ -137,7 +145,8 @@ public class WalkInOrderService {
         // 純零售訂單（沒有任何美容服務項目）就是靠這裡建立起整張單。
         if (hasRetailItems) {
             for (WalkInOrderCreateRequest.RetailItem line : req.getRetailItems()) {
-                if (line.getQuantity() <= 0) continue;
+                if (line.getQuantity() <= 0)
+                    continue;
                 var product = retailProductService.getById(line.getRetailProductId());
                 for (int i = 0; i < line.getQuantity(); i++) {
                     order.addItem(buildRetailOrderItem(product));
@@ -271,7 +280,8 @@ public class WalkInOrderService {
     // 不另外加 quantity 欄位去動到既有折扣/合計計算邏輯，降低牽連風險。
     @Transactional
     public WalkInOrderResponse addRetailItem(Long orderId, Long retailProductId, int quantity, String username) {
-        if (quantity <= 0) throw new IllegalArgumentException("加購數量必須大於 0");
+        if (quantity <= 0)
+            throw new IllegalArgumentException("加購數量必須大於 0");
 
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
@@ -313,7 +323,8 @@ public class WalkInOrderService {
     public boolean isExistingCustomerPet(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
-        if (order.getMember() == null) return false;
+        if (order.getMember() == null)
+            return false;
         return petConsumptionHistoryService.hasPriorPaidService(
                 order.getMember().getId(), order.getPetName(), orderId);
     }
@@ -323,7 +334,8 @@ public class WalkInOrderService {
     public String getPetTypeForOrder(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
-        if (order.getMember() == null) return null;
+        if (order.getMember() == null)
+            return null;
         return petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
                 .map(pet -> pet.getPetType().name())
                 .orElse(null);
@@ -352,9 +364,16 @@ public class WalkInOrderService {
             }
         }
 
+        // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
+        // 加上分類標籤（見上方建單流程同樣的說明）。
+        var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
+        String mainItemName = itemComponents.isEmpty()
+                ? gi.getName()
+                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+
         WalkInOrderItem item = WalkInOrderItem.builder()
                 .groomingItemId(gi.getId())
-                .itemName(gi.getName())
+                .itemName(mainItemName)
                 .price((int) Math.round(gi.getPrice()))
                 .points(gi.getPoints())
                 .performanceCategory(gi.getPerformanceCategory())
@@ -364,7 +383,7 @@ public class WalkInOrderService {
         order.setTotalAmount(order.getTotalAmount() + item.getPrice());
 
         // 需求（追加）：套餐化——展開副組成
-        for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+        for (var component : itemComponents) {
             WalkInOrderItem sub = WalkInOrderItem.builder()
                     .groomingItemId(gi.getId())
                     .itemName(gi.getName() + "（" + component.getPerformanceCategory().getLabel() + "）")
@@ -410,6 +429,7 @@ public class WalkInOrderService {
         populateDiscountInfo(res, saved);
         return res;
     }
+
     // 選現金/信用卡/LinePay：純標記已付款（金流在店家手上完成，系統只留紀錄）。
     // 選儲值金：實際呼叫 WalletService.deduct() 扣款（走既有悲觀鎖，跟預約結帳同一套邏輯），
     // 僅限「有綁定會員」的單才能用（非會員沒有錢包可扣）。
@@ -547,8 +567,8 @@ public class WalkInOrderService {
         }
 
         // 2. 刪除這張單已經記過的所有績效積分（接進/完成/接出/服務項目）
-        List<com.petgrooming.pet_system.model.PerformanceRecord> records =
-                performanceRecordRepository.findByWalkInOrderId(orderId);
+        List<com.petgrooming.pet_system.model.PerformanceRecord> records = performanceRecordRepository
+                .findByWalkInOrderId(orderId);
         if (!records.isEmpty()) {
             performanceRecordRepository.deleteAll(records);
         }
@@ -619,7 +639,8 @@ public class WalkInOrderService {
         List<WalkInOrderItem> pending = orderItemRepository.findByOperatorStaffIsNull();
         List<WalkInOrderResponse.ItemLine> result = new ArrayList<>();
         for (WalkInOrderItem oi : pending) {
-            if (oi.getPoints() <= 0) continue;
+            if (oi.getPoints() <= 0)
+                continue;
             WalkInOrderResponse.ItemLine line = new WalkInOrderResponse.ItemLine();
             line.setItemId(oi.getId());
             line.setGroomingItemId(oi.getGroomingItemId());
@@ -727,7 +748,8 @@ public class WalkInOrderService {
         double total = 0;
         for (WalkInOrderItem item : order.getItems()) {
             double price = item.getPrice();
-            if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
+            if (firstVisitEligible
+                    && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
                 price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
             } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
                 price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;

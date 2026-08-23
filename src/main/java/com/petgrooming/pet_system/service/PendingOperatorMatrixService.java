@@ -39,8 +39,7 @@ public class PendingOperatorMatrixService {
             PerformanceCategory.BLOW_CAT_S, PerformanceCategory.BLOW_CAT_L,
             PerformanceCategory.BASIC, PerformanceCategory.TRIM,
             PerformanceCategory.AD, PerformanceCategory.HC,
-            PerformanceCategory.PARTIAL, PerformanceCategory.SPECIAL, PerformanceCategory.SPECIAL2
-    );
+            PerformanceCategory.PARTIAL, PerformanceCategory.SPECIAL, PerformanceCategory.SPECIAL2);
 
     @Transactional(readOnly = true)
     public List<PendingOperatorMatrixResponse> buildWalkInMatrix() {
@@ -51,7 +50,8 @@ public class PendingOperatorMatrixService {
                 .collect(Collectors.groupingBy(i -> i.getOrder().getId()));
         for (var entry : byOrder.entrySet()) {
             var order = walkInOrderRepository.findById(entry.getKey()).orElse(null);
-            if (order == null) continue;
+            if (order == null)
+                continue;
             result.add(PendingOperatorMatrixResponse.builder()
                     .sourceLabel("現場開單")
                     .code("現場單#" + order.getId())
@@ -71,7 +71,8 @@ public class PendingOperatorMatrixService {
                 .collect(Collectors.groupingBy(i -> i.getAppointment().getId()));
         for (var entry : byAppointment.entrySet()) {
             var appointment = appointmentRepository.findById(entry.getKey()).orElse(null);
-            if (appointment == null) continue;
+            if (appointment == null)
+                continue;
             result.add(PendingOperatorMatrixResponse.builder()
                     .sourceLabel("預約現場開單")
                     .code(String.format("AP%03d", appointment.getId()))
@@ -94,7 +95,7 @@ public class PendingOperatorMatrixService {
             cells.add(item == null
                     ? PendingOperatorMatrixResponse.Cell.builder().build()
                     : PendingOperatorMatrixResponse.Cell.builder()
-                        .itemId(item.getId()).price(item.getPrice()).points(item.getPoints()).build());
+                            .itemId(item.getId()).price(item.getPrice()).points(item.getPoints()).build());
         }
         return cells;
     }
@@ -109,18 +110,19 @@ public class PendingOperatorMatrixService {
             cells.add(item == null
                     ? PendingOperatorMatrixResponse.Cell.builder().build()
                     : PendingOperatorMatrixResponse.Cell.builder()
-                        .itemId(item.getId()).price(item.getPrice()).points(item.getPoints()).build());
+                            .itemId(item.getId()).price(item.getPrice()).points(item.getPoints()).build());
         }
         return cells;
     }
 
     private <T> void assignWithOverflow(List<T> items,
-                                         java.util.function.Function<T, PerformanceCategory> categoryOf,
-                                         Map<PerformanceCategory, T> assigned) {
+            java.util.function.Function<T, PerformanceCategory> categoryOf,
+            Map<PerformanceCategory, T> assigned) {
         List<T> overflow = new ArrayList<>();
         for (T item : items) {
             PerformanceCategory cat = categoryOf.apply(item);
-            if (cat == null) continue;
+            if (cat == null)
+                continue;
             if (!assigned.containsKey(cat)) {
                 assigned.put(cat, item);
             } else {

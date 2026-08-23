@@ -339,7 +339,22 @@
 
       <div class="field">
         <label>毛孩品種 <span class="req">*</span></label>
-        <input type="text" id="breed" placeholder="例如：柴犬、貴賓、英短" />
+        <!-- 狗狗/其他：維持原本自由輸入 -->
+        <input type="text" id="breed" placeholder="例如：柴犬、貴賓" />
+        <!-- 貓咪：改成下拉選單，選了會自動判斷毛髮分類，預約時菜單才能對應篩選 -->
+        <select id="breedCatSelect" style="display: none; width: 100%">
+          <option value="">請選擇貓咪品種</option>
+          <option value="__OTHER__">找不到我的貓咪品種（其他特殊貓種）</option>
+        </select>
+        <input
+          type="text"
+          id="breedCatOther"
+          placeholder="請輸入實際品種名稱，店家會協助判斷毛髮分類"
+          style="display: none; width: 100%; margin-top: 8px"
+        />
+        <div class="hint" id="breedCatHint" style="display: none; margin-top: 4px">
+          選好品種後，預約時會自動只顯示對應毛髮分類的套餐菜單
+        </div>
       </div>
 
       <div class="field">
@@ -548,6 +563,7 @@
           .forEach((b) => b.classList.remove("selected"));
         el.classList.add("selected");
         if (field === "petType" || field === "anxiety") updateSizePreview();
+        if (field === "petType") onPetTypeChanged();
         if (field === "hasChip") {
           document.getElementById("chipNumber").style.display =
             value === "true" ? "block" : "none";
@@ -557,6 +573,52 @@
             value === "true" ? "block" : "none";
         }
       }
+
+      let catBreedOptionsLoaded = false;
+
+      // 資安提醒（跟其他 LIFF 頁面一致）：品種名稱雖然來自後台維護的固定清單，
+      // 這裡還是統一用 textContent 賦值（下拉選單 option 用 DOM API 建立，不是
+      // innerHTML 樣板字串），不會有存放型 XSS 風險。
+      async function loadCatBreedOptions() {
+        if (catBreedOptionsLoaded) return;
+        try {
+          const res = await fetch("/api/pets/cat-breeds", {
+            headers: { Authorization: "Bearer " + jwtToken },
+          });
+          const breeds = await res.json();
+          const select = document.getElementById("breedCatSelect");
+          // 找不到我的品種選項固定放最後一個（在 HTML 裡已經寫死），
+          // 這裡只在它前面插入實際品種選項。
+          const otherOption = select.querySelector('option[value="__OTHER__"]');
+          breeds.forEach((b) => {
+            const opt = document.createElement("option");
+            opt.value = b.breedName;
+            opt.textContent = `${b.breedName}（${b.coatCategoryLabel}）`;
+            select.insertBefore(opt, otherOption);
+          });
+          catBreedOptionsLoaded = true;
+        } catch (e) {
+          console.error("載入貓咪品種清單失敗", e);
+        }
+      }
+
+      function onPetTypeChanged() {
+        const isCat = formData.petType === "CAT";
+        document.getElementById("breed").style.display = isCat ? "none" : "block";
+        document.getElementById("breedCatSelect").style.display = isCat ? "block" : "none";
+        document.getElementById("breedCatHint").style.display = isCat ? "block" : "none";
+        document.getElementById("breedCatOther").style.display = "none";
+        if (isCat) {
+          loadCatBreedOptions();
+        }
+      }
+
+      document
+        .getElementById("breedCatSelect")
+        .addEventListener("change", function () {
+          document.getElementById("breedCatOther").style.display =
+            this.value === "__OTHER__" ? "block" : "none";
+        });
 
       function toggleTag(field, value, el) {
         const arr = formData[field];
@@ -616,7 +678,16 @@
         }
 
         const name = document.getElementById("petName").value.trim();
-        const breed = document.getElementById("breed").value.trim();
+        let breed;
+        if (formData.petType === "CAT") {
+          const catSelectVal = document.getElementById("breedCatSelect").value;
+          breed =
+            catSelectVal === "__OTHER__"
+              ? document.getElementById("breedCatOther").value.trim()
+              : catSelectVal;
+        } else {
+          breed = document.getElementById("breed").value.trim();
+        }
         const weight = parseFloat(document.getElementById("weight").value);
         const age = parseInt(document.getElementById("age").value);
         const notes = document.getElementById("notes").value.trim();
@@ -728,6 +799,9 @@
             // 新增成功後清空表單
             document.getElementById("petName").value = "";
             document.getElementById("breed").value = "";
+            document.getElementById("breedCatSelect").value = "";
+            document.getElementById("breedCatOther").value = "";
+            document.getElementById("breedCatOther").style.display = "none";
             document.getElementById("weight").value = "";
             document.getElementById("age").value = "";
             document.getElementById("petPhoto").value = "";

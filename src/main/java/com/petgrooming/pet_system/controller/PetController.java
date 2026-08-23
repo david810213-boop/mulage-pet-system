@@ -43,6 +43,20 @@ public class PetController {
         }
     }
 
+    // ── GET /api/pets/cat-breeds ────────────────────────────────────────────
+    // 需求（追加）：LIFF「新增毛孩」頁面貓咪品種下拉選單資料來源，不需要特別檢查
+    // 身分是誰（只是回傳一份對照表清單，不含任何使用者個資），有登入即可呼叫。
+    @GetMapping("/cat-breeds")
+    public ResponseEntity<?> listCatBreeds() {
+        var breeds = petService.listCatBreedOptions().stream()
+                .map(b -> java.util.Map.of(
+                        "breedName", b.getBreedName(),
+                        "coatCategory", b.getCoatCategory().name(),
+                        "coatCategoryLabel", b.getCoatCategory().getLabel()))
+                .toList();
+        return ResponseEntity.ok(breeds);
+    }
+
     // ── GET /api/pets/my ───────────────────────────────────────────────────
     @GetMapping("/my")
     public ResponseEntity<?> getMyPets(HttpServletRequest request) {

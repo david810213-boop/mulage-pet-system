@@ -24,7 +24,11 @@ public class PetResponse {
     private PetSizeCategory sizeCategory;       // 體型（系統自動判斷）
     private String sizeCategoryLabel;           // 體型中文顯示
     private CoatType coatType;                  // 毛長
-    private String coatTypeLabel;               // 毛長中文
+    private String coatTypeLabel;                // 毛長中文
+    // 需求（追加）：菜單簡化——貓咪毛髮分類（單層毛/雙層毛/長毛），依品種自動判斷，
+    // LIFF 預約頁靠這個欄位篩選對應的套餐選單。狗/特殊貓種是 null。
+    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+    private String catCoatCategoryLabel;
     private Boolean hasSeparationAnxiety;       // 分離焦慮
     private String ownerPhone;                  // 家長手機
     private String notes;                       // 注意事項
@@ -51,6 +55,8 @@ public class PetResponse {
         res.setSizeCategoryLabel(pet.getSizeCategory().getLabel());
         res.setCoatType(pet.getCoatType());
         res.setCoatTypeLabel(pet.getCoatType().getLabel());
+        res.setCatCoatCategory(pet.getCatCoatCategory());
+        res.setCatCoatCategoryLabel(pet.getCatCoatCategory() != null ? pet.getCatCoatCategory().getLabel() : null);
         res.setHasSeparationAnxiety(pet.getHasSeparationAnxiety());
         res.setOwnerPhone(pet.getOwnerPhone());
         res.setNotes(pet.getNotes());
