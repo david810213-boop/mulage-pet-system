@@ -506,6 +506,11 @@
       const LIFF_ID = "2010567973-Sgmd1A5a";
       let jwtToken = null;
       let myPhone = ""; // 需求（追加）：從個人資料帶入，不用在這頁重複填
+      // 需求（追加）：編輯模式——LIFF「我的毛孩」點編輯會帶 ?editPetId=123 連過來，
+      // 這頁偵測到就切換成編輯既有寵物（而不是新增），重用同一套表單跟品種下拉邏輯，
+      // 不用另外做一份重複的編輯頁面。
+      const editPetId = new URLSearchParams(window.location.search).get("editPetId");
+      const isEditMode = !!editPetId;
       const formData = {
         petType: null,
         anxiety: null,
@@ -550,8 +555,74 @@
           } catch (e) {
             // 抓不到就留空，不影響新增毛孩本身
           }
+
+          if (isEditMode) {
+            await enterEditMode();
+          }
         } catch (e) {
           showToast("初始化失敗", "error");
+        }
+      }
+
+      // 需求（追加）：編輯模式——把畫面切成「編輯這隻寵物」，物種鎖住不能改
+      // （理由跟後端 PetService.updatePet() 的說明一致：換物種牽動一連串判斷邏輯，
+      // 貿然開放容易產生不一致的歷史資料）。
+      async function enterEditMode() {
+        try {
+          const res = await fetch("/api/pets/my", {
+            headers: { Authorization: "Bearer " + jwtToken },
+          });
+          const pets = await res.json();
+          const pet = pets.find((p) => String(p.id) === String(editPetId));
+          if (!pet) {
+            showToast("找不到這隻毛孩，可能已經被移除", "error");
+            return;
+          }
+
+          document.querySelector("h1").textContent = "編輯毛孩資料";
+          document.getElementById("submitBtn").textContent = "儲存變更";
+
+          // 物種：顯示但鎖住，不能改
+          formData.petType = pet.petType;
+          document.querySelectorAll('[onclick*="petType"]').forEach((el) => {
+            el.classList.toggle("selected", el.dataset.value === pet.petType);
+            el.style.pointerEvents = "none";
+            el.style.opacity = el.dataset.value === pet.petType ? "1" : "0.4";
+          });
+          onPetTypeChanged();
+
+          document.getElementById("petName").value = pet.name || "";
+          document.getElementById("weight").value = pet.weight || "";
+          document.getElementById("age").value = pet.age || "";
+          document.getElementById("notes").value = pet.notes || "";
+
+          if (pet.petType === "CAT") {
+            await loadCatBreedOptions();
+            const select = document.getElementById("breedCatSelect");
+            const matched = Array.from(select.options).some(
+              (o) => o.value === pet.breed,
+            );
+            if (matched) {
+              select.value = pet.breed;
+            } else {
+              select.value = "__OTHER__";
+              document.getElementById("breedCatOther").style.display = "block";
+              document.getElementById("breedCatOther").value = pet.breed || "";
+            }
+          } else {
+            document.getElementById("breed").value = pet.breed || "";
+          }
+
+          // 分離焦慮：預先勾選對應選項
+          const anxietyValue = pet.hasSeparationAnxiety ? "true" : "false";
+          formData.anxiety = anxietyValue;
+          document.querySelectorAll('[onclick*="anxiety"]').forEach((el) => {
+            el.classList.toggle("selected", el.dataset.value === anxietyValue);
+          });
+
+          updateSizePreview();
+        } catch (e) {
+          showToast("載入毛孩資料失敗", "error");
         }
       }
 
@@ -719,15 +790,17 @@
 
         const btn = document.getElementById("submitBtn");
         btn.disabled = true;
-        btn.textContent = "新增中...";
+        btn.textContent = isEditMode ? "儲存中..." : "新增中...";
 
         try {
-          const res = await fetch("/api/pets", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + jwtToken,
-            },
+          const res = await fetch(
+            isEditMode ? "/api/pets/" + editPetId : "/api/pets",
+            {
+              method: isEditMode ? "PUT" : "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwtToken,
+              },
             body: JSON.stringify({
               name,
               breed,
@@ -753,7 +826,16 @@
 
           const data = await res.json();
           if (!res.ok) {
-            showToast("新增失敗：" + (data.message || res.status), "error");
+            showToast((isEditMode ? "更新失敗：" : "新增失敗：") + (data.message || res.status), "error");
+            return;
+          }
+
+          if (isEditMode) {
+            // 編輯模式：更新成功後導回「我的毛孩」，不用像新增那樣清空表單繼續下一筆
+            showToast("✅ 已儲存變更", "success");
+            setTimeout(() => {
+              window.location.href = "/liff/my-pets.html";
+            }, 1000);
             return;
           }
 
@@ -817,7 +899,7 @@
           showToast("網路錯誤，請重試", "error");
         } finally {
           btn.disabled = false;
-          btn.textContent = "確認新增毛孩";
+          btn.textContent = isEditMode ? "儲存變更" : "確認新增毛孩";
         }
       }
 

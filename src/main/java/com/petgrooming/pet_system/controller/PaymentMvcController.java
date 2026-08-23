@@ -36,6 +36,7 @@ public class PaymentMvcController {
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
     private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
+    private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
 
@@ -164,12 +165,22 @@ public class PaymentMvcController {
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
             // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
             // 不再是舊版的「符合會員折扣就直接乘」。
+            // 需求（追加）：貓咪首次體驗優惠加入後，isFirstVisitEligible() 這個旗標狗貓共用，
+            // 這裡依 petType 分流到正確的 service（兩邊算法完全一致，只是分開呼叫語意才清楚）。
+            boolean isDogPet = "DOG".equalsIgnoreCase(petType);
             double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> it.isFirstVisitEligible()
-                            ? dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), true, it.isDiscountEligible(), discount).price()
-                            : catRewashDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
+                    .mapToDouble(it -> {
+                        if (it.isFirstVisitEligible() && isDogPet) {
+                            return dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
+                        }
+                        if (it.isFirstVisitEligible()) {
+                            return catFirstVisitDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
+                        }
+                        return catRewashDiscountService.resolvePreferredDiscount(
+                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price();
+                    })
                     .sum();
             model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
         }
@@ -299,12 +310,20 @@ public class PaymentMvcController {
                     // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
                     var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
                     model.addAttribute("detailItems", detail.getItems());
+                    boolean isDogPetErr = "DOG".equalsIgnoreCase(petTypeErr);
                     double walletPreview = detail.getItems().stream()
-                            .mapToDouble(it -> it.isFirstVisitEligible()
-                                    ? dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price()
-                                    : catRewashDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                            .mapToDouble(it -> {
+                                if (it.isFirstVisitEligible() && isDogPetErr) {
+                                    return dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
+                                }
+                                if (it.isFirstVisitEligible()) {
+                                    return catFirstVisitDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
+                                }
+                                return catRewashDiscountService.resolvePreferredDiscount(
+                                        it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price();
+                            })
                             .sum();
                     model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
                 }

@@ -310,10 +310,11 @@
         <div class="pet-card">
           <div class="pet-header">
             <div class="pet-icon">${p.photoUrl ? `<img src="${p.photoUrl}" />` : p.petType === "DOG" ? "🐶" : p.petType === "CAT" ? "🐱" : "🐾"}</div>
-            <div>
+            <div style="flex: 1">
               <div class="pet-name">${escapeHtml(p.name)}</div>
               <div class="pet-breed">${escapeHtml(p.breed)}</div>
             </div>
+            <a href="/liff/add-pet.html?editPetId=${p.id}" style="font-size: 12px; color: #b8935a; text-decoration: underline; white-space: nowrap;">✏️ 編輯</a>
           </div>
           <div class="tags">
             <span class="tag size">${p.sizeCategoryLabel}</span>

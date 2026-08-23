@@ -38,12 +38,7 @@ public class PetService {
         // 需求（追加）：菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
         // LIFF 預約頁靠這個欄位篩選菜單。狗/其他物種、或品種不在對照表裡的特殊貓種，
         // 一律是 null（LIFF 端遇到 null 顯示全部貓咪套餐項目，不擋顧客預約）。
-        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory = null;
-        if (req.getPetType() == com.petgrooming.pet_system.enums.PetType.CAT && req.getBreed() != null) {
-            catCoatCategory = catBreedCoatMappingRepository.findByBreedName(req.getBreed().trim())
-                    .map(com.petgrooming.pet_system.model.CatBreedCoatMapping::getCoatCategory)
-                    .orElse(null);
-        }
+        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
 
         Pet pet = Pet.builder()
                 .name(req.getName())
@@ -80,6 +75,68 @@ public class PetService {
     // 需求（追加）：LIFF 新增毛孩頁面的品種下拉選單資料來源
     public List<com.petgrooming.pet_system.model.CatBreedCoatMapping> listCatBreedOptions() {
         return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
+    }
+
+    // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯共用同一套邏輯，
+    // 避免兩處各自實作導致行為不一致。
+    private com.petgrooming.pet_system.enums.CatCoatCategory resolveCatCoatCategory(
+            com.petgrooming.pet_system.enums.PetType petType, String breed) {
+        if (petType != com.petgrooming.pet_system.enums.PetType.CAT || breed == null) {
+            return null;
+        }
+        return catBreedCoatMappingRepository.findByBreedName(breed.trim())
+                .map(com.petgrooming.pet_system.model.CatBreedCoatMapping::getCoatCategory)
+                .orElse(null);
+    }
+
+    // ── 1之1. 編輯寵物資料（新增）─────────────────────────────────────────
+    // 兩種使用情境共用：
+    //   1. 顧客自己在 LIFF「我的寵物」編輯（呼叫端負責檢查這隻寵物是不是自己的）
+    //   2. 店家後台代改（會員信息頁面的寵物分頁）
+    // 物種（petType）刻意不開放修改——換物種牽動體型分類、適用項目判斷等一連串
+    // 邏輯，貿然允許中途改物種容易產生不一致的歷史資料，寫錯的話請改用刪除重建
+    // （目前系統還沒有刪除寵物的功能，這點先記錄，之後如果店家真的有需求再處理）。
+    // 品種有改的話，比照新增時的邏輯重新查一次毛髮分類（貓咪才有意義，狗維持 null）。
+    @Transactional
+    public PetResponse updatePet(Long petId, PetRequest req) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+
+        PetSizeCategory sizeCategory = PetSizeCategory.determine(pet.getPetType(), req.getWeight());
+        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory =
+                resolveCatCoatCategory(pet.getPetType(), req.getBreed());
+
+        pet.setName(req.getName());
+        pet.setBreed(req.getBreed());
+        pet.setWeight(req.getWeight());
+        pet.setAge(req.getAge());
+        pet.setSizeCategory(sizeCategory);
+        pet.setCatCoatCategory(catCoatCategory);
+        pet.setHasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety());
+        pet.setOwnerPhone(req.getOwnerPhone());
+        pet.setNotes(req.getNotes());
+        if (req.getGender() != null) pet.setGender(req.getGender());
+        if (req.getIsNeutered() != null) pet.setIsNeutered(req.getIsNeutered());
+        if (req.getHasChip() != null) pet.setHasChip(req.getHasChip());
+        if (req.getChipNumber() != null) pet.setChipNumber(req.getChipNumber());
+        if (req.getPersonalityTags() != null) pet.setPersonalityTags(req.getPersonalityTags());
+        if (req.getHealthHistory() != null) pet.setHealthHistory(req.getHealthHistory());
+        if (req.getHealthHistoryOther() != null) pet.setHealthHistoryOther(req.getHealthHistoryOther());
+        if (req.getHasDesignatedVet() != null) pet.setHasDesignatedVet(req.getHasDesignatedVet());
+        if (req.getDesignatedVetName() != null) pet.setDesignatedVetName(req.getDesignatedVetName());
+        if (req.getDesignatedVetAddress() != null) pet.setDesignatedVetAddress(req.getDesignatedVetAddress());
+        if (req.getDesignatedVetPhone() != null) pet.setDesignatedVetPhone(req.getDesignatedVetPhone());
+
+        return PetResponse.from(petRepository.save(pet));
+    }
+
+    // 需求（追加）：LIFF 顧客端編輯自己的寵物前，先確認這隻寵物真的是這個 username 的，
+    // 避免會員竄改 API 請求裡的 petId 改到別人的寵物資料。
+    public void assertOwnership(Long petId, String username) {
+        Pet pet = getPetEntity(petId);
+        if (pet.getOwner() == null || !pet.getOwner().getUsername().equals(username)) {
+            throw new IllegalArgumentException("這隻寵物不屬於這個帳號，無法編輯");
+        }
     }
 
     // ── 2. 查詢自己的所有寵物 ────────────────────────────────────────────

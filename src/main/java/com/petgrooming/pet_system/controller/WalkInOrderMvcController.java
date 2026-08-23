@@ -36,6 +36,7 @@ public class WalkInOrderMvcController {
     private final com.petgrooming.pet_system.service.WalletService walletService; // 需求 15
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 15
     private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
+    private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
     private final com.petgrooming.pet_system.service.PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求 7-1
     private final com.petgrooming.pet_system.service.PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
@@ -225,12 +226,20 @@ public class WalkInOrderMvcController {
                 model.addAttribute("walletDiscount", wallet.getDiscount());
                 model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
 
+                boolean isDogPet = "DOG".equalsIgnoreCase(petType);
                 double walletPreview = order.getItems().stream()
-                        .mapToDouble(it -> it.isFirstVisitEligible()
-                                ? dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                        it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price()
-                                : catRewashDiscountService.resolvePreferredDiscount(
-                                        it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                        .mapToDouble(it -> {
+                            if (it.isFirstVisitEligible() && isDogPet) {
+                                return dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                        it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
+                            }
+                            if (it.isFirstVisitEligible()) {
+                                return catFirstVisitDiscountService.resolvePreferredDiscount(
+                                        it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
+                            }
+                            return catRewashDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price();
+                        })
                         .sum();
                 model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
             }

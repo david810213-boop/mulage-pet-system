@@ -43,6 +43,27 @@ public class PetController {
         }
     }
 
+    // ── PUT /api/pets/{petId} ────────────────────────────────────────────────
+    // 需求（追加）：顧客在 LIFF「我的寵物」編輯自己的寵物資料。
+    // 物種（petType）不開放修改，PetRequest 裡即使傳了也會被忽略——
+    // 實際更新邏輯（PetService.updatePet）只採用 name/breed/weight/age 等欄位，
+    // 物種沿用資料庫既有值。
+    @PutMapping("/{petId}")
+    public ResponseEntity<?> updatePet(
+            HttpServletRequest request,
+            @PathVariable Long petId,
+            @Valid @RequestBody PetRequest petRequest) {
+        try {
+            petService.assertOwnership(petId, currentUsername(request));
+            PetResponse res = petService.updatePet(petId, petRequest);
+            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPDATE_PET",
+                    "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
+            return ResponseEntity.ok(res);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // ── GET /api/pets/cat-breeds ────────────────────────────────────────────
     // 需求（追加）：LIFF「新增毛孩」頁面貓咪品種下拉選單資料來源，不需要特別檢查
     // 身分是誰（只是回傳一份對照表清單，不含任何使用者個資），有登入即可呼叫。
