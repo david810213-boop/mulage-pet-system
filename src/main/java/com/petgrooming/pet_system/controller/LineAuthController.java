@@ -8,6 +8,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.JwtUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class LineAuthController {
     private final RestClient restClient = RestClient.create();
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.LineBindService lineBindService; // 店員綁定 LINE 用
+    private final com.petgrooming.pet_system.service.MemberImportService memberImportService; // 需求（追加）：老客戶認領既有匯入資料
 
     // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
     @Value("${COOKIE_SECURE:false}")
@@ -141,6 +143,32 @@ public class LineAuthController {
         } catch (IllegalArgumentException e) {
             // 需求（追加）：跟成功回應一樣統一回 JSON（不要跟別的端點一個回純文字一個回 JSON，
             // 這種不一致是這次「錯誤訊息被吞掉」問題的根源）
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ── POST /api/line/claim-by-phone ───────────────────────────────────
+    // 需求（追加）：老客戶用 LINE 登入後（系統會自動幫他建一筆空白新帳號，這是
+    // 既有機制，這裡不動），如果他填了電話號碼，比對到店家批次匯入的舊資料，
+    // 就把舊資料（姓名、寵物）整批過戶到目前這筆帳號上，並清掉那筆匯入用的
+    // 暫時帳號，避免一個人對應兩筆重複的會員資料。
+    // 需要先登入（LoginInterceptor 驗證 JWT），從 request 屬性拿目前登入的 username。
+    @PostMapping("/claim-by-phone")
+    public ResponseEntity<?> claimByPhone(HttpServletRequest request, @RequestBody java.util.Map<String, String> body) {
+        String username = (String) request.getAttribute("tokenUsername");
+        if (username == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "請先登入"));
+        }
+        String phone = body.get("phone");
+        if (phone == null || phone.isBlank()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "請輸入電話號碼"));
+        }
+        try {
+            User current = userService.getUserEntityByUsername(username);
+            User claimed = memberImportService.claimByPhone(current, phone);
+            operationLogService.logByUsername(username, "CUSTOMER", "CLAIM_MEMBER_DATA", claimed.getName(), phone);
+            return ResponseEntity.ok(UserResponse.from(claimed));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }
     }

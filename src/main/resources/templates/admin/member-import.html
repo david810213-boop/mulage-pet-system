@@ -1,0 +1,72 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('既有會員資料匯入 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">📥 既有會員資料批次匯入</h2>
+          <a href="/admin" class="btn">← 回後台</a>
+        </div>
+
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <div class="card" style="margin-bottom: 20px;">
+          <h3 style="margin-top: 0">CSV 檔案格式說明</h3>
+          <p style="font-size: 13px; color: var(--brown-light);">
+            <strong>一列＝一隻毛孩</strong>，同一位家長有好幾隻毛孩的話，電話號碼填一樣的，
+            分成好幾列。欄位順序固定如下，第一列是表頭文字（會被自動略過，寫什麼都可以，
+            但一定要有這一列）：
+          </p>
+          <pre style="background: var(--cream-50); padding: 10px; border-radius: 6px; font-size: 12.5px; overflow-x: auto;">家長姓名,電話,毛孩名字,物種,品種,體重,年齡,是否分離焦慮,注意事項
+王小明,0912345678,小白,狗,柴犬,8.5,3,否,怕打雷
+王小明,0912345678,小黑,貓,美國短毛貓,4.2,2,是,
+陳小華,0987654321,咪咪,貓,米克斯,3.8,5,否,</pre>
+          <ul style="font-size: 12.5px; color: var(--brown-light); line-height: 1.8;">
+            <li><strong>物種</strong>：填「貓」或「狗」，其他文字一律視為「其他」</li>
+            <li><strong>是否分離焦慮</strong>：填「是」或「否」</li>
+            <li><strong>注意事項</strong>：可以留空，但⚠️ 內容裡不能包含逗號（會被誤判成多一欄），有逗號的話請先用頓號或其他符號代替</li>
+            <li>電話號碼<strong>已經存在系統裡的，整組（這位家長+底下所有毛孩）會被跳過</strong>，不會覆蓋、不會重複建立——同一份 CSV 檔案可以放心重複上傳，不會出錯</li>
+            <li>檔案編碼請存成 <strong>UTF-8</strong>（Excel 另存新檔時選「CSV UTF-8」），不然中文字可能會變亂碼</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px;">
+          <h3 style="margin-top: 0">上傳檔案</h3>
+          <form method="post" action="/admin/member-import/upload" enctype="multipart/form-data"
+                style="display:flex; gap:12px; align-items:center;">
+            <input type="file" name="file" accept=".csv" required />
+            <button type="submit" class="btn btn-primary" style="padding: 8px 20px;">開始匯入</button>
+          </form>
+        </div>
+
+        <div class="card" th:if="${result != null}">
+          <h3 style="margin-top: 0">匯入結果</h3>
+          <table class="admin-table">
+            <tbody>
+              <tr><td>CSV 總列數（不含表頭）</td><td th:text="${result.totalRows}"></td></tr>
+              <tr><td>新建立會員數</td><td th:text="${result.membersCreated}" style="color:#2e7d32; font-weight:600;"></td></tr>
+              <tr><td>新建立寵物數</td><td th:text="${result.petsCreated}" style="color:#2e7d32; font-weight:600;"></td></tr>
+              <tr><td>跳過（電話已存在）</td><td th:text="${result.membersSkipped}"></td></tr>
+            </tbody>
+          </table>
+
+          <div th:if="${!#lists.isEmpty(result.skippedPhones)}" style="margin-top: 12px;">
+            <strong style="font-size: 13px;">被跳過的電話號碼：</strong>
+            <div style="font-size: 12.5px; color: var(--brown-light);" th:text="${#strings.listJoin(result.skippedPhones, '、')}"></div>
+          </div>
+
+          <div th:if="${!#lists.isEmpty(result.rowErrors)}" style="margin-top: 12px;">
+            <strong style="font-size: 13px; color: #c62828;">格式錯誤，這些列完全沒有被匯入：</strong>
+            <ul style="font-size: 12.5px; color: #c62828;">
+              <li th:each="err : ${result.rowErrors}" th:text="${err}"></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

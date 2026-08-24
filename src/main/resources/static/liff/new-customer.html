@@ -200,6 +200,31 @@
       </a>
     </div>
 
+    <!-- 需求（追加）：店家轉型批次匯入既有會員資料後，老客戶第一次用 LINE 報到時
+         可以用電話號碼直接認領店家先匯入好的資料（姓名、毛孩都會自動帶入），
+         不用重新填一次。只在步驟都還沒完成時顯示，已經完成報到的人不需要看到。 -->
+    <div class="claim-box" id="claimBox" style="display: none; margin-top: 20px; padding: 16px; border: 1px dashed #c9a876; border-radius: 10px;">
+      <div style="font-size: 13px; color: #6b5d4f; margin-bottom: 8px;">
+        已經是本店老客戶？店家可能已經先幫您把資料建檔好了，輸入電話號碼即可直接帶入，不用重新填寫。
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input
+          type="tel"
+          id="claimPhone"
+          placeholder="請輸入電話號碼"
+          style="flex: 1; padding: 8px; border: 1px solid #d9cbb8; border-radius: 6px; font-size: 14px;"
+        />
+        <button
+          onclick="claimByPhone()"
+          id="claimBtn"
+          style="padding: 8px 16px; border: none; border-radius: 6px; background: #c9a876; color: white; font-size: 13px; white-space: nowrap;"
+        >
+          帶入資料
+        </button>
+      </div>
+      <div id="claimMsg" style="font-size: 12.5px; margin-top: 6px;"></div>
+    </div>
+
     <div class="all-done-card" id="allDoneCard">
       <div class="msg">🎉 報到完成！可以開始預約囉</div>
       <a href="/liff/index.html">前往首頁</a>
@@ -238,8 +263,50 @@
 
           document.getElementById("loadingBox").style.display = "none";
           document.getElementById("stepsBox").style.display = "block";
+          // 兩個步驟都還沒完成才顯示認領入口——已經填過資料的人不太可能還需要認領
+          if (!profileDone && !petDone) {
+            document.getElementById("claimBox").style.display = "block";
+          }
         } catch (e) {
           document.getElementById("loadingBox").textContent = "初始化失敗，請重新整理再試一次";
+        }
+      }
+
+      // 需求（追加）：老客戶用電話號碼認領店家批次匯入的既有資料
+      async function claimByPhone() {
+        const phone = document.getElementById("claimPhone").value.trim();
+        const msgEl = document.getElementById("claimMsg");
+        if (!phone) {
+          msgEl.textContent = "請輸入電話號碼";
+          msgEl.style.color = "#c62828";
+          return;
+        }
+        const btn = document.getElementById("claimBtn");
+        btn.disabled = true;
+        btn.textContent = "帶入中...";
+        try {
+          const res = await fetch("/api/line/claim-by-phone", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders() },
+            body: JSON.stringify({ phone }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            msgEl.textContent = data.message || "找不到符合的資料";
+            msgEl.style.color = "#c62828";
+            return;
+          }
+          msgEl.textContent = "✅ 已帶入「" + data.name + "」的資料！";
+          msgEl.style.color = "#2e7d32";
+          document.getElementById("claimBox").style.display = "none";
+          // 重新檢查兩個步驟的完成狀態，資料應該已經齊全，直接顯示完成畫面
+          await Promise.all([checkProfile(), checkPets()]);
+        } catch (e) {
+          msgEl.textContent = "網路錯誤，請重試";
+          msgEl.style.color = "#c62828";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "帶入資料";
         }
       }
 

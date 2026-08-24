@@ -77,9 +77,9 @@ public class PetService {
         return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
     }
 
-    // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯共用同一套邏輯，
-    // 避免兩處各自實作導致行為不一致。
-    private com.petgrooming.pet_system.enums.CatCoatCategory resolveCatCoatCategory(
+    // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
+    // 避免多處各自實作導致行為不一致。
+    public com.petgrooming.pet_system.enums.CatCoatCategory resolveCatCoatCategory(
             com.petgrooming.pet_system.enums.PetType petType, String breed) {
         if (petType != com.petgrooming.pet_system.enums.PetType.CAT || breed == null) {
             return null;
