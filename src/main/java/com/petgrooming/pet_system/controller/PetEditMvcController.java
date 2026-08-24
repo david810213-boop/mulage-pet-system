@@ -50,7 +50,8 @@ public class PetEditMvcController {
             model.addAttribute("errorMsg", "找不到這隻寵物");
             return "admin/pet-edit";
         }
-        model.addAttribute("pet", com.petgrooming.pet_system.dto.PetResponse.from(pet));
+        var petResponse = com.petgrooming.pet_system.dto.PetResponse.from(pet);
+        model.addAttribute("pet", petResponse);
         model.addAttribute("catBreeds", petService.listCatBreedOptions());
         // 個性/病史選項，跟 LIFF add-pet.html 用同一份清單，維持兩邊一致
         model.addAttribute("personalityOptions", java.util.List.of(
@@ -58,6 +59,15 @@ public class PetEditMvcController {
         model.addAttribute("healthOptions", java.util.List.of(
                 "心臟病", "氣喘", "氣管塌陷", "白內障", "癲癇", "心絲蟲", "艾利希體", "腹膜炎",
                 "腹積水", "手術外傷未癒合", "髖關節問題", "骨折", "腸炎", "血便", "血尿", "懷孕", "傳染性疾病"));
+        // 需求（2026-08-24 修正）：原本畫面上用 Thymeleaf 的
+        // #strings.arraySplit(...).?[...] 這種選擇運算式去判斷「這個標籤有沒有
+        // 被勾選過」，執行時很容易噴例外（例如 personalityTags 是空字串時的邊界
+        // 情況處理不夠穩健），一旦噴例外，Thymeleaf 串流輸出模式下畫面會從那個
+        // 位置整個截斷，後面病史/獸醫院/儲存按鈕全部不會渲染出來，就是你截圖
+        // 看到的狀況。改成在後端先把逗號分隔字串轉成真正的 List<String>，畫面上
+        // 只需要單純的 contains() 判斷，不用在樣板裡做字串運算，穩定很多。
+        model.addAttribute("selectedPersonalityTags", splitToList(petResponse.getPersonalityTags()));
+        model.addAttribute("selectedHealthTags", splitToList(petResponse.getHealthHistory()));
         return "admin/pet-edit";
     }
 
@@ -83,5 +93,17 @@ public class PetEditMvcController {
             ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
         }
         return "redirect:" + (returnTo != null && !returnTo.isBlank() ? returnTo : "/admin/pets/" + id + "/edit");
+    }
+
+    // 需求（追加，2026-08-24 修正）：把逗號分隔字串轉成 List<String>，null/空字串
+    // 都回傳空 List（不是 null），避免 Thymeleaf 樣板裡還要另外判斷 null。
+    private java.util.List<String> splitToList(String commaSeparated) {
+        if (commaSeparated == null || commaSeparated.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.Arrays.stream(commaSeparated.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 }

@@ -88,7 +88,7 @@
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
             <label th:each="p : ${personalityOptions}" style="display:flex; align-items:center; gap:4px; font-size:13px; border:1px solid var(--cream-300); padding:5px 10px; border-radius:16px; cursor:pointer;">
               <input type="checkbox" class="personality-cb" th:value="${p}"
-                     th:checked="${pet.personalityTags != null and #strings.arraySplit(pet.personalityTags, ',').?[#this == p].size() > 0}" />
+                     th:checked="${selectedPersonalityTags.contains(p)}" />
               <span th:text="${p}"></span>
             </label>
           </div>
@@ -98,7 +98,7 @@
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
             <label th:each="h : ${healthOptions}" style="display:flex; align-items:center; gap:4px; font-size:13px; border:1px solid var(--cream-300); padding:5px 10px; border-radius:16px; cursor:pointer;">
               <input type="checkbox" class="health-cb" th:value="${h}"
-                     th:checked="${pet.healthHistory != null and #strings.arraySplit(pet.healthHistory, ',').?[#this == h].size() > 0}" />
+                     th:checked="${selectedHealthTags.contains(h)}" />
               <span th:text="${h}"></span>
             </label>
           </div>
