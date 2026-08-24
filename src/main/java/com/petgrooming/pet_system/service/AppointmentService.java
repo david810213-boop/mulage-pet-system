@@ -610,6 +610,21 @@ public class AppointmentService {
                 .getPetType();
     }
 
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——這筆預約對應的完整寵物資料
+    // （含目前體重、鎖定的固定套餐），供結帳完成後的體重提醒彈窗使用。
+    // 查不到對應寵物（理論上不該發生，預約一定綁著某隻已建檔的寵物）就回傳 null。
+    public com.petgrooming.pet_system.dto.PetResponse getPetForAppointment(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        var pet = petRepository.findByOwnerUsernameAndName(
+                appointment.getUser().getUsername(), appointment.getPetName()).orElse(null);
+        if (pet == null) return null;
+        var lockedItem = pet.getLockedGroomingItemId() != null
+                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                : null;
+        return com.petgrooming.pet_system.dto.PetResponse.from(pet, lockedItem);
+    }
+
     // ── 需求（追加）：編輯訂單——結帳前新增一筆美容服務項目 ────────────────
     // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
     // 不用整筆退款重開，直接在這裡補上即可。

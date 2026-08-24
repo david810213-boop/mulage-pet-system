@@ -24,6 +24,7 @@ public class PetService {
     private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
+    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -150,7 +151,12 @@ public class PetService {
         return petRepository.findByOwnerUsername(username)
                 .stream()
                 .map(pet -> {
-                    PetResponse res = PetResponse.from(pet);
+                    // 需求（追加）：已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
+                    // 前端才不用為了顯示鎖定資訊再多打一次 API。
+                    com.petgrooming.pet_system.model.GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
+                            ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                            : null;
+                    PetResponse res = PetResponse.from(pet, lockedItem);
                     // 需求（追加）：帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
                     res.setIsExistingCustomer(
                             petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pet.getName(), null));
@@ -172,7 +178,50 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // ── 3之1. 店家後台手動修正貓咪毛髮分類（新增）─────────────────────────
+    // ── 3之2. 狗狗定價流程簡化：鎖定/解鎖固定套餐（新增）───────────────────
+    // 用途：成犬結帳核對時，店員選出真正對應的套餐項目後，呼叫這個方法把
+    // 這個項目「鎖」在寵物資料上，之後不用再重複選單。
+    @Transactional
+    public PetResponse lockGroomingItem(Long petId, Long groomingItemId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        var item = groomingItemRepository.findById(groomingItemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到服務項目 #" + groomingItemId));
+        pet.setLockedGroomingItemId(groomingItemId);
+        petRepository.save(pet);
+        return PetResponse.from(pet, item);
+    }
+
+    // 用途：狗狗生病消瘦、換季毛況差很多、或當初選錯了，店員手動解鎖，
+    // 恢復成「依體重自動篩選」的狀態。
+    @Transactional
+    public PetResponse unlockGroomingItem(Long petId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setLockedGroomingItemId(null);
+        petRepository.save(pet);
+        return PetResponse.from(pet);
+    }
+
+    // ── 4. 更新寵物體重（新增）──────────────────────────────────────────
+    // 用途：結帳完成後提醒店員更新的體重，這個欄位是「依體重自動篩選」邏輯的
+    // 依據，幼犬每次結帳都應該更新，成犬鎖定固定套餐之後就不需要再更新了。
+    @Transactional
+    public PetResponse updateWeight(Long petId, double weight) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setWeight(weight);
+        // 體重變了，體型分類（PetSizeCategory，影響貓咪 90 天回洗優惠等其他既有
+        // 邏輯）也要跟著重新算一次，維持資料一致。
+        pet.setSizeCategory(PetSizeCategory.determine(pet.getPetType(), weight));
+        petRepository.save(pet);
+        var lockedItem = pet.getLockedGroomingItemId() != null
+                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                : null;
+        return PetResponse.from(pet, lockedItem);
+    }
+
+
     // 用途：自動判斷抓不到品種（品種不在對照表裡，變成 SPECIAL）時，店家實際
     // 看過這隻貓之後，可以在後台手動指定正確分類，不用透過改品種名稱間接觸發。
     // 只給貓咪用——狗狗沒有這個分類概念，呼叫端（Controller）應先確認物種是貓

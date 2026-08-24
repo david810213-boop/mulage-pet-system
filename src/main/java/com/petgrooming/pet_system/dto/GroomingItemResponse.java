@@ -19,6 +19,7 @@ public class GroomingItemResponse {
     private boolean requiresExistingCustomer; // 需求（追加）：僅限既有客戶
     private String applicablePetType; // 需求（追加）：適用物種（DOG/CAT/null=兩者皆可）
     private String catCoatCategory; // 需求（追加）：貓咪毛髮分類（SINGLE_LAYER/DOUBLE_LAYER/LONG_HAIR/null=與毛髮分類無關）
+    private String dogWeightTier; // 需求（追加）：狗狗體重級距（SMALL~EXTRA_LARGE/null=與體重級距無關）
 
     // 靜態工廠：將 Entity 映射成 DTO
     public static GroomingItemResponse from(GroomingItem item) {
@@ -34,6 +35,7 @@ public class GroomingItemResponse {
         res.setRequiresExistingCustomer(item.isRequiresExistingCustomer());
         res.setApplicablePetType(item.getApplicablePetType() != null ? item.getApplicablePetType().name() : null);
         res.setCatCoatCategory(item.getCatCoatCategory() != null ? item.getCatCoatCategory().name() : null);
+        res.setDogWeightTier(item.getDogWeightTier() != null ? item.getDogWeightTier().name() : null);
         return res;
     }
 }

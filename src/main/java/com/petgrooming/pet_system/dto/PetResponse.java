@@ -41,7 +41,20 @@ public class PetResponse {
     // 供預約表單 JS 判斷「僅限既有客戶」的項目要不要顯示在選單裡。
     private Boolean isExistingCustomer;
 
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——鎖定的固定套餐。
+    // lockedGroomingItemId 為 null 代表還沒鎖定（LIFF/店員開單依體重自動篩選）；
+    // 有值的話，lockedItemName/lockedItemPrice 是為了讓前端不用再多打一次 API
+    // 查這個項目的名稱/價格，直接從這裡拿（PetService 組裝時一併查好塞進來）。
+    private Long lockedGroomingItemId;
+    private String lockedItemName;
+    private Double lockedItemPrice;
+
     public static PetResponse from(Pet pet) {
+        return from(pet, null);
+    }
+
+    /** @param lockedItem 這隻寵物鎖定的固定套餐項目，還沒鎖定或呼叫端不需要顯示名稱/價格時傳 null。 */
+    public static PetResponse from(Pet pet, com.petgrooming.pet_system.model.GroomingItem lockedItem) {
         PetResponse res = new PetResponse();
         res.setId(pet.getId());
         res.setName(pet.getName());
@@ -61,6 +74,11 @@ public class PetResponse {
         res.setOwnerPhone(pet.getOwnerPhone());
         res.setNotes(pet.getNotes());
         res.setPhotoUrl(pet.getPhotoUrl());
+        res.setLockedGroomingItemId(pet.getLockedGroomingItemId());
+        if (lockedItem != null) {
+            res.setLockedItemName(lockedItem.getName());
+            res.setLockedItemPrice(lockedItem.getPrice());
+        }
 
         // 自動推薦項目：依體型帶入洗澡+吹毛 itemCode
         List<String> recommended = new ArrayList<>();

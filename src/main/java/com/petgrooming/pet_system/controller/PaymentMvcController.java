@@ -271,6 +271,19 @@ public class PaymentMvcController {
             var result = paymentService.checkout(appointmentId, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
+
+            // 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗
+            // 還沒鎖定固定套餐，跳提醒請店員記得更新體重（見 WalkInOrderMvcController
+            // 同樣邏輯的說明）。不管等一下要導去 /payments 還是 /appointments，
+            // 兩個頁面都有放這個彈窗的渲染邏輯，flash attribute 都讀得到。
+            var pet = appointmentService.getPetForAppointment(appointmentId);
+            if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
+                    && pet.getLockedGroomingItemId() == null) {
+                redirectAttributes.addFlashAttribute("weightReminderPetId", pet.getId());
+                redirectAttributes.addFlashAttribute("weightReminderPetName", pet.getName());
+                redirectAttributes.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
+            }
+
             // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
             // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
             // 導回預約列表，等店家之後在儲值管理/匯款頁確認收款才算真的完成。

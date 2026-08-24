@@ -205,9 +205,25 @@ public class WalkInOrderMvcController {
             // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
             boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
             String petType = walkInOrderService.getPetTypeForOrder(id);
+            // 需求（追加，2026-08-24）：狗狗定價流程簡化——依這隻狗目前的體重/是否
+            // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單。
+            var pet = walkInOrderService.getPetForOrder(id);
+            model.addAttribute("pet", pet);
+            final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
+            final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
+                    pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
+                            ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
+                            : null;
             model.addAttribute("groomingItems", groomingService.getAllItems().stream()
                     .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                     .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                    .filter(i -> {
+                        // 沒有標體重級距的項目（通用加購）不受這條規則影響
+                        if (i.getDogWeightTier() == null) return true;
+                        if (lockedItemId != null) return i.getId().equals(lockedItemId);
+                        if (dogTier != null) return i.getDogWeightTier().equals(dogTier.name());
+                        return true; // 抓不到這隻狗的體重資料（例如純現場客沒建檔），不篩選，讓店員自己選
+                    })
                     .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
             model.addAttribute("bankAccountInfo",
                     paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)); // 需求 15 修正
@@ -320,6 +336,18 @@ public class WalkInOrderMvcController {
                     result.getPaymentMethodLabel());
             ra.addFlashAttribute("successMsg",
                     "結帳完成！單號 #" + result.getId() + "，付款方式：" + result.getPaymentMethodLabel());
+
+            // 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗
+            // 還沒鎖定固定套餐（幼犬、或成犬還沒被判定定型），跳提醒請店員記得更新
+            // 體重，因為體重是下次開單自動篩選菜單的依據。已鎖定的狗不需要提醒
+            // （不用再管體重了）。
+            var pet = walkInOrderService.getPetForOrder(id);
+            if (pet != null && "DOG".equalsIgnoreCase(pet.getPetType().name()) && pet.getLockedGroomingItemId() == null) {
+                ra.addFlashAttribute("weightReminderPetId", pet.getId());
+                ra.addFlashAttribute("weightReminderPetName", pet.getName());
+                ra.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
+            }
+
             return "redirect:/admin/walk-in-orders";
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "結帳失敗：" + e.getMessage());

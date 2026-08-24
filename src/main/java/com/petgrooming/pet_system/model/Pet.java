@@ -58,6 +58,19 @@ public class Pet {
     @Column(name = "cat_coat_category")
     private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
 
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——成犬定型後，店員在店裡核對
+    // 選出真正對應的套餐項目，這裡記錄下來變成這隻狗的「固定套餐」。
+    // null（預設）＝還沒鎖定，LIFF 預約/店員開單都依 Pet.weight 目前的體重
+    // 自動篩選對應級距的 6 個項目，每次都要重新選；有值＝已鎖定，之後不管顧客
+    // 自己在 LIFF 訂、還是店員開單，都直接帶出這個固定項目跟價格，不再顯示選單。
+    // 只對狗狗有意義（貓咪走的是 90 天回洗優惠 + 首次體驗優惠那一套邏輯，
+    // 沒有「鎖定固定套餐」這個概念），但欄位本身沒有限制只能狗狗使用，
+    // 純粹是因為目前只有狗狗的業務流程會用到。
+    // 店員如果需要重新報價（狗狗生病消瘦、換季毛況差很多、當初選錯了），
+    // 把這個欄位清空（設回 null）就會恢復成「依體重自動篩選」的狀態。
+    @Column(name = "locked_grooming_item_id")
+    private Long lockedGroomingItemId;
+
     // ── 預約須知相關欄位 ──────────────────────────────────────────────────
     @Column(name = "has_separation_anxiety", nullable = false)
     @Builder.Default

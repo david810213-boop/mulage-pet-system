@@ -338,6 +338,23 @@ public class WalkInOrderService {
                 .orElse(null);
     }
 
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——這張現場單對應的完整寵物資料
+    // （含目前體重、鎖定的固定套餐），供結帳頁篩選「新增服務項目」下拉選單、
+    // 顯示鎖定套餐提示、還有「鎖定為固定套餐」按鈕使用。
+    // 沒綁會員或查不到對應寵物就回傳 null（純現場客、沒建檔的寵物，不套用這套邏輯）。
+    public com.petgrooming.pet_system.dto.PetResponse getPetForOrder(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.getMember() == null) return null;
+        var pet = petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
+                .orElse(null);
+        if (pet == null) return null;
+        var lockedItem = pet.getLockedGroomingItemId() != null
+                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                : null;
+        return com.petgrooming.pet_system.dto.PetResponse.from(pet, lockedItem);
+    }
+
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, String username) {

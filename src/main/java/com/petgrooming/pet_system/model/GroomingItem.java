@@ -98,4 +98,12 @@ public class GroomingItem {
     @Enumerated(EnumType.STRING)
     @Column(name = "cat_coat_category")
     private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——DOG001~036 依體重級距標記，
+    // LIFF 預約頁/店員開單頁依這隻狗目前的體重（Pet.weight）自動篩選對應級距的
+    // 6 個項目（短毛/長毛 × 3 服務等級），不用把 36 項全部攤開。
+    // null = 跟體重級距無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dog_weight_tier")
+    private com.petgrooming.pet_system.enums.DogWeightTier dogWeightTier;
 }

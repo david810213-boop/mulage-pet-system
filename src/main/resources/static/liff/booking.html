@@ -508,6 +508,7 @@
 
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
+        <div id="dogLockedBanner" style="display:none; background:#fff8e6; border:1px solid #e6c366; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;"></div>
         <div id="itemsContainer">
           ${
             groomingItems.length
@@ -673,9 +674,27 @@
         renderSummaryBar();
       }
 
+      // 需求（追加，2026-08-24）：狗狗定價流程簡化——JS 端鏡射後端
+      // DogWeightTier 的體重級距邊界，用來篩選菜單。跟後端同一套規則：
+      // 落在整數空隙的體重就近進位到下一級距，超過 33kg 歸進最高級距。
+      function computeDogWeightTier(weight) {
+        const tiers = [
+          { code: "SMALL", max: 5 },
+          { code: "MEDIUM_SMALL", max: 10 },
+          { code: "MEDIUM", max: 16 },
+          { code: "MEDIUM_LARGE", max: 22 },
+          { code: "LARGE", max: 27 },
+          { code: "EXTRA_LARGE", max: Infinity },
+        ];
+        for (const tier of tiers) {
+          if (weight <= tier.max) return tier.code;
+        }
+        return "EXTRA_LARGE";
+      }
+
       function itemRowHtml(item) {
         return `
-      <div class="item-row" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}">
+      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -709,6 +728,29 @@
         // 不會因為系統判斷不出來就擋住預約或漏掉選項。
         const catCoatCategory =
           pet && petType === "CAT" ? pet.catCoatCategory || null : null;
+
+        // 需求（追加，2026-08-24）：狗狗定價流程簡化。
+        // 已鎖定固定套餐：只顯示那一項套餐（自動勾選），其餘體重級距項目全部隱藏；
+        // 還沒鎖定：依這隻狗目前的體重篩出對應級距，只顯示那 6 項（短毛/長毛×3等級）。
+        // 不受影響：沒有標 dogWeightTier 的項目（通用加購），維持原本篩選邏輯不變。
+        const isDog = petType === "DOG";
+        const dogLockedItemId = isDog && pet ? pet.lockedGroomingItemId || null : null;
+        const dogWeightTier = isDog && pet && !dogLockedItemId
+          ? computeDogWeightTier(pet.weight)
+          : null;
+
+        // 已鎖定的話，畫面上方顯示固定套餐提示橫幅，並自動把該項目勾選起來
+        const lockedBanner = document.getElementById("dogLockedBanner");
+        if (dogLockedItemId && pet.lockedItemName) {
+          if (lockedBanner) {
+            lockedBanner.style.display = "block";
+            lockedBanner.innerHTML = `🔒 這隻狗已經有固定套餐：<strong>${escapeHtml(pet.lockedItemName)}</strong>（$${pet.lockedItemPrice}），核對後直接使用這個項目，不用重新選`;
+          }
+          selectedItemCodes.clear();
+        } else if (lockedBanner) {
+          lockedBanner.style.display = "none";
+        }
+
         document
           .getElementById("itemsContainer")
           .querySelectorAll(".item-row")
@@ -716,19 +758,33 @@
             const requiresExisting = row.dataset.requiresExisting === "true";
             const applicable = row.dataset.applicablePetType || "";
             const itemCoatCategory = row.dataset.catCoatCategory || "";
+            const itemDogTier = row.dataset.dogWeightTier || "";
+            const itemId = row.dataset.itemId;
             const cb = row.querySelector("input[type=checkbox]");
             const blockedByExisting = requiresExisting && !isExisting;
             const blockedBySpecies = applicable && petType && applicable !== petType;
-            // 這個項目本身有標毛髮分類、這隻貓也判斷出分類了、但兩者對不上 → 隱藏。
-            // 項目沒標分類（例如加購項目、狗狗項目）或這隻貓判斷不出分類（特殊貓種）
-            // 都不受這條篩選影響。
             const blockedByCoat =
               itemCoatCategory && catCoatCategory && itemCoatCategory !== catCoatCategory;
-            if (blockedByExisting || blockedBySpecies || blockedByCoat) {
+            // 只有「有標體重級距」的項目（DOG 主力套餐）才受這條規則影響，
+            // 通用加購項目（itemDogTier 是空字串）不受影響。
+            let blockedByDogTier = false;
+            if (itemDogTier) {
+              if (dogLockedItemId) {
+                blockedByDogTier = String(itemId) !== String(dogLockedItemId);
+              } else if (dogWeightTier) {
+                blockedByDogTier = itemDogTier !== dogWeightTier;
+              }
+            }
+            if (blockedByExisting || blockedBySpecies || blockedByCoat || blockedByDogTier) {
               row.style.display = "none";
               if (cb) cb.checked = false;
             } else {
               row.style.display = "";
+              // 已鎖定套餐的那一項，畫面重畫後自動勾選（避免每次切換毛孩都要手動點）
+              if (dogLockedItemId && String(itemId) === String(dogLockedItemId) && cb) {
+                cb.checked = true;
+                selectedItemCodes.add(cb.value);
+              }
             }
           });
 
