@@ -799,8 +799,12 @@
           badge = '<span class="status-badge unpaid">未付款</span>';
         }
 
-        const itemsHtml = (a.selectedItems || [])
-          .map((it) => `<span class="item-chip">${escapeHtml(it.name)}</span>`)
+        // 需求（2026-08-26 修正）：核對時如果店員改過項目（例如升級成中階定制
+        // 調理），selectedItems 是預約當下的原始選擇，不會跟著核對結果更新，
+        // 改用後端組好的 displayItemNames（核對過就是核對後的實際項目，還沒
+        // 核對就是原本選的），跟後台預約列表頁用同一個欄位、同一套邏輯。
+        const itemsHtml = (a.displayItemNames || [])
+          .map((name) => `<span class="item-chip">${escapeHtml(name)}</span>`)
           .join("");
 
         // 可取消條件：尚未取消、尚未付款、且預約時間還沒到（過去的不給取消）
@@ -856,7 +860,7 @@
         const compact = (dateStr, timeStr) => dateStr.replace(/-/g, "") + "T" + timeStr.replace(/:/g, "").padEnd(6, "0");
         const start = compact(a.date, a.startTime);
         const end = compact(a.date, a.endTime);
-        const itemNames = (a.selectedItems || []).map((it) => it.name).join("、");
+        const itemNames = (a.displayItemNames || []).join("、"); // 需求（2026-08-26 修正）：同上，改用核對後的實際項目
         const title = `${a.petName} 美容預約 - 慕沐村 Mulage pet`;
         const details = `服務項目：${itemNames || "（詳見預約明細）"}\n金額：$${a.totalAmount}\n預約編號：${a.appointmentCode}`;
         const params = new URLSearchParams({

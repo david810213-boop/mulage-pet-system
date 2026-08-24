@@ -27,6 +27,10 @@ public class AppointmentAdminResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private List<GroomingItem> selectedItems;
+    // 需求（追加，2026-08-26 修正）：同 AppointmentResponse 的說明，列表頁畫面
+    // 要改讀這個欄位，不要直接讀 selectedItems（那是預約當下的原始選擇，
+    // 核對時改過項目不會反映在上面）。
+    private List<String> displayItemNames;
     private int totalAmount;
     private boolean paid;
     private AppointmentStatus status;

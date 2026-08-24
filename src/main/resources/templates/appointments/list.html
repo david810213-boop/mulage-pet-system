@@ -499,8 +499,8 @@
 
                 <td class="items-cell">
                   <div
-                    th:each="item : ${a.selectedItems}"
-                    th:text="${item.name}"
+                    th:each="itemName : ${a.displayItemNames}"
+                    th:text="${itemName}"
                     style="font-size: 13px; margin-bottom: 2px"
                   >
                     美容項目名稱

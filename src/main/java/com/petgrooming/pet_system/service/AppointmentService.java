@@ -249,18 +249,57 @@ public class AppointmentService {
 
     // ── 查詢所有預約（STAFF/ADMIN）────────────────────────────────────────
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAll()
-                .stream()
-                .map(AppointmentResponse::from)
+        List<Appointment> appointments = appointmentRepository.findAll();
+        // 需求（追加，2026-08-26 修正）：批次撈出所有這些預約核對後的實際項目，
+        // 一次查完分組好，不要在迴圈裡一筆一筆查（避免 N+1）。
+        java.util.Map<Long, List<com.petgrooming.pet_system.model.AppointmentItem>> checkinItemsByAppt =
+                appointmentItemRepository.findByAppointmentIdIn(
+                                appointments.stream().map(Appointment::getId).toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                                ci -> ci.getAppointment().getId()));
+
+        return appointments.stream()
+                .map(a -> {
+                    var res = AppointmentResponse.from(a);
+                    res.setDisplayItemNames(buildDisplayItemNames(a, checkinItemsByAppt.get(a.getId())));
+                    return res;
+                })
+                .toList();
+    }
+
+    // 需求（追加，2026-08-26 修正）：核對過（有 AppointmentItem 紀錄）就用核對
+    // 後的實際項目名稱（只取有計價的主項目，$0 的副組成拆分明細不放進列表摘要，
+    // 那些本來就是給待補經手人矩陣拆積分用的，不是給顧客/店員看「選了什麼」的）；
+    // 還沒核對過（checkinItems 是 null 或空）就照舊用 selectedItems 的名稱。
+    private List<String> buildDisplayItemNames(Appointment a,
+            List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems) {
+        if (checkinItems != null && !checkinItems.isEmpty()) {
+            return checkinItems.stream()
+                    .filter(ci -> ci.getPrice() > 0)
+                    .map(com.petgrooming.pet_system.model.AppointmentItem::getItemName)
+                    .toList();
+        }
+        return a.getSelectedItems().stream()
+                .map(com.petgrooming.pet_system.model.GroomingItem::getName)
                 .toList();
     }
 
     // ── 店家後台查詢所有預約（含內部備注，需求 7）──────────────────────────
     public List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> getAllForAdmin() {
-        return appointmentRepository.findAll()
-                .stream()
+        List<Appointment> appointments = appointmentRepository.findAll();
+        // 需求（追加，2026-08-26 修正）：同 getAllAppointments() 的說明，批次撈核對後項目。
+        java.util.Map<Long, List<com.petgrooming.pet_system.model.AppointmentItem>> checkinItemsByAppt =
+                appointmentItemRepository.findByAppointmentIdIn(
+                                appointments.stream().map(Appointment::getId).toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                                ci -> ci.getAppointment().getId()));
+
+        return appointments.stream()
                 .map(a -> {
                     var res = com.petgrooming.pet_system.dto.AppointmentAdminResponse.from(a);
+                    res.setDisplayItemNames(buildDisplayItemNames(a, checkinItemsByAppt.get(a.getId())));
                     // 需求 10：查這筆預約有沒有「待對帳」的匯款交易（已建立交易但尚未確認收款）
                     transactionRepository.findByAppointmentId(a.getId()).ifPresent(tx -> {
                         if (tx.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
