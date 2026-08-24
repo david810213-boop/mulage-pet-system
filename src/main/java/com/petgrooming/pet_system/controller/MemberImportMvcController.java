@@ -62,4 +62,46 @@ public class MemberImportMvcController {
         }
         return "admin/member-import";
     }
+
+    // ── 需求（追加）：儲值餘額批次匯入 ────────────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/upload-wallet")
+    public String uploadWallet(HttpServletRequest request, @RequestParam MultipartFile file, Model model) {
+        User user = getLoginUser(request);
+        model.addAttribute("user", user);
+        if (file.isEmpty()) {
+            model.addAttribute("walletErrorMsg", "請選擇檔案");
+            return "admin/member-import";
+        }
+        try {
+            var result = memberImportService.importWalletBalances(file);
+            model.addAttribute("walletResult", result);
+            operationLogService.log(user, "CUSTOMER", "IMPORT_WALLET_BALANCES",
+                    "批次匯入儲值餘額", "成功 " + result.getSucceeded() + " 筆，錯誤 " + result.getRowErrors().size() + " 筆");
+        } catch (Exception e) {
+            model.addAttribute("walletErrorMsg", "匯入失敗：" + e.getMessage());
+        }
+        return "admin/member-import";
+    }
+
+    // ── 需求（追加）：消費紀錄批次匯入 ────────────────────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/upload-consumption")
+    public String uploadConsumption(HttpServletRequest request, @RequestParam MultipartFile file, Model model) {
+        User user = getLoginUser(request);
+        model.addAttribute("user", user);
+        if (file.isEmpty()) {
+            model.addAttribute("consumptionErrorMsg", "請選擇檔案");
+            return "admin/member-import";
+        }
+        try {
+            var result = memberImportService.importConsumptionHistory(file);
+            model.addAttribute("consumptionResult", result);
+            operationLogService.log(user, "CUSTOMER", "IMPORT_CONSUMPTION_HISTORY",
+                    "批次匯入消費紀錄", "成功 " + result.getSucceeded() + " 筆，錯誤 " + result.getRowErrors().size() + " 筆");
+        } catch (Exception e) {
+            model.addAttribute("consumptionErrorMsg", "匯入失敗：" + e.getMessage());
+        }
+        return "admin/member-import";
+    }
 }

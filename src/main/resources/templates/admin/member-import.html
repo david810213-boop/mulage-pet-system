@@ -66,6 +66,86 @@
             </ul>
           </div>
         </div>
+
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid var(--cream-300);" />
+
+        <!-- 需求（追加）：儲值餘額批次匯入 -->
+        <div class="card" style="margin-bottom: 20px;">
+          <h3 style="margin-top: 0">💰 儲值餘額批次匯入</h3>
+          <p style="font-size: 13px; color: var(--brown-light);">
+            <strong>先匯入會員資料，才能匯入儲值餘額</strong>（要靠電話號碼比對到已存在的會員）。
+            CSV 欄位順序：
+          </p>
+          <pre style="background: var(--cream-50); padding: 10px; border-radius: 6px; font-size: 12.5px; overflow-x: auto;">電話,儲值餘額
+0912345678,3000
+0987654321,1500</pre>
+          <p style="font-size: 12.5px; color: var(--brown-light);">
+            ⚠️ 這裡是「加總」不是「覆蓋」——如果這支電話已經有餘額（例如顧客自己認領帳號後
+            已經儲值過），匯入的金額會加上去，不會洗掉原本的。<strong>同一份餘額資料不要重複匯入
+            兩次</strong>，不然餘額會變兩倍。
+          </p>
+          <div class="alert alert-error" th:if="${walletErrorMsg}" th:text="${walletErrorMsg}"></div>
+          <form method="post" action="/admin/member-import/upload-wallet" enctype="multipart/form-data"
+                style="display:flex; gap:12px; align-items:center;">
+            <input type="file" name="file" accept=".csv" required />
+            <button type="submit" class="btn btn-primary" style="padding: 8px 20px;">開始匯入</button>
+          </form>
+          <div th:if="${walletResult != null}" style="margin-top: 16px;">
+            <table class="admin-table">
+              <tbody>
+                <tr><td>CSV 總列數</td><td th:text="${walletResult.totalRows}"></td></tr>
+                <tr><td>成功匯入</td><td th:text="${walletResult.succeeded}" style="color:#2e7d32; font-weight:600;"></td></tr>
+              </tbody>
+            </table>
+            <div th:if="${!#lists.isEmpty(walletResult.rowErrors)}" style="margin-top: 12px;">
+              <strong style="font-size: 13px; color: #c62828;">錯誤列：</strong>
+              <ul style="font-size: 12.5px; color: #c62828;">
+                <li th:each="err : ${walletResult.rowErrors}" th:text="${err}"></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- 需求（追加）：消費紀錄批次匯入 -->
+        <div class="card" style="margin-bottom: 20px;">
+          <h3 style="margin-top: 0">🧾 消費紀錄批次匯入</h3>
+          <p style="font-size: 13px; color: var(--brown-light);">
+            <strong>先匯入會員＋寵物資料，才能匯入消費紀錄</strong>（要靠電話+毛孩名字比對）。
+            CSV 欄位順序：
+          </p>
+          <pre style="background: var(--cream-50); padding: 10px; border-radius: 6px; font-size: 12.5px; overflow-x: auto;">電話,毛孩名字,消費日期,金額,備註
+0912345678,小白,2026-03-15,1200,洗澡+剪毛
+0912345678,小白,2026-06-20,1500,</pre>
+          <ul style="font-size: 12.5px; color: var(--brown-light); line-height: 1.8;">
+            <li>消費日期格式固定 <strong>yyyy-MM-dd</strong>（例如 2026-03-15）</li>
+            <li>備註可以留空</li>
+            <li>匯入後這筆紀錄會出現在會員的消費紀錄列表裡，<strong>不會計入任何店員的績效積分</strong>
+              （匯入資料本來就沒有「誰做的」這個資訊）</li>
+            <li>⚠️ 這批匯入的歷史紀錄<strong>不會觸發貓咪 90 天回洗優惠判斷</strong>（系統只認得
+              「洗澡」分類的正式服務項目，匯入資料是統一歸類成「其他」），只保證「這是既有客戶」
+              這件事會正確生效</li>
+          </ul>
+          <div class="alert alert-error" th:if="${consumptionErrorMsg}" th:text="${consumptionErrorMsg}"></div>
+          <form method="post" action="/admin/member-import/upload-consumption" enctype="multipart/form-data"
+                style="display:flex; gap:12px; align-items:center;">
+            <input type="file" name="file" accept=".csv" required />
+            <button type="submit" class="btn btn-primary" style="padding: 8px 20px;">開始匯入</button>
+          </form>
+          <div th:if="${consumptionResult != null}" style="margin-top: 16px;">
+            <table class="admin-table">
+              <tbody>
+                <tr><td>CSV 總列數</td><td th:text="${consumptionResult.totalRows}"></td></tr>
+                <tr><td>成功匯入</td><td th:text="${consumptionResult.succeeded}" style="color:#2e7d32; font-weight:600;"></td></tr>
+              </tbody>
+            </table>
+            <div th:if="${!#lists.isEmpty(consumptionResult.rowErrors)}" style="margin-top: 12px;">
+              <strong style="font-size: 13px; color: #c62828;">錯誤列：</strong>
+              <ul style="font-size: 12.5px; color: #c62828;">
+                <li th:each="err : ${consumptionResult.rowErrors}" th:text="${err}"></li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </body>
