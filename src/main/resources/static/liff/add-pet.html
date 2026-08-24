@@ -120,6 +120,16 @@
       .field textarea:focus {
         border-color: #b8935a;
       }
+      /* 需求（追加，2026-08-24）：編輯模式下，已經有儲存值的欄位用深色文字＋
+         淺色底突顯出來，跟空白欄位（灰色 placeholder 文字）一眼區分開，
+         避免顧客誤以為編輯過的資料沒有存成功。 */
+      .field input.prefilled,
+      .field select.prefilled {
+        color: #1a1a1a;
+        font-weight: 600;
+        background: #f3ead9;
+        border-color: #c9a876;
+      }
       .field textarea {
         resize: vertical;
         min-height: 80px;
@@ -374,7 +384,7 @@
 
       <div class="field">
         <label>毛孩年齡 <span class="req">*</span></label>
-        <input type="number" id="age" min="0" placeholder="例如：3（歲）" />
+        <input type="number" id="age" min="0" step="0.1" placeholder="例如：3 或 5.5（歲）" />
       </div>
 
       <!-- 需求 2：毛長改由店家於後台檢視實際毛況後定義，此處不再讓顧客選擇 -->
@@ -591,10 +601,10 @@
           });
           onPetTypeChanged();
 
-          document.getElementById("petName").value = pet.name || "";
-          document.getElementById("weight").value = pet.weight || "";
-          document.getElementById("age").value = pet.age || "";
-          document.getElementById("notes").value = pet.notes || "";
+          markFilled("petName", pet.name);
+          markFilled("weight", pet.weight);
+          markFilled("age", pet.age);
+          markFilled("notes", pet.notes);
 
           if (pet.petType === "CAT") {
             await loadCatBreedOptions();
@@ -607,23 +617,71 @@
             } else {
               select.value = "__OTHER__";
               document.getElementById("breedCatOther").style.display = "block";
-              document.getElementById("breedCatOther").value = pet.breed || "";
+              markFilled("breedCatOther", pet.breed);
             }
+            if (matched) select.classList.add("prefilled");
           } else {
-            document.getElementById("breed").value = pet.breed || "";
+            markFilled("breed", pet.breed);
           }
 
-          // 分離焦慮：預先勾選對應選項
-          const anxietyValue = pet.hasSeparationAnxiety ? "true" : "false";
-          formData.anxiety = anxietyValue;
-          document.querySelectorAll('[onclick*="anxiety"]').forEach((el) => {
-            el.classList.toggle("selected", el.dataset.value === anxietyValue);
+          // 需求（2026-08-24 修正）：原本這裡只有分離焦慮這一個欄位有預先帶入，
+          // 性別/絕育/晶片/個性/病史/獸醫院這幾個欄位完全沒有處理，導致編輯完
+          // 儲存之後，再次打開編輯畫面時這些欄位看起來永遠是空的，容易讓人誤以為
+          // 沒有存成功——這批全部補上，跟後端 PetResponse 補上對應欄位是同一次修正。
+          selectRadioProgrammatic("anxiety", pet.hasSeparationAnxiety ? "true" : "false");
+          if (pet.gender) selectRadioProgrammatic("gender", pet.gender);
+          if (pet.isNeutered !== null && pet.isNeutered !== undefined) {
+            selectRadioProgrammatic("neutered", pet.isNeutered ? "true" : "false");
+          }
+          selectRadioProgrammatic("hasChip", pet.hasChip ? "true" : "false");
+          if (pet.hasChip) markFilled("chipNumber", pet.chipNumber);
+
+          (pet.personalityTags ? pet.personalityTags.split(",") : []).forEach((tag) => {
+            toggleTagProgrammatic("personality", tag.trim());
           });
+          (pet.healthHistory ? pet.healthHistory.split(",") : []).forEach((tag) => {
+            toggleTagProgrammatic("health", tag.trim());
+          });
+          markFilled("healthOther", pet.healthHistoryOther);
+
+          selectRadioProgrammatic("hasVet", pet.hasDesignatedVet ? "true" : "false");
+          if (pet.hasDesignatedVet) {
+            markFilled("vetName", pet.designatedVetName);
+            markFilled("vetAddress", pet.designatedVetAddress);
+            markFilled("vetPhone", pet.designatedVetPhone);
+          }
 
           updateSizePreview();
         } catch (e) {
           showToast("載入毛孩資料失敗", "error");
         }
+      }
+
+      // 需求（追加，2026-08-24）：把既有值填進輸入框，同時加上 .prefilled 樣式
+      // （深色文字＋淺色底），讓「這欄位已經有儲存過的資料」跟空白欄位一眼就能
+      // 分辨出來，不用逐欄自己判斷。
+      function markFilled(elementId, value) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        if (value === null || value === undefined || value === "") return;
+        el.value = value;
+        el.classList.add("prefilled");
+      }
+
+      // 需求（追加）：以程式方式觸發 selectRadio 對應的視覺效果（模擬點擊該選項），
+      // 不用改動 selectRadio 本身的邏輯，直接找出對應的按鈕元素呼叫它。
+      function selectRadioProgrammatic(field, value) {
+        const el = document.querySelector(
+          `[onclick*="selectRadio('${field}', '${value}'"]`,
+        );
+        if (el) selectRadio(field, value, el);
+      }
+
+      function toggleTagProgrammatic(field, value) {
+        const el = document.querySelector(
+          `[onclick*="toggleTag('${field}', '${value}'"]`,
+        );
+        if (el && !formData[field].includes(value)) toggleTag(field, value, el);
       }
 
       function selectRadio(field, value, el) {
@@ -760,7 +818,7 @@
           breed = document.getElementById("breed").value.trim();
         }
         const weight = parseFloat(document.getElementById("weight").value);
-        const age = parseInt(document.getElementById("age").value);
+        const age = parseFloat(document.getElementById("age").value); // 需求（追加）：允許小數年齡
         const notes = document.getElementById("notes").value.trim();
 
         if (!formData.petType) {

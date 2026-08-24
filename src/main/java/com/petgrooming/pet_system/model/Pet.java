@@ -33,7 +33,7 @@ public class Pet {
     private Double weight;              // 體重（kg）
 
     @Column(nullable = false)
-    private Integer age;                // 年齡
+    private Double age;                // 年齡（需求追加：允許小數，例如 5.5 歲，方便幼犬/幼貓標記半歲）
 
     // ── 自動判斷欄位（新增寵物時系統自動計算）────────────────────────────
     @Enumerated(EnumType.STRING)

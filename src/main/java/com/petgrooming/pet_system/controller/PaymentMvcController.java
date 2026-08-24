@@ -141,9 +141,25 @@ public class PaymentMvcController {
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
         String petType = appointmentService.getPetTypeForAppointment(appointmentId);
+        // 需求（追加，2026-08-24）：狗狗定價流程簡化——依這隻狗目前的體重/是否
+        // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單（跟現場開單結帳頁
+        // 同一套邏輯，先前這裡漏做了，這次一併補上）。
+        var pet = appointmentService.getPetForAppointment(appointmentId);
+        model.addAttribute("pet", pet);
+        final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
+        final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
+                pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
+                        ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
+                        : null;
         model.addAttribute("groomingItems", groomingService.getAllItems().stream()
                 .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                 .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .filter(i -> {
+                    if (i.getDogWeightTier() == null) return true;
+                    if (lockedItemId != null) return i.getId().equals(lockedItemId);
+                    if (dogTier != null) return i.getDogWeightTier().equals(dogTier.name());
+                    return true;
+                })
                 .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額

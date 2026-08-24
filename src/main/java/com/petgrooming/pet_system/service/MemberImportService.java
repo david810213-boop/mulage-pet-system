@@ -112,7 +112,7 @@ public class MemberImportService {
             for (MemberImportRow row : petRows) {
                 PetType petType = parsePetType(row.getPetTypeRaw());
                 double weight = Double.parseDouble(row.getWeightRaw().trim());
-                int age = Integer.parseInt(row.getAgeRaw().trim());
+                double age = Double.parseDouble(row.getAgeRaw().trim()); // 需求（追加）：允許小數年齡
                 boolean anxiety = row.getSeparationAnxietyRaw() != null
                         && TRUE_LABELS.contains(row.getSeparationAnxietyRaw().trim());
 
@@ -341,7 +341,7 @@ public class MemberImportService {
             return "體重格式錯誤：" + row.getWeightRaw();
         }
         try {
-            int a = Integer.parseInt(row.getAgeRaw().trim());
+            double a = Double.parseDouble(row.getAgeRaw().trim()); // 需求（追加）：允許小數年齡
             if (a < 0) return "年齡不能是負數";
         } catch (Exception e) {
             return "年齡格式錯誤：" + row.getAgeRaw();

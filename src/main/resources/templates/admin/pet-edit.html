@@ -1,0 +1,154 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('編輯寵物資料 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🐾 編輯寵物資料<span th:if="${pet != null}" th:text="'：' + ${pet.name}"></span></h2>
+          <a href="javascript:history.back()" class="btn">← 返回</a>
+        </div>
+
+        <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
+        <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+        <form th:if="${pet != null}" method="post" th:action="@{/admin/pets/{id}/edit(id=${pet.id})}" class="card"
+              onsubmit="return prepareSubmit();">
+
+          <h3 style="margin-top:0;">基本資料</h3>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-bottom:16px;">
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">物種（不可修改）</label>
+              <input type="text" disabled th:value="${pet.petTypeLabel}" style="width:100%; padding:8px; background:#f5f0e8;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">名字</label>
+              <input type="text" name="name" required th:value="${pet.name}" style="width:100%; padding:8px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">品種</label>
+              <select th:if="${pet.petType.name() == 'CAT'}" name="breed" required style="width:100%; padding:8px;">
+                <option th:each="b : ${catBreeds}" th:value="${b.breedName}" th:text="${b.breedName} + '（' + ${b.coatCategory.label} + '）'" th:selected="${b.breedName == pet.breed}"></option>
+                <option th:if="${!catBreeds.![breedName].contains(pet.breed)}" th:value="${pet.breed}" th:text="${pet.breed} + '（目前值，不在對照表）'" selected></option>
+              </select>
+              <input th:unless="${pet.petType.name() == 'CAT'}" type="text" name="breed" required th:value="${pet.breed}" style="width:100%; padding:8px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">體重（kg）</label>
+              <input type="number" step="0.1" name="weight" required th:value="${pet.weight}" style="width:100%; padding:8px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">年齡（歲，可小數，例如 5.5）</label>
+              <input type="number" step="0.1" min="0" name="age" required th:value="${pet.age}" style="width:100%; padding:8px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">性別</label>
+              <select name="gender" style="width:100%; padding:8px;">
+                <option value="">未填寫</option>
+                <option value="公" th:selected="${pet.gender == '公'}">公</option>
+                <option value="母" th:selected="${pet.gender == '母'}">母</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">是否絕育</label>
+              <select name="isNeutered" style="width:100%; padding:8px;">
+                <option value="false" th:selected="${pet.isNeutered == null or pet.isNeutered == false}">未絕育</option>
+                <option value="true" th:selected="${pet.isNeutered != null and pet.isNeutered == true}">已絕育</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">是否有分離焦慮</label>
+              <select name="hasSeparationAnxiety" style="width:100%; padding:8px;">
+                <option value="false" th:selected="${pet.hasSeparationAnxiety == null or pet.hasSeparationAnxiety == false}">無</option>
+                <option value="true" th:selected="${pet.hasSeparationAnxiety != null and pet.hasSeparationAnxiety == true}">有</option>
+              </select>
+            </div>
+          </div>
+
+          <h3>晶片資訊</h3>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-bottom:16px; align-items:end;">
+            <div>
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">是否植入晶片</label>
+              <select id="hasChipSelect" name="hasChip" style="width:100%; padding:8px;"
+                      onchange="document.getElementById('chipNumberField').style.display = this.value === 'true' ? 'block' : 'none';">
+                <option value="false" th:selected="${!pet.hasChip}">無</option>
+                <option value="true" th:selected="${pet.hasChip}">有</option>
+              </select>
+            </div>
+            <div id="chipNumberField" th:style="${pet.hasChip} ? 'display:block;' : 'display:none;'">
+              <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">晶片號碼</label>
+              <input type="text" name="chipNumber" th:value="${pet.chipNumber}" style="width:100%; padding:8px;" />
+            </div>
+          </div>
+
+          <h3>個性 <span style="font-size:12px; color:var(--brown-light); font-weight:400;">（可複選）</span></h3>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
+            <label th:each="p : ${personalityOptions}" style="display:flex; align-items:center; gap:4px; font-size:13px; border:1px solid var(--cream-300); padding:5px 10px; border-radius:16px; cursor:pointer;">
+              <input type="checkbox" class="personality-cb" th:value="${p}"
+                     th:checked="${pet.personalityTags != null and #strings.arraySplit(pet.personalityTags, ',').?[#this == p].size() > 0}" />
+              <span th:text="${p}"></span>
+            </label>
+          </div>
+          <input type="hidden" name="personalityTags" id="personalityTagsHidden" />
+
+          <h3>病史 <span style="font-size:12px; color:var(--brown-light); font-weight:400;">（可複選，無則不勾）</span></h3>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <label th:each="h : ${healthOptions}" style="display:flex; align-items:center; gap:4px; font-size:13px; border:1px solid var(--cream-300); padding:5px 10px; border-radius:16px; cursor:pointer;">
+              <input type="checkbox" class="health-cb" th:value="${h}"
+                     th:checked="${pet.healthHistory != null and #strings.arraySplit(pet.healthHistory, ',').?[#this == h].size() > 0}" />
+              <span th:text="${h}"></span>
+            </label>
+          </div>
+          <input type="hidden" name="healthHistory" id="healthHistoryHidden" />
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:12px; color:var(--brown-light); margin-bottom:4px;">其他病史</label>
+            <input type="text" name="healthHistoryOther" th:value="${pet.healthHistoryOther}" style="width:100%; padding:8px;" />
+          </div>
+
+          <h3>指定獸醫院</h3>
+          <div style="margin-bottom:16px;">
+            <select id="hasVetSelect" name="hasDesignatedVet" style="width:200px; padding:8px; margin-bottom:8px;"
+                    onchange="document.getElementById('vetDetailFields').style.display = this.value === 'true' ? 'block' : 'none';">
+              <option value="false" th:selected="${!pet.hasDesignatedVet}">無指定</option>
+              <option value="true" th:selected="${pet.hasDesignatedVet}">有指定</option>
+            </select>
+            <div id="vetDetailFields" th:style="${pet.hasDesignatedVet} ? 'display:block;' : 'display:none;'"
+                 style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+              <input type="text" name="designatedVetName" placeholder="動物醫院名稱" th:value="${pet.designatedVetName}" style="padding:8px;" />
+              <input type="text" name="designatedVetAddress" placeholder="地址" th:value="${pet.designatedVetAddress}" style="padding:8px;" />
+              <input type="tel" name="designatedVetPhone" placeholder="連絡電話" th:value="${pet.designatedVetPhone}" style="padding:8px;" />
+            </div>
+          </div>
+
+          <h3>注意事項</h3>
+          <div style="margin-bottom:16px;">
+            <textarea name="notes" rows="3" style="width:100%; padding:8px;" th:text="${pet.notes}"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="padding:10px 24px;">儲存變更</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // 需求（追加，2026-08-24）：個性/病史是複選 checkbox，但後端 PetRequest
+      // 預期的是逗號分隔字串（跟 LIFF 送出的格式一致），送出前先組好塞進隱藏欄位。
+      function prepareSubmit() {
+        const personality = Array.from(document.querySelectorAll('.personality-cb:checked'))
+          .map(function (cb) { return cb.value; })
+          .join(',');
+        document.getElementById('personalityTagsHidden').value = personality;
+
+        const health = Array.from(document.querySelectorAll('.health-cb:checked'))
+          .map(function (cb) { return cb.value; })
+          .join(',');
+        document.getElementById('healthHistoryHidden').value = health;
+
+        return true;
+      }
+    </script>
+  </body>
+</html>

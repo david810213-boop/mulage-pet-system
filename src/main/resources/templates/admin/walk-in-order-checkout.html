@@ -26,7 +26,7 @@
               🔒 這隻狗已經有固定套餐：<strong th:text="${pet.lockedItemName}"></strong>
               （$<span th:text="${pet.lockedItemPrice}"></span>），下方新增服務項目時只會顯示這一項。
             </p>
-            <button type="button" onclick="unlockPet([[${pet.id}]])" class="btn btn-outline" style="padding:4px 10px; font-size:12px; margin-top: 8px;">
+            <button type="button" th:onclick="'unlockPet(' + ${pet.id} + ')'" class="btn btn-outline" style="padding:4px 10px; font-size:12px; margin-top: 8px;">
               🔓 解鎖，重新報價
             </button>
           </div>

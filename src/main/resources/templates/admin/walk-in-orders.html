@@ -599,6 +599,7 @@
       }
 
       function fillPetSelect(pets, preselectName) {
+        currentPetsData = pets; // 需求（追加）：留一份完整資料供選寵物時判斷建議套餐用
         petSelect.innerHTML = '';
         if (!pets.length) {
           petSelect.style.display = 'none';
@@ -622,9 +623,70 @@
         }
       }
 
+      // 需求（追加，2026-08-24）：狗狗定價流程簡化——開單時自動帶入建議套餐。
+      // fillPetSelect 原本只把 p.name/p.petTypeLabel 放進下拉選單的文字，
+      // 完整的寵物資料（體重、是否已鎖定固定套餐）沒有留著，選了寵物之後
+      // 沒辦法用來判斷該建議哪個套餐。這裡额外存一份完整資料供查找。
+      let currentPetsData = [];
+
+      // 跟後端 DogWeightTier 同一套體重級距邊界（見 booking.html/
+      // walk-in-order-checkout.html 同樣的函式，三處刻意保持邏輯一致）。
+      function computeDogWeightTier(weight) {
+        const tiers = [
+          { code: 'SMALL', max: 5 },
+          { code: 'MEDIUM_SMALL', max: 10 },
+          { code: 'MEDIUM', max: 16 },
+          { code: 'MEDIUM_LARGE', max: 22 },
+          { code: 'LARGE', max: 27 },
+          { code: 'EXTRA_LARGE', max: Infinity },
+        ];
+        for (const tier of tiers) {
+          if (weight <= tier.max) return tier.code;
+        }
+        return 'EXTRA_LARGE';
+      }
+
+      // 依這隻寵物（目前只處理狗，貓咪走的是回洗優惠那一套，沒有體重級距概念）
+      // 算出建議的套餐 itemCode：已鎖定就是鎖定的那項；否則抓體重級距底下
+      // 第一個項目（依 GROOMING_ITEMS 原本順序，等同短毛精緻洗排最前面）。
+      // 找不到（例如體重資料不完整、或不是狗）就回傳 null，不建議任何項目。
+      function suggestItemCodeForPet(pet) {
+        if (!pet || pet.petType !== 'DOG') return null;
+        if (pet.lockedGroomingItemId) {
+          const locked = GROOMING_ITEMS.find(function (i) { return i.id === pet.lockedGroomingItemId; });
+          return locked ? locked.itemCode : null;
+        }
+        if (typeof pet.weight !== 'number') return null;
+        const tier = computeDogWeightTier(pet.weight);
+        const match = GROOMING_ITEMS.find(function (i) { return i.dogWeightTier === tier; });
+        return match ? match.itemCode : null;
+      }
+
+      // 店員選好寵物之後，如果判斷得出建議套餐，自動幫忙勾選——但只在
+      // 「還沒有任何項目列」或「唯一一列項目還沒選任何東西」時才自動帶入，
+      // 已經選過的列不會被覆蓋，尊重店員自己的判斷/已經做的選擇。
+      function applySuggestedItem(pet) {
+        const suggestedCode = suggestItemCodeForPet(pet);
+        if (!suggestedCode) return;
+
+        const rows = document.getElementById('itemRows').children;
+        if (rows.length === 0) {
+          addItemRow();
+        }
+        if (rows.length <= 1) {
+          const select = rows[0] ? rows[0].querySelector('select[name="itemCodes"]') : null;
+          if (select && !select.value) {
+            select.value = suggestedCode;
+            unlockOtherItemsIfNeeded(select);
+          }
+        }
+      }
+
       // 選了下拉選單裡的寵物後，同步進真正會送出的欄位
       petSelect.addEventListener('change', function () {
         if (this.value) petNameInput.value = this.value;
+        const pet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
+        if (pet) applySuggestedItem(pet);
       });
 
       // 點選單外面時收起建議清單

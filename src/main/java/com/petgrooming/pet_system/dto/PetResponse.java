@@ -17,7 +17,7 @@ public class PetResponse {
     private String petTypeLabel;
     private String breed;
     private Double weight;
-    private Integer age;
+    private Double age; // 需求（追加）：允許小數（例如 5.5 歲）
     private String ownerName;
 
     // 新增欄位
@@ -49,6 +49,21 @@ public class PetResponse {
     private String lockedItemName;
     private Double lockedItemPrice;
 
+    // 需求（追加，2026-08-24 修正）：需求19定型化契約蒐集的寵物資料，原本這個
+    // DTO 完全沒有暴露這幾個欄位，導致 LIFF 編輯毛孩再次打開編輯畫面時，這些
+    // 欄位永遠看起來是空的（不是前端沒填，是後端 API 本來就沒有把資料吐出來）。
+    private String gender;
+    private Boolean isNeutered;
+    private boolean hasChip;
+    private String chipNumber;
+    private String personalityTags;      // 逗號分隔字串，例如「親近人,容易緊張」
+    private String healthHistory;        // 逗號分隔字串
+    private String healthHistoryOther;
+    private boolean hasDesignatedVet;
+    private String designatedVetName;
+    private String designatedVetAddress;
+    private String designatedVetPhone;
+
     public static PetResponse from(Pet pet) {
         return from(pet, null);
     }
@@ -79,6 +94,18 @@ public class PetResponse {
             res.setLockedItemName(lockedItem.getName());
             res.setLockedItemPrice(lockedItem.getPrice());
         }
+        // 需求（追加，2026-08-24 修正）：補上定型化契約蒐集的欄位
+        res.setGender(pet.getGender());
+        res.setIsNeutered(pet.getIsNeutered());
+        res.setHasChip(pet.isHasChip());
+        res.setChipNumber(pet.getChipNumber());
+        res.setPersonalityTags(pet.getPersonalityTags());
+        res.setHealthHistory(pet.getHealthHistory());
+        res.setHealthHistoryOther(pet.getHealthHistoryOther());
+        res.setHasDesignatedVet(pet.isHasDesignatedVet());
+        res.setDesignatedVetName(pet.getDesignatedVetName());
+        res.setDesignatedVetAddress(pet.getDesignatedVetAddress());
+        res.setDesignatedVetPhone(pet.getDesignatedVetPhone());
 
         // 自動推薦項目：依體型帶入洗澡+吹毛 itemCode
         List<String> recommended = new ArrayList<>();

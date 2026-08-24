@@ -903,10 +903,14 @@ public class AppointmentService {
         if (!checkinItems.isEmpty()) {
             items = checkinItems.stream()
                     .map(ci -> {
-                        boolean memberEligible = ci.getGroomingItemId() != null
-                                && groomingItemRepository.findById(ci.getGroomingItemId())
-                                        .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
-                                        .orElse(true);
+                        // 需求（追加，2026-08-24）：這次順便撈出 dogWeightTier，跟原本查
+                        // memberEligible 用同一次 findById，不用再多查一次資料庫。
+                        var groomingItemOpt = ci.getGroomingItemId() != null
+                                ? groomingItemRepository.findById(ci.getGroomingItemId())
+                                : java.util.Optional.<com.petgrooming.pet_system.model.GroomingItem>empty();
+                        boolean memberEligible = groomingItemOpt
+                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                .orElse(true);
                         boolean rewashApplicable = rewashEligible
                                 && catRewashDiscountService.isCatBathCategory(ci.getPerformanceCategory());
                         boolean firstVisitApplicable = firstVisitEligible
@@ -915,6 +919,10 @@ public class AppointmentService {
                                 && catFirstVisitDiscountService.isCatBathCategory(ci.getPerformanceCategory());
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
                                 .itemId(ci.getId())
+                                .groomingItemId(ci.getGroomingItemId())
+                                .dogWeightTier(groomingItemOpt
+                                        .map(gi -> gi.getDogWeightTier() != null ? gi.getDogWeightTier().name() : null)
+                                        .orElse(null))
                                 .name(ci.getItemName())
                                 .price(ci.getPrice())
                                 .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
@@ -935,6 +943,8 @@ public class AppointmentService {
                         boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(gi);
                         boolean catFirstVisitApplicable = catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(gi);
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                                .groomingItemId(gi.getId())
+                                .dogWeightTier(gi.getDogWeightTier() != null ? gi.getDogWeightTier().name() : null)
                                 .name(gi.getName())
                                 .price((int) Math.round(gi.getPrice()))
                                 .operatorName(null)

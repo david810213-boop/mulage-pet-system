@@ -46,5 +46,11 @@ public class AppointmentDetailResponse {
         private boolean firstVisitEligible; // 需求（追加）：這個項目是否符合狗狗首次體驗優惠資格
         private boolean retailItem; // 需求（追加）：是否為結帳頁加購的零售商品（不打折、不算回洗優惠）
         private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳的預約：實際套用的折扣種類；未結帳（尚未選付款方式）則為 null
+        // 需求（追加，2026-08-24）：狗狗定價流程簡化——這個項目對應的真正 GroomingItem
+        // id（不是 itemId 那個 AppointmentItem 自己的流水號），以及它自帶的體重級距標記，
+        // 供結帳頁「鎖定為固定套餐」按鈕判斷用，不用再另外反查一份會隨體重浮動的清單
+        // （這個做法是修正過現場開單那邊同類型 bug 之後，這裡直接照正確方式一次做對）。
+        private Long groomingItemId;
+        private String dogWeightTier;
     }
 }
