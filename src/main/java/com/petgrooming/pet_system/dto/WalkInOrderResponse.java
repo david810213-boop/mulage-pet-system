@@ -49,6 +49,13 @@ public class WalkInOrderResponse {
         private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
         private Long retailProductId; // 需求 7-1：非 null 代表這一列是零售商品加購
         private boolean retailItem;   // 方便前端判斷是不是零售商品（不用另外判斷 groomingItemId == null 這種間接方式）
+        // 需求（追加，2026-08-24 修正）：這個項目本身的體重級距（SMALL~EXTRA_LARGE/null）。
+        // 修正前，結帳頁的「鎖定為固定套餐」按鈕是拿「新增服務項目」下拉選單那份
+        // 已經依目前體重篩過的清單去反查這張單裡的項目，如果狗的體重資料跟這張單
+        // 當初選的體重級距對不上（例如體重還沒更新），會篩選失敗、鎖定按鈕誤判成
+        // 「沒有可鎖定的項目」。改成讓每個項目自帶這個欄位，不用再跟會浮動的另一份
+        // 清單比對，從根本解決這個問題。
+        private String dogWeightTier;
 
         static ItemLine from(WalkInOrderItem oi) {
             ItemLine l = new ItemLine();

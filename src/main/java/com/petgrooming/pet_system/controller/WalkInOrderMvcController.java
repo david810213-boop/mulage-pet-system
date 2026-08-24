@@ -214,7 +214,28 @@ public class WalkInOrderMvcController {
                     pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
                             ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
                             : null;
-            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
+
+            // 需求（追加，2026-08-24 修正）：先抓一份完整、沒被篩過的服務項目清單，
+            // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份
+            // 完整清單衍生，不要各自分開查——原本的 bug 就是兩邊各自查了不同時機/
+            // 條件的清單，導致這張單已經選定的項目沒辦法反查回自己的體重級距。
+            var allGroomingItems = groomingService.getAllItems();
+            java.util.Map<Long, String> tierByItemId = allGroomingItems.stream()
+                    .filter(i -> i.getDogWeightTier() != null)
+                    .collect(java.util.stream.Collectors.toMap(
+                            com.petgrooming.pet_system.dto.GroomingItemResponse::getId,
+                            com.petgrooming.pet_system.dto.GroomingItemResponse::getDogWeightTier));
+            // 幫這張單消費明細裡的每一項目，直接標上自己的體重級距（如果有的話），
+            // 前端「鎖定為固定套餐」按鈕靠這個欄位判斷，不用再跟下拉選單那份清單比對。
+            if (order.getItems() != null) {
+                order.getItems().forEach(item -> {
+                    if (item.getGroomingItemId() != null) {
+                        item.setDogWeightTier(tierByItemId.get(item.getGroomingItemId()));
+                    }
+                });
+            }
+
+            model.addAttribute("groomingItems", allGroomingItems.stream()
                     .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                     .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
                     .filter(i -> {

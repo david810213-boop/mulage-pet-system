@@ -211,17 +211,16 @@
     <script th:inline="javascript">
       const PET = /*[[${pet}]]*/ null;
       const ORDER_ITEMS = /*[[${order != null ? order.items : null}]]*/ [];
-      const GROOMING_ITEMS_FOR_LOCK = /*[[${groomingItems}]]*/ [];
 
-      // 從這張單目前的項目裡，找出「有標體重級距」的那一項（主力套餐），
-      // 只有這種項目才能被鎖定；加購項目（沒有 dogWeightTier）不能鎖定。
+      // 需求（2026-08-24 修正）：直接看這張單每個項目自帶的 dogWeightTier 標記，
+      // 不用再跟「新增服務項目」下拉選單那份清單比對——原本的做法會因為那份清單
+      // 是依「目前」體重篩選出來的，如果狗的體重資料跟這張單當初選定的體重級距
+      // 對不上（例如體重還沒更新），會找不到對應項目、誤判成「沒有可鎖定的項目」。
       function findLockableItem() {
         if (!PET || PET.lockedGroomingItemId || !ORDER_ITEMS) return null;
         for (const orderItem of ORDER_ITEMS) {
-          if (!orderItem.groomingItemId) continue;
-          const gi = GROOMING_ITEMS_FOR_LOCK.find(function (g) { return g.id === orderItem.groomingItemId; });
-          if (gi && gi.dogWeightTier) {
-            return { groomingItemId: gi.id, name: gi.name };
+          if (orderItem.groomingItemId && orderItem.dogWeightTier) {
+            return { groomingItemId: orderItem.groomingItemId, name: orderItem.itemName };
           }
         }
         return null;
