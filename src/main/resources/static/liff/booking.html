@@ -739,12 +739,14 @@
           ? computeDogWeightTier(pet.weight)
           : null;
 
-        // 已鎖定的話，畫面上方顯示固定套餐提示橫幅，並自動把該項目勾選起來
+        // 需求（2026-08-26 修正）：原本文字提到「鎖定」「新增服務項目」這類
+        // 後台管理用詞，客人看了會困惑（那是給店員看的操作邏輯，不是客人需要
+        // 知道的事）。改成單純顯示這隻狗慣用的服務項目就好。
         const lockedBanner = document.getElementById("dogLockedBanner");
         if (dogLockedItemId && pet.lockedItemName) {
           if (lockedBanner) {
             lockedBanner.style.display = "block";
-            lockedBanner.innerHTML = `🔒 這隻狗已經有固定套餐：<strong>${escapeHtml(pet.lockedItemName)}</strong>（$${pet.lockedItemPrice}），核對後直接使用這個項目，不用重新選`;
+            lockedBanner.innerHTML = `✅ 服務項目：<strong>${escapeHtml(pet.lockedItemName)}</strong>（$${pet.lockedItemPrice}）`;
           }
           selectedItemCodes.clear();
         } else if (lockedBanner) {
@@ -1055,9 +1057,21 @@
           }
 
           showToast("✅ 預約成功！編號 " + data.appointmentCode, "success");
-          setTimeout(() => {
-            window.location.href = "/liff/my-appointments.html";
-          }, 1500);
+
+          // 需求（追加，2026-08-26）：這隻毛孩如果是第一次消費（還沒有任何
+          // 已結帳紀錄），送出預約成功後跳一個提醒彈窗，說明線上報價僅供
+          // 參考，實際金額以到店核對寵物實際情況後為準——避免顧客誤以為
+          // LIFF 上看到的價格是保證價，到店核對被調整價格時產生認知落差。
+          // 非首次的毛孩不用看這個提醒，直接照原本的方式導去我的預約頁。
+          const bookedPet = myPets.find((p) => String(p.id) === String(selectedPetId));
+          if (bookedPet && !bookedPet.isExistingCustomer) {
+            showFirstVisitReminder();
+          } else {
+            setTimeout(() => {
+              window.location.href = "/liff/my-appointments.html";
+            }, 1500);
+          }
+          return;
         } catch (e) {
           showToast("網路錯誤，請重試", "error");
         } finally {
@@ -1071,6 +1085,31 @@
         el.textContent = msg;
         el.className = "toast show " + type;
         setTimeout(() => el.classList.remove("show"), 3000);
+      }
+
+      // 需求（追加，2026-08-26）：首次消費毛孩預約成功後的報價提醒彈窗。
+      // 用彈窗（不是 toast）是因為這句話重要、要確保顧客看到才繼續，
+      // 點「我知道了」才會離開這頁去我的預約。
+      function showFirstVisitReminder() {
+        const modal = document.createElement("div");
+        modal.style.cssText =
+          "position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;";
+        modal.innerHTML = `
+          <div style="background:white; border-radius:12px; padding:24px; max-width:340px; width:88%; text-align:center;">
+            <div style="font-size:32px; margin-bottom:8px;">📋</div>
+            <h3 style="margin:0 0 12px; font-size:16px;">溫馨提醒</h3>
+            <p style="font-size:13.5px; color:#666; line-height:1.7; margin:0 0 20px;">
+              初體驗線上預約報價僅供參考，實際金額以到店由專業美容師實際判斷寵物情況（毛況、體型、配合度等）後為主。
+            </p>
+            <button type="button" id="firstVisitReminderOkBtn" style="width:100%; padding:12px; border:none; border-radius:8px; font-size:14px; cursor:pointer; background:#c9a876; color:white; font-weight:600;">
+              我知道了
+            </button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById("firstVisitReminderOkBtn").addEventListener("click", () => {
+          window.location.href = "/liff/my-appointments.html";
+        });
       }
 
       init();
