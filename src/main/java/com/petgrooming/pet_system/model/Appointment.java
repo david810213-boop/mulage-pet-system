@@ -102,6 +102,14 @@ public class Appointment {
     @Column(name = "contract_agreed_at")
     private LocalDateTime contractAgreedAt;
 
+    // 需求（追加）：Google 日曆串接——這筆預約同步到店家共用日曆之後，
+    // Google 那邊回傳的事件 ID 存在這裡，之後要更新/刪除這個日曆事件時要用。
+    // null 代表還沒同步過（可能是日曆功能還沒設定好，或這筆預約還在「待確認」
+    // 狀態，只有轉成「已確認」才會同步——待確認的預約時間可能還會變動，
+    // 沒必要提早佔用店家日曆版面）。
+    @Column(name = "google_calendar_event_id")
+    private String googleCalendarEventId;
+
     // ── 結束服務（完成美容施作，通知家長來接）───────────────────────────────
     // 服務項目全部做完、可以請家長來店接寵物時，店員點「結束服務」：
     // 記錄完成積分給操作者、發送 LINE 通知家長，狀態仍維持「進行中」不變。

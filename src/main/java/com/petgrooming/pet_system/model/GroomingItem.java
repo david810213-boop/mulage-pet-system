@@ -31,6 +31,13 @@ public class GroomingItem {
     private Double price;
 
     // 邏輯刪除
+    // 修正：原本只寫 `= false` 沒加 @Builder.Default，Lombok 產生的 builder()
+    // 會完全忽略這個初始值（用 boolean 的語言預設值 false 頂著，這次剛好
+    // 跟預期值一樣所以沒出過事，但邏輯上是地雷——如果以後改成 `= true`
+    // 之類的非語言預設值，builder() 建出來的物件會悄悄跟預期不同，
+    // 且編譯器只會給警告不會報錯，很容易沒發現）。加上 @Builder.Default
+    // 才會讓 builder() 真的套用這個初始值。
+    @Builder.Default
     private boolean isDeleted = false;
 
     // 需求 4：是否可線上預約。

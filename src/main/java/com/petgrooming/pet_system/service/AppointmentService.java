@@ -43,6 +43,7 @@ public class AppointmentService {
     private final GroomingItemRepository groomingItemRepository; // ⚡ 1. 補上這行注入，用來撈取服務價格
     private final NotificationService notificationService;
     private final LineMessagingService lineMessagingService;
+    private final GoogleCalendarService googleCalendarService; // 需求（追加）：Google 日曆串接
     private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
     private final ClosedDateService closedDateService; // 需求 16：公休日設定
     private final PetGroomingNoteRepository petGroomingNoteRepository; // 進行中核對：毛孩美容狀況歷史
@@ -181,6 +182,10 @@ public class AppointmentService {
         // （非當天的預約要等店家在後台點「確認預約」，由 confirm() 方法發送）
         if (isSameDayBooking) {
             sendConfirmedNotify(saved);
+            // 需求（追加）：Google 日曆串接——只同步「已確認」狀態的預約，
+            // 待確認的預約時間可能還會變動，等真的確認了才佔用店家日曆版面。
+            googleCalendarService.syncEvent(saved);
+            appointmentRepository.save(saved); // 上面那行如果同步成功會寫入 googleCalendarEventId，補存一次
         }
 
         return AppointmentResponse.from(saved);
@@ -227,6 +232,9 @@ public class AppointmentService {
         System.out.println("[系統通知] 預約 #" + appointment.getId() + "（" + appointment.getPetName()
                 + "，" + appointment.getDate() + " " + appointment.getStartTime()
                 + "）已取消。取消人：" + appointment.getCancelledBy());
+
+        // 需求（追加）：Google 日曆串接——取消的同時把店家日曆上對應的事件刪掉
+        googleCalendarService.deleteEvent(saved);
 
         return AppointmentResponse.from(saved);
     }
@@ -340,6 +348,10 @@ public class AppointmentService {
 
         // 需求 3 / 13：用官方 LINE 通知會員「預約已確認」
         sendConfirmedNotify(saved);
+
+        // 需求（追加）：Google 日曆串接——確認的同時同步進店家共用日曆
+        googleCalendarService.syncEvent(saved);
+        appointmentRepository.save(saved); // 補存 googleCalendarEventId
 
         return AppointmentResponse.from(saved);
     }
