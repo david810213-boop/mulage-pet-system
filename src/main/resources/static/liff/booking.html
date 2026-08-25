@@ -372,6 +372,8 @@
         return closedDatesCache;
       }
       let selectedItemCodes = new Set();
+      let currentLockedItemCode = null; // 目前鎖定套餐對應的 itemCode（給 currentTotal() 保底用）
+      let currentLockedItemPrice = 0; // 目前鎖定套餐的金額（給 currentTotal() 保底用）
       let hasSigned = false;
       let signatureCanvas = null;
       let signatureCtx = null;
@@ -748,16 +750,31 @@
           ? computeDogWeightTier(pet.weight)
           : null;
 
-        // 已鎖定的話，畫面上方顯示固定套餐提示橫幅，並自動把該項目勾選起來
+        // 已鎖定的話，畫面上方顯示固定套餐卡片，並自動把該項目勾選起來。
+        // 直接從記憶體裡的 groomingItems 清單找出對應項目（用 id 比對），
+        // 不依賴 DOM 列表的渲染狀態，比較不會受畫面篩選/隱藏邏輯影響。
+        const lockedItem = dogLockedItemId
+          ? groomingItems.find((it) => String(it.id) === String(dogLockedItemId))
+          : null;
+
         const lockedBanner = document.getElementById("dogLockedBanner");
         if (dogLockedItemId && pet.lockedItemName) {
+          const lockedName = lockedItem ? lockedItem.name : pet.lockedItemName;
+          const lockedPrice = lockedItem ? lockedItem.price : pet.lockedItemPrice;
           if (lockedBanner) {
             lockedBanner.style.display = "block";
-            lockedBanner.innerHTML = `🔒 這隻狗已經有固定套餐：<strong>${escapeHtml(pet.lockedItemName)}</strong>（$${pet.lockedItemPrice}），核對後直接使用這個項目，不用重新選`;
+            lockedBanner.innerHTML = `已為牠安排固定套餐：<strong>${escapeHtml(lockedName)}</strong>　$${lockedPrice}`;
           }
           selectedItemCodes.clear();
-        } else if (lockedBanner) {
-          lockedBanner.style.display = "none";
+          if (lockedItem) {
+            selectedItemCodes.add(lockedItem.itemCode);
+          }
+          currentLockedItemCode = lockedItem ? lockedItem.itemCode : null;
+          currentLockedItemPrice = lockedPrice || 0;
+        } else {
+          if (lockedBanner) lockedBanner.style.display = "none";
+          currentLockedItemCode = null;
+          currentLockedItemPrice = 0;
         }
 
         document
@@ -980,11 +997,20 @@
 
       function currentTotal() {
         let total = 0;
+        let lockedCounted = false;
         document
           .querySelectorAll("#itemsContainer input[type=checkbox]:checked")
           .forEach((cb) => {
             total += parseFloat(cb.dataset.price) || 0;
+            if (currentLockedItemCode && cb.value === currentLockedItemCode) {
+              lockedCounted = true;
+            }
           });
+        // 保底：固定套餐項目若因故沒有對應到清單裡的 checkbox（找不到該筆項目），
+        // 仍然把鎖定套餐的金額加回總金額，避免畫面顯示 $0。
+        if (currentLockedItemPrice && !lockedCounted) {
+          total += currentLockedItemPrice;
+        }
         return total;
       }
 
