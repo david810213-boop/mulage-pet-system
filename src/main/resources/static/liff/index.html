@@ -4,7 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
@@ -15,256 +15,666 @@
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
     <style>
+      :root {
+        --ink: #2c2a28;
+        --primary: #3a4d3f;
+        --primary-deep: #26332b;
+        --wood: #a67c52;
+        --wood-deep: #8a6440;
+        --gold: #c6a063;
+        --gold-light: #e4cfa0;
+        --forest: #4a6b5d;
+        --paper: #f8f6f1;
+        --paper-2: #f1ece2;
+        --line: #dbd3c4;
+        --line-soft: #e8e2d5;
+        --ink-soft: #6b645c;
+        --ink-faint: #a29a8c;
+      }
       * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
       }
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
+        background: var(--paper);
+        font-family: "Noto Sans TC", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
         min-height: 100vh;
-      }
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 24px 16px 32px;
-        text-align: center;
-      }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 4px;
-      }
-      .header .greeting {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 1px;
-      }
-      .header .sub {
-        font-size: 12px;
-        opacity: 0.75;
-        margin-top: 6px;
+        padding-bottom: 12px;
       }
 
-      /* 錢包摘要卡片 */
-      .wallet-card {
-        margin: -20px 16px 0;
-        background: white;
-        border-radius: 16px;
-        padding: 18px 20px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      /* ---------- identity band ---------- */
+      .idband {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        text-decoration: none;
-        cursor: pointer;
+        padding: 16px 22px 0;
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        letter-spacing: 2.5px;
+        color: var(--ink-faint);
+        font-weight: 500;
+        text-transform: uppercase;
       }
-      .wallet-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .wallet-icon {
-        width: 44px;
-        height: 44px;
+      .idband .dot {
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #b8935a, #d9be8f);
+        background: var(--gold);
+        display: inline-block;
+        margin-right: 6px;
+        vertical-align: 1px;
+      }
+
+      /* ---------- hero / logo ---------- */
+      .hero {
+        padding: 14px 22px 18px;
+        text-align: center;
+        position: relative;
+        background: radial-gradient(
+          ellipse at 50% 0%,
+          rgba(198, 160, 99, 0.1),
+          transparent 60%
+        );
+      }
+      .logo-plate {
+        width: 124px;
+        height: 124px;
+        margin: 6px auto 4px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #fdfcf9, #f1ece2 70%);
+        box-shadow:
+          inset 0 0 0 1px rgba(198, 160, 99, 0.35),
+          0 10px 22px rgba(58, 77, 63, 0.1);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
-        flex-shrink: 0;
+        overflow: hidden;
       }
-      .wallet-tier {
-        font-size: 12px;
-        font-weight: 700;
-        color: #b8935a;
-        margin-bottom: 2px;
+      .logo-plate img {
+        width: 104%;
+        height: 104%;
+        object-fit: contain;
       }
-      .wallet-balance {
-        font-size: 22px;
-        font-weight: 700;
-        color: #2b2a28;
-      }
-      .wallet-arrow {
-        color: #ccc;
-        font-size: 18px;
-      }
-
-      /* 功能卡片區 */
-      .section-title {
-        margin: 24px 16px 10px;
-        font-size: 13px;
-        color: #8a8072;
-        font-weight: 600;
-      }
-
-      .menu-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin: 0 16px;
-      }
-      .menu-card {
-        background: white;
-        border-radius: 14px;
-        padding: 18px 14px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        text-decoration: none;
+      .hero .rule {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
-        transition: opacity 0.15s;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+        margin: 9px 0 4px;
       }
-      .menu-card:active {
-        opacity: 0.7;
+      .hero .rule span {
+        height: 1px;
+        width: 24px;
+        background: var(--line);
       }
-      .menu-card .icon {
-        font-size: 28px;
+      .hero .rule em {
+        font-style: normal;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-soft);
+        letter-spacing: 2px;
+        text-transform: lowercase;
       }
-      .menu-card .title {
-        font-size: 15px;
+      .hero .greet {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        margin-top: 5px;
+      }
+      .hero .greet b {
+        color: var(--primary-deep);
         font-weight: 700;
-        color: #2b2a28;
-      }
-      .menu-card .desc {
-        font-size: 12px;
-        color: #8a8072;
-      }
-      .menu-card .badge {
-        align-self: flex-start;
-        margin-top: 2px;
-        padding: 2px 10px;
-        background: #fff3e0;
-        color: #e65100;
-        font-size: 11px;
-        font-weight: 700;
-        border-radius: 20px;
-      }
-      .menu-card .badge.zero {
-        background: #f0f0f0;
-        color: #8a8072;
       }
 
-      /* 全寬卡片（立即預約） */
-      .cta-card {
-        margin: 12px 16px 0;
-        background: #2b2a28;
-        border-radius: 14px;
-        padding: 18px 20px;
+      /* ---------- membership ticket ---------- */
+      .ticket-wrap {
+        padding: 2px 22px 0;
+      }
+      .ticket {
+        background: linear-gradient(180deg, #fff, #fbf9f5);
+        border: 1px solid var(--line-soft);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(58, 77, 63, 0.1);
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
+        display: block;
+      }
+      .ticket-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        text-decoration: none;
-        box-shadow: 0 4px 12px rgba(44, 24, 16, 0.25);
+        padding: 15px 18px 13px;
       }
-      .cta-left {
+      .ticket-tier {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 9px;
       }
-      .cta-icon {
-        font-size: 26px;
+      .ticket-tier .mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: linear-gradient(
+          135deg,
+          var(--gold-light),
+          var(--gold) 60%,
+          var(--wood-deep)
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 600;
+        font-family: "Noto Serif TC", serif;
+      }
+      .ticket-tier .label {
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        font-weight: 500;
+        color: var(--wood-deep);
+        letter-spacing: 1.5px;
+        text-transform: lowercase;
+      }
+      .ticket-arrow {
+        color: var(--ink-faint);
+        font-size: 15px;
+      }
+      .perforation {
+        position: relative;
+        height: 1px;
+        margin: 0 18px;
+        border-top: 1.5px dashed var(--line);
+      }
+      .perforation::before,
+      .perforation::after {
+        content: "";
+        position: absolute;
+        top: -8px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--paper);
+      }
+      .perforation::before {
+        left: -26px;
+      }
+      .perforation::after {
+        right: -26px;
+      }
+      .ticket-bottom {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding: 15px 18px 17px;
+      }
+      .ticket-balance-label {
+        font-family: "Jost", sans-serif;
+        font-size: 9px;
+        color: var(--ink-faint);
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+        text-transform: lowercase;
+      }
+      .ticket-balance {
+        font-family: "Noto Serif TC", serif;
+        font-size: 25px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .ticket-cta {
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        color: var(--forest);
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--forest);
+        padding-bottom: 1px;
+        text-transform: lowercase;
+      }
+
+      /* ---------- CTA invitation card ---------- */
+      .cta-wrap {
+        padding: 14px 22px 0;
+      }
+      .cta {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        text-decoration: none;
+        display: block;
+        background: var(--primary-deep);
+        box-shadow: 0 10px 20px rgba(38, 51, 43, 0.3);
+      }
+      .cta-art {
+        position: relative;
+        height: 40px;
+        overflow: hidden;
+      }
+      .cta-art svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .cta-body {
+        padding: 0 16px 15px;
+        position: relative;
+      }
+      .cta-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-family: "Jost", sans-serif;
+        font-size: 8.5px;
+        letter-spacing: 2px;
+        color: var(--gold-light);
+        font-weight: 500;
+        margin-bottom: 6px;
+        text-transform: lowercase;
+      }
+      .cta-eyebrow::before {
+        content: "";
+        width: 12px;
+        height: 1px;
+        background: var(--gold-light);
+        display: inline-block;
       }
       .cta-title {
-        color: #d9be8f;
-        font-size: 16px;
-        font-weight: 700;
+        font-family: "Noto Serif TC", serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        letter-spacing: 0.5px;
+        line-height: 1.5;
       }
       .cta-desc {
-        color: #d9bfa0;
-        font-size: 12px;
+        font-size: 10.5px;
+        color: #c3cec5;
+        margin-top: 6px;
+        line-height: 1.6;
+      }
+      .cta-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+      }
+      .cta-next {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .cta-next .k {
+        font-family: "Jost", sans-serif;
+        font-size: 8px;
+        color: #8ea192;
+        letter-spacing: 1.2px;
+        text-transform: lowercase;
+      }
+      .cta-next .v {
+        font-family: "Noto Serif TC", serif;
+        font-size: 11.5px;
+        color: var(--gold-light);
+        font-weight: 500;
+      }
+      .cta-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: #3a2d16;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        padding: 8px 15px 8px 16px;
+        border-radius: 999px;
+        box-shadow: 0 5px 12px rgba(198, 160, 99, 0.4);
+        text-transform: lowercase;
+        flex-shrink: 0;
+      }
+
+      /* ---------- section label ---------- */
+      .board-wrap {
+        padding: 26px 22px 10px;
+      }
+      .board-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .board-title .cn {
+        font-family: "Noto Serif TC", serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--primary-deep);
+        letter-spacing: 3px;
+      }
+      .board-title svg {
+        flex: 1;
+        height: 8px;
+        color: var(--line);
+      }
+      .board-title .en {
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        color: var(--ink-faint);
+        letter-spacing: 2px;
+        text-transform: lowercase;
+      }
+
+      /* ---------- spotlight bento cards (live data) ---------- */
+      .bento-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 6px 22px 0;
+      }
+      .bento {
+        background: var(--paper-2);
+        border: 1px solid var(--line-soft);
+        border-radius: 18px;
+        padding: 16px 15px 15px;
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+        display: block;
+      }
+      .bento .bicon {
+        width: 22px;
+        height: 22px;
+        color: var(--wood-deep);
+        margin-bottom: 14px;
+      }
+      .bento .blabel {
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        color: var(--ink-soft);
+        letter-spacing: 1px;
+        text-transform: lowercase;
+      }
+      .bento .bnum {
+        font-family: "Noto Serif TC", serif;
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--ink);
+        line-height: 1.2;
         margin-top: 2px;
       }
-      .cta-arrow {
-        color: #d9be8f;
-        font-size: 18px;
-      }
-
-      .loading-hint {
-        text-align: center;
-        color: #bbb;
+      .bento .bnum span {
+        font-family: "Noto Sans TC", sans-serif;
         font-size: 12px;
-        padding: 40px 0 60px;
+        font-weight: 500;
+        color: var(--ink-soft);
+        margin-left: 3px;
+      }
+      .bento .btitle {
+        font-family: "Noto Serif TC", serif;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--primary-deep);
+        margin-top: 9px;
+        letter-spacing: 0.5px;
+      }
+      .bento .barrow {
+        position: absolute;
+        right: 14px;
+        top: 16px;
+        color: var(--ink-faint);
+        font-size: 13px;
       }
 
-      .footer-space {
-        height: 24px;
+      /* ---------- quick action tiles (low-frequency) ---------- */
+      .quick-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 10px 22px 4px;
+      }
+      .quick-tile {
+        text-align: center;
+        text-decoration: none;
+        padding: 14px 4px 12px;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 1px solid var(--line-soft);
+        box-shadow: 0 4px 12px rgba(58, 77, 63, 0.06);
+        display: block;
+      }
+      .quick-tile .qicon {
+        width: 19px;
+        height: 19px;
+        margin: 0 auto 8px;
+        color: var(--forest);
+      }
+      .quick-tile .qtitle {
+        font-family: "Noto Serif TC", serif;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .quick-tile .qcap {
+        font-family: "Jost", sans-serif;
+        font-size: 8.5px;
+        color: var(--ink-faint);
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+        text-transform: lowercase;
+      }
+
+      /* ---------- footer mark ---------- */
+      .footer-mark {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 26px 0 32px;
+        color: var(--ink-faint);
+      }
+      .footer-mark img {
+        width: 44px;
+        opacity: 0.5;
+      }
+      .footer-mark .txt {
+        font-family: "Jost", sans-serif;
+        font-size: 9px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
       }
     </style>
-    <link rel="stylesheet" href="/liff/liff-warm.css" />
+    <!-- 舊版 liff-warm.css 已不再被此頁使用（版型已全面重新設計），
+         其他 LIFF 頁面（wallet.html / booking.html 等）維持原本引用，不受影響 -->
   </head>
   <body>
-    <div class="header">
-      <div class="logo">慕沐村 Mulage pet</div>
-      <div class="greeting" id="greeting">您好 👋</div>
-      <div class="sub">寵物美容線上會員中心</div>
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>會員中心</span>
     </div>
 
-    <a class="wallet-card" href="/liff/wallet.html" id="walletCard">
-      <div class="wallet-left">
-        <div class="wallet-icon">💳</div>
-        <div>
-          <div class="wallet-tier" id="walletTier">會員錢包</div>
-          <div class="wallet-balance" id="walletBalance">載入中...</div>
-        </div>
+    <div class="hero">
+      <div class="logo-plate">
+        <img src="/liff/mulage-logo.png" alt="慕沐村 Mulage Pet Logo" />
       </div>
-      <div class="wallet-arrow">›</div>
-    </a>
+      <div class="rule"><span></span><em>member center</em><span></span></div>
+      <div class="greet" id="greeting">您好 👋</div>
+    </div>
 
-    <a class="cta-card" href="/liff/booking.html">
-      <div class="cta-left">
-        <div class="cta-icon">📅</div>
-        <div>
-          <div class="cta-title">立即預約</div>
-          <div class="cta-desc">為寶貝安排下一次美容時光</div>
+    <div class="ticket-wrap">
+      <a class="ticket" href="/liff/wallet.html" id="walletCard">
+        <div class="ticket-top">
+          <div class="ticket-tier">
+            <div class="mark">慕</div>
+            <div class="label" id="walletTier">會員票券</div>
+          </div>
+          <div class="ticket-arrow">›</div>
         </div>
-      </div>
-      <div class="cta-arrow">›</div>
-    </a>
-
-    <div class="section-title">我的功能</div>
-
-    <div class="menu-grid">
-      <a class="menu-card" href="/liff/my-pets.html">
-        <div class="icon">🐾</div>
-        <div class="title">我的毛孩寶貝</div>
-        <div class="desc">管理毛孩基本資料</div>
-        <div class="badge zero" id="petsBadge">載入中</div>
-      </a>
-
-      <a class="menu-card" href="/liff/my-appointments.html">
-        <div class="icon">📋</div>
-        <div class="title">我的預約</div>
-        <div class="desc">查看預約與消費紀錄</div>
-        <div class="badge zero" id="apptBadge">載入中</div>
-      </a>
-
-      <a class="menu-card" href="/liff/add-pet.html">
-        <div class="icon">➕</div>
-        <div class="title">新增毛孩</div>
-        <div class="desc">登記新的寶貝資料</div>
-      </a>
-
-      <a class="menu-card" href="/liff/wallet.html">
-        <div class="icon">💰</div>
-        <div class="title">會員錢包</div>
-        <div class="desc">查看餘額與等級</div>
-      </a>
-
-      <a class="menu-card" href="/liff/my-profile.html">
-        <div class="icon">📝</div>
-        <div class="title">編輯我的資料</div>
-        <div class="desc">年齡、職業等基本資料</div>
+        <div class="perforation"></div>
+        <div class="ticket-bottom">
+          <div>
+            <div class="ticket-balance-label">wallet balance</div>
+            <div class="ticket-balance" id="walletBalance">載入中...</div>
+          </div>
+          <div class="ticket-cta">查看明細</div>
+        </div>
       </a>
     </div>
 
-    <div class="footer-space"></div>
+    <div class="cta-wrap">
+      <a class="cta" href="/liff/booking.html">
+        <div class="cta-art">
+          <svg viewBox="0 0 320 40" preserveAspectRatio="none">
+            <path
+              d="M0,28 C60,12 110,36 180,22 C240,11 280,32 320,19 L320,0 L0,0 Z"
+              fill="#31423A"
+            />
+            <circle cx="270" cy="12" r="1.1" fill="#C6A063" />
+            <circle cx="250" cy="20" r="0.8" fill="#C6A063" />
+            <circle cx="288" cy="8" r="0.6" fill="#C6A063" />
+          </svg>
+        </div>
+        <div class="cta-body">
+          <div class="cta-eyebrow">reserve a visit</div>
+          <div class="cta-title">給牠一段<br />被溫柔以待的時光</div>
+          <div class="cta-desc">
+            日式按摩 · 草本洗護<br />六星級沐浴儀式，零烘箱作業
+          </div>
+          <div class="cta-foot">
+            <div class="cta-next">
+              <span class="k">next available</span>
+              <span class="v">立即查看空檔</span>
+            </div>
+            <span class="cta-btn">預約時光 →</span>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board-title">
+        <span class="cn">我 的 小 功 能</span>
+        <svg viewBox="0 0 100 8" preserveAspectRatio="none">
+          <path
+            d="M0,4 Q15,0 30,4 T60,4 T90,4 T100,4"
+            stroke="currentColor"
+            stroke-width="1"
+            fill="none"
+          />
+        </svg>
+        <span class="en">for your pet</span>
+      </div>
+    </div>
+
+    <div class="bento-row">
+      <a class="bento" href="/liff/my-pets.html">
+        <svg
+          class="bicon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <ellipse cx="12" cy="16.2" rx="4.6" ry="3.6" />
+          <circle cx="6.3" cy="9.6" r="1.7" />
+          <circle cx="10.6" cy="6.4" r="1.7" />
+          <circle cx="15" cy="6.4" r="1.7" />
+          <circle cx="18.2" cy="9.6" r="1.7" />
+        </svg>
+        <span class="barrow">›</span>
+        <div class="blabel" id="petsCap">family members</div>
+        <div class="bnum" id="petsCount">－</div>
+        <div class="btitle">毛孩檔案</div>
+      </a>
+      <a class="bento" href="/liff/my-appointments.html">
+        <svg
+          class="bicon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
+          <path d="M4 10h16" />
+          <path d="M8.2 3.5v3.4M15.8 3.5v3.4" />
+          <circle cx="9" cy="14.3" r="0.9" fill="currentColor" stroke="none" />
+          <circle
+            cx="13"
+            cy="14.3"
+            r="0.9"
+            fill="currentColor"
+            stroke="none"
+          />
+        </svg>
+        <span class="barrow">›</span>
+        <div class="blabel" id="apptCap">upcoming</div>
+        <div class="bnum" id="apptCount">－</div>
+        <div class="btitle">即將到來</div>
+      </a>
+    </div>
+
+    <div class="quick-row">
+      <a class="quick-tile" href="/liff/add-pet.html">
+        <svg
+          class="qicon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        <div class="qtitle">新增毛孩</div>
+        <div class="qcap">new member</div>
+      </a>
+      <a class="quick-tile" href="/liff/wallet.html">
+        <svg
+          class="qicon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="3" y="6.5" width="18" height="13" rx="3" />
+          <path d="M3 10.5h18" />
+          <circle cx="17" cy="14.5" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+        <div class="qtitle">會員錢包</div>
+        <div class="qcap">wallet</div>
+      </a>
+      <a class="quick-tile" href="/liff/my-profile.html">
+        <svg
+          class="qicon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4.2 19.8l1-4L15.3 5.7l3 3L8.2 18.8l-4 1z" />
+          <path d="M13.8 7.2l3 3" />
+        </svg>
+        <div class="qtitle">編輯資料</div>
+        <div class="qcap">my profile</div>
+      </a>
+    </div>
+
+    <div class="footer-mark">
+      <img src="/liff/mulage-logo.png" alt="" />
+      <div class="txt">Mulage Pet Salon</div>
+    </div>
 
     <script>
       const LIFF_ID = "2010567973-ygHvpq7X";
@@ -299,8 +709,9 @@
           try {
             const profile = await liff.getProfile();
             if (profile && profile.displayName) {
-              document.getElementById("greeting").textContent =
-                profile.displayName + " 您好 👋";
+              const g = document.getElementById("greeting");
+              g.innerHTML =
+                "<b>" + profile.displayName + "</b> 您好，歡迎回到慕沐村";
             }
           } catch (e) {
             /* 沒有權限就維持預設問候語，不影響其他功能 */
@@ -333,7 +744,7 @@
           if (!res.ok) throw new Error();
           const wallet = await res.json();
           document.getElementById("walletTier").textContent =
-            tierLabelText(wallet);
+            "mulage vip · " + tierLabelText(wallet);
           document.getElementById("walletBalance").textContent =
             "$" + (wallet.balance || 0).toLocaleString();
         } catch (e) {
@@ -346,25 +757,28 @@
       }
 
       async function loadPetsCount() {
-        const badge = document.getElementById("petsBadge");
+        const num = document.getElementById("petsCount");
+        const cap = document.getElementById("petsCap");
         try {
           const res = await fetch("/api/pets/my", { headers: authHeaders() });
           if (!res.ok) throw new Error();
           const pets = await res.json();
           if (pets.length) {
-            badge.textContent = "共 " + pets.length + " 隻";
-            badge.classList.remove("zero");
+            num.innerHTML = pets.length + "<span>隻</span>";
+            cap.textContent = "family members";
           } else {
-            badge.textContent = "尚未新增";
-            badge.classList.add("zero");
+            num.textContent = "0";
+            cap.textContent = "尚未新增";
           }
         } catch (e) {
-          badge.textContent = "－";
+          num.textContent = "－";
+          cap.textContent = "family members";
         }
       }
 
       async function loadAppointmentsCount() {
-        const badge = document.getElementById("apptBadge");
+        const num = document.getElementById("apptCount");
+        const cap = document.getElementById("apptCap");
         try {
           const res = await fetch("/api/appointments/my", {
             headers: authHeaders(),
@@ -386,14 +800,15 @@
           });
 
           if (upcoming.length) {
-            badge.textContent = upcoming.length + " 筆即將到來";
-            badge.classList.remove("zero");
+            num.innerHTML = upcoming.length + "<span>筆</span>";
+            cap.textContent = "upcoming";
           } else {
-            badge.textContent = "尚無預約";
-            badge.classList.add("zero");
+            num.textContent = "0";
+            cap.textContent = "尚無預約";
           }
         } catch (e) {
-          badge.textContent = "－";
+          num.textContent = "－";
+          cap.textContent = "upcoming";
         }
       }
 
