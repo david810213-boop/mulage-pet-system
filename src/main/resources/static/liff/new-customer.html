@@ -4,7 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
@@ -14,53 +14,33 @@
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <link rel="stylesheet" href="/liff/liff-theme.css" />
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
-        min-height: 100vh;
         padding-bottom: 40px;
       }
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 28px 20px 32px;
-        text-align: center;
+
+      .hero {
+        padding: 22px 22px 26px;
       }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 6px;
+      .hero .rule {
+        justify-content: flex-start;
       }
-      .header .title {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 1px;
-      }
-      .header .sub {
-        font-size: 13px;
-        opacity: 0.8;
+      .hero .greet {
         margin-top: 10px;
+        text-align: left;
         line-height: 1.7;
       }
 
       .steps {
-        margin: -16px 16px 0;
+        margin: 4px 20px 0;
       }
       .step-card {
-        background: white;
-        border-radius: 16px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
         padding: 18px 18px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        box-shadow: var(--shadow-card);
         margin-bottom: 14px;
         text-decoration: none;
         display: block;
@@ -78,97 +58,152 @@
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        background: #ede5d3;
-        color: #5c4a2f;
+        background: var(--paper-2);
+        color: var(--wood-deep);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
+        font-family: "Noto Serif TC", serif;
+        font-weight: 600;
         font-size: 14px;
         flex-shrink: 0;
       }
       .step-card.done .step-num {
-        background: #2e7d32;
-        color: white;
+        background: var(--forest);
+        color: #fff;
       }
       .step-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #2b2a28;
+        font-family: "Noto Serif TC", serif;
+        font-size: 15.5px;
+        font-weight: 600;
+        color: var(--ink);
       }
       .step-desc {
-        font-size: 12.5px;
-        color: #8a8072;
-        margin-top: 6px;
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin-top: 7px;
         margin-left: 44px;
         line-height: 1.6;
       }
       .step-status {
         margin-left: 44px;
-        margin-top: 8px;
+        margin-top: 9px;
         display: inline-block;
-        font-size: 11.5px;
+        font-size: 11px;
         font-weight: 700;
-        padding: 3px 10px;
-        border-radius: 20px;
+        padding: 3px 11px;
+        border-radius: 999px;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .step-status.pending {
-        background: #fff3e0;
-        color: #e65100;
+        background: var(--pending-bg);
+        color: var(--pending-fg);
       }
       .step-status.done {
-        background: #e8f5e9;
-        color: #2e7d32;
+        background: var(--done-bg);
+        color: var(--done-fg);
       }
       .step-arrow {
         position: absolute;
         right: 18px;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 20px;
-        color: #cbbfa3;
+        font-size: 18px;
+        color: var(--ink-faint);
+      }
+
+      .claim-box {
+        margin: 18px 20px 0;
+        padding: 16px;
+        background: var(--paper-2);
+        border: 1px dashed var(--gold);
+        border-radius: var(--radius-md);
+      }
+      .claim-box .claim-desc {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        margin-bottom: 10px;
+        line-height: 1.7;
+      }
+      .claim-box .claim-row {
+        display: flex;
+        gap: 8px;
+      }
+      .claim-box input {
+        flex: 1;
+        padding: 10px 11px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-sm);
+        font-size: 13.5px;
+        font-family: "Noto Sans TC", sans-serif;
+        background: #fffefd;
+      }
+      .claim-box button {
+        padding: 10px 18px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, var(--wood), var(--wood-deep));
+        color: #fff;
+        font-family: "Jost", sans-serif;
+        font-size: 12.5px;
+        font-weight: 500;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .claim-box .claim-msg {
+        font-size: 11.5px;
+        margin-top: 8px;
       }
 
       .all-done-card {
-        margin: 8px 16px 0;
-        background: #2b2a28;
-        border-radius: 14px;
-        padding: 20px;
+        margin: 18px 20px 0;
+        background: var(--primary-deep);
+        border-radius: var(--radius-lg);
+        padding: 22px;
         text-align: center;
         display: none;
+        box-shadow: 0 10px 24px rgba(38, 51, 43, 0.3);
       }
       .all-done-card .msg {
-        color: #d9be8f;
-        font-size: 15px;
-        font-weight: 700;
-        margin-bottom: 12px;
+        color: #fff;
+        font-family: "Noto Serif TC", serif;
+        font-size: 15.5px;
+        font-weight: 600;
+        margin-bottom: 14px;
       }
       .all-done-card a {
         display: inline-block;
-        background: #d9be8f;
-        color: #2b2a28;
-        padding: 10px 24px;
-        border-radius: 24px;
-        font-size: 14px;
-        font-weight: 700;
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: #3a2d16;
+        padding: 10px 26px;
+        border-radius: 999px;
+        font-family: "Jost", sans-serif;
+        font-size: 13px;
+        font-weight: 600;
         text-decoration: none;
+        box-shadow: 0 6px 14px rgba(198, 160, 99, 0.4);
       }
 
       .loading {
         text-align: center;
-        color: #8a8072;
-        font-size: 13px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
         padding: 40px 0;
       }
     </style>
   </head>
   <body>
-    <div class="header">
-      <div class="logo">MULAGE PET</div>
-      <div class="title">🐾 歡迎加入慕沐村</div>
-      <div class="sub">
-        感謝您加入官方帳號！<br />
-        請先完成以下兩個步驟，就能開始為毛孩預約美容囉～
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>新客報到</span>
+    </div>
+
+    <div class="hero">
+      <div class="rule"><span></span><em>welcome</em></div>
+      <div class="greet" style="margin-top:10px;">
+        <b style="font-family:'Noto Serif TC',serif; font-size:18px; display:block; color:var(--primary-deep); margin-bottom:6px;">歡迎加入慕沐村</b>
+        感謝您加入官方帳號！請先完成以下兩個步驟，就能開始為毛孩預約美容囉～
       </div>
     </div>
 
@@ -203,26 +238,21 @@
     <!-- 需求（追加）：店家轉型批次匯入既有會員資料後，老客戶第一次用 LINE 報到時
          可以用電話號碼直接認領店家先匯入好的資料（姓名、毛孩都會自動帶入），
          不用重新填一次。只在步驟都還沒完成時顯示，已經完成報到的人不需要看到。 -->
-    <div class="claim-box" id="claimBox" style="display: none; margin-top: 20px; padding: 16px; border: 1px dashed #c9a876; border-radius: 10px;">
-      <div style="font-size: 13px; color: #6b5d4f; margin-bottom: 8px;">
+    <div class="claim-box" id="claimBox" style="display: none;">
+      <div class="claim-desc">
         已經是本店老客戶？店家可能已經先幫您把資料建檔好了，輸入電話號碼即可直接帶入，不用重新填寫。
       </div>
-      <div style="display: flex; gap: 8px;">
+      <div class="claim-row">
         <input
           type="tel"
           id="claimPhone"
           placeholder="請輸入電話號碼"
-          style="flex: 1; padding: 8px; border: 1px solid #d9cbb8; border-radius: 6px; font-size: 14px;"
         />
-        <button
-          onclick="claimByPhone()"
-          id="claimBtn"
-          style="padding: 8px 16px; border: none; border-radius: 6px; background: #c9a876; color: white; font-size: 13px; white-space: nowrap;"
-        >
+        <button onclick="claimByPhone()" id="claimBtn">
           帶入資料
         </button>
       </div>
-      <div id="claimMsg" style="font-size: 12.5px; margin-top: 6px;"></div>
+      <div id="claimMsg" class="claim-msg"></div>
     </div>
 
     <div class="all-done-card" id="allDoneCard">
@@ -278,7 +308,7 @@
         const msgEl = document.getElementById("claimMsg");
         if (!phone) {
           msgEl.textContent = "請輸入電話號碼";
-          msgEl.style.color = "#c62828";
+          msgEl.style.color = "#8B0000";
           return;
         }
         const btn = document.getElementById("claimBtn");
@@ -293,17 +323,17 @@
           const data = await res.json();
           if (!res.ok) {
             msgEl.textContent = data.message || "找不到符合的資料";
-            msgEl.style.color = "#c62828";
+            msgEl.style.color = "#8B0000";
             return;
           }
           msgEl.textContent = "✅ 已帶入「" + data.name + "」的資料！";
-          msgEl.style.color = "#2e7d32";
+          msgEl.style.color = "#2D5A27";
           document.getElementById("claimBox").style.display = "none";
           // 重新檢查兩個步驟的完成狀態，資料應該已經齊全，直接顯示完成畫面
           await Promise.all([checkProfile(), checkPets()]);
         } catch (e) {
           msgEl.textContent = "網路錯誤，請重試";
-          msgEl.style.color = "#c62828";
+          msgEl.style.color = "#8B0000";
         } finally {
           btn.disabled = false;
           btn.textContent = "帶入資料";

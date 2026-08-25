@@ -4,96 +4,76 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村Mulage pet</title>
+    <title>我的預約 | 慕沐村Mulage pet</title>
     <script
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <link rel="stylesheet" href="/liff/liff-theme.css" />
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
-        min-height: 100vh;
-        padding-bottom: 90px;
-      }
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 20px 16px 24px;
-        text-align: center;
-      }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 4px;
-      }
-      .header h1 {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 2px;
+        padding-bottom: 100px;
       }
 
       .add-btn {
         display: block;
-        margin: 16px;
-        padding: 12px;
-        background: white;
-        border: 2px dashed #b8935a;
-        border-radius: 12px;
+        margin: 20px 20px 14px;
+        padding: 13px;
+        border: none;
+        border-radius: var(--radius-md);
         text-align: center;
-        color: #b8935a;
-        font-size: 15px;
+        color: #fff;
+        font-family: "Noto Serif TC", serif;
+        font-size: 13.5px;
         font-weight: 600;
+        letter-spacing: 0.5px;
         text-decoration: none;
-        cursor: pointer;
+        background: linear-gradient(135deg, var(--wood), var(--wood-deep));
+        box-shadow: 0 6px 16px rgba(138, 100, 64, 0.35);
       }
 
       /* 分類 tab */
       .tabs {
         display: flex;
-        margin: 0 16px 16px;
-        background: white;
-        border-radius: 10px;
+        margin: 0 20px 14px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-md);
         padding: 4px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        box-shadow: var(--shadow-card);
       }
       .tab-btn {
         flex: 1;
         text-align: center;
         padding: 10px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #8a8072;
+        border-radius: var(--radius-sm);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        color: var(--ink-soft);
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.15s;
+        text-transform: lowercase;
       }
       .tab-btn.active {
-        background: #2b2a28;
-        color: #d9be8f;
+        background: var(--primary-deep);
+        color: #fff;
       }
 
       /* 歷史預約篩選面板 */
       .filter-panel {
-        margin: 0 16px 16px;
-        background: white;
-        border-radius: 12px;
+        margin: 0 20px 14px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-md);
         padding: 14px 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        box-shadow: var(--shadow-card);
         display: none;
       }
       .filter-panel.show {
@@ -112,21 +92,24 @@
       }
       .filter-field label {
         display: block;
-        font-size: 11px;
-        color: #8a8072;
-        margin-bottom: 4px;
+        font-family: "Jost", sans-serif;
+        font-size: 9.5px;
+        color: var(--ink-faint);
+        margin-bottom: 5px;
+        letter-spacing: 0.3px;
       }
       .filter-field input[type="date"],
       .filter-field input[type="number"],
       .filter-field select {
         width: 100%;
         padding: 7px 8px;
-        border: 1px solid #e3dccc;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #2b2a28;
-        background: #fffefb;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-sm);
+        font-size: 12.5px;
+        color: var(--ink);
+        background: #fffefd;
         box-sizing: border-box;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .filter-checkbox-row {
         display: flex;
@@ -138,13 +121,13 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 13px;
-        color: #454340;
+        font-size: 12.5px;
+        color: var(--ink-soft);
       }
       .filter-checkbox-row input[type="checkbox"] {
         width: 16px;
         height: 16px;
-        accent-color: #b8935a;
+        accent-color: var(--wood);
       }
       .filter-actions {
         display: flex;
@@ -154,27 +137,30 @@
       .filter-btn {
         flex: 1;
         padding: 8px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
+        border-radius: var(--radius-sm);
+        font-family: "Jost", sans-serif;
+        font-size: 11.5px;
+        font-weight: 500;
         cursor: pointer;
         border: none;
+        text-transform: lowercase;
       }
       .filter-btn.apply {
-        background: #2b2a28;
-        color: #d9be8f;
+        background: var(--primary-deep);
+        color: #fff;
       }
       .filter-btn.reset {
-        background: #ede5d3;
-        color: #454340;
+        background: var(--paper-2);
+        color: var(--ink-soft);
       }
 
       .appt-card {
-        margin: 0 16px 16px;
-        background: white;
-        border-radius: 12px;
+        margin: 0 20px 14px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
         padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        box-shadow: var(--shadow-card);
         cursor: pointer;
       }
       .appt-top {
@@ -184,70 +170,78 @@
         margin-bottom: 12px;
       }
       .appt-code {
-        font-size: 12px;
-        color: #8a8072;
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        color: var(--ink-faint);
         margin-bottom: 4px;
+        letter-spacing: 0.3px;
       }
       .appt-pet {
-        font-size: 18px;
-        font-weight: 700;
-        color: #2b2a28;
+        font-family: "Noto Serif TC", serif;
+        font-size: 16.5px;
+        font-weight: 600;
+        color: var(--ink);
       }
       .appt-pet .pet-type-icon {
         margin-right: 4px;
       }
 
       .status-badge {
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
+        padding: 4px 11px;
+        border-radius: 999px;
+        font-size: 11px;
         font-weight: 700;
         white-space: nowrap;
         flex-shrink: 0;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .status-badge.upcoming {
-        background: #e3f2fd;
-        color: #1565c0;
+        background: var(--paper-2);
+        color: var(--forest);
       }
       .status-badge.paid {
-        background: #e8f5e9;
-        color: #2e7d32;
+        background: var(--done-bg);
+        color: var(--done-fg);
       }
       .status-badge.unpaid {
-        background: #fff3e0;
-        color: #e65100;
+        background: var(--pending-bg);
+        color: var(--pending-fg);
       }
       .status-badge.past {
-        background: #f2f2f2;
-        color: #8a8072;
+        background: var(--paper-2);
+        color: var(--ink-faint);
       }
       .status-badge.cancelled {
-        background: #fdecec;
-        color: #c62828;
+        background: var(--cancel-bg);
+        color: var(--cancel-fg);
       }
 
       .appt-card.cancelled {
-        opacity: 0.6;
+        opacity: 0.65;
       }
 
       .detail-hint {
         margin-top: 10px;
-        font-size: 12px;
-        color: #b8935a;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--wood-deep);
         text-align: right;
+        letter-spacing: 0.3px;
       }
 
       .cancel-btn {
         margin-top: 12px;
         width: 100%;
         padding: 10px;
-        background: white;
-        border: 1.5px solid #e53935;
-        color: #e53935;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
+        background: #fff;
+        border: 1.5px solid var(--cancel-fg);
+        color: var(--cancel-fg);
+        border-radius: var(--radius-sm);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
+        font-weight: 500;
         cursor: pointer;
+        text-transform: lowercase;
       }
       .cancel-btn:active {
         opacity: 0.7;
@@ -257,22 +251,22 @@
         cursor: not-allowed;
       }
 
-      /* 需求（追加）：Google 日曆加入按鈕，跟 cancel-btn 同樣的尺寸/間距風格，
-         用店家品牌色而不是紅色（紅色留給取消這種警示性操作） */
       .calendar-add-btn {
         display: block;
         margin-top: 8px;
         width: 100%;
         padding: 10px;
-        background: white;
-        border: 1.5px solid #c9a876;
-        color: #8a6f3f;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
+        background: #fff;
+        border: 1.5px solid var(--gold);
+        color: var(--wood-deep);
+        border-radius: var(--radius-sm);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
+        font-weight: 500;
         text-align: center;
         text-decoration: none;
         box-sizing: border-box;
+        text-transform: lowercase;
       }
       .calendar-add-btn:active {
         opacity: 0.7;
@@ -280,17 +274,19 @@
 
       .cancel-note {
         margin-top: 8px;
-        font-size: 12px;
-        color: #8a8072;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-faint);
       }
 
       .appt-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 14px;
-        color: #454340;
+        font-size: 13px;
+        color: var(--ink-soft);
         margin-bottom: 8px;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .appt-row .icon {
         width: 18px;
@@ -301,23 +297,27 @@
       .appt-items {
         margin-top: 12px;
         padding: 12px;
-        background: #fffefb;
-        border-radius: 8px;
+        background: var(--paper-2);
+        border-radius: var(--radius-sm);
       }
       .appt-items .label {
-        font-size: 12px;
-        color: #8a8072;
-        margin-bottom: 6px;
-        font-weight: 600;
+        font-family: "Jost", sans-serif;
+        font-size: 9.5px;
+        color: var(--ink-faint);
+        margin-bottom: 7px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: lowercase;
       }
       .item-chip {
         display: inline-block;
         padding: 3px 10px;
         margin: 0 6px 6px 0;
-        background: #ede5d3;
-        color: #454340;
-        border-radius: 20px;
-        font-size: 12px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        color: var(--ink-soft);
+        border-radius: 999px;
+        font-size: 11px;
       }
 
       .appt-footer {
@@ -326,25 +326,28 @@
         align-items: center;
         margin-top: 12px;
         padding-top: 12px;
-        border-top: 1px solid #ede5d3;
+        border-top: 1px solid var(--line-soft);
       }
       .appt-total {
-        font-size: 13px;
-        color: #8a8072;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-soft);
       }
       .appt-total .amount {
-        font-size: 18px;
+        font-family: "Noto Serif TC", serif;
+        font-size: 17px;
         font-weight: 700;
-        color: #2b2a28;
-        margin-left: 4px;
+        color: var(--primary-deep);
+        margin-left: 5px;
       }
 
       .loading,
       .empty {
         text-align: center;
         padding: 60px 20px;
-        color: #bbb;
-        font-size: 14px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
 
       .toast {
@@ -352,58 +355,59 @@
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%);
-        background: #2b2a28;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 24px;
-        font-size: 14px;
+        background: var(--primary-deep);
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 999px;
+        font-size: 13px;
         opacity: 0;
         transition: opacity 0.3s;
         pointer-events: none;
         white-space: nowrap;
         max-width: 90vw;
         z-index: 999;
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.3);
       }
       .toast.show {
         opacity: 1;
       }
       .toast.success {
-        background: #2e7d32;
+        background: var(--forest);
       }
       .toast.error {
-        background: #c62828;
+        background: #8b3a3a;
       }
 
-      /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變 */
       .fab-home {
         position: fixed;
         left: 50%;
-        bottom: 20px;
+        bottom: 22px;
         transform: translateX(-50%);
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: #2b2a28;
-        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        background: var(--primary-deep);
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
         z-index: 500;
+        border: 2px solid var(--gold);
       }
       .fab-home-icon {
-        font-size: 22px;
+        font-size: 20px;
         line-height: 1;
       }
       .fab-home:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
 
       /* 預約明細彈窗 */
       .detail-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(43, 42, 40, 0.55);
+        background: rgba(38, 51, 43, 0.55);
         display: none;
         align-items: flex-end;
         justify-content: center;
@@ -413,7 +417,7 @@
         display: flex;
       }
       .detail-sheet {
-        background: #fffefb;
+        background: var(--paper);
         width: 100%;
         max-width: 480px;
         max-height: 85vh;
@@ -428,40 +432,46 @@
         margin-bottom: 14px;
       }
       .detail-sheet-header h2 {
-        font-size: 17px;
-        color: #2b2a28;
+        font-family: "Noto Serif TC", serif;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--primary-deep);
       }
       .detail-close {
         background: none;
         border: none;
-        font-size: 20px;
-        color: #8a8072;
+        font-size: 18px;
+        color: var(--ink-faint);
         cursor: pointer;
         padding: 4px 8px;
       }
       .detail-loading {
         text-align: center;
         padding: 40px 0;
-        color: #bbb;
-        font-size: 14px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
       .detail-section {
         margin-bottom: 16px;
       }
       .detail-section .label {
-        font-size: 12px;
-        color: #8a8072;
-        margin-bottom: 6px;
-        font-weight: 600;
+        font-family: "Jost", sans-serif;
+        font-size: 9.5px;
+        color: var(--ink-faint);
+        margin-bottom: 7px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
       }
       .detail-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 8px 0;
-        border-bottom: 1px solid #ede5d3;
-        font-size: 14px;
-        color: #2b2a28;
+        border-bottom: 1px solid var(--line-soft);
+        font-size: 13.5px;
+        color: var(--ink);
+        font-family: "Noto Sans TC", sans-serif;
       }
       .detail-row:last-child {
         border-bottom: none;
@@ -470,11 +480,13 @@
         flex: 1;
       }
       .detail-row .item-operator {
-        font-size: 11px;
-        color: #8a8072;
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        color: var(--ink-faint);
         margin-left: 8px;
       }
       .detail-row .item-price {
+        font-family: "Noto Serif TC", serif;
         font-weight: 700;
         margin-left: 10px;
         white-space: nowrap;
@@ -485,40 +497,49 @@
         align-items: center;
         padding-top: 12px;
         margin-top: 4px;
-        border-top: 2px solid #2b2a28;
+        border-top: 2px solid var(--primary-deep);
+        font-family: "Noto Serif TC", serif;
         font-size: 15px;
         font-weight: 700;
-        color: #2b2a28;
+        color: var(--primary-deep);
       }
       .detail-payment {
         margin-top: 14px;
         padding: 12px;
-        background: #f6f2ea;
-        border-radius: 10px;
-        font-size: 13px;
-        color: #454340;
+        background: var(--paper-2);
+        border-radius: var(--radius-sm);
+        font-size: 12.5px;
+        color: var(--ink-soft);
         line-height: 1.8;
       }
       .detail-error {
         text-align: center;
         padding: 30px 0;
-        color: #c62828;
-        font-size: 13px;
+        color: var(--cancel-fg);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
     </style>
-    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
-    <div class="header">
-      <div class="logo">慕沐村 Mulage pet</div>
-      <h1>我的預約</h1>
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>我的預約</span>
+    </div>
+
+    <div class="page-head">
+      <a class="back" href="/liff/index.html">‹</a>
+      <div class="titles">
+        <div class="cn">我的預約</div>
+        <div class="en">my appointments</div>
+      </div>
     </div>
 
     <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
       <span class="fab-home-icon">🏠</span>
     </a>
 
-    <a class="add-btn" href="/liff/booking.html">📅 新增預約</a>
+    <a class="add-btn" href="/liff/booking.html">＋ 新增預約</a>
 
     <div class="tabs">
       <div
@@ -634,7 +655,7 @@
           const data = await res.json().catch(() => null);
           if (!res.ok) {
             document.getElementById("app").innerHTML =
-              '<div class="loading" style="color:red">登入失敗</div>';
+              '<div class="loading" style="color:#8B0000">登入失敗</div>';
             return;
           }
 
@@ -643,7 +664,7 @@
           await loadAppointments();
         } catch (e) {
           document.getElementById("app").innerHTML =
-            '<div class="loading" style="color:red">初始化失敗：' +
+            '<div class="loading" style="color:#8B0000">初始化失敗：' +
             e.message +
             "</div>";
         }
@@ -665,7 +686,7 @@
           renderList();
         } catch (e) {
           document.getElementById("app").innerHTML =
-            '<div class="loading" style="color:red">載入預約失敗：' +
+            '<div class="loading" style="color:#8B0000">載入預約失敗：' +
             e.message +
             "</div>";
         }
@@ -799,12 +820,8 @@
           badge = '<span class="status-badge unpaid">未付款</span>';
         }
 
-        // 需求（2026-08-26 修正）：核對時如果店員改過項目（例如升級成中階定制
-        // 調理），selectedItems 是預約當下的原始選擇，不會跟著核對結果更新，
-        // 改用後端組好的 displayItemNames（核對過就是核對後的實際項目，還沒
-        // 核對就是原本選的），跟後台預約列表頁用同一個欄位、同一套邏輯。
-        const itemsHtml = (a.displayItemNames || [])
-          .map((name) => `<span class="item-chip">${escapeHtml(name)}</span>`)
+        const itemsHtml = (a.selectedItems || [])
+          .map((it) => `<span class="item-chip">${escapeHtml(it.name)}</span>`)
           .join("");
 
         // 可取消條件：尚未取消、尚未付款、且預約時間還沒到（過去的不給取消）
@@ -860,7 +877,7 @@
         const compact = (dateStr, timeStr) => dateStr.replace(/-/g, "") + "T" + timeStr.replace(/:/g, "").padEnd(6, "0");
         const start = compact(a.date, a.startTime);
         const end = compact(a.date, a.endTime);
-        const itemNames = (a.displayItemNames || []).join("、"); // 需求（2026-08-26 修正）：同上，改用核對後的實際項目
+        const itemNames = (a.selectedItems || []).map((it) => it.name).join("、");
         const title = `${a.petName} 美容預約 - 慕沐村 Mulage pet`;
         const details = `服務項目：${itemNames || "（詳見預約明細）"}\n金額：$${a.totalAmount}\n預約編號：${a.appointmentCode}`;
         const params = new URLSearchParams({

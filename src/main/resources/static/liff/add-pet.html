@@ -4,81 +4,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村Mulage pet</title>
+    <title>新增毛孩 | 慕沐村Mulage pet</title>
     <script
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <link rel="stylesheet" href="/liff/liff-theme.css" />
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
-        min-height: 100vh;
-        padding-bottom: 90px;
-      }
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 20px 16px 24px;
-        text-align: center;
-      }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 4px;
-      }
-      .header h1 {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 2px;
+        padding-bottom: 110px;
       }
 
       .notice {
-        margin: 16px;
-        background: #f6f2ea;
-        border: 1px solid #ede5d3;
-        border-radius: 12px;
-        padding: 16px;
-        font-size: 13px;
-        color: #454340;
+        margin: 20px 20px 16px;
+        background: var(--paper-2);
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-md);
+        padding: 15px 16px;
+        font-size: 12.5px;
+        color: var(--ink-soft);
         line-height: 1.8;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .notice .title {
-        font-weight: 700;
-        color: #2b2a28;
+        font-family: "Noto Serif TC", serif;
+        font-weight: 600;
+        color: var(--primary-deep);
         margin-bottom: 8px;
         display: flex;
         align-items: center;
         gap: 6px;
+        font-size: 13.5px;
       }
 
       .form-card {
-        margin: 0 16px 16px;
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin: 0 20px 16px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
+        padding: 18px 18px 16px;
+        box-shadow: var(--shadow-card);
       }
       .form-card h3 {
-        font-size: 15px;
-        color: #2b2a28;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #ede5d3;
+        font-family: "Noto Serif TC", serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-deep);
+        letter-spacing: 1px;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line-soft);
       }
 
       .field {
@@ -86,18 +66,20 @@
       }
       .field label {
         display: block;
-        font-size: 13px;
-        color: #454340;
-        margin-bottom: 6px;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
         font-weight: 500;
+        letter-spacing: 0.3px;
+        color: var(--ink-soft);
+        margin-bottom: 7px;
       }
       .field label .req {
-        color: #e53935;
+        color: var(--cancel-fg);
         margin-left: 2px;
       }
       .field label .hint {
-        color: #8a8072;
-        font-size: 11px;
+        color: var(--ink-faint);
+        font-size: 10px;
         font-weight: 400;
         margin-left: 6px;
       }
@@ -106,29 +88,27 @@
       .field select,
       .field textarea {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #e3dccc;
-        border-radius: 8px;
-        font-size: 15px;
-        color: #2b2a28;
-        background: #fffefb;
+        padding: 11px 13px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-sm);
+        font-size: 14.5px;
+        color: var(--ink);
+        background: #fffefd;
         outline: none;
-        transition: border-color 0.2s;
+        transition: border-color 0.15s;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .field input:focus,
       .field select:focus,
       .field textarea:focus {
-        border-color: #b8935a;
+        border-color: var(--wood);
       }
-      /* 需求（追加，2026-08-24）：編輯模式下，已經有儲存值的欄位用深色文字＋
-         淺色底突顯出來，跟空白欄位（灰色 placeholder 文字）一眼區分開，
-         避免顧客誤以為編輯過的資料沒有存成功。 */
       .field input.prefilled,
       .field select.prefilled {
-        color: #1a1a1a;
+        color: var(--ink);
         font-weight: 600;
-        background: #f3ead9;
-        border-color: #c9a876;
+        background: var(--paper-2);
+        border-color: var(--gold);
       }
       .field textarea {
         resize: vertical;
@@ -137,90 +117,71 @@
 
       .radio-group {
         display: flex;
-        gap: 10px;
+        gap: 9px;
         flex-wrap: wrap;
       }
       .radio-btn {
         flex: 1;
         min-width: 80px;
         padding: 10px;
-        border: 1.5px solid #e3dccc;
-        border-radius: 8px;
+        border: 1.5px solid var(--line-soft);
+        border-radius: var(--radius-sm);
         text-align: center;
-        font-size: 14px;
+        font-size: 13.5px;
         cursor: pointer;
-        transition: all 0.2s;
-        color: #666;
+        transition: all 0.15s;
+        color: var(--ink-soft);
+        font-family: "Noto Sans TC", sans-serif;
       }
       .radio-btn.selected {
-        border-color: #b8935a;
-        background: #f6f2ea;
-        color: #2b2a28;
+        border-color: var(--wood);
+        background: var(--paper-2);
+        color: var(--primary-deep);
         font-weight: 700;
       }
 
-      /* 個性／病史 多選標籤 */
       .tag-group {
         display: flex;
-        gap: 8px;
+        gap: 7px;
         flex-wrap: wrap;
       }
       .tag-btn {
         padding: 7px 12px;
-        border: 1.5px solid #e3dccc;
-        border-radius: 16px;
+        border: 1.5px solid var(--line-soft);
+        border-radius: 999px;
         text-align: center;
-        font-size: 12.5px;
+        font-size: 12px;
         cursor: pointer;
-        transition: all 0.2s;
-        color: #666;
+        transition: all 0.15s;
+        color: var(--ink-soft);
+        font-family: "Noto Sans TC", sans-serif;
       }
       .tag-btn.selected {
-        border-color: #b8935a;
-        background: #f6f2ea;
-        color: #2b2a28;
+        border-color: var(--wood);
+        background: var(--paper-2);
+        color: var(--primary-deep);
         font-weight: 700;
-      }
-
-      /* 體型自動判斷顯示區 */
-      .auto-result {
-        margin-top: 12px;
-        padding: 12px;
-        background: #f0f9f0;
-        border: 1px solid #c8e6c9;
-        border-radius: 8px;
-        font-size: 13px;
-        color: #2e7d32;
-        display: none;
-      }
-      .auto-result.show {
-        display: block;
-      }
-      .auto-result .label {
-        font-weight: 700;
-        margin-bottom: 4px;
-      }
-      .auto-result .items {
-        color: #555;
       }
 
       .submit-btn {
         display: block;
-        width: calc(100% - 32px);
-        margin: 0 16px;
+        width: calc(100% - 40px);
+        margin: 0 20px;
         padding: 14px;
-        background: #2b2a28;
-        color: #d9be8f;
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: #3a2d16;
         border: none;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 700;
-        letter-spacing: 1px;
+        border-radius: 999px;
+        font-family: "Jost", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
         cursor: pointer;
+        box-shadow: 0 6px 14px rgba(198, 160, 99, 0.4);
         transition: opacity 0.2s;
       }
       .submit-btn:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
       .submit-btn:disabled {
         opacity: 0.5;
@@ -232,58 +193,66 @@
         bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
-        background: #2b2a28;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 24px;
-        font-size: 14px;
+        background: var(--primary-deep);
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 999px;
+        font-size: 13px;
         opacity: 0;
         transition: opacity 0.3s;
         pointer-events: none;
         white-space: nowrap;
         z-index: 999;
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.3);
       }
       .toast.show {
         opacity: 1;
       }
       .toast.success {
-        background: #2e7d32;
+        background: var(--forest);
       }
       .toast.error {
-        background: #c62828;
+        background: #8b3a3a;
       }
 
-      /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變 */
       .fab-home {
         position: fixed;
         left: 50%;
-        bottom: 20px;
+        bottom: 22px;
         transform: translateX(-50%);
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: #2b2a28;
-        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        background: var(--primary-deep);
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
         z-index: 500;
+        border: 2px solid var(--gold);
       }
       .fab-home-icon {
-        font-size: 22px;
+        font-size: 20px;
         line-height: 1;
       }
       .fab-home:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
     </style>
-    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
-    <div class="header">
-      <div class="logo">慕沐村 Mulage pet</div>
-      <h1>新增毛孩資料</h1>
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>新增毛孩</span>
+    </div>
+
+    <div class="page-head">
+      <a class="back" href="/liff/my-pets.html">‹</a>
+      <div class="titles">
+        <h1 class="cn">新增毛孩資料</h1>
+        <div class="en">add a pet</div>
+      </div>
     </div>
 
     <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
@@ -292,7 +261,7 @@
 
     <!-- 預約須知 -->
     <div class="notice">
-      <div class="title">⚠️ 預約前請閱讀</div>
+      <div class="title">預約前請閱讀</div>
       請填寫以下基本資料，讓小編為您的毛孩預約六星級美容初體驗✰<br />
       填寫完成後，系統將自動判斷毛孩體型，預約時自動帶入適合的洗澡與吹毛項目。
     </div>
@@ -342,16 +311,14 @@
         >
           <img
             id="petPhotoPreviewImg"
-            style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid #e3dccc;"
+            style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line-soft);"
           />
         </div>
       </div>
 
       <div class="field">
         <label>毛孩品種 <span class="req">*</span></label>
-        <!-- 狗狗/其他：維持原本自由輸入 -->
         <input type="text" id="breed" placeholder="例如：柴犬、貴賓" />
-        <!-- 貓咪：改成下拉選單，選了會自動判斷毛髮分類，預約時菜單才能對應篩選 -->
         <select id="breedCatSelect" style="display: none; width: 100%">
           <option value="">請選擇貓咪品種</option>
           <option value="__OTHER__">找不到我的貓咪品種（其他特殊貓種）</option>
@@ -386,8 +353,6 @@
         <label>毛孩年齡 <span class="req">*</span></label>
         <input type="number" id="age" min="0" step="0.1" placeholder="例如：3 或 5.5（歲）" />
       </div>
-
-      <!-- 需求 2：毛長改由店家於後台檢視實際毛況後定義，此處不再讓顧客選擇 -->
 
       <div class="field">
         <label>性別 <span class="req">*</span></label>
@@ -463,13 +428,6 @@
           <input type="text" id="vetAddress" placeholder="地址" style="margin-bottom:8px;" />
           <input type="tel" id="vetPhone" placeholder="連絡電話" />
         </div>
-      </div>
-
-      <!-- 自動判斷體型結果 -->
-      <div class="auto-result" id="sizeResult">
-        <div class="label">🤖 系統自動判斷</div>
-        <div id="sizeLabel"></div>
-        <div class="items" id="sizeItems"></div>
       </div>
     </div>
 
@@ -761,43 +719,11 @@
         }
       }
 
+      // 需求（追加）：體型/自動帶入項目的提示卡片已從畫面移除（避免暴露內部
+      // 項目代碼給顧客），這個函式保留為 no-op，純粹是因為其他地方（selectRadio、
+      // weight 欄位 oninput、編輯模式載入）還有呼叫到，拿掉呼叫點反而風險更高。
       function updateSizePreview() {
-        const petType = formData.petType;
-        const weight = parseFloat(document.getElementById("weight").value);
-        const result = document.getElementById("sizeResult");
-
-        if (!petType || !weight || petType === "OTHER") {
-          result.classList.remove("show");
-          return;
-        }
-
-        let sizeLabel, bathCode, blowCode;
-        if (petType === "DOG") {
-          if (weight <= 15) {
-            sizeLabel = "小型犬";
-            bathCode = "BATH_S";
-            blowCode = "BLOW_S";
-          } else {
-            sizeLabel = "大型犬";
-            bathCode = "BATH_L";
-            blowCode = "BLOW_L";
-          }
-        } else {
-          if (weight <= 5) {
-            sizeLabel = "小貓";
-            bathCode = "BATH_CS";
-            blowCode = "BLOW_CS";
-          } else {
-            sizeLabel = "大貓";
-            bathCode = "BATH_CL";
-            blowCode = "BLOW_CL";
-          }
-        }
-
-        document.getElementById("sizeLabel").textContent = `體型：${sizeLabel}`;
-        document.getElementById("sizeItems").textContent =
-          `預約時將自動帶入：洗澡（${bathCode}）＋ 吹毛（${blowCode}）`;
-        result.classList.add("show");
+        return;
       }
 
       async function submitForm() {
