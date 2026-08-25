@@ -1,0 +1,843 @@
+/* ==========================================================================
+   慕沐村 Mulage Pet — LIFF 顧客端共用設計系統
+   liff-theme.css
+
+   使用方式：
+   <link rel="preconnect" href="https://fonts.googleapis.com" />
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+   <link rel="stylesheet" href="/liff/liff-theme.css" />
+
+   涵蓋：色彩／字體 tokens、頁首（首頁版 hero／子頁版 page-head）、
+   會員票券卡、CTA 邀請卡、焦點數據卡（bento）、輕量捷徑（quick-tile）、
+   一般清單列（list-row）、狀態標籤（status-badge）、表單元件、按鈕、
+   空狀態、頁尾品牌落款。
+   每一頁只需要寫「內容」，外觀全部繼承這份檔案。
+   ========================================================================== */
+
+:root {
+  /* ---- 色彩 tokens（沿用品牌設計草案）---- */
+  --ink: #2c2a28;
+  --primary: #3a4d3f;
+  --primary-deep: #26332b;
+  --wood: #a67c52;
+  --wood-deep: #8a6440;
+  --gold: #c6a063;
+  --gold-light: #e4cfa0;
+  --forest: #4a6b5d;
+  --paper: #f8f6f1;
+  --paper-2: #f1ece2;
+  --line: #dbd3c4;
+  --line-soft: #e8e2d5;
+  --ink-soft: #6b645c;
+  --ink-faint: #a29a8c;
+
+  /* ---- 狀態色（與後台管理系統共用同一組語彙）---- */
+  --pending-bg: #fdf3e3;
+  --pending-fg: #8a5a00;
+  --done-bg: #e8f0e6;
+  --done-fg: #2d5a27;
+  --cancel-bg: #f9ebea;
+  --cancel-fg: #8b0000;
+
+  /* ---- 圓角 / 陰影 ---- */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow-card: 0 4px 12px rgba(58, 77, 63, 0.06);
+  --shadow-float: 0 10px 24px rgba(58, 77, 63, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Noto Sans TC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding-bottom: 28px;
+}
+a {
+  color: inherit;
+}
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ==========================================================================
+   識別條 idband — 每頁最上方一條細細的品牌條
+   ========================================================================== */
+.idband {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px 0;
+  font-family: "Jost", sans-serif;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: var(--ink-faint);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.idband .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+/* ==========================================================================
+   首頁專用大 Hero（含 Logo 圓盤）— 只有 index.html 使用
+   ========================================================================== */
+.hero {
+  padding: 14px 22px 18px;
+  text-align: center;
+  position: relative;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(198, 160, 99, 0.1),
+    transparent 60%
+  );
+}
+.logo-plate {
+  width: 124px;
+  height: 124px;
+  margin: 6px auto 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fdfcf9, #f1ece2 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(198, 160, 99, 0.35),
+    0 10px 22px rgba(58, 77, 63, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.logo-plate img {
+  width: 104%;
+  height: 104%;
+  object-fit: contain;
+}
+.hero .rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin: 9px 0 4px;
+}
+.hero .rule span {
+  height: 1px;
+  width: 24px;
+  background: var(--line);
+}
+.hero .rule em {
+  font-style: normal;
+  font-family: "Jost", sans-serif;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  letter-spacing: 2px;
+  text-transform: lowercase;
+}
+.hero .greet {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 5px;
+}
+.hero .greet b {
+  color: var(--primary-deep);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   子頁頁首 page-head — 除了首頁以外，其他所有頁面用這個
+   （返回按鈕 + 標題，取代舊版純黑底大標題列）
+   ========================================================================== */
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 20px;
+  background: var(--primary-deep);
+  background-image: radial-gradient(
+    circle at 88% 0%,
+    rgba(198, 160, 99, 0.14) 0%,
+    transparent 45%
+  );
+}
+.page-head .back {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e9e4d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.page-head .titles {
+  min-width: 0;
+}
+.page-head .cn {
+  font-family: "Noto Serif TC", serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 1px;
+}
+.page-head .en {
+  font-family: "Jost", sans-serif;
+  font-size: 9.5px;
+  color: #a9bcae;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  margin-top: 3px;
+}
+
+/* ==========================================================================
+   內容容器
+   ========================================================================== */
+.page-body {
+  padding: 18px 20px 8px;
+}
+
+/* ==========================================================================
+   Section label — 「為牠打理」那種手繪波浪分隔線標題
+   ========================================================================== */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 2px 12px;
+}
+.section-label .cn {
+  font-family: "Noto Serif TC", serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--primary-deep);
+  letter-spacing: 2.5px;
+  white-space: nowrap;
+}
+.section-label svg {
+  flex: 1;
+  height: 8px;
+  color: var(--line);
+}
+.section-label .en {
+  font-family: "Jost", sans-serif;
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+/* 可重複使用的波浪線 SVG（貼在 HTML 裡）：
+<svg viewBox="0 0 100 8" preserveAspectRatio="none"><path d="M0,4 Q15,0 30,4 T60,4 T90,4 T100,4" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+*/
+
+/* ==========================================================================
+   Surface card — 通用白卡（取代舊版 .card / .dash-panel）
+   ========================================================================== */
+.surface-card {
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 18px 18px 16px;
+  margin-bottom: 14px;
+}
+.surface-card.tint {
+  background: var(--paper-2);
+}
+
+/* ==========================================================================
+   會員票券卡 — 錢包摘要（首頁 / wallet.html 共用）
+   ========================================================================== */
+.ticket {
+  background: linear-gradient(180deg, #fff, #fbf9f5);
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-float);
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  display: block;
+}
+.ticket-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px 13px;
+}
+.ticket-tier {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.ticket-tier .mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(
+    135deg,
+    var(--gold-light),
+    var(--gold) 60%,
+    var(--wood-deep)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: "Noto Serif TC", serif;
+}
+.ticket-tier .label {
+  font-family: "Jost", sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--wood-deep);
+  letter-spacing: 1.5px;
+  text-transform: lowercase;
+}
+.ticket-arrow {
+  color: var(--ink-faint);
+  font-size: 15px;
+}
+.perforation {
+  position: relative;
+  height: 1px;
+  margin: 0 18px;
+  border-top: 1.5px dashed var(--line);
+}
+.perforation::before,
+.perforation::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.perforation::before {
+  left: -26px;
+}
+.perforation::after {
+  right: -26px;
+}
+.ticket-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 15px 18px 17px;
+}
+.ticket-balance-label {
+  font-family: "Jost", sans-serif;
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+  text-transform: lowercase;
+}
+.ticket-balance {
+  font-family: "Noto Serif TC", serif;
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ticket-cta {
+  font-family: "Jost", sans-serif;
+  font-size: 10px;
+  color: var(--forest);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--forest);
+  padding-bottom: 1px;
+  text-transform: lowercase;
+}
+
+/* ==========================================================================
+   CTA 邀請卡 — 深綠底、金色點綴（首頁「立即預約」用）
+   ========================================================================== */
+.cta {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  text-decoration: none;
+  display: block;
+  background: var(--primary-deep);
+  box-shadow: 0 10px 20px rgba(38, 51, 43, 0.3);
+}
+.cta-art {
+  position: relative;
+  height: 40px;
+  overflow: hidden;
+}
+.cta-art svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.cta-body {
+  padding: 0 16px 15px;
+  position: relative;
+}
+.cta-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: "Jost", sans-serif;
+  font-size: 8.5px;
+  letter-spacing: 2px;
+  color: var(--gold-light);
+  font-weight: 500;
+  margin-bottom: 6px;
+  text-transform: lowercase;
+}
+.cta-eyebrow::before {
+  content: "";
+  width: 12px;
+  height: 1px;
+  background: var(--gold-light);
+  display: inline-block;
+}
+.cta-title {
+  font-family: "Noto Serif TC", serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5px;
+  line-height: 1.5;
+}
+.cta-desc {
+  font-size: 10.5px;
+  color: #c3cec5;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+.cta-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.cta-next {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cta-next .k {
+  font-family: "Jost", sans-serif;
+  font-size: 8px;
+  color: #8ea192;
+  letter-spacing: 1.2px;
+  text-transform: lowercase;
+}
+.cta-next .v {
+  font-family: "Noto Serif TC", serif;
+  font-size: 11.5px;
+  color: var(--gold-light);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   焦點數據卡 bento — 大衬线数字，用於首頁「毛孩檔案／即將到來」
+   ========================================================================== */
+.bento-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.bento {
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  padding: 16px 15px 15px;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.bento .bicon {
+  width: 22px;
+  height: 22px;
+  color: var(--wood-deep);
+  margin-bottom: 14px;
+}
+.bento .blabel {
+  font-family: "Jost", sans-serif;
+  font-size: 10px;
+  color: var(--ink-soft);
+  letter-spacing: 1px;
+  text-transform: lowercase;
+}
+.bento .bnum {
+  font-family: "Noto Serif TC", serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+.bento .bnum span {
+  font-family: "Noto Sans TC", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-left: 3px;
+}
+.bento .btitle {
+  font-family: "Noto Serif TC", serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-deep);
+  margin-top: 9px;
+  letter-spacing: 0.5px;
+}
+.bento .barrow {
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   輕量捷徑 quick-tile — 低頻功能（新增毛孩／編輯資料等）
+   ========================================================================== */
+.quick-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.quick-tile {
+  text-align: center;
+  text-decoration: none;
+  padding: 14px 4px 12px;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-card);
+  display: block;
+}
+.quick-tile .qicon {
+  width: 19px;
+  height: 19px;
+  margin: 0 auto 8px;
+  color: var(--forest);
+}
+.quick-tile .qtitle {
+  font-family: "Noto Serif TC", serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.quick-tile .qcap {
+  font-family: "Jost", sans-serif;
+  font-size: 8.5px;
+  color: var(--ink-faint);
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  text-transform: lowercase;
+}
+
+/* ==========================================================================
+   清單列 list-row — 毛孩清單、預約紀錄、交易紀錄等「一條一條」的內容
+   結構： icon(可省) + 內容(標題+副標) + 右側 meta + 箭頭
+   ========================================================================== */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 4px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--line-soft);
+}
+.list-row:last-child {
+  border-bottom: none;
+}
+.list-row .icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+}
+.list-row .body {
+  flex: 1;
+  min-width: 0;
+}
+.list-row .body .t {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: "Noto Serif TC", serif;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row .body .d {
+  font-family: "Jost", sans-serif;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  letter-spacing: 0.2px;
+}
+.list-row .meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+.list-row .meta .amt {
+  font-family: "Noto Serif TC", serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-deep);
+}
+.list-row .arrow {
+  color: var(--ink-faint);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   狀態標籤 status-badge — 待確認／已完成／已取消
+   ========================================================================== */
+.status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-family: "Noto Sans TC", sans-serif;
+}
+.status-badge.pending {
+  background: var(--pending-bg);
+  color: var(--pending-fg);
+}
+.status-badge.done {
+  background: var(--done-bg);
+  color: var(--done-fg);
+}
+.status-badge.cancel {
+  background: var(--cancel-bg);
+  color: var(--cancel-fg);
+}
+
+/* ==========================================================================
+   分頁 / 篩選 tab-row（例如 my-appointments 依狀態篩選）
+   ========================================================================== */
+.tab-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: none;
+}
+.tab-row::-webkit-scrollbar {
+  display: none;
+}
+.tab-pill {
+  flex-shrink: 0;
+  font-family: "Jost", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: #fff;
+  color: var(--ink-soft);
+  text-transform: lowercase;
+}
+.tab-pill.active {
+  background: var(--primary-deep);
+  border-color: var(--primary-deep);
+  color: #fff;
+}
+
+/* ==========================================================================
+   按鈕
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: "Jost", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: lowercase;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #3a2d16;
+  box-shadow: 0 6px 14px rgba(198, 160, 99, 0.4);
+}
+.btn-gold:active {
+  transform: translateY(1px);
+}
+.btn-primary {
+  background: var(--primary-deep);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(38, 51, 43, 0.3);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--primary-deep);
+}
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* ==========================================================================
+   表單元件
+   ========================================================================== */
+.field {
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-family: "Jost", sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: lowercase;
+  color: var(--ink-soft);
+  margin-bottom: 7px;
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-family: "Noto Sans TC", sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--wood);
+}
+.field .hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 5px;
+}
+
+/* ==========================================================================
+   空狀態
+   ========================================================================== */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-faint);
+}
+.empty-state .icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+  opacity: 0.6;
+}
+.empty-state .t {
+  font-family: "Noto Serif TC", serif;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.empty-state .d {
+  font-family: "Jost", sans-serif;
+  font-size: 10.5px;
+  margin-top: 5px;
+  letter-spacing: 0.3px;
+}
+
+/* ==========================================================================
+   頁尾品牌落款
+   ========================================================================== */
+.footer-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 0 20px;
+  color: var(--ink-faint);
+}
+.footer-mark img {
+  width: 40px;
+  opacity: 0.5;
+  margin: 0 auto;
+}
+.footer-mark .txt {
+  font-family: "Jost", sans-serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   固定底部操作列（例如 booking.html 的送出預約按鈕）
+   ========================================================================== */
+.sticky-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid var(--line-soft);
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.05);
+  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sticky-bar .sum b {
+  display: block;
+  font-family: "Noto Serif TC", serif;
+  font-size: 17px;
+  color: var(--primary-deep);
+}
+.sticky-bar .sum span {
+  font-family: "Jost", sans-serif;
+  font-size: 9.5px;
+  color: var(--ink-soft);
+  letter-spacing: 0.5px;
+  text-transform: lowercase;
+}
