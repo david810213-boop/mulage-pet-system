@@ -340,6 +340,8 @@ public class AppointmentMvcController {
         var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
         model.addAttribute("groomingItems", filteredItems); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
+        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
         return "appointments/final-check";
     }
 
@@ -363,6 +365,7 @@ public class AppointmentMvcController {
             boolean isExisting1 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting1, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
+            model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
             model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
             return "appointments/final-check";
         }

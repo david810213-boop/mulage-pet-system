@@ -431,6 +431,8 @@ public class WalkInOrderMvcController {
                 .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
                 .toList()); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
+        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
         try {
             model.addAttribute("order", walkInOrderService.getById(id));
         } catch (IllegalArgumentException e) {

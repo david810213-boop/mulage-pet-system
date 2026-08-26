@@ -5,8 +5,10 @@
          目前頁面的高亮由下方小段 script 依網址自動判斷，模板不用改。 -->
     <nav th:fragment="nav" class="nav-side">
       <a href="/dashboard" class="nav-brand">
-        <div class="name">慕沐村</div>
-        <div class="latin">MULAGE PET</div>
+        <div class="nav-brand-info">
+          <div class="name">慕沐村</div>
+          <div class="latin">MULAGE PET</div>
+        </div>
       </a>
 
       <div class="nav-list">
@@ -84,8 +86,18 @@
       </div>
 
       <div class="nav-foot" th:if="${user != null}">
-        <div class="who" th:text="${user.name}">使用者</div>
-        <div class="role" th:text="${user.role}">ROLE</div>
+        <div class="nav-foot-top">
+          <div
+            class="nav-foot-avatar"
+            th:text="${user.name != null and user.name.length() > 0 ? #strings.substring(user.name,0,1) : '?'}"
+          >
+            使
+          </div>
+          <div class="nav-foot-info">
+            <div class="who" th:text="${user.name}">使用者</div>
+            <div class="role" th:text="${user.role}">ROLE</div>
+          </div>
+        </div>
         <a href="/account/password" th:if="${user != null and user.staffOrAdmin}">修改密碼</a>
         <a href="/account/pin" th:if="${user != null and user.staffOrAdmin}">設定 PIN 碼</a>
         <a href="/account/bind-line" th:if="${user != null and user.staffOrAdmin}">綁定 LINE</a>

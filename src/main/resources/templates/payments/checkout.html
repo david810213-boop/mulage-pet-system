@@ -120,70 +120,10 @@
           </p>
         </div>
 
-        <!-- 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的服務項目 -->
-        <!-- 需求（追加，2026-08-26）：自訂價格——像剪毛這種價格浮動的項目，
-             店員選好項目後可以手動改成實際報價，留空就照項目原本的固定價格。
-             ⚠️ 改價格不影響積分，積分固定照項目本身設定的值計算。 -->
-        <div class="card" style="margin-bottom: 1rem;">
-          <h3 style="font-size: 15px; margin-bottom: 10px;">✏️ 新增服務項目</h3>
-          <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
-                th:action="@{/payments/checkout/{id}/add-grooming-item(id=${appointmentId})}"
-                style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-            <div class="field" style="margin: 0; flex: 1; min-width: 220px;">
-              <label>選擇項目</label>
-              <select name="groomingItemId" required>
-                <option th:each="g : ${groomingItems}" th:value="${g.id}"
-                        th:text="${g.name} + '（$' + ${#numbers.formatDecimal(g.price, 0, 0)} + '）'"></option>
-              </select>
-            </div>
-            <div class="field" style="margin: 0; width: 140px;">
-              <label>自訂價格（選填）</label>
-              <input type="number" name="customPrice" min="0" placeholder="留空＝原價" />
-            </div>
-            <button type="submit" class="btn btn-primary">加入</button>
-          </form>
-          <p style="font-size: 11.5px; color: var(--brown-light); margin: 8px 0 0;">
-            💡 有填自訂價格時，這筆的收費金額會照你填的數字，但積分仍照這個項目原本設定的值計算，不受改價影響。
-          </p>
-        </div>
-
-        <!-- 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式
-             報價跟各種浮動加價（厚毛/長毛/特殊剪法/特殊情況），不綁定任何現有
-             服務項目，直接輸入名稱+金額。 -->
-        <div class="card" style="margin-bottom: 1rem;">
-          <h3 style="font-size: 15px; margin-bottom: 10px;">💬 自訂金額加購</h3>
-          <p style="font-size: 12px; color: var(--brown-light); margin-top: 0;">
-            用於價目表沒有的客製化報價，例如高階定制調理、厚毛/長毛/特殊剪法加價。
-          </p>
-          <form method="post"
-                th:action="@{/payments/checkout/{id}/add-custom-item(id=${appointmentId})}"
-                style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-            <div class="field" style="margin: 0; flex: 1; min-width: 160px;">
-              <label>項目名稱</label>
-              <input type="text" name="itemName" required placeholder="例如：高階定制調理（厚毛加價）" />
-            </div>
-            <div class="field" style="margin: 0; width: 120px;">
-              <label>金額</label>
-              <input type="number" name="price" min="0" required />
-            </div>
-            <div class="field" style="margin: 0; width: 160px;">
-              <label>積分分類（選填）</label>
-              <select name="category">
-                <option value="">不計積分（其他）</option>
-                <option th:each="c : ${performanceCategories}" th:value="${c}" th:text="${c.label}"></option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary">加入</button>
-          </form>
-          <p style="font-size: 11.5px; color: var(--brown-light); margin: 8px 0 0;">
-            ⚠️ 這種自訂項目跟現場開單那邊不同，⚠️目前系統限制⚠️：預約端的
-            AppointmentItem 沒有獨立的「是否參與折扣」欄位，這筆自訂項目理論上
-            會被系統判定成可以套用會員折扣（跟項目本身沒綁定 GroomingItem 時
-            系統預設寬鬆放行的邏輯有關）。如果店家不希望自訂項目被打折，目前
-            請提醒收銀時留意這筆金額，或改用現金/非儲值金方式收這筆客製化費用，
-            避免自動套用折扣。這個限制之後可以再加欄位處理，這次先不擴大異動範圍。
-          </p>
-        </div>
+        <!-- 需求（2026-08-26 修正）：新增服務項目／自訂金額加購已搬到「核對」頁面
+             （appointments/final-check.html），結帳頁只負責收款，不再提供編輯項目
+             的入口——核對才是店員實際判斷這次要收多少錢的時機點，結帳頁保留編輯
+             功能容易讓人搞不清楚「該在哪一步改價格」。 -->
 
         <!-- 需求（追加）：結帳前直接加購零售商品，跟現場開單結帳頁同樣邏輯 -->
         <div class="card" style="margin-bottom: 1rem;">
