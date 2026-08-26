@@ -57,6 +57,33 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-mysql</artifactId>
 		</dependency>
+		<!-- 需求（追加）：Google 日曆串接——店家共用日曆同步用。
+		     google-api-client / google-oauth-client / google-auth-library-oauth2-http
+		     這三個版本已經實際編譯驗證過可以正常解析。google-api-services-calendar
+		     原本寫的版本號不存在，已改成 Maven Central 上實際查得到的
+		     v3-rev20260225-2.0.0（2026-08-24 用 mvnrepository.com 查證過）。 -->
+		<dependency>
+			<groupId>com.google.api-client</groupId>
+			<artifactId>google-api-client</artifactId>
+			<version>2.7.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.oauth-client</groupId>
+			<artifactId>google-oauth-client</artifactId>
+			<version>1.36.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.apis</groupId>
+			<artifactId>google-api-services-calendar</artifactId>
+			<version>v3-rev20260225-2.0.0</version>
+		</dependency>
+		<!-- GoogleCredentials / HttpCredentialsAdapter 這兩個類別在這個套件裡，
+		     不是上面三個套件的一部分，容易漏加，特別註記一下。 -->
+		<dependency>
+			<groupId>com.google.auth</groupId>
+			<artifactId>google-auth-library-oauth2-http</artifactId>
+			<version>1.23.0</version>
+		</dependency>
 		<!-- 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

@@ -1,6 +1,6 @@
 # 疑難排解與環境設定指南（更新版）
 
-**更新日期：2026-08-22**（本次更新：LIFF 9 頁面全數獨立完成、新增資安修補經驗、新增資料庫初始化「一次性 vs 每次啟動」陷阱）
+**更新日期：2026-08-24**（本次更新：Flyway 已正式接進來、新增 Thymeleaf SpEL 樣板中斷陷阱、th:onclick 語法陷阱、Maven 依賴版本查證教訓）
 
 ---
 
@@ -15,246 +15,200 @@
 git diff --stat <某個檔案>
 git diff <某個檔案>
 ```
-如果看到整個檔案逐行刪除又新增，但文字內容一樣，就是這個問題，不是真的改了內容。
 
 **清除假性差異**：
 ```
 git checkout -- .
 ```
 
-**長期建議**：在專案根目錄加 `.gitattributes`，內容 `* text=auto`，讓 Git 自動處理換行符號正規化，兩台電腦都設定 `git config core.autocrlf true`（Windows 慣例）。
+**長期建議**：在專案根目錄加 `.gitattributes`，內容 `* text=auto`，兩台電腦都設定 `git config core.autocrlf true`。
 
 ---
 
 ## 二、本機 MySQL 有兩個實例，容易連錯
 
-這台電腦（不管是主機或公司電腦）常見會同時存在：
 - **原生安裝的 MySQL**：預設 port **3306**
 - **Docker 容器 `pet-mysql`**：對外開 port **3307**（容器內部仍是3306）
 
-**App 實際使用的是 Docker 容器（3307）**，本機測試連資料庫務必指定正確 port：
-
+**App 實際使用的是 Docker 容器（3307）**：
 ```
 mysql -h 127.0.0.1 -P 3307 -u root -p petdb
 ```
 
-**確認連對地方**的方法：查詢一個最近才新增的表格是否存在（例如 `retail_products`、`store_supplies`、`grooming_item_components`、`pricing_settings`），如果查不到，代表連錯了。單純查 `SHOW VARIABLES LIKE 'port'` 不可靠——Docker 埠轉發會讓容器內部回報的還是 3306，不會顯示 3307。
+**確認連對地方**：查詢一個最近才新增的表格是否存在（例如 `grooming_item_components`、`pricing_settings`、`cat_breed_coat_mappings`、`flyway_schema_history`），單純查 port 變數不可靠。
 
 ---
 
 ## 三、正式環境（Railway）資料庫連線
 
-**本機資料庫跟 Railway 正式環境資料庫完全獨立、不同步**——本機測試的資料不會出現在正式站，反之亦然。
-
-**連線方式**：安裝並使用 Railway CLI（不用開 Public Networking 對外暴露資料庫）：
+**本機與正式環境資料庫完全獨立、不同步**。
 
 ```bash
 npm i -g @railway/cli
 railway login
 cd <專案資料夾>
-railway link          # 選 empowering-commitment 專案 → production 環境 → MySQL 服務
+railway link
 railway connect MySQL
 ```
 
-連進去後跟一般 MySQL 操作一樣，`USE railway;`（正式環境資料庫名稱是 `railway`，不是本機的 `petdb`）。
+`USE railway;`（正式環境資料庫名稱是 `railway`，不是本機的 `petdb`）。
 
-如果一定要用 GUI 工具連（例如 MySQL Workbench）連正式環境，需要先到 Railway 後台 MySQL 服務 → Settings → Networking → 啟用 **Public Networking**，拿到對外的 Host/Port，**用完務必關閉**，避免長期對外暴露。
+**⚠️ 公司電腦連不了**：`railway connect` 走 SSH tunnel，公司網路防火牆常常會擋，這種情況下只能等回到本機電腦（沒有防火牆限制的環境）再查，不用勉強處理。
+
+如果要用 GUI 工具連，需要先到 Railway 後台開 **Public Networking**，用完務必關閉。
+
+**目前是店家測試階段，不是正式營運資料**——備份不用嚴格看待，測試資料壞了大不了照測試手冊重跑一次建起來。等真正上線變成正式營運資料後，這個判斷要重新收緊。
 
 ---
 
 ## 四、MySQL 原生 ENUM 欄位陷阱
 
-Hibernate `ddl-auto=update` **不會**自動幫已存在的 ENUM 欄位擴充允許值清單。Java enum 加新值後，插入資料庫會報：
+Hibernate `ddl-auto=update` **不會**自動幫已存在的 ENUM 欄位擴充允許值清單，會報 `Data truncated for column 'xxx' at row 1`。
 
-```
-Data truncated for column 'xxx' at row 1
-```
+**確認方式**：`SHOW COLUMNS FROM <表名> LIKE '<欄位名>';`，`Type` 顯示 `enum(...)` 且缺少新值就是這個問題。
 
-**確認方式**：
-```sql
-SHOW COLUMNS FROM <表名> LIKE '<欄位名>';
-```
-如果 `Type` 顯示 `enum(...)` 且缺少新值，就是這個問題。
+**修法**：改成 VARCHAR：`ALTER TABLE <表名> MODIFY COLUMN <欄位名> VARCHAR(30) NOT NULL;`
 
-**修法**：改成 VARCHAR，不要依賴 MySQL 原生 ENUM：
-```sql
-ALTER TABLE <表名> MODIFY COLUMN <欄位名> VARCHAR(30) NOT NULL;
-```
-
-已經處理過的欄位：`transactions.payment_method`、`walk_in_orders.payment_method`、`topup_requests.status`、`users.source`。**之後新增欄位如果要存列舉值，直接用 VARCHAR，不要讓 Hibernate 自動建成 ENUM。**
+已處理過的欄位：`payment_method`、`source`、`status` 等。**之後新增欄位存列舉值，直接用 VARCHAR，不要讓 Hibernate 自動建成 ENUM。**
 
 ---
 
-## 五、`DataInitializer` 種子資料：「只跑一次」vs「每次啟動都跑」陷阱（新增）
+## 五、種子資料管理：已改用 Flyway（✅ 架構性解決，不再是陷阱）
 
-**症狀**：在 `DataInitializer.run()` 裡新增了種子資料的程式碼，本機全新資料庫測試正常，但部署到正式站（Railway）之後，新資料完全沒有被建立進去。
+### 陷阱回顧（歷史問題，已解決）
 
-**原因**：`DataInitializer` 裡很多區塊是用 `if (xxxRepository.count() == 0)` 包起來的，**只有在整張表完全是空的時候才會執行**。正式站的 `grooming_items` 表早就有資料了（`count()` 不是 0），這個判斷式直接跳過，新增的種子資料永遠不會被種進去——本機測試看不出這個問題，是因為本機常常用的是全新的資料庫。
+`DataInitializer` 用 `count()==0` 判斷「只在全新資料庫時建立」，正式站資料表早就不是空的，新增的種子資料永遠沒被種進去。這個陷阱至少踩過兩次。
 
-**正確做法**：新增的種子資料如果是要「補進既有資料庫」（不管本機還是正式站都要生效），不能包在 `count()==0` 判斷式裡，要改成**逐筆檢查、不存在才新增**：
+### ✅ 根本解法：Flyway 只管「資料」，schema 仍交給 Hibernate
 
-```java
-private void addItemIfNotExists(String code, ...) {
-    if (groomingItemRepository.existsByItemCode(code)) {
-        return; // 已存在就跳過，不會重複建立或覆蓋店家後續改過的資料
-    }
-    // ... 建立邏輯
-}
+**關鍵坑：Flyway 預設執行時機在 Hibernate 建表之前**。Spring Boot 預設讓 Flyway 在應用程式啟動最早期執行，早於 `ddl-auto=update` 建表——全新資料庫上會因為表還不存在而直接失敗。
+
+**解法**：`application.yml` 設 `spring.flyway.enabled=false` 關掉內建自動機制，自己寫 `ApplicationRunner`（`DataSeedMigrationRunner`）手動控制在 Hibernate 建完表之後才呼叫 `Flyway.migrate()`。
+
+```yaml
+spring:
+  flyway:
+    enabled: false   # 關掉 Spring Boot 內建的自動啟動機制
+    locations: classpath:db/migration
 ```
 
-**同樣的道理也適用於「回填/校正既有資料」**（例如某個欄位新增時所有既有列的值都不對，要一次性修正）：不要只包在 `count()==0` 裡，要寫成「每次啟動都跑一次的校正迴圈」，不管資料庫現況為何，重複執行也不會有副作用：
+**遷移檔案寫法要點**：
+- 全部用 `INSERT IGNORE`（靠 UNIQUE 限制防重複），不管全新或既有資料庫都安全
+- 涉及外鍵關聯用 `INSERT ... SELECT ... WHERE NOT EXISTS (...)`
+- **防呆判斷鍵要下對範圍**：同一批次對同一個父資料連續插入好幾筆子資料時，`WHERE NOT EXISTS` 的判斷條件要精確到「這筆子資料本身」（例如「父ID+分類」），不能只判斷「父資料底下有沒有任何一筆」——後者會導致同批次插入第一筆之後，後面幾筆被誤判成「已經有了」而跳過（這是實際踩過的坑）
+- 遷移檔案命名 `V1__xxx.sql`、`V2__xxx.sql`……版本號遞增，`flyway_schema_history` 表記錄執行過的版本，終身只執行一次
 
-```java
-for (GroomingItem item : groomingItemRepository.findAll()) {
-    boolean shouldBeX = ...; // 算出這筆資料「應該」是什麼值
-    if (item.isX() != shouldBeX) {
-        item.setX(shouldBeX);
-        groomingItemRepository.save(item);
-    }
-}
-```
+**以後新增服務項目種子資料，寫新的 `Vn__xxx.sql` 遷移檔案，不要再回頭改 `DataInitializer.java`**。
 
-**判斷原則**：
-- 「這筆資料如果不存在才要建立」→ 用逐筆 `existsByXxx()` 檢查
-- 「這個欄位所有既有資料都要修正成正確值」→ 用每次啟動都跑的校正迴圈
-- 只有「整個系統從來沒初始化過」這種情境（例如預設帳號、獎勵金級距這種一次性種子資料）才適合用 `count()==0` 包起來
+**大量資料轉譯的安全做法**：把既有 Java 種子資料轉成 SQL 遷移檔案時，寫腳本從原始碼機械抽取數值（不是手動重打），抽取後核對筆數是否跟原始碼手算的一致，當作基本驗證（這次遷移 91 筆服務項目+156 筆套餐組成都是這樣做，事後也真的抓到一個轉譯過程中自己加進去、原始邏輯沒有的多餘條件，靠核對機制發現並修正）。
 
-**這個陷阱目前在專案裡至少發生過兩次**：一次是「已完成需求清單」的貓咪服務項目（GS013 系列），一次是後來重做的 CAT/DOG 套餐化項目——都是靠改成 `addItemIfNotExists()` 這種模式才解決。
+**轉譯過程中意外發現的資料一致性問題**：「每次啟動都跑」的校正迴圈如果排除清單漏了某個項目代碼，會導致那個項目的欄位被非預期覆蓋（實際案例：`CAT028` 建立時設定不打折，但折扣校正迴圈的排除清單漏了它，導致每次重啟都被改回可打折，持續發生一段時間才發現）。**這類迴圈的排除清單，新增/修改時要格外小心逐一核對。**
 
 ---
 
 ## 六、LINE LIFF 多頁面架構（✅ 已全數完成）
 
-**已確認結論**：LINE 官方**不支援**「單一 LIFF ID + Endpoint URL 路徑轉發」到不同頁面。LIFF ID 後面接的路徑會被包進 `liff.state` 參數，瀏覽器只會停在 Endpoint URL 本身，不會真的轉發過去。
+**已確認結論**：LINE 官方**不支援**「單一 LIFF ID + Endpoint URL 路徑轉發」到不同頁面。
 
 **正確做法**：每個要在 LINE 裡開啟的獨立頁面，各自申請一組 LIFF App，Endpoint URL 直接指向那個確切頁面，LIFF URL 使用時**不接任何路徑**。
 
-**目前已申請的 LIFF App（9 個頁面全數獨立，之前記錄的「6 個頁面待補」已完成）**：
+**9 個頁面全數獨立**：index / new-customer / bind-line / my-profile / add-pet（同一頁靠 `?editPetId=` 判斷新增/編輯模式）/ my-pets / booking / my-appointments / wallet
 
-| 頁面 | 檔案 |
-|---|---|
-| 首頁 | index.html |
-| 新客報到 | new-customer.html |
-| 綁定LINE | bind-line.html |
-| 編輯個人資料 | my-profile.html |
-| 新增毛孩 | add-pet.html |
-| 我的寵物 | my-pets.html |
-| 預約 | booking.html |
-| 我的預約 | my-appointments.html |
-| 錢包 | wallet.html |
-
-**申請新 LIFF App 的設定**：
-- Size：Compact
-- Scopes：勾 `openid` + `profile`
-- Add friend option：On (Normal)
+**申請設定**：Size：Compact，Scopes：`openid`+`profile`，Add friend option：On (Normal)
 
 **其他 LIFF 相關坑**：
-1. `liff.login()` 務必帶 `{ redirectUri: window.location.href }`，否則可能造成登入循環或跳轉錯誤畫面
-2. `lineUserId` 資料庫是唯一值，同一支手機的LINE只能綁一個系統帳號（顧客或店員擇一），測試時容易撞到自己先前測試會員功能時自動建立的顧客帳號
-3. 新增任何 `/api/**` 端點，如果要給「未登入狀態」呼叫（例如LINE登入/綁定），一定要手動加進 `WebConfig` 攔截器白名單，否則會被誤擋
+1. `liff.login()` 務必帶 `{ redirectUri: window.location.href }`
+2. `lineUserId` 資料庫是唯一值，同一支手機的LINE只能綁一個系統帳號
+3. 新增給「未登入狀態」呼叫的 `/api/**` 端點，一定要手動加進 `WebConfig` 攔截器白名單
 
 ---
 
-## 七、Thymeleaf inline JavaScript 序列化陷阱
+## 七、Thymeleaf 陷阱集錦
 
-用 `/*[[${變數}]]*/` 把後端資料塞進頁面內的 JS 變數時，背後是用 Jackson 做序列化。**如果直接塞整個 JPA entity（尤其含 `LocalDateTime` 欄位），容易序列化失敗，導致整頁渲染中斷、瀏覽器顯示連線中斷（`ERR_INCOMPLETE_CHUNKED_ENCODING`）。**
+### 7.1 inline JavaScript 序列化陷阱
 
-**修法**：只塞畫面真正需要的欄位，用輕量 Map 或 DTO，不要整個 entity：
+用 `/*[[${變數}]]*/` 塞資料進頁面內的 JS 變數，背後是 Jackson 序列化。**塞整個 JPA entity（尤其含 `LocalDateTime` 欄位）容易序列化失敗，導致整頁渲染中斷、瀏覽器顯示 `ERR_INCOMPLETE_CHUNKED_ENCODING`。**
+
+**修法**：只塞畫面真正需要的欄位，用輕量 Map 或 DTO：
 ```java
 model.addAttribute("retailProducts", retailProductService.listActive().stream()
         .map(p -> java.util.Map.of("id", p.getId(), "name", p.getName(), "price", p.getPrice()))
         .toList());
 ```
 
-**排查方式**：後端終端機的錯誤堆疊裡找 `InvalidDefinitionException`、`Jackson` 相關字樣。
+### 7.2 樣板裡的複雜 SpEL 運算式會讓畫面整個截斷（新）
+
+**症狀**：畫面渲染到某個區塊突然停住，後面所有內容（包含按鈕、其他表單欄位）全部消失不見。
+
+**原因**：Thymeleaf 預設是**串流輸出**，樣板運算式如果在渲染中途噴出例外（例如對 `#strings.arraySplit(...)` 產生的陣列做 `.?[...]` 選擇運算子，邊界情況處理不夠穩健），**已經輸出到瀏覽器的部分會保留，後面的內容永遠不會再輸出**——不會顯示錯誤訊息，畫面看起來就像「莫名其妙少了一截」，很難第一時間聯想到是樣板運算式的問題。
+
+**修法**：避免在 Thymeleaf 樣板裡對字串/陣列做複雜的選擇（`.?[...]`）、投影（`.![...]`）運算，改成**在 Controller 先把資料算好成乾淨的 `List<String>` 或 `boolean`，樣板只做最單純的 `list.contains(x)` 判斷**。這種寫法更穩定，出問題時也好除錯（可以直接在 Controller 加中斷點/log 檢查，不用猜樣板引擎在做什麼）。
+
+### 7.3 `onclick` 屬性裡不能用 `[[...]]` 內嵌語法（新）
+
+**症狀**：按鈕點了完全沒反應，沒有任何錯誤訊息或提示。
+
+**原因**：`onclick="unlockPet([[${pet.id}]])"` 這種寫法，**`[[...]]` 這種 Thymeleaf 內嵌表達式語法只有在 `<script th:inline="javascript">` 區塊裡才會被解析**，放在一般 HTML 屬性（`onclick="..."`）裡不會被處理，瀏覽器收到的是字面上壞掉的 JS 語法 `unlockPet([[${pet.id}]])`，點了自然沒反應，瀏覽器 console 通常只會有一個語法錯誤，容易被忽略。
+
+**修法**：一律改用 `th:onclick`：
+```html
+<button th:onclick="'unlockPet(' + ${pet.id} + ')'">...</button>
+```
+
+**排查方式**：如果按鈕點了沒反應，先檢查一下產生出來的 HTML 原始碼（瀏覽器開發者工具「檢查元素」），看 `onclick` 屬性裡的值是不是真的被 Thymeleaf 替換成實際數值，還是原封不動留著 `${...}` 或 `[[...]]` 字樣。
 
 ---
 
 ## 八、前端錯誤訊息被吞掉
 
-`fetch()` 呼叫 API，如果後端錯誤回應是純文字（不是JSON），前端寫死用 `res.json()` 解析會拋例外被 `.catch()` 接住，導致畫面永遠只顯示同一句寫死的備援錯誤文字，看不到真正原因。
+`fetch()` 呼叫 API，後端錯誤回應如果是純文字（不是JSON），前端寫死用 `res.json()` 解析會拋例外被 `.catch()` 接住，畫面永遠只顯示同一句寫死的備援錯誤文字。
 
 **修法**：
-- 後端統一回傳 JSON 格式的錯誤（`ResponseEntity.badRequest().body(Map.of("message", e.getMessage()))`）
-- 前端先讀 `res.text()`，能解析成JSON才當JSON用：
-```js
-const rawText = await res.text();
-let data = null;
-try { data = JSON.parse(rawText); } catch (e) { data = null; }
-```
+- 後端統一回傳 JSON 格式錯誤（`ResponseEntity.badRequest().body(Map.of("message", e.getMessage()))`）
+- 前端先讀 `res.text()`，能解析成JSON才當JSON用
 
 ---
 
-## 九、資安體檢後的修補經驗（新增，2026-08-22）
+## 九、資安體檢後的修補經驗
 
-專案做過一次全面資安體檢，發現並修補了以下幾類問題，記錄下來避免之後重蹈覆轍：
+### 1. LIFF 頁面存放型 XSS
 
-### 1. LIFF 頁面存放型 XSS（Stored XSS）
-
-**症狀**：LIFF 頁面（純 HTML + 原生 JS，沒有框架）大量用樣板字串 + `innerHTML` 組畫面，例如：
-```js
-document.getElementById("app").innerHTML = pets.map(p => `<div>${p.name}</div>`).join("");
-```
-`p.name`（寵物名稱）是顧客自己填的，如果沒有跳脫直接塞進 `innerHTML`，顧客可以把寵物名字設成 `<img src=x onerror=alert(1)>` 之類的內容，之後只要有人（甚至是顧客自己重新整理頁面）打開這個畫面，惡意 JS 就會執行。
-
-**修法**：所有會被塞進 `innerHTML` 的使用者輸入（寵物名稱/品種/注意事項、服務項目名稱/描述等），顯示前一律先跑過一個 `escapeHtml()` 函式：
-```js
-function escapeHtml(str) {
-  if (str === null || str === undefined) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-```
-**注意**：這幾個 LIFF 頁面是各自獨立的靜態 HTML 檔案，沒有共用 JS 模組機制，所以 `escapeHtml()` 目前是**每個檔案各自複製一份**。新增或修改 LIFF 頁面時，只要畫面會用 JS 把使用者輸入塞進 `innerHTML`，記得也要複製這個函式並套用，不能假設其他頁面有跳脫就代表這裡也安全。
-
-如果之後某個地方只是顯示純文字、沒有要插入 HTML 標籤，優先用 `el.textContent = msg` 取代 `el.innerHTML = msg`（`textContent` 天生安全，不用額外跳脫），像專案裡 `showToast()` 這個函式本來就是這樣寫。
+使用者輸入塞進 `innerHTML` 前，一律先跑過 `escapeHtml()` 函式（每個 LIFF 頁面各自複製一份，沒有共用模組）。純文字顯示優先用 `textContent` 取代 `innerHTML`。
 
 ### 2. Cookie 沒有 `SameSite` 屬性
 
-`jakarta.servlet.http.Cookie` 這個舊版 Servlet API **不支援**設定 `SameSite`，只用 `cookie.setHttpOnly()` / `setSecure()` 沒辦法補上這個屬性。要嘛換成 Spring 的 `ResponseCookie`，要嘛手動組 `Set-Cookie` 標頭字串：
-```java
-response.addHeader("Set-Cookie", "JWT_TOKEN=" + token + "; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax");
-```
-專案裡已經抽成 `CookieUtils.buildJwtCookieHeader()` 共用方法，登入/登出/LINE 登入三個地方都改用這個。
+`jakarta.servlet.http.Cookie` 不支援設定，改用 `CookieUtils.buildJwtCookieHeader()` 手動組 `Set-Cookie` 標頭，帶 `SameSite=Lax`。
 
 ### 3. 寫死在程式碼裡的預設帳密，repo 又是 Public
 
-`DataInitializer` 裡建立預設帳號（`admin@pet.com` 等）時密碼是明文寫在程式碼裡，而這個 GitHub repo 是 Public——等於帳密直接公開給所有人看。就算密碼本身有用 `PasswordEncoder`（bcrypt）雜湊儲存進資料庫，**原始密碼本身洩漏出去，還是能直接拿去登入**，雜湊儲存防的是資料庫外洩，防不了原始碼外洩。
+啟動時偵測密碼是否還是預設值，是的話印出警告 log。
 
-**修法**：沒辦法完全避免種子帳號需要一組初始密碼，但可以在啟動時偵測「目前密碼是否還等於這組已公開的預設值」，是的話印出顯眼警告：
-```java
-if (passwordEncoder.matches(defaultPassword, user.getPassword())) {
-    log.warn("⚠️⚠️⚠️ 帳號 {} 目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上！", username);
-}
-```
-**部署後的檢查方式**：看系統啟動 log 有沒有這幾行警告，沒有就代表密碼都已經改過了。
+### 4. 確認沒問題的部分
 
-### 4. 資安體檢時順便確認過、沒發現問題的部分
-
-記錄下來避免之後又花時間重查：
-- SQL Injection：全部走 JPA/Hibernate，沒有字串拼接組查詢
-- IDOR：錢包/寵物/預約相關 API 都是從 JWT 解出來的 username 去查資料，不是信任前端傳的 ID
-- 角色權限：後台 controller 一致有 `@RequireRole` 或手動 `isAdmin()` 檢查
-- 註冊流程：`role` 欄位沒有開放給前端填，寫死 `CUSTOMER`，沒有提權漏洞
-- LINE 登入：有確實打 LINE 官方 API 驗證 idToken，還檢查 `aud`，沒有信任前端自稱的身分
-- 檔案上傳：有檢查 content-type 必須是 `image/*`
+SQL Injection（全走 JPA）、IDOR（都用 JWT 解出的 username 查資料）、角色權限（`@RequireRole` 一致）、註冊流程（role 寫死 CUSTOMER）、LINE 登入（有驗證 idToken+aud）、檔案上傳（有檢查 content-type）。
 
 ---
 
-## 十、其他經驗提醒
+## 十、Maven 依賴管理：版本號要查證，不能憑印象寫（新）
 
-- **交付檔案務必給完整內容**，不要只給片段patch，容易漏套用（曾發生 `slots-manage.html` 漏套用，導致公休日功能做好了但畫面看不到）
-- **每次改動後先做括號/標籤配對覆查**（開發環境連不到 Maven Central，沒辦法實際編譯驗證）
-- **寫程式前先確認 DTO/entity 實際欄位存在**，不要憑印象假設（曾誤用不存在的 `RetailProduct.getUnitCost()` 導致編譯失敗）
-- **新增到既有資料表的 NOT NULL 欄位，一律搭配 `columnDefinition` 給資料庫層級預設值**，否則 `ALTER TABLE` 會因既有列無值可填而失敗
+**這個開發沙盒環境連不到 Maven Central**，沒辦法實際跑 `mvn compile` 驗證依賴版本存不存在、彼此相不相容。新增 Google Calendar API 相關依賴時，憑印象寫的版本號（`google-api-services-calendar:v3-rev20240815-2.0.0`）**在 Maven Central 上根本不存在**，本機建置直接失敗。
+
+**正確做法**：新增任何 Maven 依賴，尤其是不常用、版本號有特殊格式的套件（像 Google API 系列常見 `vX-revYYYYMMDD-Z.Y.Z` 這種格式），**先上網搜尋確認 Maven Central 上真實存在的版本號**，不要憑印象或用「合理猜測」的方式編。查證後的正確版本可以先寫在程式碼註解裡，方便之後追溯。
+
+---
+
+## 十一、其他經驗提醒
+
+- **交付檔案務必給完整內容**，不要只給片段patch
+- **每次改動後先做括號/標籤配對覆查**（Python script 數 `{`/`}`、`<div>`/`</div>` 等）
+- **寫程式前先確認 DTO/entity 實際欄位存在**，不要憑印象假設
+- **新增到既有資料表的 NOT NULL 欄位，一律搭配 `columnDefinition` 給資料庫層級預設值**
 - **push前先跑敏感資訊檢查**：
 ```powershell
 Select-String -Path .\src\main\resources\application.yml -Pattern "cloudinary|CLOUDINARY|api_secret|channel-access-token" -CaseSensitive:$false
 ```
-確認都是 `${...}` 環境變數寫法，沒有寫死的密鑰
-- **新增資料庫欄位/表格不用手動下SQL**，`ddl-auto=update` 自動處理，但 enum 型別欄位要優先用VARCHAR（見第四點）
-- **種子資料/回填邏輯記得分清楚「只跑一次」還是「每次啟動都跑」**（見第五點），這是這次開發週期踩得最多次的坑
+- **新增資料庫欄位/表格不用手動下SQL**，`ddl-auto=update` 自動處理，enum 型別欄位優先用VARCHAR
+- **服務項目種子資料一律走 Flyway**，不要回頭改 `DataInitializer.java`
+- **Thymeleaf 樣板避免複雜 SpEL 運算式**，改成後端先算好資料
+- **`onclick` 一律用 `th:onclick`**，不要在一般 HTML 屬性裡塞 `[[...]]`
+- **新增 Maven 依賴版本號要先搜尋查證**，這個環境沒辦法實際編譯驗證

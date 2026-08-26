@@ -5,8 +5,10 @@
          目前頁面的高亮由下方小段 script 依網址自動判斷，模板不用改。 -->
     <nav th:fragment="nav" class="nav-side">
       <a href="/dashboard" class="nav-brand">
-        <div class="name">慕沐村</div>
-        <div class="latin">MULAGE PET</div>
+        <div class="nav-brand-info">
+          <div class="name">慕沐村</div>
+          <div class="latin">MULAGE PET</div>
+        </div>
       </a>
 
       <div class="nav-list">
@@ -75,6 +77,8 @@
               <a href="/payments/bank-account" class="nav-link">匯款帳號設定</a>
               <a href="/payments/company-signature" class="nav-link">乙方簽名檔設定</a>
               <a href="/payments/pricing-settings" class="nav-link">體重定價門檻設定</a>
+              <a href="/admin/cat-breed-coat-mapping" class="nav-link">貓咪品種毛髮分類對照表</a>
+              <a href="/admin/member-import" class="nav-link">既有會員資料匯入</a>
               <a href="/admin/operation-logs" class="nav-link">操作紀錄</a>
             </div>
           </div>
@@ -82,8 +86,18 @@
       </div>
 
       <div class="nav-foot" th:if="${user != null}">
-        <div class="who" th:text="${user.name}">使用者</div>
-        <div class="role" th:text="${user.role}">ROLE</div>
+        <div class="nav-foot-top">
+          <div
+            class="nav-foot-avatar"
+            th:text="${user.name != null and user.name.length() > 0 ? #strings.substring(user.name,0,1) : '?'}"
+          >
+            使
+          </div>
+          <div class="nav-foot-info">
+            <div class="who" th:text="${user.name}">使用者</div>
+            <div class="role" th:text="${user.role}">ROLE</div>
+          </div>
+        </div>
         <a href="/account/password" th:if="${user != null and user.staffOrAdmin}">修改密碼</a>
         <a href="/account/pin" th:if="${user != null and user.staffOrAdmin}">設定 PIN 碼</a>
         <a href="/account/bind-line" th:if="${user != null and user.staffOrAdmin}">綁定 LINE</a>

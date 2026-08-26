@@ -19,6 +19,29 @@
             </p>
           </div>
 
+          <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——已鎖定固定套餐提示 -->
+          <div class="card" th:if="${pet != null and pet.lockedGroomingItemId != null}"
+               style="margin-bottom: 1rem; background:#fff8e6; border:1px solid #e6c366;">
+            <p style="margin: 0; font-size: 13px;">
+              🔒 這隻狗已經有固定套餐：<strong th:text="${pet.lockedItemName}"></strong>
+              （$<span th:text="${pet.lockedItemPrice}"></span>），下方新增服務項目時只會顯示這一項。
+            </p>
+            <button type="button" th:onclick="'unlockPet(' + ${pet.id} + ')'" class="btn btn-outline" style="padding:4px 10px; font-size:12px; margin-top: 8px;">
+              🔓 解鎖，重新報價
+            </button>
+          </div>
+
+          <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——尚未鎖定的成犬/幼犬，
+               結帳核對這一項的同時，可以把它鎖定成這隻狗以後的固定套餐 -->
+          <div class="card" th:if="${pet != null and pet.lockedGroomingItemId == null and pet.petType.name() == 'DOG'}"
+               style="margin-bottom: 1rem;">
+            <p style="margin: 0 0 8px; font-size: 13px; color: var(--brown-light);">
+              如果這隻狗已經定型（以後體型不會再變），可以把目前選定的洗澡套餐鎖定成固定套餐，
+              以後不用再重新選單。幼犬（還會長大）請不要鎖定。
+            </p>
+            <div id="lockButtonArea"></div>
+          </div>
+
           <div
             class="card"
             th:if="${walletBalance != null}"
@@ -87,22 +110,9 @@
             </p>
           </div>
 
-          <!-- 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的服務項目 -->
-          <div class="card" style="margin-bottom: 1rem;">
-            <h3 style="font-size: 15px; margin-bottom: 10px;">✏️ 新增服務項目</h3>
-            <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
-                  th:action="@{/admin/walk-in-orders/{id}/add-grooming-item(id=${order.id})}"
-                  style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-              <div class="field" style="margin: 0; flex: 1; min-width: 220px;">
-                <label>選擇項目</label>
-                <select name="groomingItemId" required>
-                  <option th:each="g : ${groomingItems}" th:value="${g.id}"
-                          th:text="${g.name} + '（$' + ${#numbers.formatDecimal(g.price, 0, 0)} + '）'"></option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-primary">加入</button>
-            </form>
-          </div>
+          <!-- 需求（2026-08-26 修正）：新增服務項目／自訂金額加購已搬到「核對」頁面
+               （walk-in-order-final-check.html），結帳頁只負責收款，不再提供編輯
+               項目的入口。 -->
 
           <!-- 需求 7-1：結帳前直接加購零售商品 -->
           <div class="card" style="margin-bottom: 1rem;">
@@ -183,5 +193,78 @@
         </div>
       </div>
     </div>
+
+    <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——鎖定/解鎖按鈕邏輯 -->
+    <script th:inline="javascript">
+      const PET = /*[[${pet}]]*/ null;
+      const ORDER_ITEMS = /*[[${order != null ? order.items : null}]]*/ [];
+
+      // 需求（2026-08-24 修正）：直接看這張單每個項目自帶的 dogWeightTier 標記，
+      // 不用再跟「新增服務項目」下拉選單那份清單比對——原本的做法會因為那份清單
+      // 是依「目前」體重篩選出來的，如果狗的體重資料跟這張單當初選定的體重級距
+      // 對不上（例如體重還沒更新），會找不到對應項目、誤判成「沒有可鎖定的項目」。
+      function findLockableItem() {
+        if (!PET || PET.lockedGroomingItemId || !ORDER_ITEMS) return null;
+        for (const orderItem of ORDER_ITEMS) {
+          if (orderItem.groomingItemId && orderItem.dogWeightTier) {
+            return { groomingItemId: orderItem.groomingItemId, name: orderItem.itemName };
+          }
+        }
+        return null;
+      }
+
+      function renderLockButton() {
+        const area = document.getElementById('lockButtonArea');
+        if (!area) return;
+        const lockable = findLockableItem();
+        if (!lockable) {
+          area.innerHTML = '<p style="font-size:12.5px; color:#999; margin:0;">（目前這張單還沒選到可鎖定的洗澡套餐項目）</p>';
+          return;
+        }
+        area.innerHTML = '';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary';
+        btn.style.cssText = 'padding:6px 14px; font-size:13px;';
+        btn.textContent = '🔒 鎖定「' + lockable.name + '」為固定套餐';
+        btn.onclick = function () { lockPet(lockable.groomingItemId); };
+        area.appendChild(btn);
+      }
+
+      async function lockPet(groomingItemId) {
+        if (!PET) return;
+        try {
+          const res = await fetch('/api/admin/pets/' + PET.id + '/lock-grooming-item', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ groomingItemId: groomingItemId }),
+          });
+          if (!res.ok) {
+            alert('鎖定失敗，請重試');
+            return;
+          }
+          alert('已鎖定！下次這隻狗的訂單會直接帶出這個套餐');
+          window.location.reload();
+        } catch (e) {
+          alert('網路錯誤，請重試');
+        }
+      }
+
+      async function unlockPet(petId) {
+        if (!confirm('確定要解鎖嗎？解鎖後下次開單會恢復成依體重重新選套餐。')) return;
+        try {
+          const res = await fetch('/api/admin/pets/' + petId + '/unlock-grooming-item', { method: 'PUT' });
+          if (!res.ok) {
+            alert('解鎖失敗，請重試');
+            return;
+          }
+          window.location.reload();
+        } catch (e) {
+          alert('網路錯誤，請重試');
+        }
+      }
+
+      renderLockButton();
+    </script>
   </body>
 </html>

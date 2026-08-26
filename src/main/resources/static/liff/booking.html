@@ -4,62 +4,41 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村Mulage pet</title>
+    <title>預約美容 | 慕沐村Mulage pet</title>
     <script
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <link rel="stylesheet" href="/liff/liff-theme.css" />
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      /* ---- 這頁專屬的補充樣式（結構元件在 liff-theme.css，以下是 JS 會產生的
+             .form-card / .item-row / .slot-btn 等 class 的實際外觀）---- */
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
-        min-height: 100vh;
         padding-bottom: 100px;
-      }
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 20px 16px 24px;
-        text-align: center;
-      }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 4px;
-      }
-      .header h1 {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 2px;
       }
 
       .form-card {
-        margin: 16px;
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin: 0 20px 16px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
+        padding: 18px 18px 16px;
+        box-shadow: var(--shadow-card);
       }
       .form-card h3 {
-        font-size: 15px;
-        color: #2b2a28;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #ede5d3;
+        font-family: "Noto Serif TC", serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-deep);
+        letter-spacing: 1px;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line-soft);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -73,42 +52,45 @@
       }
       .field label {
         display: block;
-        font-size: 13px;
-        color: #454340;
-        margin-bottom: 6px;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
         font-weight: 500;
+        letter-spacing: 0.5px;
+        color: var(--ink-soft);
+        margin-bottom: 7px;
+        text-transform: none;
       }
       .field label .req {
-        color: #e53935;
+        color: var(--cancel-fg);
         margin-left: 2px;
       }
-
       .field select,
       .field input[type="date"] {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #e3dccc;
-        border-radius: 8px;
-        font-size: 15px;
-        color: #2b2a28;
-        background: #fffefb;
+        padding: 11px 13px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-sm);
+        font-size: 14.5px;
+        font-family: "Noto Sans TC", sans-serif;
+        color: var(--ink);
+        background: #fffefd;
         outline: none;
-        transition: border-color 0.2s;
+        transition: border-color 0.15s;
       }
       .field select:focus,
       .field input:focus {
-        border-color: #b8935a;
+        border-color: var(--wood);
       }
 
       .pet-empty-hint {
-        font-size: 13px;
-        color: #c62828;
-        background: #fdecec;
-        border-radius: 8px;
-        padding: 12px;
+        font-size: 12.5px;
+        color: var(--cancel-fg);
+        background: var(--cancel-bg);
+        border-radius: var(--radius-sm);
+        padding: 12px 14px;
       }
       .pet-empty-hint a {
-        color: #c62828;
+        color: var(--cancel-fg);
         font-weight: 700;
       }
 
@@ -116,43 +98,47 @@
       .slots-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 9px;
       }
       .slot-btn {
-        padding: 12px 8px;
-        border: 1.5px solid #e3dccc;
-        border-radius: 8px;
+        padding: 11px 8px;
+        border: 1.5px solid var(--line-soft);
+        border-radius: var(--radius-sm);
         text-align: center;
-        font-size: 14px;
+        font-size: 13.5px;
+        font-family: "Noto Sans TC", sans-serif;
         cursor: pointer;
-        transition: all 0.2s;
-        color: #666;
-        background: white;
+        transition: all 0.15s;
+        color: var(--ink-soft);
+        background: #fff;
       }
       .slot-btn.selected {
-        border-color: #b8935a;
-        background: #f6f2ea;
-        color: #2b2a28;
+        border-color: var(--wood);
+        background: var(--paper-2);
+        color: var(--primary-deep);
         font-weight: 700;
       }
       .slot-btn.unavailable {
-        background: #f2f2f2;
-        color: #bbb;
+        background: var(--paper-2);
+        color: var(--ink-faint);
         text-decoration: line-through;
         cursor: not-allowed;
-        border-color: #e8e8e8;
+        border-color: var(--line-soft);
       }
       .slots-hint {
-        font-size: 12px;
-        color: #8a8072;
-        margin-top: 8px;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        margin-top: 9px;
+        letter-spacing: 0.3px;
       }
       .slots-loading,
       .slots-empty {
         text-align: center;
         padding: 20px;
-        color: #bbb;
-        font-size: 13px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
 
       /* 服務項目 */
@@ -161,7 +147,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 12px 0;
-        border-bottom: 1px solid #f5f0e8;
+        border-bottom: 1px solid var(--line-soft);
       }
       .item-row:last-child {
         border-bottom: none;
@@ -169,42 +155,46 @@
       .item-check {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 11px;
         flex: 1;
         cursor: pointer;
       }
       .item-check input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
-        accent-color: #b8935a;
+        width: 19px;
+        height: 19px;
+        accent-color: var(--wood);
         flex-shrink: 0;
       }
       .item-name {
-        font-size: 14px;
-        color: #2b2a28;
-        font-weight: 500;
+        font-size: 13.5px;
+        color: var(--ink);
+        font-weight: 600;
+        font-family: "Noto Serif TC", serif;
       }
       .item-desc {
-        font-size: 12px;
-        color: #8a8072;
-        margin-top: 2px;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-soft);
+        margin-top: 3px;
       }
       .item-price {
+        font-family: "Noto Serif TC", serif;
         font-size: 14px;
-        color: #b8935a;
+        color: var(--wood-deep);
         font-weight: 700;
         white-space: nowrap;
       }
       .item-recommend-tag {
         display: inline-block;
         margin-left: 6px;
-        padding: 1px 8px;
-        background: #f0f9f0;
-        color: #2e7d32;
-        font-size: 10px;
-        border-radius: 10px;
+        padding: 1px 9px;
+        background: var(--done-bg);
+        color: var(--done-fg);
+        font-size: 9.5px;
+        border-radius: 999px;
         font-weight: 700;
         vertical-align: middle;
+        font-family: "Jost", sans-serif;
       }
 
       /* 總金額固定底部 */
@@ -213,38 +203,47 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background: white;
-        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
-        padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+        background: #fff;
+        box-shadow: 0 -6px 18px rgba(58, 77, 63, 0.1);
+        padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
         display: flex;
         align-items: center;
         gap: 12px;
+        border-top: 1px solid var(--line-soft);
       }
       .summary-total {
         flex-shrink: 0;
-        font-size: 13px;
-        color: #454340;
+        font-family: "Jost", sans-serif;
+        font-size: 9.5px;
+        color: var(--ink-soft);
+        letter-spacing: 0.5px;
+        text-transform: lowercase;
       }
       .summary-total .amount {
+        display: block;
+        font-family: "Noto Serif TC", serif;
         font-size: 20px;
         font-weight: 700;
-        color: #2b2a28;
+        color: var(--primary-deep);
+        margin-top: 2px;
       }
       .submit-btn {
         flex: 1;
         padding: 14px;
-        background: #2b2a28;
-        color: #d9be8f;
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: #3a2d16;
         border: none;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 700;
-        letter-spacing: 1px;
+        border-radius: 999px;
+        font-family: "Jost", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
         cursor: pointer;
+        box-shadow: 0 6px 14px rgba(198, 160, 99, 0.4);
         transition: opacity 0.2s;
       }
       .submit-btn:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
       .submit-btn:disabled {
         opacity: 0.5;
@@ -253,68 +252,79 @@
 
       .toast {
         position: fixed;
-        bottom: 90px;
+        bottom: 96px;
         left: 50%;
         transform: translateX(-50%);
-        background: #2b2a28;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 24px;
-        font-size: 14px;
+        background: var(--primary-deep);
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 999px;
+        font-family: "Noto Sans TC", sans-serif;
+        font-size: 13px;
         opacity: 0;
         transition: opacity 0.3s;
         pointer-events: none;
         white-space: nowrap;
         max-width: 90vw;
         z-index: 999;
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.3);
       }
       .toast.show {
         opacity: 1;
       }
       .toast.success {
-        background: #2e7d32;
+        background: var(--forest);
       }
       .toast.error {
-        background: #c62828;
+        background: #8b3a3a;
       }
 
       .loading-page {
         text-align: center;
-        padding: 60px;
-        color: #bbb;
+        padding: 60px 20px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
 
-      /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變（此頁底部有送出列，故上移避開） */
       .fab-home {
         position: fixed;
         left: 50%;
-        bottom: 90px;
+        bottom: 92px;
         transform: translateX(-50%);
-        width: 48px;
-        height: 48px;
+        width: 46px;
+        height: 46px;
         border-radius: 50%;
-        background: #2b2a28;
-        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        background: var(--primary-deep);
+        box-shadow: 0 8px 18px rgba(38, 51, 43, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
         z-index: 500;
+        border: 2px solid var(--gold);
       }
       .fab-home-icon {
-        font-size: 20px;
+        font-size: 18px;
         line-height: 1;
       }
       .fab-home:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
     </style>
-    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
-    <div class="header">
-      <div class="logo">慕沐村 Mulage pet</div>
-      <h1>預約美容</h1>
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>預約美容</span>
+    </div>
+
+    <div class="page-head">
+      <a class="back" href="/liff/index.html">‹</a>
+      <div class="titles">
+        <div class="cn">預約美容</div>
+        <div class="en">reserve a visit</div>
+      </div>
     </div>
 
     <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
@@ -362,6 +372,8 @@
         return closedDatesCache;
       }
       let selectedItemCodes = new Set();
+      let currentLockedItemCode = null; // 目前鎖定套餐對應的 itemCode（給 currentTotal() 保底用）
+      let currentLockedItemPrice = 0; // 目前鎖定套餐的金額（給 currentTotal() 保底用）
       let hasSigned = false;
       let signatureCanvas = null;
       let signatureCtx = null;
@@ -417,7 +429,9 @@
           // 需求（追加）修正：這支 API 實際掛在 PaymentMvcController（class 層級是
           // @RequestMapping("/payments")），正確路徑其實是 /payments/api/company-signature，
           // 之前寫成 /api/company-signature 一直是 404，簽名檔永遠貼不上去。
-          const res = await fetch("/payments/api/company-signature", { headers: authHeaders() });
+          const res = await fetch("/payments/api/company-signature", {
+            headers: authHeaders(),
+          });
           if (!res.ok) return;
           const data = await res.json();
           const img = document.getElementById("companySignatureImg");
@@ -458,7 +472,7 @@
 
       function renderError(msg) {
         document.getElementById("app").innerHTML =
-          '<div class="loading-page" style="color:red">' + msg + "</div>";
+          '<div class="loading-page" style="color:#8B0000">' + msg + "</div>";
       }
 
       function todayStr() {
@@ -508,6 +522,7 @@
 
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
+        <div id="dogLockedBanner" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;"></div>
         <div id="itemsContainer">
           ${
             groomingItems.length
@@ -520,29 +535,28 @@
       <div class="form-card">
         <h3>𖥸 犬、貓美容服務定型化契約書</h3>
         <div id="contractBox" style="
-          background: #fffefb;
-          border: 1px solid #e3dccc;
+          background: #FBF9F5;
+          border: 1px solid #DBD3C4;
           border-radius: 8px;
           padding: 14px 16px;
           max-height: 320px;
           overflow-y: auto;
           font-size: 12px;
           line-height: 1.8;
-          color: #5c574c;
-        ">
-          <p style="font-weight:700; color:#2b2a28; margin-bottom:2px;">乙方（企業經營者）基本資料</p>
+          color: #6b645c; font-family:'Noto Sans TC',sans-serif;">
+          <p style="font-weight:700; color:#26332B; margin-bottom:2px;">乙方（企業經營者）基本資料</p>
           <p style="margin-top:0;">店名：慕沐村寵物美容　統一編號：92739223　負責人：洪薪茹<br />
           店內電話：0902-301-820　電子信箱：mulagepet@gmail.com<br />
           官方IG：mulage_pet　官方LINE@：@108dbaxm<br />
           營業時間：11:00–19:30　固定公休：週四、週五（採全預約制）<br />
           地址：新北市三重區三信路35號1樓</p>
 
-          <p style="font-weight:700; color:#2b2a28; margin: 10px 0 2px;">乙方合作動物醫院（緊急送醫優先送往下列其一）</p>
+          <p style="font-weight:700; color:#26332B; margin: 10px 0 2px;">乙方合作動物醫院（緊急送醫優先送往下列其一）</p>
           <p style="margin-top:0;">
           配合醫院一：台大頑皮動物醫院　電話：(02)2857-3578　地址：新北市三重區三賢街197號
           </p>
 
-          <p style="font-weight:700; color:#2b2a28; margin: 12px 0 6px;">立契約書人：消費者（以下簡稱甲方）／企業經營者：慕沐村寵物美容（以下簡稱乙方）</p>
+          <p style="font-weight:700; color:#26332B; margin: 12px 0 6px;">立契約書人：消費者（以下簡稱甲方）／企業經營者：慕沐村寵物美容（以下簡稱乙方）</p>
           <p>茲為犬、貓美容服務事宜，雙方同意依據農業部公告之《犬、貓美容服務定型化契約應記載及不得記載事項》及《消費者保護法》等相關規定，訂定本契約條款如下：</p>
 
           <p><strong>第一條（契約目的與範圍）</strong><br />
@@ -634,29 +648,29 @@
           <p><strong>第二十一條（影像使用）</strong><br />
           於甲方同意且不揭露個資之前提下，乙方可於社群媒體平台分享美容照片，作為品牌推廣使用。如甲方事後不同意乙方分享照片，經甲方通知，乙方將依甲方之請求為停止分享、刪除等處置。</p>
 
-          <p style="margin-bottom:0; font-weight:700; color:#2b2a28;">【甲方確認聲明】本人確認以上資料及勾選內容均為本人親自填寫，且就本人所知悉之事項，均已如實告知。本人已閱讀並理解本契約及其附件、風險說明內容，並同意依其約定辦理。</p>
+          <p style="margin-bottom:0; font-weight:700; color:#26332B;">【甲方確認聲明】本人確認以上資料及勾選內容均為本人親自填寫，且就本人所知悉之事項，均已如實告知。本人已閱讀並理解本契約及其附件、風險說明內容，並同意依其約定辦理。</p>
 
-          <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e3dccc;">
-            <p style="font-weight:700; color:#2b2a28; margin-bottom:6px;">乙方（企業經營者）簽名：</p>
+          <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #DBD3C4;">
+            <p style="font-weight:700; color:#26332B; margin-bottom:6px;">乙方（企業經營者）簽名：</p>
             <img id="companySignatureImg" style="max-width: 160px; max-height: 70px; display: none;" />
             <p id="companySignatureFallback" style="font-size: 11px; color: #999;">（尚未設定簽名檔）</p>
           </div>
         </div>
 
-        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#454340; cursor:pointer;">
-          <input type="checkbox" id="contractAgree" style="width:16px; height:16px; accent-color:#b8935a;" onchange="onContractAgreeChange()" />
+        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#6b645c; cursor:pointer;">
+          <input type="checkbox" id="contractAgree" style="width:16px; height:16px; accent-color:#A67C52;" onchange="onContractAgreeChange()" />
           我已詳細閱讀並同意上述定型化契約內容
         </label>
 
         <div class="field" style="margin-top:12px;">
           <label>請在下方簽名板親筆簽上本人正楷簽名 <span class="req">*</span></label>
-          <div style="background:#fff; border:1.5px dashed #d9be8f; border-radius:8px; position:relative; touch-action:none;">
+          <div style="background:#fff; border:1.5px dashed #C6A063; border-radius:8px; position:relative; touch-action:none;">
             <canvas id="signaturePad" width="600" height="160" style="width:100%; height:160px; display:block; cursor:crosshair; border-radius:8px;"></canvas>
-            <span id="signaturePlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#d9be8f; font-size:13px; pointer-events:none;">請在此處簽名</span>
+            <span id="signaturePlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#C6A063; font-size:13px; pointer-events:none; font-family:'Jost',sans-serif;">請在此處簽名</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-            <p id="signatureHint" style="font-size:11.5px; color:#8a8072; margin:0;">簽名須為親筆手寫，系統才會受理此預約</p>
-            <button type="button" id="clearSignatureBtn" style="padding:5px 14px; font-size:12px; border:1px solid #d9be8f; border-radius:8px; background:#fff; color:#8a6a3a;" onclick="clearSignature()">清除重簽</button>
+            <p id="signatureHint" style="font-size:11.5px; color:#a29a8c; margin:0; font-family:'Jost',sans-serif; font-size:10.5px;">簽名須為親筆手寫，系統才會受理此預約</p>
+            <button type="button" id="clearSignatureBtn" style="padding:5px 14px; font-size:12px; border:1px solid #DBD3C4; border-radius:999px; background:#fff; color:#26332B; font-family:'Jost',sans-serif; font-size:11px;" onclick="clearSignature()">清除重簽</button>
           </div>
         </div>
       </div>
@@ -673,9 +687,38 @@
         renderSummaryBar();
       }
 
+      // 需求（追加，2026-08-24）：狗狗定價流程簡化——JS 端鏡射後端
+      // DogWeightTier 的體重級距邊界，用來篩選菜單。跟後端同一套規則：
+      // 落在整數空隙的體重就近進位到下一級距，超過 33kg 歸進最高級距。
+      function computeDogWeightTier(weight) {
+        const tiers = [
+          { code: "SMALL", max: 5 },
+          { code: "MEDIUM_SMALL", max: 10 },
+          { code: "MEDIUM", max: 16 },
+          { code: "MEDIUM_LARGE", max: 22 },
+          { code: "LARGE", max: 27 },
+          { code: "EXTRA_LARGE", max: Infinity },
+        ];
+        for (const tier of tiers) {
+          if (weight <= tier.max) return tier.code;
+        }
+        return "EXTRA_LARGE";
+      }
+
+      // 需求（追加，2026-08-26）：假日限定套餐——固定週六、週日算假日（跟後端
+      // AppointmentService 判斷邏輯一致）。用字串直接組 Date 物件避免時區
+      // 轉換造成日期跑掉（"2026-08-30" 這種純日期字串在部分瀏覽器會被當成
+      // UTC 午夜解析，跨到前一天，所以拆開年月日自己組本地時間的 Date）。
+      function isHolidayDate(dateStr) {
+        if (!dateStr) return false;
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const day = new Date(y, m - 1, d).getDay(); // 0=週日, 6=週六
+        return day === 0 || day === 6;
+      }
+
       function itemRowHtml(item) {
         return `
-      <div class="item-row" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}">
+      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-is-package="${item.isPackage ? "true" : "false"}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -702,21 +745,116 @@
 
         // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
         const isExisting = !!(pet && pet.isExistingCustomer);
-        const petType = pet && pet.petType ? String(pet.petType).toUpperCase() : null;
+        const petType =
+          pet && pet.petType ? String(pet.petType).toUpperCase() : null;
+        // 需求（追加，菜單簡化）：貓咪依品種自動判斷的毛髮分類（單層毛/雙層毛/長毛），
+        // 只顯示對應分類的套餐項目。這隻貓的分類是 null 的話（特殊貓種、品種不在
+        // 對照表裡），不篩選、顯示全部貓咪項目——讓店家人工協助這位顧客判斷，
+        // 不會因為系統判斷不出來就擋住預約或漏掉選項。
+        const catCoatCategory =
+          pet && petType === "CAT" ? pet.catCoatCategory || null : null;
+
+        // 需求（追加，2026-08-24）：狗狗定價流程簡化。
+        // 已鎖定固定套餐：只顯示那一項套餐（自動勾選），其餘體重級距項目全部隱藏；
+        // 還沒鎖定：依這隻狗目前的體重篩出對應級距，只顯示那 6 項（短毛/長毛×3等級）。
+        // 不受影響：沒有標 dogWeightTier 的項目（通用加購），維持原本篩選邏輯不變。
+        const isDog = petType === "DOG";
+        const dogLockedItemId =
+          isDog && pet ? pet.lockedGroomingItemId || null : null;
+        const dogWeightTier =
+          isDog && pet && !dogLockedItemId
+            ? computeDogWeightTier(pet.weight)
+            : null;
+
+        // 需求（追加，2026-08-26）：假日（固定週六、週日）限定只能選完整套餐，
+        // 通用單項加購（沒有副組成的項目，例如指甲修剪、貓咪基礎保養）整列隱藏，
+        // 逼客人只能從套餐裡選——這條規則只影響顧客自己在 LIFF 預約，店員
+        // 現場開單/核對時不受這條限制，維持原本可以自由加選單項的彈性。
+        // 需求（2026-08-26 修正）：不在畫面上明講這條規則（店家不希望顧客知道
+        // 假日只能選套餐是刻意的機制），單純把不符合的項目隱藏，不額外顯示提示文字。
+        const isHoliday = isHolidayDate(selectedDate);
+
+        // 已鎖定的話，畫面上方顯示固定套餐卡片，並自動把該項目勾選起來。
+        // 直接從記憶體裡的 groomingItems 清單找出對應項目（用 id 比對），
+        // 不依賴 DOM 列表的渲染狀態，比較不會受畫面篩選/隱藏邏輯影響。
+        const lockedItem = dogLockedItemId
+          ? groomingItems.find(
+              (it) => String(it.id) === String(dogLockedItemId),
+            )
+          : null;
+
+        const lockedBanner = document.getElementById("dogLockedBanner");
+        if (dogLockedItemId && pet.lockedItemName) {
+          const lockedName = lockedItem ? lockedItem.name : pet.lockedItemName;
+          const lockedPrice = lockedItem
+            ? lockedItem.price
+            : pet.lockedItemPrice;
+          if (lockedBanner) {
+            lockedBanner.style.display = "block";
+            lockedBanner.innerHTML = `已為牠安排固定套餐：<strong>${escapeHtml(lockedName)}</strong>　$${lockedPrice}`;
+          }
+          selectedItemCodes.clear();
+          if (lockedItem) {
+            selectedItemCodes.add(lockedItem.itemCode);
+          }
+          currentLockedItemCode = lockedItem ? lockedItem.itemCode : null;
+          currentLockedItemPrice = lockedPrice || 0;
+        } else {
+          if (lockedBanner) lockedBanner.style.display = "none";
+          currentLockedItemCode = null;
+          currentLockedItemPrice = 0;
+        }
+
         document
           .getElementById("itemsContainer")
           .querySelectorAll(".item-row")
           .forEach((row) => {
             const requiresExisting = row.dataset.requiresExisting === "true";
             const applicable = row.dataset.applicablePetType || "";
+            const itemCoatCategory = row.dataset.catCoatCategory || "";
+            const itemDogTier = row.dataset.dogWeightTier || "";
+            const isPackage = row.dataset.isPackage === "true";
+            const itemId = row.dataset.itemId;
             const cb = row.querySelector("input[type=checkbox]");
             const blockedByExisting = requiresExisting && !isExisting;
-            const blockedBySpecies = applicable && petType && applicable !== petType;
-            if (blockedByExisting || blockedBySpecies) {
+            const blockedBySpecies =
+              applicable && petType && applicable !== petType;
+            const blockedByCoat =
+              itemCoatCategory &&
+              catCoatCategory &&
+              itemCoatCategory !== catCoatCategory;
+            // 假日只能選套餐：非套餐項目（沒有副組成）在假日整列隱藏。
+            const blockedByHoliday = isHoliday && !isPackage;
+            // 只有「有標體重級距」的項目（DOG 主力套餐）才受這條規則影響，
+            // 通用加購項目（itemDogTier 是空字串）不受影響。
+            let blockedByDogTier = false;
+            if (itemDogTier) {
+              if (dogLockedItemId) {
+                blockedByDogTier = String(itemId) !== String(dogLockedItemId);
+              } else if (dogWeightTier) {
+                blockedByDogTier = itemDogTier !== dogWeightTier;
+              }
+            }
+            if (
+              blockedByExisting ||
+              blockedBySpecies ||
+              blockedByCoat ||
+              blockedByDogTier ||
+              blockedByHoliday
+            ) {
               row.style.display = "none";
               if (cb) cb.checked = false;
             } else {
               row.style.display = "";
+              // 已鎖定套餐的那一項，畫面重畫後自動勾選（避免每次切換毛孩都要手動點）
+              if (
+                dogLockedItemId &&
+                String(itemId) === String(dogLockedItemId) &&
+                cb
+              ) {
+                cb.checked = true;
+                selectedItemCodes.add(cb.value);
+              }
             }
           });
 
@@ -734,6 +872,11 @@
         const dateInput = document.getElementById("dateInput");
         selectedDate = dateInput.value;
         selectedSlot = null;
+
+        // 需求（追加，2026-08-26）：日期改變會影響「是不是假日」，連帶影響
+        // 服務項目菜單（假日只能選套餐），日期一變就要重新跑一次項目篩選邏輯，
+        // 不能只在選毛孩的時候才篩選一次。
+        if (selectedPetId) onPetChange();
 
         const slotsField = document.getElementById("slotsField");
         const container = document.getElementById("slotsContainer");
@@ -767,24 +910,51 @@
             return;
           }
 
+          // 需求（追加，2026-08-26）：選的日期如果是今天，已經過去的時段自動
+          // 標成不可選（用時段的「開始時間」判斷，只要開始時間已經過了現在，
+          // 就不該再讓人預約——即使還沒到結束時間也一樣，因為到店的時間已經
+          // 來不及了）。用瀏覽器當下的本地時間比對，這個系統本來就是給台灣
+          // 店家用，時區不用額外處理。
+          const isToday = (() => {
+            const now = new Date();
+            const todayStr =
+              now.getFullYear() +
+              "-" +
+              String(now.getMonth() + 1).padStart(2, "0") +
+              "-" +
+              String(now.getDate()).padStart(2, "0");
+            return selectedDate === todayStr;
+          })();
+          const nowMinutes = (() => {
+            const now = new Date();
+            return now.getHours() * 60 + now.getMinutes();
+          })();
+          const isPast = (startTime) => {
+            if (!isToday) return false;
+            const [h, m] = startTime.split(":").map(Number);
+            return h * 60 + m <= nowMinutes;
+          };
+
           container.innerHTML = `
         <div class="slots-grid">
           ${slots
-            .map(
-              (s, i) => `
-            <div class="slot-btn ${s.available ? "" : "unavailable"}"
+            .map((s, i) => {
+              const past = isPast(s.startTime);
+              const available = s.available && !past;
+              return `
+            <div class="slot-btn ${available ? "" : "unavailable"}"
                  data-start="${s.startTime}" data-end="${s.endTime}"
-                 onclick="${s.available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ""}">
-              ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}
-            </div>`,
-            )
+                 onclick="${available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ""}">
+              ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}${past ? "（已過時段）" : ""}
+            </div>`;
+            })
             .join("")}
         </div>
-        <div class="slots-hint">灰色時段已被預約，請選擇其他時段</div>
+        <div class="slots-hint">灰色時段已被預約或時間已過，請選擇其他時段</div>
       `;
         } catch (e) {
           container.innerHTML =
-            '<div class="slots-empty" style="color:#c62828">載入時段失敗：' +
+            '<div class="slots-empty" style="color:#8B0000">載入時段失敗：' +
             e.message +
             "</div>";
         }
@@ -821,7 +991,7 @@
           signatureCtx.lineWidth = 2.2;
           signatureCtx.lineCap = "round";
           signatureCtx.lineJoin = "round";
-          signatureCtx.strokeStyle = "#2b2a28";
+          signatureCtx.strokeStyle = "#26332B";
         }
         resize();
         window.addEventListener("resize", resize);
@@ -889,10 +1059,10 @@
         const hint = document.getElementById("signatureHint");
         if (!hint) return;
         if (hasSigned) {
-          hint.style.color = "#2e7d32";
+          hint.style.color = "#2D5A27";
           hint.textContent = "✓ 已完成簽名";
         } else {
-          hint.style.color = "#8a8072";
+          hint.style.color = "#a29a8c";
           hint.textContent = "簽名須為親筆手寫，系統才會受理此預約";
         }
       }
@@ -903,11 +1073,20 @@
 
       function currentTotal() {
         let total = 0;
+        let lockedCounted = false;
         document
           .querySelectorAll("#itemsContainer input[type=checkbox]:checked")
           .forEach((cb) => {
             total += parseFloat(cb.dataset.price) || 0;
+            if (currentLockedItemCode && cb.value === currentLockedItemCode) {
+              lockedCounted = true;
+            }
           });
+        // 保底：固定套餐項目若因故沒有對應到清單裡的 checkbox（找不到該筆項目），
+        // 仍然把鎖定套餐的金額加回總金額，避免畫面顯示 $0。
+        if (currentLockedItemPrice && !lockedCounted) {
+          total += currentLockedItemPrice;
+        }
         return total;
       }
 
@@ -986,10 +1165,18 @@
             return;
           }
 
-          showToast("✅ 預約成功！編號 " + data.appointmentCode, "success");
-          setTimeout(() => {
-            window.location.href = "/liff/my-appointments.html";
-          }, 1500);
+          // 需求（2026-08-26）：每一筆預約送出成功後都要跳彈窗說明「還沒完成，
+          // 等店家確認」，不能讓顧客誤以為送出=預約成功；如果是這隻毛孩第一次
+          // 消費，額外加一段「線上報價僅供參考」的提醒——兩則訊息合併成同一個
+          // 彈窗，不要疊兩個彈窗造成困擾。
+          const bookedPet = myPets.find(
+            (p) => String(p.id) === String(selectedPetId),
+          );
+          showBookingSubmittedModal(
+            data.appointmentCode,
+            bookedPet && !bookedPet.isExistingCustomer,
+          );
+          return;
         } catch (e) {
           showToast("網路錯誤，請重試", "error");
         } finally {
@@ -1003,6 +1190,42 @@
         el.textContent = msg;
         el.className = "toast show " + type;
         setTimeout(() => el.classList.remove("show"), 3000);
+      }
+
+      // 需求（追加，2026-08-26）：預約送出成功後的彈窗——一律顯示「還沒完成，
+      // 等店家確認」，這隻毛孩如果是第一次消費，額外附上報價僅供參考的提醒。
+      // 用彈窗（不是 toast）是因為這兩則訊息都重要、要確保顧客真的看到，
+      // 點「我知道了」才會離開這頁去我的預約。
+      function showBookingSubmittedModal(appointmentCode, isFirstVisit) {
+        const modal = document.createElement("div");
+        modal.style.cssText =
+          "position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;";
+        modal.innerHTML = `
+          <div style="background:white; border-radius:12px; padding:24px; max-width:340px; width:88%; text-align:center;">
+            <div style="font-size:32px; margin-bottom:8px;">📋</div>
+            <h3 style="margin:0 0 12px; font-size:16px;">預約已送出</h3>
+            <p style="font-size:13.5px; color:#666; line-height:1.7; margin:0 0 12px;">
+              預約編號 ${escapeHtml(appointmentCode)}<br />
+              <strong>預約尚未完成，待店家確認中</strong>，請以收到店家確認訊息後為預訂成功。
+            </p>
+            ${
+              isFirstVisit
+                ? `<p style="font-size:13px; color:#8a6f3f; background:#FDF3E3; border-radius:8px; padding:10px; line-height:1.6; margin:0 0 20px; text-align:left;">
+                    📋 初體驗線上預約報價僅供參考，實際金額以到店由專業美容師實際判斷寵物情況（毛況、體型、配合度等）後為主。
+                  </p>`
+                : `<div style="margin-bottom:20px;"></div>`
+            }
+            <button type="button" id="bookingSubmittedOkBtn" style="width:100%; padding:12px; border:none; border-radius:8px; font-size:14px; cursor:pointer; background:#c9a876; color:white; font-weight:600;">
+              我知道了
+            </button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        document
+          .getElementById("bookingSubmittedOkBtn")
+          .addEventListener("click", () => {
+            window.location.href = "/liff/my-appointments.html";
+          });
       }
 
       init();

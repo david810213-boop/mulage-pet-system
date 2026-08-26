@@ -36,6 +36,7 @@ public class PaymentMvcController {
     private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
     private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
+    private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
 
@@ -140,9 +141,27 @@ public class PaymentMvcController {
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
         String petType = appointmentService.getPetTypeForAppointment(appointmentId);
+        // 需求（追加，2026-08-24）：狗狗定價流程簡化——依這隻狗目前的體重/是否
+        // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單（跟現場開單結帳頁
+        // 同一套邏輯，先前這裡漏做了，這次一併補上）。
+        var pet = appointmentService.getPetForAppointment(appointmentId);
+        model.addAttribute("pet", pet);
+        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+        final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
+        final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
+                pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
+                        ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
+                        : null;
         model.addAttribute("groomingItems", groomingService.getAllItems().stream()
                 .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                 .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .filter(i -> {
+                    if (i.getDogWeightTier() == null) return true;
+                    if (lockedItemId != null) return i.getId().equals(lockedItemId);
+                    if (dogTier != null) return i.getDogWeightTier().equals(dogTier.name());
+                    return true;
+                })
                 .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
@@ -164,12 +183,22 @@ public class PaymentMvcController {
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
             // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
             // 不再是舊版的「符合會員折扣就直接乘」。
+            // 需求（追加）：貓咪首次體驗優惠加入後，isFirstVisitEligible() 這個旗標狗貓共用，
+            // 這裡依 petType 分流到正確的 service（兩邊算法完全一致，只是分開呼叫語意才清楚）。
+            boolean isDogPet = "DOG".equalsIgnoreCase(petType);
             double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> it.isFirstVisitEligible()
-                            ? dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), true, it.isDiscountEligible(), discount).price()
-                            : catRewashDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price())
+                    .mapToDouble(it -> {
+                        if (it.isFirstVisitEligible() && isDogPet) {
+                            return dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
+                        }
+                        if (it.isFirstVisitEligible()) {
+                            return catFirstVisitDiscountService.resolvePreferredDiscount(
+                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
+                        }
+                        return catRewashDiscountService.resolvePreferredDiscount(
+                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price();
+                    })
                     .sum();
             model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
         }
@@ -199,9 +228,12 @@ public class PaymentMvcController {
 
     // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入自訂價格用
+    // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
     @PostMapping("/checkout/{appointmentId}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long appointmentId,
                                   @RequestParam Long groomingItemId,
+                                  @RequestParam(required = false) Integer customPrice,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   HttpServletRequest request,
                                   RedirectAttributes redirectAttributes) {
@@ -209,7 +241,30 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addGroomingItem(appointmentId, groomingItemId, user.getUsername());
+            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return redirectAfterEdit(appointmentId, from);
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/add-custom-item ────────────
+    // 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式報價
+    // 跟各種浮動加價，不綁定任何現有服務項目，店員直接輸入項目名稱+金額。
+    @PostMapping("/checkout/{appointmentId}/add-custom-item")
+    public String addCustomItem(@PathVariable Long appointmentId,
+                                @RequestParam String itemName,
+                                @RequestParam int price,
+                                @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(defaultValue = "checkout") String from,
+                                HttpServletRequest request,
+                                RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.addCustomItem(appointmentId, itemName, price, category, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -260,6 +315,19 @@ public class PaymentMvcController {
             var result = paymentService.checkout(appointmentId, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
+
+            // 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗
+            // 還沒鎖定固定套餐，跳提醒請店員記得更新體重（見 WalkInOrderMvcController
+            // 同樣邏輯的說明）。不管等一下要導去 /payments 還是 /appointments，
+            // 兩個頁面都有放這個彈窗的渲染邏輯，flash attribute 都讀得到。
+            var pet = appointmentService.getPetForAppointment(appointmentId);
+            if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
+                    && pet.getLockedGroomingItemId() == null) {
+                redirectAttributes.addFlashAttribute("weightReminderPetId", pet.getId());
+                redirectAttributes.addFlashAttribute("weightReminderPetName", pet.getName());
+                redirectAttributes.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
+            }
+
             // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
             // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
             // 導回預約列表，等店家之後在儲值管理/匯款頁確認收款才算真的完成。
@@ -299,12 +367,20 @@ public class PaymentMvcController {
                     // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
                     var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
                     model.addAttribute("detailItems", detail.getItems());
+                    boolean isDogPetErr = "DOG".equalsIgnoreCase(petTypeErr);
                     double walletPreview = detail.getItems().stream()
-                            .mapToDouble(it -> it.isFirstVisitEligible()
-                                    ? dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price()
-                                    : catRewashDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price())
+                            .mapToDouble(it -> {
+                                if (it.isFirstVisitEligible() && isDogPetErr) {
+                                    return dogFirstVisitDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
+                                }
+                                if (it.isFirstVisitEligible()) {
+                                    return catFirstVisitDiscountService.resolvePreferredDiscount(
+                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
+                                }
+                                return catRewashDiscountService.resolvePreferredDiscount(
+                                        it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price();
+                            })
                             .sum();
                     model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
                 }

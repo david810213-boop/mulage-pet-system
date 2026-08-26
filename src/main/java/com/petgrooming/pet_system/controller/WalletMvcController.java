@@ -111,6 +111,58 @@ public class WalletMvcController {
         return "admin/wallet-detail";
     }
 
+    // ── POST /admin/wallets/{username}/pets/{petId}/edit ────────────────────
+    // 需求（追加）：店家代客編輯寵物資料。物種（petType）不開放修改，理由跟
+    // PetService.updatePet() 的說明一致；表單裡沒有物種欄位，PetRequest 傳進去
+    // 也不會被拿來覆蓋既有物種。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{username}/pets/{petId}/edit")
+    public String editPet(@PathVariable String username, @PathVariable Long petId,
+                          @Valid @ModelAttribute com.petgrooming.pet_system.dto.PetRequest petRequest,
+                          org.springframework.validation.BindingResult bindingResult,
+                          @RequestParam(required = false) String returnTo,
+                          HttpServletRequest request,
+                          RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        String redirectUrl = "redirect:" + (returnTo != null && !returnTo.isBlank()
+                ? returnTo : "/admin/wallets/" + username);
+        if (bindingResult.hasErrors()) {
+            ra.addFlashAttribute("errorMsg", "更新失敗：" + bindingResult.getAllErrors().get(0).getDefaultMessage());
+            return redirectUrl;
+        }
+        try {
+            var updated = petService.updatePet(petId, petRequest);
+            operationLogService.log(user, "CUSTOMER", "UPDATE_PET",
+                    "會員 " + username + " 的寵物 " + updated.getName() + " #" + petId + "（店家代改）", updated.getBreed());
+            ra.addFlashAttribute("successMsg", "寵物資料已更新");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
+        }
+        return redirectUrl;
+    }
+
+    // ── POST /admin/wallets/{username}/pets/{petId}/cat-coat-category ──────
+    // 需求（追加）：店家手動修正貓咪毛髮分類（自動判斷抓不到品種時的補救手段）。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{username}/pets/{petId}/cat-coat-category")
+    public String setCatCoatCategory(@PathVariable String username, @PathVariable Long petId,
+                              @RequestParam com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory,
+                              @RequestParam(required = false) String returnTo,
+                              HttpServletRequest request,
+                              RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            petService.setCatCoatCategory(petId, catCoatCategory);
+            operationLogService.log(user, "CUSTOMER", "SET_CAT_COAT_CATEGORY",
+                    "會員 " + username + " 的寵物 #" + petId, catCoatCategory.name());
+            ra.addFlashAttribute("successMsg", "毛髮分類已更新");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "更新失敗：" + e.getMessage());
+        }
+        return "redirect:" + (returnTo != null && !returnTo.isBlank()
+                ? returnTo : "/admin/wallets/" + username);
+    }
+
     // ── POST /admin/wallets/{username}/pets/{petId}/coat-type ──────────────
     // 需求 2：店家定義寵物毛長
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

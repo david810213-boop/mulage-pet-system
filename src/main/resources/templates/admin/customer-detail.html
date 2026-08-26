@@ -529,8 +529,22 @@
                             color: var(--brown-light);
                             margin-left: 6px;
                           "
-                          th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'"
+                          th:text="${p.petTypeLabel} + '・' + ${p.breed} + '・' + ${p.weight} + 'kg・' + ${p.age} + '歲'
+                                   + (${p.gender} != null ? '・' + ${p.gender} : '')
+                                   + (${p.isNeutered} != null and ${p.isNeutered} ? '・已絕育' : (${p.isNeutered} != null ? '・未絕育' : ''))"
                         ></span>
+                        <a
+                          th:href="@{/admin/pets/{id}/edit(id=${p.id})}"
+                          style="font-size: 11.5px; color: #8a6f3f; text-decoration: underline; margin-left: 8px;"
+                        >完整編輯</a>
+                        <!-- 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄
+                             會被後端擋下並顯示明確錯誤訊息。HTML 表單不支援 DELETE method，
+                             改用 JS fetch 呼叫。 -->
+                        <button
+                          type="button"
+                          th:onclick="'deletePetAdmin(' + ${p.id} + ')'"
+                          style="font-size: 11.5px; color: #c0392b; background: none; border: none; text-decoration: underline; cursor: pointer; margin-left: 8px; padding: 0;"
+                        >刪除</button>
                         <form
                           th:action="@{/admin/wallets/{u}/pets/{id}/photo(u=${customer.username},id=${p.id})}"
                           method="post"
@@ -547,7 +561,52 @@
                         </form>
                       </div>
                     </div>
+                    <!-- 需求（追加）：貓咪改成編輯毛髮分類（單層毛/雙層毛/長毛/特殊貓種），
+                         取代原本的「定義毛長」——貓咪的服務項目菜單依這個分類篩選，
+                         比通用毛長更有實際用途。多半是新增寵物時依品種自動判斷好的，
+                         這裡是給店家在自動判斷抓不到品種（SPECIAL）時手動修正用的。
+                         狗狗沒有這個分類概念，維持原本的「定義毛長」表單不變。 -->
                     <form
+                      th:if="${p.petType.name() == 'CAT'}"
+                      th:action="@{/admin/wallets/{u}/pets/{id}/cat-coat-category(u=${customer.username},id=${p.id})}"
+                      method="post"
+                      style="display: flex; align-items: center; gap: 6px"
+                    >
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                      />
+                      <span
+                        th:text="${p.catCoatCategoryLabel} ?: '尚未判斷'"
+                        th:style="${p.catCoatCategory == null or p.catCoatCategory.name() == 'SPECIAL'} ? 'color:#e53935; font-size:11.5px;' : 'color:#43a047; font-size:11.5px;'"
+                      ></span>
+                      <select
+                        name="catCoatCategory"
+                        style="
+                          padding: 4px 6px;
+                          border: 1px solid var(--cream-300);
+                          border-radius: var(--radius-sm);
+                          font-size: 12.5px;
+                        "
+                      >
+                        <option
+                          th:each="c : ${catCoatCategories}"
+                          th:value="${c}"
+                          th:text="${c.label}"
+                          th:selected="${c == p.catCoatCategory}"
+                        ></option>
+                      </select>
+                      <button
+                        type="submit"
+                        class="btn"
+                        style="padding: 4px 10px; font-size: 12px"
+                      >
+                        儲存
+                      </button>
+                    </form>
+                    <form
+                      th:unless="${p.petType.name() == 'CAT'}"
                       th:action="@{/admin/wallets/{u}/pets/{id}/coat-type(u=${customer.username},id=${p.id})}"
                       method="post"
                       style="display: flex; align-items: center; gap: 6px"
@@ -586,6 +645,76 @@
                       </button>
                     </form>
                   </div>
+
+                  <!-- 需求（追加）：編輯寵物基本資料（名字/品種/體重/年齡），
+                       物種不開放修改（見 PetService.updatePet 的說明）。
+                       貓咪品種改成下拉選單（跟 LIFF「我的毛孩」編輯一致，選了
+                       系統會自動重新判斷毛髮分類），狗狗維持文字輸入。 -->
+                  <details style="margin-top: 8px">
+                    <summary style="cursor: pointer; font-size: 12.5px; color: var(--cream-600);">
+                      ✏️ 編輯基本資料
+                    </summary>
+                    <form
+                      th:action="@{/admin/wallets/{u}/pets/{id}/edit(u=${customer.username},id=${p.id})}"
+                      method="post"
+                      style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; align-items: end;"
+                    >
+                      <input type="hidden" name="petType" th:value="${p.petType}" />
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
+                      />
+                      <div>
+                        <label style="display:block; font-size:11px; color: var(--brown-light);">名字</label>
+                        <input type="text" name="name" th:value="${p.name}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                      </div>
+                      <div>
+                        <label style="display:block; font-size:11px; color: var(--brown-light);">品種</label>
+                        <select
+                          th:if="${p.petType.name() == 'CAT'}"
+                          name="breed"
+                          required
+                          style="width:100%; padding:4px; font-size:12.5px;"
+                        >
+                          <option value="">請選擇</option>
+                          <option
+                            th:each="b : ${catBreeds}"
+                            th:value="${b.breedName}"
+                            th:text="${b.breedName} + '（' + ${b.coatCategory.label} + '）'"
+                            th:selected="${b.breedName == p.breed}"
+                          ></option>
+                          <!-- 這隻貓現有品種不在對照表裡（例如舊資料、特殊貓種），
+                               補一個選項讓它至少能被選到、不會被下拉選單清空覆蓋掉。 -->
+                          <option
+                            th:if="${!catBreeds.![breedName].contains(p.breed)}"
+                            th:value="${p.breed}"
+                            th:text="${p.breed} + '（目前值，不在對照表）'"
+                            selected
+                          ></option>
+                        </select>
+                        <input
+                          th:unless="${p.petType.name() == 'CAT'}"
+                          type="text"
+                          name="breed"
+                          th:value="${p.breed}"
+                          required
+                          style="width:100%; padding:4px; font-size:12.5px;"
+                        />
+                      </div>
+                      <div>
+                        <label style="display:block; font-size:11px; color: var(--brown-light);">體重(kg)</label>
+                        <input type="number" step="0.1" name="weight" th:value="${p.weight}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                      </div>
+                      <div>
+                        <label style="display:block; font-size:11px; color: var(--brown-light);">年齡</label>
+                        <input type="number" name="age" th:value="${p.age}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                      </div>
+                      <button type="submit" class="btn btn-outline" style="grid-column: span 4; padding:4px 10px; font-size:12px;">
+                        儲存基本資料
+                      </button>
+                    </form>
+                  </details>
                   <details
                     style="margin-top: 8px"
                     th:if="${groomingNotesByPetId != null and !#lists.isEmpty(groomingNotesByPetId.get(p.id))}"
@@ -813,6 +942,25 @@
         });
         btn.classList.add("active");
         document.getElementById(btn.dataset.tab).classList.add("active");
+      }
+
+      // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄的話後端
+      // 會擋下並回傳明確錯誤訊息，這裡直接顯示，不用自己重複判斷邏輯。
+      async function deletePetAdmin(petId) {
+        if (!confirm("確定要刪除這隻寵物嗎？刪除後不會再顯示在清單裡，但過往的預約/消費紀錄不會受影響。")) return;
+        try {
+          const res = await fetch("/api/admin/pets/" + petId, { method: "DELETE" });
+          if (!res.ok) {
+            const msg = await res.text().catch(() => "");
+            let parsed = msg;
+            try { parsed = JSON.parse(msg); } catch (e) { /* 純文字錯誤訊息，直接用 */ }
+            alert(typeof parsed === "string" ? parsed : (parsed.message || "刪除失敗"));
+            return;
+          }
+          window.location.reload();
+        } catch (e) {
+          alert("網路錯誤，請重試");
+        }
       }
 
       // 若網址帶 #tab-xxx（例如儲存毛長設定後導回），自動切到對應分頁

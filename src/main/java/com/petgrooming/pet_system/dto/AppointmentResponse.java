@@ -24,6 +24,14 @@ public class AppointmentResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private List<GroomingItem> selectedItems;
+    // 需求（追加，2026-08-26 修正）：預約列表頁專用的「實際項目」顯示名稱——
+    // 這隻寵物到店核對時如果被店員改過項目（例如從基礎定制調理升級成中階
+    // 定制調理），selectedItems 是預約當下的原始選擇，不會跟著核對結果更新，
+    // 導致列表頁跟消費明細顯示不一致（明細正確，列表還是舊的）。
+    // 這個欄位由 AppointmentService 組裝時判斷：核對過（有 AppointmentItem
+    // 紀錄）就用核對後的實際項目名稱，還沒核對就照舊用 selectedItems 的名稱，
+    // 列表頁的畫面改讀這個欄位，不要再直接讀 selectedItems。
+    private List<String> displayItemNames;
     private int totalAmount;
     private boolean paid;
     private AppointmentStatus status;

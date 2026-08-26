@@ -31,6 +31,13 @@ public class GroomingItem {
     private Double price;
 
     // 邏輯刪除
+    // 修正：原本只寫 `= false` 沒加 @Builder.Default，Lombok 產生的 builder()
+    // 會完全忽略這個初始值（用 boolean 的語言預設值 false 頂著，這次剛好
+    // 跟預期值一樣所以沒出過事，但邏輯上是地雷——如果以後改成 `= true`
+    // 之類的非語言預設值，builder() 建出來的物件會悄悄跟預期不同，
+    // 且編譯器只會給警告不會報錯，很容易沒發現）。加上 @Builder.Default
+    // 才會讓 builder() 真的套用這個初始值。
+    @Builder.Default
     private boolean isDeleted = false;
 
     // 需求 4：是否可線上預約。
@@ -82,4 +89,21 @@ public class GroomingItem {
     @Enumerated(EnumType.STRING)
     @Column(name = "applicable_pet_type")
     private com.petgrooming.pet_system.enums.PetType applicablePetType;
+
+    // 需求（追加）：菜單簡化——貓咪套餐項目（CAT001~024）依「單層毛/雙層毛/長毛」
+    // 進一步細分，LIFF 預約頁依所選毛孩的品種自動判斷結果篩選菜單，顧客只會看到
+    // 符合自己貓咪毛髮分類的那 3 項套餐，不用在 24 項裡自己挑。
+    // null = 跟毛髮分類無關的項目（貓咪加購 CAT025~028、所有狗狗項目、通用加購），
+    // 這種項目不受這個欄位篩選影響，任何毛髮分類的貓都看得到（如果本身是貓咪適用的話）。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cat_coat_category")
+    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——DOG001~036 依體重級距標記，
+    // LIFF 預約頁/店員開單頁依這隻狗目前的體重（Pet.weight）自動篩選對應級距的
+    // 6 個項目（短毛/長毛 × 3 服務等級），不用把 36 項全部攤開。
+    // null = 跟體重級距無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dog_weight_tier")
+    private com.petgrooming.pet_system.enums.DogWeightTier dogWeightTier;
 }

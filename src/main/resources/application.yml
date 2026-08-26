@@ -66,3 +66,22 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
+
+# 需求（追加）：Google 日曆串接——店家一個共用 Google 日曆帳號，所有預約自動同步。
+# 用 Service Account（服務帳號）方式串接，不是走一般 OAuth 登入流程：
+#   1. 到 Google Cloud Console 建一個專案，啟用 Google Calendar API
+#   2. 建立一組 Service Account，下載它的 JSON 金鑰檔
+#   3. 把整份 JSON 檔案內容轉成 Base64（一行指令：base64 -w0 credentials.json），
+#      設成 GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON_BASE64 環境變數
+#   4. 到 Google 日曆網頁版，打開店家要用的那個日曆設定 → 「與特定使用者共用」，
+#      把 Service Account 的信箱（JSON 檔裡的 client_email 欄位）加進去，
+#      權限選「代為管理活動」，才能讓它新增/刪除事件
+#   5. 該日曆的「日曆 ID」（設定頁面裡可以找到，通常長得像一串英數字加
+#      @group.calendar.google.com）設成 GOOGLE_CALENDAR_ID 環境變數
+# 還沒申請好之前留空即可，GoogleCalendarService 會自動跳過同步、只記 log，
+# 不會讓系統啟動失敗、也不會擋住預約流程本身。
+google:
+  calendar:
+    service-account-json-base64: ${GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON_BASE64:}
+    calendar-id: ${GOOGLE_CALENDAR_ID:}
+

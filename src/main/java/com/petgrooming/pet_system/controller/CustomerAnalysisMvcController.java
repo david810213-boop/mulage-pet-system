@@ -175,6 +175,9 @@ public class CustomerAnalysisMvcController {
         var pets = petService.getMyPets(username);
         model.addAttribute("pets", pets);
         model.addAttribute("coatTypes", CoatType.values());
+        // 需求（追加）：貓咪品種下拉選單資料來源 + 毛髮分類選項，供編輯基本資料表單使用
+        model.addAttribute("catBreeds", petService.listCatBreedOptions());
+        model.addAttribute("catCoatCategories", com.petgrooming.pet_system.enums.CatCoatCategory.values());
         var groomingNotesByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.model.PetGroomingNote>>();
         // 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁——依寵物名稱把上面已經整理好的
         // 消費紀錄（records）分組。沿用需求 9 既有的「用寵物名稱文字比對」慣例

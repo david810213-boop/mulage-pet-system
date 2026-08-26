@@ -143,20 +143,60 @@
               </form>
             </div>
             <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--cream-200);">
+              <!-- 需求（追加，2026-08-26）：自訂價格改從結帳頁搬到核對頁——核對才是
+                   店員實際判斷這次要收多少錢的時機點，結帳頁只負責收款，不應該還能
+                   改項目/改價格。 -->
               <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
                     th:action="@{/payments/checkout/{id}/add-grooming-item(id=${appointment.id})}"
-                    style="display:flex; gap:8px; align-items:end; flex:1; min-width:220px;">
+                    style="display:flex; gap:8px; align-items:end; flex:1; min-width:280px; flex-wrap:wrap;">
                 <input type="hidden" name="from" value="final-check" />
-                <div class="field" style="margin:0; flex:1;">
+                <div class="field" style="margin:0; flex:1; min-width:160px;">
                   <label style="font-size:12px;">新增服務項目</label>
                   <select name="groomingItemId" required>
                     <option th:each="g : ${groomingItems}" th:value="${g.id}"
                             th:text="${g.name} + '（$' + ${#numbers.formatDecimal(g.price, 0, 0)} + '）'"></option>
                   </select>
                 </div>
+                <div class="field" style="margin:0; width:110px;">
+                  <label style="font-size:12px;">自訂價格</label>
+                  <input type="number" name="customPrice" min="0" placeholder="留空＝原價" />
+                </div>
                 <button type="submit" class="btn btn-outline" style="padding:6px 14px; font-size:12px;">加入</button>
               </form>
             </div>
+            <p style="font-size: 11px; color: var(--brown-light); margin: 6px 0 0;">
+              💡 有填自訂價格時，這筆收費金額照你填的數字，但積分仍照這個項目原本設定的值計算，不受改價影響。
+            </p>
+
+            <!-- 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式
+                 報價跟各種浮動加價（厚毛/長毛/特殊剪法/特殊情況），不綁定任何現有
+                 服務項目，直接輸入名稱+金額。 -->
+            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--cream-200);">
+              <form method="post"
+                    th:action="@{/payments/checkout/{id}/add-custom-item(id=${appointment.id})}"
+                    style="display:flex; gap:8px; align-items:end; flex:1; min-width:280px; flex-wrap:wrap;">
+                <input type="hidden" name="from" value="final-check" />
+                <div class="field" style="margin:0; flex:1; min-width:140px;">
+                  <label style="font-size:12px;">💬 自訂項目名稱</label>
+                  <input type="text" name="itemName" required placeholder="例如：高階定制調理（厚毛加價）" />
+                </div>
+                <div class="field" style="margin:0; width:100px;">
+                  <label style="font-size:12px;">金額</label>
+                  <input type="number" name="price" min="0" required />
+                </div>
+                <div class="field" style="margin:0; width:140px;">
+                  <label style="font-size:12px;">積分分類（選填）</label>
+                  <select name="category">
+                    <option value="">不計積分（其他）</option>
+                    <option th:each="c : ${performanceCategories}" th:value="${c}" th:text="${c.label}"></option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-outline" style="padding:6px 14px; font-size:12px;">加入</button>
+              </form>
+            </div>
+            <p style="font-size: 11px; color: var(--brown-light); margin: 6px 0 0;">
+              ⚠️ 這種自訂項目不參與任何折扣（會員儲值折扣/回洗優惠等）。
+            </p>
             <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:8px;">
               <form th:if="${retailProducts != null and !retailProducts.isEmpty()}" method="post"
                     th:action="@{/payments/checkout/{id}/add-retail-item(id=${appointment.id})}"

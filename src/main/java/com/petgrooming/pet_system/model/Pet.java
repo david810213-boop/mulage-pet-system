@@ -33,7 +33,7 @@ public class Pet {
     private Double weight;              // 體重（kg）
 
     @Column(nullable = false)
-    private Integer age;                // 年齡
+    private Double age;                // 年齡（需求追加：允許小數，例如 5.5 歲，方便幼犬/幼貓標記半歲）
 
     // ── 自動判斷欄位（新增寵物時系統自動計算）────────────────────────────
     @Enumerated(EnumType.STRING)
@@ -47,6 +47,38 @@ public class Pet {
     @Column(name = "coat_type", nullable = false)
     @Builder.Default
     private CoatType coatType = CoatType.UNDEFINED;                // 毛長（未定義 → 店家定義後：短/中長/長）
+
+    // 需求（追加）：菜單簡化——貓咪專用，新增/編輯毛孩時依品種（下拉選單）自動查
+    // CatBreedCoatMapping 對照表算出來，寫進這裡。null 代表這隻是狗、或是品種不在
+    // 對照表裡的特殊貓種（LIFF 預約頁遇到 null 會顯示全部貓咪套餐項目，不會篩選，
+    // 讓店家人工協助判斷，不會擋住顧客預約）。
+    // 跟 sizeCategory/coatType 一樣是系統自動判斷欄位，顧客不會直接填這個值，
+    // 只能透過選品種間接觸發。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cat_coat_category")
+    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——成犬定型後，店員在店裡核對
+    // 選出真正對應的套餐項目，這裡記錄下來變成這隻狗的「固定套餐」。
+    // null（預設）＝還沒鎖定，LIFF 預約/店員開單都依 Pet.weight 目前的體重
+    // 自動篩選對應級距的 6 個項目，每次都要重新選；有值＝已鎖定，之後不管顧客
+    // 自己在 LIFF 訂、還是店員開單，都直接帶出這個固定項目跟價格，不再顯示選單。
+    // 只對狗狗有意義（貓咪走的是 90 天回洗優惠 + 首次體驗優惠那一套邏輯，
+    // 沒有「鎖定固定套餐」這個概念），但欄位本身沒有限制只能狗狗使用，
+    // 純粹是因為目前只有狗狗的業務流程會用到。
+    // 店員如果需要重新報價（狗狗生病消瘦、換季毛況差很多、當初選錯了），
+    // 把這個欄位清空（設回 null）就會恢復成「依體重自動篩選」的狀態。
+    @Column(name = "locked_grooming_item_id")
+    private Long lockedGroomingItemId;
+
+    // 需求（追加，2026-08-26 修正）：刪除寵物改成跟服務項目下架同一套邏輯——
+    // 軟刪除，不是真的從資料庫刪掉這筆資料列。這樣過往預約/消費紀錄裡
+    // 記錄的寵物名字快照完全不受影響（本來就不是即時關聯查詢，是結帳當下
+    // 存好的文字），刪除也不用再檢查「有沒有消費紀錄」這件事——反正資料
+    // 沒有真的消失，只是不再出現在顧客/店員的主動選擇清單裡而已。
+    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean isDeleted = false;
 
     // ── 預約須知相關欄位 ──────────────────────────────────────────────────
     @Column(name = "has_separation_anxiety", nullable = false)

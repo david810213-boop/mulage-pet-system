@@ -4,59 +4,30 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村Mulage pet</title>
+    <title>會員錢包 | 慕沐村Mulage pet</title>
     <script
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <link rel="stylesheet" href="/liff/liff-theme.css" />
     <style>
-      /* 基本重置 */
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
-        min-height: 100vh;
-        padding-bottom: 90px;
+        padding-bottom: 100px;
       }
 
-      /* 頂部 Header */
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 20px 16px 28px;
-        text-align: center;
-      }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 4px;
-      }
-      .header h1 {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 2px;
-      }
-
-      /* 會員卡區塊 */
+      /* 會員卡區塊：延用票券卡質感，但這裡是唯讀顯示，不做成 <a> 票券樣式 */
       .card-section {
-        margin: -16px 16px 0;
-        background: white;
-        border-radius: 16px;
+        margin: 0 20px;
+        background: linear-gradient(180deg, #fff, #fbf9f5);
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
         padding: 20px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-float);
       }
       .card-tier {
         display: flex;
@@ -65,142 +36,164 @@
         margin-bottom: 16px;
       }
       .tier-badge {
-        background: linear-gradient(135deg, #b8935a, #d9be8f);
-        color: #2b2a28;
-        font-weight: 700;
-        font-size: 13px;
-        padding: 4px 12px;
-        border-radius: 20px;
+        font-family: "Jost", sans-serif;
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        padding: 5px 13px;
+        border-radius: 999px;
+        text-transform: lowercase;
+        background: var(--paper-2);
+        color: var(--ink-faint);
       }
       .tier-badge.none {
-        background: #e0e0e0;
-        color: #666;
+        background: var(--paper-2);
+        color: var(--ink-faint);
       }
       .tier-badge.village {
-        background: linear-gradient(135deg, #8bc34a, #c5e1a5);
-        color: #33691e;
+        background: var(--done-bg);
+        color: var(--done-fg);
       }
       .tier-badge.normal {
-        background: linear-gradient(135deg, #90a4ae, #cfd8dc);
-        color: #37474f;
+        background: #eef0ee;
+        color: #4a5a52;
       }
       .tier-badge.gold {
-        background: linear-gradient(135deg, #b8935a, #d9be8f);
-        color: #5d4037;
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: #4a3416;
       }
       .tier-badge.diamond {
-        background: linear-gradient(135deg, #7986cb, #c5cae9);
-        color: #1a237e;
+        background: #e8eaf6;
+        color: #33396b;
       }
       .tier-badge.vip {
-        background: #2b2a28;
-        color: #d9be8f;
+        background: var(--primary-deep);
+        color: var(--gold-light);
       }
 
       .card-info {
         flex: 1;
       }
       .card-info .discount {
+        font-family: "Noto Serif TC", serif;
         font-size: 18px;
         font-weight: 700;
-        color: #b8935a;
+        color: var(--wood-deep);
       }
       .card-info .expire {
-        font-size: 12px;
-        color: #8a8072;
-        margin-top: 2px;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        margin-top: 3px;
+        letter-spacing: 0.3px;
       }
 
       .balance-row {
-        border-top: 1px solid #ede5d3;
+        border-top: 1px solid var(--line-soft);
         padding-top: 16px;
         display: flex;
         align-items: baseline;
         gap: 8px;
       }
       .balance-label {
-        font-size: 13px;
-        color: #666;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        color: var(--ink-soft);
+        letter-spacing: 0.5px;
       }
       .balance-amount {
-        font-size: 32px;
+        font-family: "Noto Serif TC", serif;
+        font-size: 30px;
         font-weight: 700;
-        color: #2b2a28;
+        color: var(--primary-deep);
       }
       .balance-unit {
-        font-size: 14px;
-        color: #666;
+        font-size: 13px;
+        color: var(--ink-soft);
       }
 
       /* 會員等級進度 */
       .tier-progress {
-        margin: 16px 16px 0;
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin: 16px 20px 0;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
+        padding: 18px;
+        box-shadow: var(--shadow-card);
       }
       .tier-progress h3 {
-        font-size: 14px;
-        color: #666;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        font-weight: 500;
+        color: var(--ink-faint);
+        letter-spacing: 1px;
+        text-transform: lowercase;
         margin-bottom: 12px;
       }
       .tier-item {
         display: flex;
         align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid #f5f5f5;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line-soft);
         gap: 10px;
       }
       .tier-item:last-child {
         border-bottom: none;
       }
       .tier-item .dot {
-        width: 10px;
-        height: 10px;
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
-        background: #e0e0e0;
+        background: var(--line);
         flex-shrink: 0;
       }
       .tier-item.active .dot {
-        background: #b8935a;
+        background: var(--wood);
       }
       .tier-item .name {
         flex: 1;
-        font-size: 14px;
+        font-size: 13.5px;
+        font-family: "Noto Sans TC", sans-serif;
+        color: var(--ink-soft);
       }
       .tier-item.active .name {
-        font-weight: 700;
-        color: #2b2a28;
+        font-weight: 600;
+        color: var(--ink);
       }
       .tier-item .amount {
-        font-size: 12px;
-        color: #8a8072;
+        font-family: "Jost", sans-serif;
+        font-size: 11px;
+        color: var(--ink-faint);
       }
       .tier-item .perk {
-        font-size: 12px;
-        color: #b8935a;
-        font-weight: 600;
+        font-size: 11px;
+        color: var(--wood-deep);
+        font-weight: 700;
       }
 
       /* 交易紀錄 */
       .transactions {
-        margin: 16px 16px 80px;
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin: 16px 20px 80px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
+        padding: 18px;
+        box-shadow: var(--shadow-card);
       }
       .transactions h3 {
-        font-size: 14px;
-        color: #666;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
+        font-weight: 500;
+        color: var(--ink-faint);
+        letter-spacing: 1px;
+        text-transform: lowercase;
         margin-bottom: 12px;
       }
       .tx-item {
         display: flex;
         align-items: center;
-        padding: 10px 0;
-        border-bottom: 1px solid #f5f5f5;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line-soft);
       }
       .tx-item:last-child {
         border-bottom: none;
@@ -212,109 +205,125 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
-        margin-right: 10px;
+        font-size: 15px;
+        margin-right: 11px;
         flex-shrink: 0;
       }
       .tx-icon.deposit {
-        background: #e8f5e9;
+        background: var(--done-bg);
       }
       .tx-icon.deduct {
-        background: #fce4ec;
+        background: var(--cancel-bg);
       }
       .tx-body {
         flex: 1;
+        min-width: 0;
       }
       .tx-note {
-        font-size: 14px;
-        color: #2b2a28;
+        font-size: 13.5px;
+        color: var(--ink);
+        font-family: "Noto Serif TC", serif;
+        font-weight: 500;
       }
       .tx-date {
-        font-size: 11px;
-        color: #bbb;
-        margin-top: 2px;
+        font-family: "Jost", sans-serif;
+        font-size: 10px;
+        color: var(--ink-faint);
+        margin-top: 3px;
       }
       .tx-amount {
-        font-size: 15px;
+        font-family: "Noto Serif TC", serif;
+        font-size: 14.5px;
         font-weight: 700;
       }
       .tx-amount.plus {
-        color: #43a047;
+        color: var(--done-fg);
       }
       .tx-amount.minus {
-        color: #e53935;
+        color: var(--cancel-fg);
       }
 
       .empty {
         text-align: center;
         padding: 24px;
-        color: #bbb;
-        font-size: 14px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
       .loading {
         text-align: center;
         padding: 40px;
-        color: #bbb;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
 
-      /* 錯誤/提示訊息 */
       .toast {
         position: fixed;
-        bottom: 80px;
+        bottom: 92px;
         left: 50%;
         transform: translateX(-50%);
-        background: #2b2a28;
-        color: white;
+        background: var(--primary-deep);
+        color: #fff;
         padding: 10px 20px;
-        border-radius: 20px;
+        border-radius: 999px;
         font-size: 13px;
         opacity: 0;
         transition: opacity 0.3s;
         pointer-events: none;
         white-space: nowrap;
+        z-index: 999;
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.3);
       }
       .toast.show {
         opacity: 1;
       }
 
-      /* 固定浮動的返回首頁按鈕：畫面中下方，捲動頁面時位置不變 */
       .fab-home {
         position: fixed;
         left: 50%;
-        bottom: 20px;
+        bottom: 22px;
         transform: translateX(-50%);
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: #2b2a28;
-        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        background: var(--primary-deep);
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
         z-index: 500;
+        border: 2px solid var(--gold);
       }
       .fab-home-icon {
-        font-size: 22px;
+        font-size: 20px;
         line-height: 1;
       }
       .fab-home:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
     </style>
-    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
-    <div class="header">
-      <div class="logo">慕沐村 Mulage pet</div>
-      <h1>會員錢包</h1>
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>會員錢包</span>
+    </div>
+
+    <div class="page-head">
+      <a class="back" href="/liff/index.html">‹</a>
+      <div class="titles">
+        <div class="cn">會員錢包</div>
+        <div class="en">wallet</div>
+      </div>
     </div>
 
     <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
       <span class="fab-home-icon">🏠</span>
     </a>
 
-    <div id="app">
+    <div id="app" style="margin-top: 18px">
       <div class="loading">載入中...</div>
     </div>
 
@@ -506,14 +515,14 @@
                 </div>
 
                 <!-- 需求 1：線上儲值僅限轉帳 -->
-                <div class="topup-card" style="margin:16px; background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-                    <h3 style="font-size:15px; color:#2b2a28; margin-bottom:12px;">💳 線上儲值（限轉帳）</h3>
-                    <div id="bankAccountInfoBox" style="background:#f6f2ea; border-radius:8px; padding:12px; font-size:13px; color:#454340; line-height:1.7; margin-bottom:14px;">
+                <div class="topup-card" style="margin:16px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-card);">
+                    <h3 style="font-family:'Noto Serif TC',serif; font-size:14px; font-weight:600; color:var(--primary-deep); letter-spacing:1px; margin-bottom:12px;">線上儲值（限轉帳）</h3>
+                    <div id="bankAccountInfoBox" style="background:var(--paper-2); border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:var(--ink-soft); line-height:1.7; margin-bottom:14px; font-family:'Noto Sans TC',sans-serif;">
                         載入轉帳資訊中...
                     </div>
                     <div class="field" style="margin-bottom:10px;">
                         <select id="topupAmount"
-                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px; background:white;">
+                            style="width:100%; padding:11px 13px; border:1px solid var(--line-soft); border-radius:var(--radius-sm); font-size:14.5px; background:#fffefd; font-family:'Noto Sans TC',sans-serif;">
                             <option value="">請選擇儲值金額</option>
                             <option value="5000">$5,000（村民優惠方案）</option>
                             <option value="8000">$8,000（普卡）</option>
@@ -524,14 +533,14 @@
                     </div>
                     <div class="field" style="margin-bottom:10px;">
                         <input id="topupLast5" type="text" maxlength="5" placeholder="匯款帳號後五碼"
-                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px;" />
+                            style="width:100%; padding:11px 13px; border:1px solid var(--line-soft); border-radius:var(--radius-sm); font-size:14.5px; font-family:'Noto Sans TC',sans-serif;" />
                     </div>
                     <div class="field" style="margin-bottom:12px;">
                         <input id="topupNote" type="text" placeholder="轉帳時間 / 備註（例：01/15 14:30）"
-                            style="width:100%; padding:10px 12px; border:1px solid #e3dccc; border-radius:8px; font-size:15px;" />
+                            style="width:100%; padding:11px 13px; border:1px solid var(--line-soft); border-radius:var(--radius-sm); font-size:14.5px; font-family:'Noto Sans TC',sans-serif;" />
                     </div>
                     <button onclick="submitTopUp()"
-                        style="width:100%; padding:12px; background:linear-gradient(135deg,#454340,#2b2a28); color:#d9be8f; border:none; border-radius:8px; font-size:15px; font-weight:700;">
+                        style="width:100%; padding:13px; background:linear-gradient(135deg,var(--gold-light),var(--gold)); color:#3a2d16; border:none; border-radius:999px; font-size:14px; font-weight:600; font-family:'Jost',sans-serif; letter-spacing:0.3px; box-shadow:0 6px 14px rgba(198,160,99,0.4);">
                         送出儲值申請
                     </button>
                     <div id="topupList" style="margin-top:14px;"></div>
@@ -548,8 +557,8 @@
                 </div>
 
                 <div style="display:flex; gap:8px; margin:16px 0 8px; justify-content:center;">
-                    <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#f6f2ea; border-radius:12px; text-align:center; font-size:13px; color:#454340; text-decoration:none;">🐾 我的毛孩</a>
-                    <a href="/liff/my-appointments.html" style="flex:1; padding:12px; background:#f6f2ea; border-radius:12px; text-align:center; font-size:13px; color:#454340; text-decoration:none;">📋 我的預約</a>
+                    <a href="/liff/my-pets.html" style="flex:1; padding:12px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--radius-md); text-align:center; font-size:12.5px; color:var(--primary-deep); text-decoration:none; font-family:'Jost',sans-serif;">我的毛孩</a>
+                    <a href="/liff/my-appointments.html" style="flex:1; padding:12px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--radius-md); text-align:center; font-size:12.5px; color:var(--primary-deep); text-decoration:none; font-family:'Jost',sans-serif;">我的預約</a>
                 </div>`;
       }
 
@@ -606,9 +615,9 @@
             (info.qrCodeUrl
               ? '<img src="' + info.qrCodeUrl + '" style="width:140px;height:140px;object-fit:contain;border:1px solid #e3dccc;border-radius:8px;margin-top:8px;display:block;" />'
               : "") +
-            '<span style="color:#8a8072;">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>';
+            '<span style="color:var(--ink-faint);">※ 轉帳後請填寫下方資訊送出，店家核帳後入帳。</span>';
         } catch (e) {
-          box.innerHTML = '<span style="color:#c62828;">轉帳資訊載入失敗，請稍後重試</span>';
+          box.innerHTML = '<span style="color:#8B0000;">轉帳資訊載入失敗，請稍後重試</span>';
         }
       }
 
@@ -627,18 +636,18 @@
             return;
           }
           box.innerHTML =
-            '<div style="font-size:13px;color:#454340;margin-bottom:6px;">近期申請</div>' +
+            '<div style="font-size:11.5px;color:var(--ink-soft);margin-bottom:6px;">近期申請</div>' +
             list
               .slice(0, 5)
               .map(function (r) {
                 var color =
                   r.status === "CONFIRMED"
-                    ? "#2e7d32"
+                    ? "#2D5A27"
                     : r.status === "REJECTED"
-                      ? "#e53935"
-                      : "#b8860b";
+                      ? "#8B0000"
+                      : "#8A5A00";
                 return (
-                  '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #ede5d3;">' +
+                  '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line-soft);">' +
                   "<span>$" +
                   r.amount.toLocaleString() +
                   "</span>" +
@@ -669,7 +678,7 @@
 
       function showError(msg) {
         document.getElementById("app").innerHTML =
-          `<div class="loading" style="color:#e53935">${msg}</div>`;
+          `<div class="loading" style="color:#8B0000">${msg}</div>`;
       }
 
       init();

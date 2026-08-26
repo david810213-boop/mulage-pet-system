@@ -4,81 +4,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村Mulage pet</title>
+    <title>編輯我的資料 | 慕沐村Mulage pet</title>
     <script
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <link rel="stylesheet" href="/liff/liff-theme.css" />
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
       body {
-        font-family:
-          "Noto Serif TC",
-          -apple-system,
-          BlinkMacSystemFont,
-          serif;
-        background: #f6f2ea;
-        min-height: 100vh;
-        padding-bottom: 90px;
-      }
-      .header {
-        background: #2b2a28;
-        color: #d9be8f;
-        padding: 20px 16px 24px;
-        text-align: center;
-      }
-      .header .logo {
-        font-size: 13px;
-        opacity: 0.8;
-        margin-bottom: 4px;
-      }
-      .header h1 {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 2px;
+        padding-bottom: 100px;
       }
 
       .notice {
-        margin: 16px;
-        background: #f6f2ea;
-        border: 1px solid #ede5d3;
-        border-radius: 12px;
-        padding: 16px;
-        font-size: 13px;
-        color: #454340;
+        margin: 20px 20px 16px;
+        background: var(--paper-2);
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-md);
+        padding: 15px 16px;
+        font-size: 12.5px;
+        color: var(--ink-soft);
         line-height: 1.8;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .notice .title {
-        font-weight: 700;
-        color: #2b2a28;
+        font-family: "Noto Serif TC", serif;
+        font-weight: 600;
+        color: var(--primary-deep);
         margin-bottom: 8px;
         display: flex;
         align-items: center;
         gap: 6px;
+        font-size: 13.5px;
       }
 
       .form-card {
-        margin: 0 16px 16px;
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin: 0 20px 16px;
+        background: #fff;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-lg);
+        padding: 18px 18px 16px;
+        box-shadow: var(--shadow-card);
       }
       .form-card h3 {
-        font-size: 15px;
-        color: #2b2a28;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #ede5d3;
+        font-family: "Noto Serif TC", serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-deep);
+        letter-spacing: 1px;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line-soft);
       }
 
       .field {
@@ -86,18 +66,20 @@
       }
       .field label {
         display: block;
-        font-size: 13px;
-        color: #454340;
-        margin-bottom: 6px;
+        font-family: "Jost", sans-serif;
+        font-size: 10.5px;
         font-weight: 500;
+        letter-spacing: 0.3px;
+        color: var(--ink-soft);
+        margin-bottom: 7px;
       }
       .field label .req {
-        color: #e53935;
+        color: var(--cancel-fg);
         margin-left: 2px;
       }
       .field label .hint {
-        color: #8a8072;
-        font-size: 11px;
+        color: var(--ink-faint);
+        font-size: 10px;
         font-weight: 400;
         margin-left: 6px;
       }
@@ -105,37 +87,40 @@
       .field input,
       .field select {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #e3dccc;
-        border-radius: 8px;
-        font-size: 15px;
-        color: #2b2a28;
-        background: #fffefb;
+        padding: 11px 13px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-sm);
+        font-size: 14.5px;
+        color: var(--ink);
+        background: #fffefd;
         outline: none;
-        transition: border-color 0.2s;
+        transition: border-color 0.15s;
+        font-family: "Noto Sans TC", sans-serif;
       }
       .field input:focus,
       .field select:focus {
-        border-color: #b8935a;
+        border-color: var(--wood);
       }
 
       .submit-btn {
         display: block;
-        width: calc(100% - 32px);
-        margin: 0 16px;
+        width: calc(100% - 40px);
+        margin: 0 20px;
         padding: 14px;
-        background: #2b2a28;
-        color: #d9be8f;
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: #3a2d16;
         border: none;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 700;
-        letter-spacing: 1px;
+        border-radius: 999px;
+        font-family: "Jost", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
         cursor: pointer;
+        box-shadow: 0 6px 14px rgba(198, 160, 99, 0.4);
         transition: opacity 0.2s;
       }
       .submit-btn:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
       .submit-btn:disabled {
         opacity: 0.5;
@@ -147,64 +132,74 @@
         bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
-        background: #2b2a28;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 24px;
-        font-size: 14px;
+        background: var(--primary-deep);
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 999px;
+        font-size: 13px;
         opacity: 0;
         transition: opacity 0.3s;
         pointer-events: none;
         white-space: nowrap;
         z-index: 999;
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.3);
       }
       .toast.show {
         opacity: 1;
       }
       .toast.success {
-        background: #2e7d32;
+        background: var(--forest);
       }
       .toast.error {
-        background: #c62828;
+        background: #8b3a3a;
       }
 
       .loading {
         text-align: center;
-        padding: 60px;
-        color: #bbb;
+        padding: 60px 20px;
+        color: var(--ink-faint);
+        font-family: "Jost", sans-serif;
+        font-size: 12px;
       }
 
-      /* 固定浮動的返回首頁按鈕 */
       .fab-home {
         position: fixed;
         left: 50%;
-        bottom: 20px;
+        bottom: 22px;
         transform: translateX(-50%);
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: #2b2a28;
-        box-shadow: 0 4px 14px rgba(44, 24, 16, 0.35);
+        background: var(--primary-deep);
+        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
         z-index: 500;
+        border: 2px solid var(--gold);
       }
       .fab-home-icon {
-        font-size: 22px;
+        font-size: 20px;
         line-height: 1;
       }
       .fab-home:active {
-        opacity: 0.8;
+        opacity: 0.85;
       }
     </style>
-    <link rel="stylesheet" href="/liff/liff-warm.css" />
   </head>
   <body>
-    <div class="header">
-      <div class="logo">慕沐村 Mulage pet</div>
-      <h1>編輯我的資料</h1>
+    <div class="idband">
+      <span><span class="dot"></span>mulage pet</span>
+      <span>編輯我的資料</span>
+    </div>
+
+    <div class="page-head">
+      <a class="back" href="/liff/index.html">‹</a>
+      <div class="titles">
+        <div class="cn">編輯我的資料</div>
+        <div class="en">my profile</div>
+      </div>
     </div>
 
     <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
@@ -212,7 +207,7 @@
     </a>
 
     <div class="notice">
-      <div class="title">💛 為什麼要填寫這些資料？</div>
+      <div class="title">為什麼要填寫這些資料？</div>
       幫助我們更了解每一位毛孩家長，提供更貼心、更適合您的服務與活動資訊。標示 * 的欄位為必填（依犬貓美容服務定型化契約規定蒐集），其餘為選填，您可以隨時回來修改。
     </div>
 
@@ -252,7 +247,7 @@
           const data = await res.json().catch(() => null);
           if (!res.ok) {
             document.getElementById("app").innerHTML =
-              '<div class="loading" style="color:red">登入失敗</div>';
+              '<div class="loading" style="color:#8B0000">登入失敗</div>';
             return;
           }
           jwtToken = data?.token || data?.jwtToken || data?.accessToken;
@@ -260,7 +255,7 @@
           await loadProfile();
         } catch (e) {
           document.getElementById("app").innerHTML =
-            '<div class="loading" style="color:red">初始化失敗：' +
+            '<div class="loading" style="color:#8B0000">初始化失敗：' +
             e.message +
             "</div>";
         }
@@ -279,7 +274,7 @@
           renderForm(me);
         } catch (e) {
           document.getElementById("app").innerHTML =
-            '<div class="loading" style="color:red">載入資料失敗：' +
+            '<div class="loading" style="color:#8B0000">載入資料失敗：' +
             (e.name ? e.name + " - " : "") +
             e.message +
             "</div>";

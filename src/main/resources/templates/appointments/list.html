@@ -86,6 +86,58 @@
           th:if="${successMsg}"
           th:text="${successMsg}"
         ></div>
+
+        <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後的體重更新提醒彈窗 -->
+        <div id="weightReminderModal" th:if="${weightReminderPetId != null}"
+             style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+          <div style="background:white; border-radius:12px; padding:24px; max-width:380px; width:90%;">
+            <h3 style="margin-top:0; font-size:16px;">📏 記得更新體重</h3>
+            <p style="font-size:13.5px; color:#666; line-height:1.6;">
+              「<strong th:text="${weightReminderPetName}"></strong>」目前登記的體重是
+              <strong th:text="${weightReminderCurrentWeight} + 'kg'"></strong>，
+              這個數字是下次開單自動篩選套餐菜單的依據，記得跟顧客確認一下最新體重。
+            </p>
+            <div style="display:flex; gap:8px; align-items:center; margin:12px 0;">
+              <input type="number" id="weightReminderInput" step="0.1"
+                     th:value="${weightReminderCurrentWeight}"
+                     style="flex:1; padding:8px; border:1px solid var(--cream-300); border-radius:6px;" />
+              <span style="font-size:13px; color:#999;">kg</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-primary" style="flex:1;"
+                      th:onclick="'saveWeightReminder(' + ${weightReminderPetId} + ')'">
+                儲存體重
+              </button>
+              <button type="button" class="btn btn-outline" style="flex:1;"
+                      onclick="document.getElementById('weightReminderModal').remove()">
+                稍後再說
+              </button>
+            </div>
+          </div>
+        </div>
+        <script th:if="${weightReminderPetId != null}">
+          async function saveWeightReminder(petId) {
+            const weight = parseFloat(document.getElementById('weightReminderInput').value);
+            if (!weight || weight <= 0) {
+              alert('請輸入有效的體重');
+              return;
+            }
+            try {
+              const res = await fetch('/api/admin/pets/' + petId + '/weight', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ weight: weight }),
+              });
+              if (!res.ok) {
+                alert('更新失敗，請重試');
+                return;
+              }
+              document.getElementById('weightReminderModal').remove();
+            } catch (e) {
+              alert('網路錯誤，請重試');
+            }
+          }
+        </script>
         <div
           class="alert alert-error"
           th:if="${errorMsg}"
@@ -447,8 +499,8 @@
 
                 <td class="items-cell">
                   <div
-                    th:each="item : ${a.selectedItems}"
-                    th:text="${item.name}"
+                    th:each="itemName : ${a.displayItemNames}"
+                    th:text="${itemName}"
                     style="font-size: 13px; margin-bottom: 2px"
                   >
                     美容項目名稱

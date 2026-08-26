@@ -43,6 +43,7 @@ public class PaymentService {
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
+    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
     private final com.petgrooming.pet_system.repository.WalkInOrderRepository walkInOrderRepository; // 需求 6
     private final com.petgrooming.pet_system.repository.TopUpRequestRepository topUpRequestRepository; // 需求 6
     private final com.petgrooming.pet_system.repository.RetailProductRepository retailProductRepository; // 需求 6
@@ -539,6 +540,7 @@ public class PaymentService {
 
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
         boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
+        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
 
         double total = 0;
         if (!checkinItems.isEmpty()) {
@@ -551,6 +553,13 @@ public class PaymentService {
                         && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
                 if (firstVisitApplicable) {
                     total += dogFirstVisitDiscountService.resolvePreferredDiscount(
+                            item.getPrice(), true, memberEligible, discount).price();
+                    continue;
+                }
+                boolean catFirstVisitApplicable = catFirstVisitEligible
+                        && catFirstVisitDiscountService.isCatBathCategory(item.getPerformanceCategory());
+                if (catFirstVisitApplicable) {
+                    total += catFirstVisitDiscountService.resolvePreferredDiscount(
                             item.getPrice(), true, memberEligible, discount).price();
                     continue;
                 }
@@ -568,6 +577,12 @@ public class PaymentService {
                             price, true, item.isDiscountEligible(), discount).price();
                     continue;
                 }
+                boolean catFirstVisitApplicable = catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(item);
+                if (catFirstVisitApplicable) {
+                    total += catFirstVisitDiscountService.resolvePreferredDiscount(
+                            price, true, item.isDiscountEligible(), discount).price();
+                    continue;
+                }
                 boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(item);
                 total += catRewashDiscountService.resolvePreferredDiscount(
                         price, rewashApplicable, item.isDiscountEligible(), discount).price();
@@ -582,7 +597,8 @@ public class PaymentService {
     private int calculateAmountWithRewashDiscount(Appointment appointment) {
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment);
         boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
-        if (!rewashEligible && !firstVisitEligible) {
+        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
+        if (!rewashEligible && !firstVisitEligible && !catFirstVisitEligible) {
             return appointment.getTotalAmount();
         }
 
@@ -595,6 +611,8 @@ public class PaymentService {
                 double price = item.getPrice();
                 if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
                     price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+                } else if (catFirstVisitEligible && catFirstVisitDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
+                    price *= CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
                 } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
                     price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
                 }
@@ -605,6 +623,8 @@ public class PaymentService {
                 double price = item.getPrice() != null ? item.getPrice() : 0;
                 if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item)) {
                     price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+                } else if (catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(item)) {
+                    price *= CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
                 } else if (rewashEligible && catRewashDiscountService.isCatBathItem(item)) {
                     price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
                 }

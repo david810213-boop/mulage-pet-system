@@ -23,6 +23,8 @@ public class PetService {
     private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
     private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
+    private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
+    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -34,6 +36,11 @@ public class PetService {
         // 自動依 petType + weight 判斷體型分類
         PetSizeCategory sizeCategory = PetSizeCategory.determine(req.getPetType(), req.getWeight());
 
+        // 需求（追加）：菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
+        // LIFF 預約頁靠這個欄位篩選菜單。狗/其他物種、或品種不在對照表裡的特殊貓種，
+        // 一律是 null（LIFF 端遇到 null 顯示全部貓咪套餐項目，不擋顧客預約）。
+        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
+
         Pet pet = Pet.builder()
                 .name(req.getName())
                 .petType(req.getPetType())
@@ -43,6 +50,7 @@ public class PetService {
                 .sizeCategory(sizeCategory)
                 // 需求 2：毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
                 .coatType(CoatType.UNDEFINED)
+                .catCoatCategory(catCoatCategory)
                 .hasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety())
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
@@ -65,6 +73,86 @@ public class PetService {
         return PetResponse.from(saved);
     }
 
+    // 需求（追加）：LIFF 新增毛孩頁面的品種下拉選單資料來源
+    public List<com.petgrooming.pet_system.model.CatBreedCoatMapping> listCatBreedOptions() {
+        return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
+    }
+
+    // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
+    // 避免多處各自實作導致行為不一致。
+    public com.petgrooming.pet_system.enums.CatCoatCategory resolveCatCoatCategory(
+            com.petgrooming.pet_system.enums.PetType petType, String breed) {
+        if (petType != com.petgrooming.pet_system.enums.PetType.CAT || breed == null) {
+            return null;
+        }
+        return catBreedCoatMappingRepository.findByBreedName(breed.trim())
+                .map(com.petgrooming.pet_system.model.CatBreedCoatMapping::getCoatCategory)
+                .orElse(null);
+    }
+
+    // ── 1之1. 編輯寵物資料（新增）─────────────────────────────────────────
+    // 兩種使用情境共用：
+    //   1. 顧客自己在 LIFF「我的寵物」編輯（呼叫端負責檢查這隻寵物是不是自己的）
+    //   2. 店家後台代改（會員信息頁面的寵物分頁）
+    // 物種（petType）刻意不開放修改——換物種牽動體型分類、適用項目判斷等一連串
+    // 邏輯，貿然允許中途改物種容易產生不一致的歷史資料，寫錯的話請改用刪除重建
+    // （目前系統還沒有刪除寵物的功能，這點先記錄，之後如果店家真的有需求再處理）。
+    // 品種有改的話，比照新增時的邏輯重新查一次毛髮分類（貓咪才有意義，狗維持 null）。
+    @Transactional
+    public PetResponse updatePet(Long petId, PetRequest req) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+
+        PetSizeCategory sizeCategory = PetSizeCategory.determine(pet.getPetType(), req.getWeight());
+        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory =
+                resolveCatCoatCategory(pet.getPetType(), req.getBreed());
+
+        pet.setName(req.getName());
+        pet.setBreed(req.getBreed());
+        pet.setWeight(req.getWeight());
+        pet.setAge(req.getAge());
+        pet.setSizeCategory(sizeCategory);
+        pet.setCatCoatCategory(catCoatCategory);
+        pet.setHasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety());
+        pet.setOwnerPhone(req.getOwnerPhone());
+        pet.setNotes(req.getNotes());
+        if (req.getGender() != null) pet.setGender(req.getGender());
+        if (req.getIsNeutered() != null) pet.setIsNeutered(req.getIsNeutered());
+        if (req.getHasChip() != null) pet.setHasChip(req.getHasChip());
+        if (req.getChipNumber() != null) pet.setChipNumber(req.getChipNumber());
+        if (req.getPersonalityTags() != null) pet.setPersonalityTags(req.getPersonalityTags());
+        if (req.getHealthHistory() != null) pet.setHealthHistory(req.getHealthHistory());
+        if (req.getHealthHistoryOther() != null) pet.setHealthHistoryOther(req.getHealthHistoryOther());
+        if (req.getHasDesignatedVet() != null) pet.setHasDesignatedVet(req.getHasDesignatedVet());
+        if (req.getDesignatedVetName() != null) pet.setDesignatedVetName(req.getDesignatedVetName());
+        if (req.getDesignatedVetAddress() != null) pet.setDesignatedVetAddress(req.getDesignatedVetAddress());
+        if (req.getDesignatedVetPhone() != null) pet.setDesignatedVetPhone(req.getDesignatedVetPhone());
+
+        return PetResponse.from(petRepository.save(pet));
+    }
+
+    // 需求（追加）：LIFF 顧客端編輯自己的寵物前，先確認這隻寵物真的是這個 username 的，
+    // 避免會員竄改 API 請求裡的 petId 改到別人的寵物資料。
+    public void assertOwnership(Long petId, String username) {
+        Pet pet = getPetEntity(petId);
+        if (pet.getOwner() == null || !pet.getOwner().getUsername().equals(username)) {
+            throw new IllegalArgumentException("這隻寵物不屬於這個帳號，無法編輯");
+        }
+    }
+
+    // ── 刪除寵物（2026-08-26 修正：改成軟刪除）─────────────────────────────
+    // 客戶端（LIFF）跟後台都會呼叫這個方法。改成跟 GroomingItem 下架同一套
+    // 邏輯——單純標記 isDeleted=true，不是真的刪除資料列，過往的預約/消費
+    // 紀錄完全不受影響（那些紀錄存的是結帳當下的寵物名字快照，不是即時
+    // 關聯查詢），所以不用再檢查「有沒有消費紀錄」才能刪，任何情況都能刪。
+    @Transactional
+    public void deletePet(Long petId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setDeleted(true);
+        petRepository.save(pet);
+    }
+
     // ── 2. 查詢自己的所有寵物 ────────────────────────────────────────────
     // 改用 username 查詢，與 AppointmentService.getMyAppointments() 相同做法
     public List<PetResponse> getMyPets(String username) {
@@ -75,8 +163,14 @@ public class PetService {
 
         return petRepository.findByOwnerUsername(username)
                 .stream()
+                .filter(pet -> !pet.isDeleted()) // 需求（追加，2026-08-26 修正）：軟刪除的寵物不出現在清單裡
                 .map(pet -> {
-                    PetResponse res = PetResponse.from(pet);
+                    // 需求（追加）：已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
+                    // 前端才不用為了顯示鎖定資訊再多打一次 API。
+                    com.petgrooming.pet_system.model.GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
+                            ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                            : null;
+                    PetResponse res = PetResponse.from(pet, lockedItem);
                     // 需求（追加）：帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
                     res.setIsExistingCustomer(
                             petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pet.getName(), null));
@@ -95,6 +189,65 @@ public class PetService {
         Pet pet = petRepository.findById(petId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
         pet.setCoatType(coatType);
+        return PetResponse.from(petRepository.save(pet));
+    }
+
+    // ── 3之2. 狗狗定價流程簡化：鎖定/解鎖固定套餐（新增）───────────────────
+    // 用途：成犬結帳核對時，店員選出真正對應的套餐項目後，呼叫這個方法把
+    // 這個項目「鎖」在寵物資料上，之後不用再重複選單。
+    @Transactional
+    public PetResponse lockGroomingItem(Long petId, Long groomingItemId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        var item = groomingItemRepository.findById(groomingItemId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到服務項目 #" + groomingItemId));
+        pet.setLockedGroomingItemId(groomingItemId);
+        petRepository.save(pet);
+        return PetResponse.from(pet, item);
+    }
+
+    // 用途：狗狗生病消瘦、換季毛況差很多、或當初選錯了，店員手動解鎖，
+    // 恢復成「依體重自動篩選」的狀態。
+    @Transactional
+    public PetResponse unlockGroomingItem(Long petId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setLockedGroomingItemId(null);
+        petRepository.save(pet);
+        return PetResponse.from(pet);
+    }
+
+    // ── 4. 更新寵物體重（新增）──────────────────────────────────────────
+    // 用途：結帳完成後提醒店員更新的體重，這個欄位是「依體重自動篩選」邏輯的
+    // 依據，幼犬每次結帳都應該更新，成犬鎖定固定套餐之後就不需要再更新了。
+    @Transactional
+    public PetResponse updateWeight(Long petId, double weight) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setWeight(weight);
+        // 體重變了，體型分類（PetSizeCategory，影響貓咪 90 天回洗優惠等其他既有
+        // 邏輯）也要跟著重新算一次，維持資料一致。
+        pet.setSizeCategory(PetSizeCategory.determine(pet.getPetType(), weight));
+        petRepository.save(pet);
+        var lockedItem = pet.getLockedGroomingItemId() != null
+                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                : null;
+        return PetResponse.from(pet, lockedItem);
+    }
+
+
+    // 用途：自動判斷抓不到品種（品種不在對照表裡，變成 SPECIAL）時，店家實際
+    // 看過這隻貓之後，可以在後台手動指定正確分類，不用透過改品種名稱間接觸發。
+    // 只給貓咪用——狗狗沒有這個分類概念，呼叫端（Controller）應先確認物種是貓
+    // 再呼叫這個方法，這裡不重複檢查（避免二次查資料庫），只單純防呆 category 不能空。
+    @Transactional
+    public PetResponse setCatCoatCategory(Long petId, com.petgrooming.pet_system.enums.CatCoatCategory category) {
+        if (category == null) {
+            throw new IllegalArgumentException("毛髮分類不能為空");
+        }
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+        pet.setCatCoatCategory(category);
         return PetResponse.from(petRepository.save(pet));
     }
 

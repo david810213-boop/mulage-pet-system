@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.FinalCheckRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem; // ⚡ 確保引入的是你動態管理的 Entity 類別
 import com.petgrooming.pet_system.model.Pet;
@@ -43,6 +44,7 @@ public class AppointmentService {
     private final GroomingItemRepository groomingItemRepository; // ⚡ 1. 補上這行注入，用來撈取服務價格
     private final NotificationService notificationService;
     private final LineMessagingService lineMessagingService;
+    private final GoogleCalendarService googleCalendarService; // 需求（追加）：Google 日曆串接
     private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
     private final ClosedDateService closedDateService; // 需求 16：公休日設定
     private final PetGroomingNoteRepository petGroomingNoteRepository; // 進行中核對：毛孩美容狀況歷史
@@ -50,6 +52,7 @@ public class AppointmentService {
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
+    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
@@ -93,6 +96,14 @@ public class AppointmentService {
         // 1e. 確認結束時間在開始時間之後
         if (!req.getEndTime().isAfter(req.getStartTime())) {
             throw new IllegalArgumentException("結束時間必須晚於開始時間");
+        }
+
+        // 需求（追加，2026-08-26）：預約日期如果是今天，開始時間不能是已經過去
+        // 的時段——前端 LIFF 預約頁已經把過去的時段標成不可選，這裡是後端
+        // 防禦性補一道，避免有人繞過前端畫面直接打 API 送出過去時段的預約。
+        if (req.getDate().isEqual(LocalDate.now())
+                && !req.getStartTime().isAfter(java.time.LocalTime.now())) {
+            throw new IllegalArgumentException("這個時段已經過了，請選擇還沒開始的時段");
         }
 
         // 1e-2. 定型化契約：必須有實際簽名圖片（非空白畫布）
@@ -170,6 +181,11 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
 
+        // 需求（追加，2026-08-26）：新預約送出時（不管當天臨時預約還是待確認），
+        // 通知所有已綁定 LINE 的店家/員工帳號，讓店家第一時間知道有新單進來，
+        // 跟低庫存通知同一套「發給所有已綁定 LINE 的員工/店家帳號」機制。
+        notifyStaffNewBooking(saved);
+
         // 1i. 發送通知（原本的舊版模擬通知，實際上只印 console log，非真正 LINE 推播，先保留不動）
         notificationService.sendBookingConfirmation(
                 user.getUsername(), pet.getName(), req.getDate(), req.getStartTime());
@@ -180,12 +196,40 @@ public class AppointmentService {
         // （非當天的預約要等店家在後台點「確認預約」，由 confirm() 方法發送）
         if (isSameDayBooking) {
             sendConfirmedNotify(saved);
+            // 需求（追加）：Google 日曆串接——只同步「已確認」狀態的預約，
+            // 待確認的預約時間可能還會變動，等真的確認了才佔用店家日曆版面。
+            googleCalendarService.syncEvent(saved);
+            appointmentRepository.save(saved); // 上面那行如果同步成功會寫入 googleCalendarEventId，補存一次
         }
 
         return AppointmentResponse.from(saved);
     }
 
-    // ── 取消預約 ──────────────────────────────────────────────────────────
+    // 需求（追加，2026-08-26）：新預約送出時通知店家/員工，跟 StoreSupplyService
+    // 低庫存通知同一套「發給所有已綁定 LINE 的員工/店家帳號」機制，不用另外設計。
+    // 推播失敗（token 沒設定、帳號沒綁 LINE 等）不應該讓預約本身失敗，
+    // pushText() 內部已經處理過這個容錯，這裡不用再包 try-catch。
+    private void notifyStaffNewBooking(Appointment appointment) {
+        String statusText = appointment.getStatus() == AppointmentStatus.CONFIRMED
+                ? "（當天預約，已自動確認）" : "（待確認）";
+        String text = String.format(
+                "📅【新預約通知】%s%s\n毛孩：%s（%s）\n時間：%s %s~%s\n顧客：%s\n金額：$%d",
+                appointment.getPetName(), statusText,
+                appointment.getPetName(), appointment.getPetType(),
+                appointment.getDate(), appointment.getStartTime(), appointment.getEndTime(),
+                appointment.getUser().getName(),
+                appointment.getTotalAmount());
+
+        List<User> staffAndAdmin = new java.util.ArrayList<>(userRepository.findByRole(UserRole.STAFF));
+        staffAndAdmin.addAll(userRepository.findByRole(UserRole.ADMIN));
+        for (User u : staffAndAdmin) {
+            if (u.getLineUserId() != null && !u.getLineUserId().isBlank()) {
+                lineMessagingService.pushText(u.getLineUserId(), text);
+            }
+        }
+    }
+
+
     @Transactional
     public AppointmentResponse cancel(Long appointmentId, CancelAppointmentRequest req, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -227,6 +271,9 @@ public class AppointmentService {
                 + "，" + appointment.getDate() + " " + appointment.getStartTime()
                 + "）已取消。取消人：" + appointment.getCancelledBy());
 
+        // 需求（追加）：Google 日曆串接——取消的同時把店家日曆上對應的事件刪掉
+        googleCalendarService.deleteEvent(saved);
+
         return AppointmentResponse.from(saved);
     }
 
@@ -240,18 +287,57 @@ public class AppointmentService {
 
     // ── 查詢所有預約（STAFF/ADMIN）────────────────────────────────────────
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAll()
-                .stream()
-                .map(AppointmentResponse::from)
+        List<Appointment> appointments = appointmentRepository.findAll();
+        // 需求（追加，2026-08-26 修正）：批次撈出所有這些預約核對後的實際項目，
+        // 一次查完分組好，不要在迴圈裡一筆一筆查（避免 N+1）。
+        java.util.Map<Long, List<com.petgrooming.pet_system.model.AppointmentItem>> checkinItemsByAppt =
+                appointmentItemRepository.findByAppointmentIdIn(
+                                appointments.stream().map(Appointment::getId).toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                                ci -> ci.getAppointment().getId()));
+
+        return appointments.stream()
+                .map(a -> {
+                    var res = AppointmentResponse.from(a);
+                    res.setDisplayItemNames(buildDisplayItemNames(a, checkinItemsByAppt.get(a.getId())));
+                    return res;
+                })
+                .toList();
+    }
+
+    // 需求（追加，2026-08-26 修正）：核對過（有 AppointmentItem 紀錄）就用核對
+    // 後的實際項目名稱（只取有計價的主項目，$0 的副組成拆分明細不放進列表摘要，
+    // 那些本來就是給待補經手人矩陣拆積分用的，不是給顧客/店員看「選了什麼」的）；
+    // 還沒核對過（checkinItems 是 null 或空）就照舊用 selectedItems 的名稱。
+    private List<String> buildDisplayItemNames(Appointment a,
+            List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems) {
+        if (checkinItems != null && !checkinItems.isEmpty()) {
+            return checkinItems.stream()
+                    .filter(ci -> ci.getPrice() > 0)
+                    .map(com.petgrooming.pet_system.model.AppointmentItem::getItemName)
+                    .toList();
+        }
+        return a.getSelectedItems().stream()
+                .map(com.petgrooming.pet_system.model.GroomingItem::getName)
                 .toList();
     }
 
     // ── 店家後台查詢所有預約（含內部備注，需求 7）──────────────────────────
     public List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> getAllForAdmin() {
-        return appointmentRepository.findAll()
-                .stream()
+        List<Appointment> appointments = appointmentRepository.findAll();
+        // 需求（追加，2026-08-26 修正）：同 getAllAppointments() 的說明，批次撈核對後項目。
+        java.util.Map<Long, List<com.petgrooming.pet_system.model.AppointmentItem>> checkinItemsByAppt =
+                appointmentItemRepository.findByAppointmentIdIn(
+                                appointments.stream().map(Appointment::getId).toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                                ci -> ci.getAppointment().getId()));
+
+        return appointments.stream()
                 .map(a -> {
                     var res = com.petgrooming.pet_system.dto.AppointmentAdminResponse.from(a);
+                    res.setDisplayItemNames(buildDisplayItemNames(a, checkinItemsByAppt.get(a.getId())));
                     // 需求 10：查這筆預約有沒有「待對帳」的匯款交易（已建立交易但尚未確認收款）
                     transactionRepository.findByAppointmentId(a.getId()).ifPresent(tx -> {
                         if (tx.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
@@ -339,6 +425,10 @@ public class AppointmentService {
 
         // 需求 3 / 13：用官方 LINE 通知會員「預約已確認」
         sendConfirmedNotify(saved);
+
+        // 需求（追加）：Google 日曆串接——確認的同時同步進店家共用日曆
+        googleCalendarService.syncEvent(saved);
+        appointmentRepository.save(saved); // 補存 googleCalendarEventId
 
         return AppointmentResponse.from(saved);
     }
@@ -516,17 +606,26 @@ public class AppointmentService {
                 throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法選擇此項目");
             }
 
+            // 需求（追加）：主項目本身掛的積分分類（例如 BATH_CAT_S）如果有副組成，
+            // 名稱後面比照副組成加上分類標籤（例如「（洗（小貓））」），店家在待補
+            // 經手人矩陣表單才看得出「這行就是洗澡的積分」，不會誤以為 BATH 沒出現
+            // （這行其實一直都有記錄，只是原本沒有標籤，容易被誤認成普通項目名稱）。
+            var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
+            String mainItemName = itemComponents.isEmpty()
+                    ? gi.getName()
+                    : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+
             com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
                     .builder()
                     .appointment(appointment)
                     .groomingItemId(gi.getId())
-                    .itemName(gi.getName())
+                    .itemName(mainItemName)
                     .price((int) Math.round(gi.getPrice()))
                     .points(gi.getPoints())
                     .performanceCategory(gi.getPerformanceCategory())
                     .build();
             appointmentItemRepository.save(item);
-            expandPackageComponents(appointment, gi); // 需求（追加）：套餐化——展開副組成
+            expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
             total += item.getPrice();
         }
 
@@ -588,11 +687,32 @@ public class AppointmentService {
                 .getPetType();
     }
 
+    // 需求（追加，2026-08-24）：狗狗定價流程簡化——這筆預約對應的完整寵物資料
+    // （含目前體重、鎖定的固定套餐），供結帳完成後的體重提醒彈窗使用。
+    // 查不到對應寵物（理論上不該發生，預約一定綁著某隻已建檔的寵物）就回傳 null。
+    public com.petgrooming.pet_system.dto.PetResponse getPetForAppointment(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        var pet = petRepository.findByOwnerUsernameAndName(
+                appointment.getUser().getUsername(), appointment.getPetName()).orElse(null);
+        if (pet == null) return null;
+        var lockedItem = pet.getLockedGroomingItemId() != null
+                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                : null;
+        return com.petgrooming.pet_system.dto.PetResponse.from(pet, lockedItem);
+    }
+
     // ── 需求（追加）：編輯訂單——結帳前新增一筆美容服務項目 ────────────────
     // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
     // 不用整筆退款重開，直接在這裡補上即可。
     @Transactional
+    // 需求（追加，2026-08-26）：customPrice 選填，跟 WalkInOrderService 同一套
+    // 設計，積分固定照 gi.getPoints() 計算，跟改過的價格完全無關。
     public void addGroomingItem(Long appointmentId, Long groomingItemId, String username) {
+        addGroomingItem(appointmentId, groomingItemId, null, username);
+    }
+
+    public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
         if (appointment.isPaid()) {
@@ -610,17 +730,27 @@ public class AppointmentService {
             throw new IllegalArgumentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法加入此項目");
         }
 
+        // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
+        // 加上分類標籤（見上方 checkin 流程同樣的說明）。有自訂價格的話，名稱
+        // 後面也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
+        var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
+        boolean hasCustomPrice = customPrice != null && customPrice >= 0;
+        String mainItemName = (itemComponents.isEmpty() ? gi.getName()
+                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）")
+                + (hasCustomPrice ? "（自訂價格）" : "");
+        int actualPrice = hasCustomPrice ? customPrice : (int) Math.round(gi.getPrice());
+
         com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
                 .builder()
                 .appointment(appointment)
                 .groomingItemId(gi.getId())
-                .itemName(gi.getName())
-                .price((int) Math.round(gi.getPrice()))
-                .points(gi.getPoints())
+                .itemName(mainItemName)
+                .price(actualPrice)
+                .points(gi.getPoints()) // 積分固定照項目原本設定，不受自訂價格影響
                 .performanceCategory(gi.getPerformanceCategory())
                 .build();
         appointmentItemRepository.save(item);
-        expandPackageComponents(appointment, gi); // 需求（追加）：套餐化——展開副組成
+        expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
 
         appointment.setTotalAmount(appointment.getTotalAmount() + item.getPrice());
         appointment.setCheckinOrderConfirmed(true); // 保險起見一併標記，避免極少數尚未開過單的情況卡在後續流程
@@ -629,12 +759,55 @@ public class AppointmentService {
         log.info("預約 #{} 編輯新增服務項目「{}」", appointmentId, gi.getName());
     }
 
+    // ── 需求（追加，2026-08-26）：自訂金額加購 ──────────────────────────────
+    // 用途：處理「高階定制調理」（開放式報價）跟各種浮動加價（厚毛/長毛/
+    // 特殊剪法/特殊情況）——這些沒辦法用固定價目表項目涵蓋，店員需要現場
+    // 依實際情況打一個自訂名稱+金額的項目進去，不綁定任何現有的 GroomingItem。
+    // 積分分類由店員自己選（下拉選單挑一個既有的績效分類），積分固定套用
+    // 那個分類的預設積分（跟 GroomingItem 新增時「沒填積分就用分類預設值」
+    // 同一套邏輯）；不參與任何折扣（discountEligible 固定 false），因為這種
+    // 客製化報價本來就是店員當下依實際情況談定的金額，不應該再疊加折扣。
+    public void addCustomItem(Long appointmentId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        if (appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約已結帳，無法再編輯項目，請改用退款重開");
+        }
+        if (itemName == null || itemName.isBlank()) {
+            throw new IllegalArgumentException("請填寫項目名稱");
+        }
+        if (price < 0) {
+            throw new IllegalArgumentException("金額不能是負數");
+        }
+
+        var actualCategory = category != null ? category : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
+        com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
+                .builder()
+                .appointment(appointment)
+                .groomingItemId(null) // 不綁定任何現有服務項目
+                .itemName(itemName.trim() + "（自訂項目）")
+                .price(price)
+                .points(actualCategory.getDefaultPoints())
+                .performanceCategory(actualCategory)
+                .build();
+        appointmentItemRepository.save(item);
+
+        appointment.setTotalAmount(appointment.getTotalAmount() + price);
+        appointment.setCheckinOrderConfirmed(true);
+        appointmentRepository.save(appointment);
+
+        log.info("預約 #{} 新增自訂項目「{}」，金額 ${}", appointmentId, itemName, price);
+    }
+
     // 需求（追加）：套餐化——一個套餐項目結帳/開單時，除了自己的主組成（已經記錄在
     // AppointmentItem 本身），如果後台有設定「副組成」，這裡一併展開成額外的待補經手人
     // 紀錄（price 固定 0，不重複計價，純粹是為了矩陣待補經手人表單能拆出每個積分分類，
     // 可能由不同美容師分開處理）。
-    private void expandPackageComponents(Appointment appointment, GroomingItem gi) {
-        for (var component : groomingItemComponentRepository.findByGroomingItemId(gi.getId())) {
+    // components 參數由呼叫端先查好傳進來，避免跟「要不要加主項目標籤」那次查詢重複查兩次。
+    private void expandPackageComponents(Appointment appointment, GroomingItem gi,
+            List<com.petgrooming.pet_system.model.GroomingItemComponent> components) {
+        for (var component : components) {
             com.petgrooming.pet_system.model.AppointmentItem sub = com.petgrooming.pet_system.model.AppointmentItem
                     .builder()
                     .appointment(appointment)
@@ -817,8 +990,10 @@ public class AppointmentService {
 
     // ── 2. 取得使用者的寵物清單（預約表單下拉選單用）──────────────────
     public List<Pet> getMyPetsForBooking(String username) {
-        return petRepository.findByOwnerUsername(username);
-
+        // 需求（追加，2026-08-26 修正）：軟刪除的寵物不出現在預約下拉選單裡
+        return petRepository.findByOwnerUsername(username).stream()
+                .filter(pet -> !pet.isDeleted())
+                .toList();
     }
 
     // ── 取得某筆預約的完整消費明細（供 LIFF「我的預約」點擊查看用）──────
@@ -848,6 +1023,7 @@ public class AppointmentService {
                 : 1.0;
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
         boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
+        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
 
         List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems = appointmentItemRepository
                 .findByAppointmentId(appointmentId);
@@ -856,25 +1032,35 @@ public class AppointmentService {
         if (!checkinItems.isEmpty()) {
             items = checkinItems.stream()
                     .map(ci -> {
-                        boolean memberEligible = ci.getGroomingItemId() != null
-                                && groomingItemRepository.findById(ci.getGroomingItemId())
-                                        .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
-                                        .orElse(true);
+                        // 需求（追加，2026-08-24）：這次順便撈出 dogWeightTier，跟原本查
+                        // memberEligible 用同一次 findById，不用再多查一次資料庫。
+                        var groomingItemOpt = ci.getGroomingItemId() != null
+                                ? groomingItemRepository.findById(ci.getGroomingItemId())
+                                : java.util.Optional.<com.petgrooming.pet_system.model.GroomingItem>empty();
+                        boolean memberEligible = groomingItemOpt
+                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                .orElse(true);
                         boolean rewashApplicable = rewashEligible
                                 && catRewashDiscountService.isCatBathCategory(ci.getPerformanceCategory());
                         boolean firstVisitApplicable = firstVisitEligible
                                 && dogFirstVisitDiscountService.isDogPackageCategory(ci.getPerformanceCategory());
+                        boolean catFirstVisitApplicable = catFirstVisitEligible
+                                && catFirstVisitDiscountService.isCatBathCategory(ci.getPerformanceCategory());
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
                                 .itemId(ci.getId())
+                                .groomingItemId(ci.getGroomingItemId())
+                                .dogWeightTier(groomingItemOpt
+                                        .map(gi -> gi.getDogWeightTier() != null ? gi.getDogWeightTier().name() : null)
+                                        .orElse(null))
                                 .name(ci.getItemName())
                                 .price(ci.getPrice())
                                 .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
                                 .discountEligible(memberEligible)
                                 .rewashEligible(rewashApplicable)
-                                .firstVisitEligible(firstVisitApplicable)
+                                .firstVisitEligible(firstVisitApplicable || catFirstVisitApplicable)
                                 .retailItem(ci.getRetailProductId() != null)
                                 .appliedDiscountType(transactionOpt.isPresent()
-                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, memberEligible && paidByWallet, memberDiscountRate)
+                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, catFirstVisitApplicable, memberEligible && paidByWallet, memberDiscountRate)
                                         : null)
                                 .build();
                     })
@@ -884,15 +1070,18 @@ public class AppointmentService {
                     .map(gi -> {
                         boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(gi);
                         boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(gi);
+                        boolean catFirstVisitApplicable = catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(gi);
                         return com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem.builder()
+                                .groomingItemId(gi.getId())
+                                .dogWeightTier(gi.getDogWeightTier() != null ? gi.getDogWeightTier().name() : null)
                                 .name(gi.getName())
                                 .price((int) Math.round(gi.getPrice()))
                                 .operatorName(null)
                                 .discountEligible(gi.isDiscountEligible())
                                 .rewashEligible(rewashApplicable)
-                                .firstVisitEligible(firstVisitApplicable)
+                                .firstVisitEligible(firstVisitApplicable || catFirstVisitApplicable)
                                 .appliedDiscountType(transactionOpt.isPresent()
-                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, gi.isDiscountEligible() && paidByWallet, memberDiscountRate)
+                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, catFirstVisitApplicable, gi.isDiscountEligible() && paidByWallet, memberDiscountRate)
                                         : null)
                                 .build();
                     })
@@ -933,9 +1122,15 @@ public class AppointmentService {
     // （跟 calculateAmountWithRewashDiscount 一致：一個項目不可能同時符合兩種資格，
     // 因為分屬貓/狗互斥的品種分類，這裡優先分支不影響正確性）。
     private com.petgrooming.pet_system.enums.DiscountType resolveAppliedDiscountType(
-            boolean rewashApplicable, boolean firstVisitApplicable, boolean memberApplicable, double memberDiscountRate) {
+            boolean rewashApplicable, boolean firstVisitApplicable, boolean catFirstVisitApplicable,
+            boolean memberApplicable, double memberDiscountRate) {
         if (firstVisitApplicable) {
             return dogFirstVisitDiscountService
+                    .resolvePreferredDiscount(100.0, true, memberApplicable, memberDiscountRate)
+                    .type();
+        }
+        if (catFirstVisitApplicable) {
+            return catFirstVisitDiscountService
                     .resolvePreferredDiscount(100.0, true, memberApplicable, memberDiscountRate)
                     .type();
         }
