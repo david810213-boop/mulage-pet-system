@@ -522,9 +522,6 @@
 
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
-        <div id="holidayNotice" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;">
-          📅 週末假日只開放完整套餐項目，單項美容加購請改選平日預約，謝謝配合。
-        </div>
         <div id="dogLockedBanner" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;"></div>
         <div id="itemsContainer">
           ${
@@ -773,9 +770,9 @@
         // 通用單項加購（沒有副組成的項目，例如指甲修剪、貓咪基礎保養）整列隱藏，
         // 逼客人只能從套餐裡選——這條規則只影響顧客自己在 LIFF 預約，店員
         // 現場開單/核對時不受這條限制，維持原本可以自由加選單項的彈性。
+        // 需求（2026-08-26 修正）：不在畫面上明講這條規則（店家不希望顧客知道
+        // 假日只能選套餐是刻意的機制），單純把不符合的項目隱藏，不額外顯示提示文字。
         const isHoliday = isHolidayDate(selectedDate);
-        const holidayNotice = document.getElementById("holidayNotice");
-        if (holidayNotice) holidayNotice.style.display = isHoliday ? "block" : "none";
 
         // 已鎖定的話，畫面上方顯示固定套餐卡片，並自動把該項目勾選起來。
         // 直接從記憶體裡的 groomingItems 清單找出對應項目（用 id 比對），
