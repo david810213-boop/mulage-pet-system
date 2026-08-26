@@ -51,7 +51,16 @@
 
         <div class="card" style="padding: 1.5rem;">
           <p style="font-size: 13px; color: var(--brown-mid); line-height: 1.8; margin: 0 0 10px;">
-            <strong>用手機開啟這個連結</strong>（用 LINE 開啟，不要用一般瀏覽器），輸入上面的驗證碼：
+            <strong>用 LINE 掃這個 QR Code</strong>（用 LINE 內建掃碼功能掃，會直接用 LINE 開啟，
+            不會誤用一般瀏覽器打開導致綁定失敗），輸入上面的驗證碼：
+          </p>
+          <!-- 需求（追加，2026-08-26）：QR Code 讓員工直接用 LINE 掃碼開啟連結，
+               避免手動複製網址貼到一般瀏覽器（LIFF 連結一定要用 LINE 開啟才有效，
+               用瀏覽器打開會失敗，這是這個功能存在的主要目的）。
+               用輕量 CDN 函式庫在瀏覽器端產生，不用申請任何 QR Code API 金鑰。 -->
+          <div id="bindLineQrCode" style="display: flex; justify-content: center; margin-bottom: 14px;"></div>
+          <p style="font-size: 13px; color: var(--brown-mid); line-height: 1.8; margin: 0 0 10px;">
+            或<strong>用手機開啟這個連結</strong>（用 LINE 開啟，不要用一般瀏覽器），輸入上面的驗證碼：
           </p>
           <p style="font-size: 12px; word-break: break-all; color: var(--cream-600); background: var(--cream-100); padding: 10px; border-radius: 8px;">
             https://liff.line.me/2010567973-bNNfTiV9
@@ -60,6 +69,18 @@
             這組是綁定專用的 LIFF App（Endpoint URL 已經直接指到綁定頁面），網址後面不用再接任何路徑。
           </p>
         </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        <script>
+          // 需求（追加，2026-08-26）：在瀏覽器端把 LIFF 連結畫成 QR Code。
+          // 這個連結本身是固定的（綁定專用 LIFF App 網址），不會因為驗證碼改變
+          // 而不同，所以不用等產生驗證碼才畫，頁面一載入就直接畫好。
+          new QRCode(document.getElementById("bindLineQrCode"), {
+            text: "https://liff.line.me/2010567973-bNNfTiV9",
+            width: 180,
+            height: 180,
+          });
+        </script>
       </div>
     </div>
   </body>
