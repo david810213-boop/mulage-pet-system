@@ -537,6 +537,14 @@
                           th:href="@{/admin/pets/{id}/edit(id=${p.id})}"
                           style="font-size: 11.5px; color: #8a6f3f; text-decoration: underline; margin-left: 8px;"
                         >完整編輯</a>
+                        <!-- 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄
+                             會被後端擋下並顯示明確錯誤訊息。HTML 表單不支援 DELETE method，
+                             改用 JS fetch 呼叫。 -->
+                        <button
+                          type="button"
+                          th:onclick="'deletePetAdmin(' + ${p.id} + ')'"
+                          style="font-size: 11.5px; color: #c0392b; background: none; border: none; text-decoration: underline; cursor: pointer; margin-left: 8px; padding: 0;"
+                        >刪除</button>
                         <form
                           th:action="@{/admin/wallets/{u}/pets/{id}/photo(u=${customer.username},id=${p.id})}"
                           method="post"
@@ -934,6 +942,25 @@
         });
         btn.classList.add("active");
         document.getElementById(btn.dataset.tab).classList.add("active");
+      }
+
+      // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄的話後端
+      // 會擋下並回傳明確錯誤訊息，這裡直接顯示，不用自己重複判斷邏輯。
+      async function deletePetAdmin(petId) {
+        if (!confirm("確定要刪除這隻寵物嗎？這個動作沒辦法復原。")) return;
+        try {
+          const res = await fetch("/api/admin/pets/" + petId, { method: "DELETE" });
+          if (!res.ok) {
+            const msg = await res.text().catch(() => "");
+            let parsed = msg;
+            try { parsed = JSON.parse(msg); } catch (e) { /* 純文字錯誤訊息，直接用 */ }
+            alert(typeof parsed === "string" ? parsed : (parsed.message || "刪除失敗"));
+            return;
+          }
+          window.location.reload();
+        } catch (e) {
+          alert("網路錯誤，請重試");
+        }
       }
 
       // 若網址帶 #tab-xxx（例如儲存毛長設定後導回），自動切到對應分頁

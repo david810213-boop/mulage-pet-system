@@ -78,4 +78,17 @@ public class AdminPetController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約或消費紀錄的話會被
+    // PetService.deletePet() 擋下（見該方法說明），不用在這裡重複檢查。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @DeleteMapping("/{petId}")
+    public ResponseEntity<?> deletePet(@PathVariable Long petId) {
+        try {
+            petService.deletePet(petId);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

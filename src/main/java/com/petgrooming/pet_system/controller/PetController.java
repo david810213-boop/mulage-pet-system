@@ -64,6 +64,22 @@ public class PetController {
         }
     }
 
+    // ── DELETE /api/pets/{petId} ──────────────────────────────────────────
+    // 需求（追加，2026-08-26）：顧客自己在 LIFF「我的毛孩」刪除自己的寵物。
+    // 有預約或消費紀錄的話會被 PetService.deletePet() 擋下（見該方法說明）。
+    @DeleteMapping("/{petId}")
+    public ResponseEntity<?> deletePet(HttpServletRequest request, @PathVariable Long petId) {
+        try {
+            petService.assertOwnership(petId, currentUsername(request));
+            petService.deletePet(petId);
+            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "DELETE_PET",
+                    "寵物 #" + petId, null);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // ── GET /api/pets/cat-breeds ────────────────────────────────────────────
     // 需求（追加）：LIFF「新增毛孩」頁面貓咪品種下拉選單資料來源，不需要特別檢查
     // 身分是誰（只是回傳一份對照表清單，不含任何使用者個資），有登入即可呼叫。

@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.FinalCheckRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem; // ⚡ 確保引入的是你動態管理的 Entity 類別
 import com.petgrooming.pet_system.model.Pet;
@@ -97,6 +98,14 @@ public class AppointmentService {
             throw new IllegalArgumentException("結束時間必須晚於開始時間");
         }
 
+        // 需求（追加，2026-08-26）：預約日期如果是今天，開始時間不能是已經過去
+        // 的時段——前端 LIFF 預約頁已經把過去的時段標成不可選，這裡是後端
+        // 防禦性補一道，避免有人繞過前端畫面直接打 API 送出過去時段的預約。
+        if (req.getDate().isEqual(LocalDate.now())
+                && !req.getStartTime().isAfter(java.time.LocalTime.now())) {
+            throw new IllegalArgumentException("這個時段已經過了，請選擇還沒開始的時段");
+        }
+
         // 1e-2. 定型化契約：必須有實際簽名圖片（非空白畫布）
         String signatureData = req.getContractSignatureData() == null ? "" : req.getContractSignatureData().trim();
         // 空白 canvas 匯出的 dataURL 長度很短（通常僅一兩百字元），實際簽名筆劃會讓資料明顯變長
@@ -172,6 +181,11 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
 
+        // 需求（追加，2026-08-26）：新預約送出時（不管當天臨時預約還是待確認），
+        // 通知所有已綁定 LINE 的店家/員工帳號，讓店家第一時間知道有新單進來，
+        // 跟低庫存通知同一套「發給所有已綁定 LINE 的員工/店家帳號」機制。
+        notifyStaffNewBooking(saved);
+
         // 1i. 發送通知（原本的舊版模擬通知，實際上只印 console log，非真正 LINE 推播，先保留不動）
         notificationService.sendBookingConfirmation(
                 user.getUsername(), pet.getName(), req.getDate(), req.getStartTime());
@@ -191,7 +205,31 @@ public class AppointmentService {
         return AppointmentResponse.from(saved);
     }
 
-    // ── 取消預約 ──────────────────────────────────────────────────────────
+    // 需求（追加，2026-08-26）：新預約送出時通知店家/員工，跟 StoreSupplyService
+    // 低庫存通知同一套「發給所有已綁定 LINE 的員工/店家帳號」機制，不用另外設計。
+    // 推播失敗（token 沒設定、帳號沒綁 LINE 等）不應該讓預約本身失敗，
+    // pushText() 內部已經處理過這個容錯，這裡不用再包 try-catch。
+    private void notifyStaffNewBooking(Appointment appointment) {
+        String statusText = appointment.getStatus() == AppointmentStatus.CONFIRMED
+                ? "（當天預約，已自動確認）" : "（待確認）";
+        String text = String.format(
+                "📅【新預約通知】%s%s\n毛孩：%s（%s）\n時間：%s %s~%s\n顧客：%s\n金額：$%d",
+                appointment.getPetName(), statusText,
+                appointment.getPetName(), appointment.getPetType(),
+                appointment.getDate(), appointment.getStartTime(), appointment.getEndTime(),
+                appointment.getUser().getName(),
+                appointment.getTotalAmount());
+
+        List<User> staffAndAdmin = new java.util.ArrayList<>(userRepository.findByRole(UserRole.STAFF));
+        staffAndAdmin.addAll(userRepository.findByRole(UserRole.ADMIN));
+        for (User u : staffAndAdmin) {
+            if (u.getLineUserId() != null && !u.getLineUserId().isBlank()) {
+                lineMessagingService.pushText(u.getLineUserId(), text);
+            }
+        }
+    }
+
+
     @Transactional
     public AppointmentResponse cancel(Long appointmentId, CancelAppointmentRequest req, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)

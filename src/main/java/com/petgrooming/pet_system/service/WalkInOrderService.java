@@ -356,8 +356,20 @@ public class WalkInOrderService {
     }
 
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入的自訂價格
+    // （例如剪毛這種價格浮動的項目）。null 或負數就照項目原本的固定價格；
+    // 有給值就用那個值當這筆的實際收費。⚠️ 積分固定照 gi.getPoints()
+    // 這個項目本身設定的值計算，跟改過的價格完全無關——這是刻意設計，
+    // 店員改價格是為了反映「這次實際收多少錢」，不代表這個服務項目本身
+    // 的積分認定跟著變動，避免同一個服務項目因為每次報價不同、績效認列
+    // 卻忽高忽低。
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, String username) {
+        return addGroomingItem(orderId, groomingItemId, null, username);
+    }
+
+    @Transactional
+    public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
@@ -379,17 +391,20 @@ public class WalkInOrderService {
         }
 
         // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
-        // 加上分類標籤（見上方建單流程同樣的說明）。
+        // 加上分類標籤（見上方建單流程同樣的說明）。有自訂價格的話，名稱後面
+        // 也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
         var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
-        String mainItemName = itemComponents.isEmpty()
-                ? gi.getName()
-                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+        boolean hasCustomPrice = customPrice != null && customPrice >= 0;
+        String mainItemName = (itemComponents.isEmpty() ? gi.getName()
+                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）")
+                + (hasCustomPrice ? "（自訂價格）" : "");
+        int actualPrice = hasCustomPrice ? customPrice : (int) Math.round(gi.getPrice());
 
         WalkInOrderItem item = WalkInOrderItem.builder()
                 .groomingItemId(gi.getId())
                 .itemName(mainItemName)
-                .price((int) Math.round(gi.getPrice()))
-                .points(gi.getPoints())
+                .price(actualPrice)
+                .points(gi.getPoints()) // 積分固定照項目原本設定，不受自訂價格影響
                 .performanceCategory(gi.getPerformanceCategory())
                 .discountEligible(gi.isDiscountEligible())
                 .build();
@@ -410,7 +425,8 @@ public class WalkInOrderService {
         }
         WalkInOrder saved = orderRepository.save(order);
 
-        log.info("現場單 #{} 編輯新增服務項目「{}」", orderId, gi.getName());
+        log.info("現場單 #{} 編輯新增服務項目「{}」{}", orderId, gi.getName(),
+                hasCustomPrice ? "（自訂價格 $" + actualPrice + "）" : "");
         WalkInOrderResponse res = WalkInOrderResponse.from(saved);
         populateDiscountInfo(res, saved);
         return res;

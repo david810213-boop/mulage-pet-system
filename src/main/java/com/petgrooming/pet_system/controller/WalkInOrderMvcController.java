@@ -308,15 +308,18 @@ public class WalkInOrderMvcController {
 
     // ── POST /admin/walk-in-orders/{id}/add-grooming-item ────────────────
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入自訂價格用
+    // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long id, HttpServletRequest request,
                                   @RequestParam Long groomingItemId,
+                                  @RequestParam(required = false) Integer customPrice,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.addGroomingItem(id, groomingItemId, user.getUsername());
+            walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, user.getUsername());
             ra.addFlashAttribute("successMsg", "已新增項目");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());

@@ -305,6 +305,7 @@
               <div class="pet-breed">${escapeHtml(p.breed)}</div>
             </div>
             <a href="/liff/add-pet.html?editPetId=${p.id}" class="pet-edit">✏️ 編輯</a>
+            <button type="button" class="pet-delete" onclick="deletePet(${p.id}, '${escapeHtml(p.name)}')" style="background:none; border:none; color:#c0392b; font-size:12px; cursor:pointer; margin-left:6px; padding:4px;">🗑️ 刪除</button>
           </div>
           <div class="pet-tags">
             <span class="ptag size">${p.sizeCategoryLabel}</span>
@@ -337,6 +338,29 @@
       }
 
       // --- 上傳/更換寵物照片 ---
+      // 需求（追加，2026-08-26）：顧客自己刪除毛孩。有預約或消費紀錄的話，
+      // 後端 PetService.deletePet() 會擋下並回傳明確的錯誤訊息，這裡直接
+      // 顯示後端給的訊息，不用自己重複判斷。
+      async function deletePet(petId, petName) {
+        if (!confirm(`確定要刪除「${petName}」嗎？這個動作沒辦法復原。`)) return;
+        try {
+          const res = await fetch("/api/pets/" + petId, {
+            method: "DELETE",
+            headers: { Authorization: "Bearer " + jwtToken },
+          });
+          if (!res.ok) {
+            const msg = await res.text().catch(() => "");
+            let parsed = msg;
+            try { parsed = JSON.parse(msg); } catch (e) { /* 純文字錯誤訊息，直接用 */ }
+            alert(typeof parsed === "string" ? parsed : (parsed.message || "刪除失敗"));
+            return;
+          }
+          loadPets();
+        } catch (e) {
+          alert("網路錯誤，請重試");
+        }
+      }
+
       async function uploadPhoto(petId) {
         const input = document.getElementById("photoInput-" + petId);
         const status = document.getElementById("photoStatus-" + petId);

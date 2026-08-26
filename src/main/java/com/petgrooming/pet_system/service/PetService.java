@@ -25,6 +25,8 @@ public class PetService {
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
+    private final com.petgrooming.pet_system.repository.AppointmentRepository appointmentRepository; // 需求（追加，2026-08-26）：刪除寵物前檢查
+    private final com.petgrooming.pet_system.repository.WalkInOrderRepository walkInOrderRepository; // 需求（追加，2026-08-26）：刪除寵物前檢查
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -138,6 +140,30 @@ public class PetService {
         if (pet.getOwner() == null || !pet.getOwner().getUsername().equals(username)) {
             throw new IllegalArgumentException("這隻寵物不屬於這個帳號，無法編輯");
         }
+    }
+
+    // ── 刪除寵物（新增，2026-08-26）───────────────────────────────────────
+    // 客戶端（LIFF）跟後台都會呼叫這個方法，統一在這裡做「有消費紀錄就擋下」
+    // 的檢查，不要讓兩邊各自實作、邏輯可能兜不齊。
+    // 檢查範圍：這隻寵物名下只要有「任何一筆」預約或現場開單紀錄就擋下，
+    // 不限已結帳——即使是待確認/已取消的預約，資料庫裡還是留著這隻寵物的
+    // 名字，刪掉寵物本身不會動到那些歷史紀錄的資料列，但會讓那些紀錄看起來
+    // 對應不到任何實際存在的寵物資料，所以一律禁止刪除，請店家改用其他
+    // 方式處理（例如寵物過世但要保留消費紀錄的情境，不應該真的刪除資料）。
+    @Transactional
+    public void deletePet(Long petId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到寵物 #" + petId));
+
+        Long ownerId = pet.getOwner().getId();
+        boolean hasAppointment = appointmentRepository.existsByUserIdAndPetName(ownerId, pet.getName());
+        boolean hasWalkInOrder = walkInOrderRepository.existsByMemberIdAndPetName(ownerId, pet.getName());
+        if (hasAppointment || hasWalkInOrder) {
+            throw new IllegalArgumentException(
+                    "「" + pet.getName() + "」已經有預約或消費紀錄，無法刪除，如需保留紀錄但不再顯示，請聯繫系統管理員協助處理");
+        }
+
+        petRepository.delete(pet);
     }
 
     // ── 2. 查詢自己的所有寵物 ────────────────────────────────────────────
