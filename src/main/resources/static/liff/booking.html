@@ -429,7 +429,9 @@
           // 需求（追加）修正：這支 API 實際掛在 PaymentMvcController（class 層級是
           // @RequestMapping("/payments")），正確路徑其實是 /payments/api/company-signature，
           // 之前寫成 /api/company-signature 一直是 404，簽名檔永遠貼不上去。
-          const res = await fetch("/payments/api/company-signature", { headers: authHeaders() });
+          const res = await fetch("/payments/api/company-signature", {
+            headers: authHeaders(),
+          });
           if (!res.ok) return;
           const data = await res.json();
           const img = document.getElementById("companySignatureImg");
@@ -732,7 +734,8 @@
 
         // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
         const isExisting = !!(pet && pet.isExistingCustomer);
-        const petType = pet && pet.petType ? String(pet.petType).toUpperCase() : null;
+        const petType =
+          pet && pet.petType ? String(pet.petType).toUpperCase() : null;
         // 需求（追加，菜單簡化）：貓咪依品種自動判斷的毛髮分類（單層毛/雙層毛/長毛），
         // 只顯示對應分類的套餐項目。這隻貓的分類是 null 的話（特殊貓種、品種不在
         // 對照表裡），不篩選、顯示全部貓咪項目——讓店家人工協助這位顧客判斷，
@@ -745,22 +748,28 @@
         // 還沒鎖定：依這隻狗目前的體重篩出對應級距，只顯示那 6 項（短毛/長毛×3等級）。
         // 不受影響：沒有標 dogWeightTier 的項目（通用加購），維持原本篩選邏輯不變。
         const isDog = petType === "DOG";
-        const dogLockedItemId = isDog && pet ? pet.lockedGroomingItemId || null : null;
-        const dogWeightTier = isDog && pet && !dogLockedItemId
-          ? computeDogWeightTier(pet.weight)
-          : null;
+        const dogLockedItemId =
+          isDog && pet ? pet.lockedGroomingItemId || null : null;
+        const dogWeightTier =
+          isDog && pet && !dogLockedItemId
+            ? computeDogWeightTier(pet.weight)
+            : null;
 
         // 已鎖定的話，畫面上方顯示固定套餐卡片，並自動把該項目勾選起來。
         // 直接從記憶體裡的 groomingItems 清單找出對應項目（用 id 比對），
         // 不依賴 DOM 列表的渲染狀態，比較不會受畫面篩選/隱藏邏輯影響。
         const lockedItem = dogLockedItemId
-          ? groomingItems.find((it) => String(it.id) === String(dogLockedItemId))
+          ? groomingItems.find(
+              (it) => String(it.id) === String(dogLockedItemId),
+            )
           : null;
 
         const lockedBanner = document.getElementById("dogLockedBanner");
         if (dogLockedItemId && pet.lockedItemName) {
           const lockedName = lockedItem ? lockedItem.name : pet.lockedItemName;
-          const lockedPrice = lockedItem ? lockedItem.price : pet.lockedItemPrice;
+          const lockedPrice = lockedItem
+            ? lockedItem.price
+            : pet.lockedItemPrice;
           if (lockedBanner) {
             lockedBanner.style.display = "block";
             lockedBanner.innerHTML = `已為牠安排固定套餐：<strong>${escapeHtml(lockedName)}</strong>　$${lockedPrice}`;
@@ -788,9 +797,12 @@
             const itemId = row.dataset.itemId;
             const cb = row.querySelector("input[type=checkbox]");
             const blockedByExisting = requiresExisting && !isExisting;
-            const blockedBySpecies = applicable && petType && applicable !== petType;
+            const blockedBySpecies =
+              applicable && petType && applicable !== petType;
             const blockedByCoat =
-              itemCoatCategory && catCoatCategory && itemCoatCategory !== catCoatCategory;
+              itemCoatCategory &&
+              catCoatCategory &&
+              itemCoatCategory !== catCoatCategory;
             // 只有「有標體重級距」的項目（DOG 主力套餐）才受這條規則影響，
             // 通用加購項目（itemDogTier 是空字串）不受影響。
             let blockedByDogTier = false;
@@ -801,13 +813,22 @@
                 blockedByDogTier = itemDogTier !== dogWeightTier;
               }
             }
-            if (blockedByExisting || blockedBySpecies || blockedByCoat || blockedByDogTier) {
+            if (
+              blockedByExisting ||
+              blockedBySpecies ||
+              blockedByCoat ||
+              blockedByDogTier
+            ) {
               row.style.display = "none";
               if (cb) cb.checked = false;
             } else {
               row.style.display = "";
               // 已鎖定套餐的那一項，畫面重畫後自動勾選（避免每次切換毛孩都要手動點）
-              if (dogLockedItemId && String(itemId) === String(dogLockedItemId) && cb) {
+              if (
+                dogLockedItemId &&
+                String(itemId) === String(dogLockedItemId) &&
+                cb
+              ) {
                 cb.checked = true;
                 selectedItemCodes.add(cb.value);
               }
@@ -889,18 +910,16 @@
           container.innerHTML = `
         <div class="slots-grid">
           ${slots
-            .map(
-              (s, i) => {
-                const past = isPast(s.startTime);
-                const available = s.available && !past;
-                return `
+            .map((s, i) => {
+              const past = isPast(s.startTime);
+              const available = s.available && !past;
+              return `
             <div class="slot-btn ${available ? "" : "unavailable"}"
                  data-start="${s.startTime}" data-end="${s.endTime}"
                  onclick="${available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ""}">
               ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}${past ? "（已過時段）" : ""}
             </div>`;
-              },
-            )
+            })
             .join("")}
         </div>
         <div class="slots-hint">灰色時段已被預約或時間已過，請選擇其他時段</div>
@@ -1122,8 +1141,13 @@
           // 等店家確認」，不能讓顧客誤以為送出=預約成功；如果是這隻毛孩第一次
           // 消費，額外加一段「線上報價僅供參考」的提醒——兩則訊息合併成同一個
           // 彈窗，不要疊兩個彈窗造成困擾。
-          const bookedPet = myPets.find((p) => String(p.id) === String(selectedPetId));
-          showBookingSubmittedModal(data.appointmentCode, bookedPet && !bookedPet.isExistingCustomer);
+          const bookedPet = myPets.find(
+            (p) => String(p.id) === String(selectedPetId),
+          );
+          showBookingSubmittedModal(
+            data.appointmentCode,
+            bookedPet && !bookedPet.isExistingCustomer,
+          );
           return;
         } catch (e) {
           showToast("網路錯誤，請重試", "error");
@@ -1169,9 +1193,11 @@
           </div>
         `;
         document.body.appendChild(modal);
-        document.getElementById("bookingSubmittedOkBtn").addEventListener("click", () => {
-          window.location.href = "/liff/my-appointments.html";
-        });
+        document
+          .getElementById("bookingSubmittedOkBtn")
+          .addEventListener("click", () => {
+            window.location.href = "/liff/my-appointments.html";
+          });
       }
 
       init();
