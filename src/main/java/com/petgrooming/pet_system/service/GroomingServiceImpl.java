@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class GroomingServiceImpl implements GroomingService {
 
     private final GroomingItemRepository groomingItemRepository;
+    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加，2026-08-26）：判斷是不是完整套餐
 
     /**
      * 新增美容服務項目
@@ -88,8 +89,19 @@ public class GroomingServiceImpl implements GroomingService {
     @Transactional(readOnly = true)
     public List<GroomingItemResponse> getBookableItems() {
         return groomingItemRepository.findByBookableTrueAndIsDeletedFalse().stream()
-                .map(GroomingItemResponse::from)
+                .map(this::toResponseWithPackageFlag)
                 .collect(Collectors.toList());
+    }
+
+    // 需求（追加，2026-08-26）：假日限定套餐——判斷「這個項目是不是完整套餐」，
+    // 用既有的訊號（有沒有副組成）判斷，不用另外加資料庫欄位：CAT013~024、
+    // DOG001~036 這類套餐主力項目都設定了副組成（洗+吹+基礎美容拆分），
+    // CAT025~028、GS001~012 這類單項加購沒有副組成。
+    // LIFF 預約頁依這個欄位在假日（週六日）把非套餐項目整列隱藏，只能選套餐。
+    private GroomingItemResponse toResponseWithPackageFlag(GroomingItem item) {
+        GroomingItemResponse res = GroomingItemResponse.from(item);
+        res.setIsPackage(!groomingItemComponentRepository.findByGroomingItemId(item.getId()).isEmpty());
+        return res;
     }
 
     /**

@@ -137,6 +137,39 @@
             </p>
           </div>
 
+          <!-- 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式
+               報價跟各種浮動加價（厚毛/長毛/特殊剪法/特殊情況），不綁定任何現有
+               服務項目，直接輸入名稱+金額。 -->
+          <div class="card" style="margin-bottom: 1rem;">
+            <h3 style="font-size: 15px; margin-bottom: 10px;">💬 自訂金額加購</h3>
+            <p style="font-size: 12px; color: var(--brown-light); margin-top: 0;">
+              用於價目表沒有的客製化報價，例如高階定制調理、厚毛/長毛/特殊剪法加價。
+            </p>
+            <form method="post"
+                  th:action="@{/admin/walk-in-orders/{id}/add-custom-item(id=${order.id})}"
+                  style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+              <div class="field" style="margin: 0; flex: 1; min-width: 160px;">
+                <label>項目名稱</label>
+                <input type="text" name="itemName" required placeholder="例如：高階定制調理（厚毛加價）" />
+              </div>
+              <div class="field" style="margin: 0; width: 120px;">
+                <label>金額</label>
+                <input type="number" name="price" min="0" required />
+              </div>
+              <div class="field" style="margin: 0; width: 160px;">
+                <label>積分分類（選填）</label>
+                <select name="category">
+                  <option value="">不計積分（其他）</option>
+                  <option th:each="c : ${performanceCategories}" th:value="${c}" th:text="${c.label}"></option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">加入</button>
+            </form>
+            <p style="font-size: 11.5px; color: var(--brown-light); margin: 8px 0 0;">
+              ⚠️ 這種自訂項目不參與任何折扣（會員儲值折扣/回洗優惠等），一律照你填的金額原價收費。
+            </p>
+          </div>
+
           <!-- 需求 7-1：結帳前直接加購零售商品 -->
           <div class="card" style="margin-bottom: 1rem;">
             <h3 style="font-size: 15px; margin-bottom: 10px;">🛍️ 加購商品</h3>

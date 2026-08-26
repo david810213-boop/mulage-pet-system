@@ -146,6 +146,8 @@ public class PaymentMvcController {
         // 同一套邏輯，先前這裡漏做了，這次一併補上）。
         var pet = appointmentService.getPetForAppointment(appointmentId);
         model.addAttribute("pet", pet);
+        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
         final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
         final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
                 pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
@@ -226,9 +228,12 @@ public class PaymentMvcController {
 
     // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入自訂價格用
+    // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
     @PostMapping("/checkout/{appointmentId}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long appointmentId,
                                   @RequestParam Long groomingItemId,
+                                  @RequestParam(required = false) Integer customPrice,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   HttpServletRequest request,
                                   RedirectAttributes redirectAttributes) {
@@ -236,7 +241,30 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addGroomingItem(appointmentId, groomingItemId, user.getUsername());
+            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return redirectAfterEdit(appointmentId, from);
+    }
+
+    // ── POST /payments/checkout/{appointmentId}/add-custom-item ────────────
+    // 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式報價
+    // 跟各種浮動加價，不綁定任何現有服務項目，店員直接輸入項目名稱+金額。
+    @PostMapping("/checkout/{appointmentId}/add-custom-item")
+    public String addCustomItem(@PathVariable Long appointmentId,
+                                @RequestParam String itemName,
+                                @RequestParam int price,
+                                @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(defaultValue = "checkout") String from,
+                                HttpServletRequest request,
+                                RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) return "redirect:/auth/login";
+
+        try {
+            appointmentService.addCustomItem(appointmentId, itemName, price, category, user.getUsername());
+            redirectAttributes.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }

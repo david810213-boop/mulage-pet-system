@@ -14,11 +14,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 查某使用者的所有預約（對應原本 getReceiptsByUser）
     List<Appointment> findByUserUsername(String username);
 
-    // 需求（追加，2026-08-26）：刪除寵物前檢查——不限已結帳，只要這隻寵物名下
-    // 有任何一筆預約紀錄（不管付款狀態、有沒有取消）就不能刪，避免刪除後
-    // 歷史預約紀錄的寵物名字對應不到任何實際存在的寵物資料。
-    boolean existsByUserIdAndPetName(Long userId, String petName);
-
     // 查某天的所有預約（用來計算已佔用時段）
     List<Appointment> findByDate(LocalDate date);
 

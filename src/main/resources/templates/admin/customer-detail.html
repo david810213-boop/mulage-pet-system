@@ -947,7 +947,7 @@
       // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄的話後端
       // 會擋下並回傳明確錯誤訊息，這裡直接顯示，不用自己重複判斷邏輯。
       async function deletePetAdmin(petId) {
-        if (!confirm("確定要刪除這隻寵物嗎？這個動作沒辦法復原。")) return;
+        if (!confirm("確定要刪除這隻寵物嗎？刪除後不會再顯示在清單裡，但過往的預約/消費紀錄不會受影響。")) return;
         try {
           const res = await fetch("/api/admin/pets/" + petId, { method: "DELETE" });
           if (!res.ok) {

@@ -342,7 +342,7 @@
       // 後端 PetService.deletePet() 會擋下並回傳明確的錯誤訊息，這裡直接
       // 顯示後端給的訊息，不用自己重複判斷。
       async function deletePet(petId, petName) {
-        if (!confirm(`確定要刪除「${petName}」嗎？這個動作沒辦法復原。`)) return;
+        if (!confirm(`確定要刪除「${petName}」嗎？刪除後不會再顯示在毛孩清單裡，但過往的預約/消費紀錄不會受影響。`)) return;
         try {
           const res = await fetch("/api/pets/" + petId, {
             method: "DELETE",

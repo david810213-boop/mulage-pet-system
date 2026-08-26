@@ -706,7 +706,13 @@ public class AppointmentService {
     // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
     // 不用整筆退款重開，直接在這裡補上即可。
     @Transactional
+    // 需求（追加，2026-08-26）：customPrice 選填，跟 WalkInOrderService 同一套
+    // 設計，積分固定照 gi.getPoints() 計算，跟改過的價格完全無關。
     public void addGroomingItem(Long appointmentId, Long groomingItemId, String username) {
+        addGroomingItem(appointmentId, groomingItemId, null, username);
+    }
+
+    public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
         if (appointment.isPaid()) {
@@ -725,19 +731,22 @@ public class AppointmentService {
         }
 
         // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
-        // 加上分類標籤（見上方 checkin 流程同樣的說明）。
+        // 加上分類標籤（見上方 checkin 流程同樣的說明）。有自訂價格的話，名稱
+        // 後面也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
         var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
-        String mainItemName = itemComponents.isEmpty()
-                ? gi.getName()
-                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+        boolean hasCustomPrice = customPrice != null && customPrice >= 0;
+        String mainItemName = (itemComponents.isEmpty() ? gi.getName()
+                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）")
+                + (hasCustomPrice ? "（自訂價格）" : "");
+        int actualPrice = hasCustomPrice ? customPrice : (int) Math.round(gi.getPrice());
 
         com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
                 .builder()
                 .appointment(appointment)
                 .groomingItemId(gi.getId())
                 .itemName(mainItemName)
-                .price((int) Math.round(gi.getPrice()))
-                .points(gi.getPoints())
+                .price(actualPrice)
+                .points(gi.getPoints()) // 積分固定照項目原本設定，不受自訂價格影響
                 .performanceCategory(gi.getPerformanceCategory())
                 .build();
         appointmentItemRepository.save(item);
@@ -748,6 +757,47 @@ public class AppointmentService {
         appointmentRepository.save(appointment);
 
         log.info("預約 #{} 編輯新增服務項目「{}」", appointmentId, gi.getName());
+    }
+
+    // ── 需求（追加，2026-08-26）：自訂金額加購 ──────────────────────────────
+    // 用途：處理「高階定制調理」（開放式報價）跟各種浮動加價（厚毛/長毛/
+    // 特殊剪法/特殊情況）——這些沒辦法用固定價目表項目涵蓋，店員需要現場
+    // 依實際情況打一個自訂名稱+金額的項目進去，不綁定任何現有的 GroomingItem。
+    // 積分分類由店員自己選（下拉選單挑一個既有的績效分類），積分固定套用
+    // 那個分類的預設積分（跟 GroomingItem 新增時「沒填積分就用分類預設值」
+    // 同一套邏輯）；不參與任何折扣（discountEligible 固定 false），因為這種
+    // 客製化報價本來就是店員當下依實際情況談定的金額，不應該再疊加折扣。
+    public void addCustomItem(Long appointmentId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+        if (appointment.isPaid()) {
+            throw new IllegalArgumentException("此預約已結帳，無法再編輯項目，請改用退款重開");
+        }
+        if (itemName == null || itemName.isBlank()) {
+            throw new IllegalArgumentException("請填寫項目名稱");
+        }
+        if (price < 0) {
+            throw new IllegalArgumentException("金額不能是負數");
+        }
+
+        var actualCategory = category != null ? category : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
+        com.petgrooming.pet_system.model.AppointmentItem item = com.petgrooming.pet_system.model.AppointmentItem
+                .builder()
+                .appointment(appointment)
+                .groomingItemId(null) // 不綁定任何現有服務項目
+                .itemName(itemName.trim() + "（自訂項目）")
+                .price(price)
+                .points(actualCategory.getDefaultPoints())
+                .performanceCategory(actualCategory)
+                .build();
+        appointmentItemRepository.save(item);
+
+        appointment.setTotalAmount(appointment.getTotalAmount() + price);
+        appointment.setCheckinOrderConfirmed(true);
+        appointmentRepository.save(appointment);
+
+        log.info("預約 #{} 新增自訂項目「{}」，金額 ${}", appointmentId, itemName, price);
     }
 
     // 需求（追加）：套餐化——一個套餐項目結帳/開單時，除了自己的主組成（已經記錄在
@@ -940,8 +990,10 @@ public class AppointmentService {
 
     // ── 2. 取得使用者的寵物清單（預約表單下拉選單用）──────────────────
     public List<Pet> getMyPetsForBooking(String username) {
-        return petRepository.findByOwnerUsername(username);
-
+        // 需求（追加，2026-08-26 修正）：軟刪除的寵物不出現在預約下拉選單裡
+        return petRepository.findByOwnerUsername(username).stream()
+                .filter(pet -> !pet.isDeleted())
+                .toList();
     }
 
     // ── 取得某筆預約的完整消費明細（供 LIFF「我的預約」點擊查看用）──────

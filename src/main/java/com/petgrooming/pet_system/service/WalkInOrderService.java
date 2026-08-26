@@ -432,6 +432,47 @@ public class WalkInOrderService {
         return res;
     }
 
+    // ── 需求（追加，2026-08-26）：自訂金額加購 ──────────────────────────────
+    // 用途：處理「高階定制調理」（開放式報價）跟各種浮動加價（厚毛/長毛/
+    // 特殊剪法/特殊情況）——這些沒辦法用固定價目表項目涵蓋，店員需要現場
+    // 依實際情況打一個自訂名稱+金額的項目進去，不綁定任何現有的 GroomingItem。
+    // 積分分類由店員自己選，積分固定套用那個分類的預設積分；不參與任何折扣
+    // （discountEligible 固定 false），因為這種客製化報價本來就是店員當下
+    // 依實際情況談定的金額，不應該再疊加折扣。
+    @Transactional
+    public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到現場單 #" + orderId));
+        if (order.isPaid()) {
+            throw new IllegalArgumentException("此單已結帳，無法再編輯項目，請改用退款重開");
+        }
+        if (itemName == null || itemName.isBlank()) {
+            throw new IllegalArgumentException("請填寫項目名稱");
+        }
+        if (price < 0) {
+            throw new IllegalArgumentException("金額不能是負數");
+        }
+
+        var actualCategory = category != null ? category : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
+        WalkInOrderItem item = WalkInOrderItem.builder()
+                .groomingItemId(null) // 不綁定任何現有服務項目
+                .itemName(itemName.trim() + "（自訂項目）")
+                .price(price)
+                .points(actualCategory.getDefaultPoints())
+                .performanceCategory(actualCategory)
+                .discountEligible(false)
+                .build();
+        order.addItem(item);
+        order.setTotalAmount(order.getTotalAmount() + price);
+        WalkInOrder saved = orderRepository.save(order);
+
+        log.info("現場單 #{} 新增自訂項目「{}」，金額 ${}", orderId, itemName, price);
+        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
+        populateDiscountInfo(res, saved);
+        return res;
+    }
+
     // 移除一筆項目（結帳前都可以移除，不管是零售商品還是美容服務項目；
     // 結帳後只能整筆退款重開，這裡的「已結帳」防呆維持不變）。
     @Transactional

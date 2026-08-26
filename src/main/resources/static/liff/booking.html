@@ -522,6 +522,9 @@
 
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
+        <div id="holidayNotice" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;">
+          📅 週末假日只開放完整套餐項目，單項美容加購請改選平日預約，謝謝配合。
+        </div>
         <div id="dogLockedBanner" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;"></div>
         <div id="itemsContainer">
           ${
@@ -705,9 +708,20 @@
         return "EXTRA_LARGE";
       }
 
+      // 需求（追加，2026-08-26）：假日限定套餐——固定週六、週日算假日（跟後端
+      // AppointmentService 判斷邏輯一致）。用字串直接組 Date 物件避免時區
+      // 轉換造成日期跑掉（"2026-08-30" 這種純日期字串在部分瀏覽器會被當成
+      // UTC 午夜解析，跨到前一天，所以拆開年月日自己組本地時間的 Date）。
+      function isHolidayDate(dateStr) {
+        if (!dateStr) return false;
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const day = new Date(y, m - 1, d).getDay(); // 0=週日, 6=週六
+        return day === 0 || day === 6;
+      }
+
       function itemRowHtml(item) {
         return `
-      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}">
+      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-is-package="${item.isPackage ? "true" : "false"}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -755,6 +769,14 @@
             ? computeDogWeightTier(pet.weight)
             : null;
 
+        // 需求（追加，2026-08-26）：假日（固定週六、週日）限定只能選完整套餐，
+        // 通用單項加購（沒有副組成的項目，例如指甲修剪、貓咪基礎保養）整列隱藏，
+        // 逼客人只能從套餐裡選——這條規則只影響顧客自己在 LIFF 預約，店員
+        // 現場開單/核對時不受這條限制，維持原本可以自由加選單項的彈性。
+        const isHoliday = isHolidayDate(selectedDate);
+        const holidayNotice = document.getElementById("holidayNotice");
+        if (holidayNotice) holidayNotice.style.display = isHoliday ? "block" : "none";
+
         // 已鎖定的話，畫面上方顯示固定套餐卡片，並自動把該項目勾選起來。
         // 直接從記憶體裡的 groomingItems 清單找出對應項目（用 id 比對），
         // 不依賴 DOM 列表的渲染狀態，比較不會受畫面篩選/隱藏邏輯影響。
@@ -794,6 +816,7 @@
             const applicable = row.dataset.applicablePetType || "";
             const itemCoatCategory = row.dataset.catCoatCategory || "";
             const itemDogTier = row.dataset.dogWeightTier || "";
+            const isPackage = row.dataset.isPackage === "true";
             const itemId = row.dataset.itemId;
             const cb = row.querySelector("input[type=checkbox]");
             const blockedByExisting = requiresExisting && !isExisting;
@@ -803,6 +826,8 @@
               itemCoatCategory &&
               catCoatCategory &&
               itemCoatCategory !== catCoatCategory;
+            // 假日只能選套餐：非套餐項目（沒有副組成）在假日整列隱藏。
+            const blockedByHoliday = isHoliday && !isPackage;
             // 只有「有標體重級距」的項目（DOG 主力套餐）才受這條規則影響，
             // 通用加購項目（itemDogTier 是空字串）不受影響。
             let blockedByDogTier = false;
@@ -817,7 +842,8 @@
               blockedByExisting ||
               blockedBySpecies ||
               blockedByCoat ||
-              blockedByDogTier
+              blockedByDogTier ||
+              blockedByHoliday
             ) {
               row.style.display = "none";
               if (cb) cb.checked = false;
@@ -849,6 +875,11 @@
         const dateInput = document.getElementById("dateInput");
         selectedDate = dateInput.value;
         selectedSlot = null;
+
+        // 需求（追加，2026-08-26）：日期改變會影響「是不是假日」，連帶影響
+        // 服務項目菜單（假日只能選套餐），日期一變就要重新跑一次項目篩選邏輯，
+        // 不能只在選毛孩的時候才篩選一次。
+        if (selectedPetId) onPetChange();
 
         const slotsField = document.getElementById("slotsField");
         const container = document.getElementById("slotsContainer");

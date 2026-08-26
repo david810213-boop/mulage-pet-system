@@ -209,6 +209,8 @@ public class WalkInOrderMvcController {
             // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單。
             var pet = walkInOrderService.getPetForOrder(id);
             model.addAttribute("pet", pet);
+            // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+            model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
             final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
             final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
                     pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
@@ -321,6 +323,27 @@ public class WalkInOrderMvcController {
         try {
             walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, user.getUsername());
             ra.addFlashAttribute("successMsg", "已新增項目");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
+        }
+        return "redirect:/admin/walk-in-orders/" + id + "/" + from;
+    }
+
+    // ── POST /admin/walk-in-orders/{id}/add-custom-item ──────────────────
+    // 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式報價
+    // 跟各種浮動加價，不綁定任何現有服務項目，店員直接輸入項目名稱+金額。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/{id}/add-custom-item")
+    public String addCustomItem(@PathVariable Long id, HttpServletRequest request,
+                                @RequestParam String itemName,
+                                @RequestParam int price,
+                                @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(defaultValue = "checkout") String from,
+                                RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            walkInOrderService.addCustomItem(id, itemName, price, category, user.getUsername());
+            ra.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
         }

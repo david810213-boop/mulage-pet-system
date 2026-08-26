@@ -71,6 +71,15 @@ public class Pet {
     @Column(name = "locked_grooming_item_id")
     private Long lockedGroomingItemId;
 
+    // 需求（追加，2026-08-26 修正）：刪除寵物改成跟服務項目下架同一套邏輯——
+    // 軟刪除，不是真的從資料庫刪掉這筆資料列。這樣過往預約/消費紀錄裡
+    // 記錄的寵物名字快照完全不受影響（本來就不是即時關聯查詢，是結帳當下
+    // 存好的文字），刪除也不用再檢查「有沒有消費紀錄」這件事——反正資料
+    // 沒有真的消失，只是不再出現在顧客/店員的主動選擇清單裡而已。
+    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean isDeleted = false;
+
     // ── 預約須知相關欄位 ──────────────────────────────────────────────────
     @Column(name = "has_separation_anxiety", nullable = false)
     @Builder.Default
