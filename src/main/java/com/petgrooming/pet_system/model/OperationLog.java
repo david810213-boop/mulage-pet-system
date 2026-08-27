@@ -83,6 +83,7 @@ public class OperationLog {
             java.util.Map.entry("UNSET_CLOSED_DATE", "取消公休日"),
             java.util.Map.entry("UPDATE_WEEKLY_CLOSURE", "更新固定公休星期"),
             java.util.Map.entry("SET_SLOT_CAPACITY", "調整時段名額"),
+            java.util.Map.entry("SET_DEFAULT_SLOT_CAPACITY", "調整預設時段容量範本"),
             java.util.Map.entry("UPDATE_BANK_ACCOUNT", "更新匯款帳號"),
             java.util.Map.entry("UPDATE_BANK_ACCOUNT_QR", "更新收款 QR Code"),
             java.util.Map.entry("UPDATE_COMPANY_SIGNATURE", "更新乙方簽名檔"),

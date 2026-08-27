@@ -27,9 +27,11 @@ import java.time.LocalTime;
 @RequiredArgsConstructor
 public class SlotCapacityService {
 
-    public static final int DEFAULT_CAPACITY = 5;
-
     private final SlotCapacityRepository slotRepo;
+    // 需求（追加，2026-08-27）：時段容量範本——新建立一天的時段計數列時，
+    // 初始上限改成讀這份範本（每個時段可以分別設定不同預設值），
+    // 不再是所有時段統一寫死同一個數字。
+    private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService;
 
     /**
      * 確保 (date, time) 的計數列存在。獨立交易，冪等。
@@ -42,7 +44,7 @@ public class SlotCapacityService {
                     .slotDate(date)
                     .slotTime(time)
                     .booked(0)
-                    .capacity(DEFAULT_CAPACITY)
+                    .capacity(defaultSlotCapacityTemplateService.getCapacity(time))
                     .build());
         } catch (DataIntegrityViolationException e) {
             // 併發下另一交易已插入，忽略即可（列已存在）
@@ -88,11 +90,12 @@ public class SlotCapacityService {
     }
 
     /**
-     * 查某時段目前的名額上限（沒有手動調整過的話回傳預設值 5）。
+     * 查某時段目前的名額上限（該日該時段還沒建立計數列的話，回傳範本裡設定的預設值）。
      */
     public int getCapacity(LocalDate date, LocalTime time) {
         return slotRepo.findBySlotDateAndSlotTime(date, time)
-                .map(SlotCapacity::getCapacity).orElse(DEFAULT_CAPACITY);
+                .map(SlotCapacity::getCapacity)
+                .orElseGet(() -> defaultSlotCapacityTemplateService.getCapacity(time));
     }
 
     /**

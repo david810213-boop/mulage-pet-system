@@ -41,6 +41,7 @@ public class AppointmentMvcController {
     private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16：公休日設定
     private final com.petgrooming.pet_system.service.PaymentService paymentService;
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
+    private final com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
 
     /**
      * JWT 版獲取當前登入使用者
@@ -554,7 +555,36 @@ public class AppointmentMvcController {
         model.addAttribute("isClosedToday", closedDateService.isClosed(date));
         model.addAttribute("upcomingClosedDates", closedDateService.listUpcoming());
         model.addAttribute("weeklyClosureSetting", closedDateService.getWeeklyClosureSetting());
+        // 需求（追加，2026-08-27）：預設時段容量範本——通用一份，不分日期，
+        // 跟上面「這一天的各時段名額」是分開的兩張表格。
+        model.addAttribute("templateSlots", defaultSlotCapacityTemplateService.listForAdmin());
         return "appointments/slots-manage";
+    }
+
+    // ── POST /appointments/slots-manage/template/update ───────────────────
+    // 需求（追加，2026-08-27）：店家調整「預設時段容量範本」某個時段的預設名額上限。
+    // 只影響以後新建立的日期的初始值，不會回溯影響已經存在的日期
+    // （已存在的日期要調整的話，用下面既有的「這一天各時段名額」表格覆寫）。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/slots-manage/template/update")
+    public String updateDefaultSlotCapacityTemplate(HttpServletRequest request,
+                                     @RequestParam
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
+                                     @RequestParam int capacity,
+                                     @RequestParam(required = false)
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                     RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            defaultSlotCapacityTemplateService.setCapacity(time, capacity);
+            operationLogService.log(user, "APPOINTMENT", "SET_DEFAULT_SLOT_CAPACITY",
+                    time.toString(), "預設範本調整為 " + capacity + " 位");
+            ra.addFlashAttribute("successMsg",
+                    time + " 的預設時段容量已調整為 " + capacity + " 位（往後新的日期會套用這個預設值）");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", "調整失敗：" + e.getMessage());
+        }
+        return "redirect:/appointments/slots-manage" + (date != null ? "?date=" + date : "");
     }
 
     // ── POST /appointments/slots-manage/weekly-closure ─────────────────────
