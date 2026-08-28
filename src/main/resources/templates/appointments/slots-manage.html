@@ -341,9 +341,7 @@
                 <td colspan="5" class="empty">當天沒有可調整的時段</td>
               </tr>
               <tr th:each="s : ${slots}">
-                <td
-                  th:text="${#temporals.format(s.startTime, 'HH:mm')} + ' - ' + ${#temporals.format(s.endTime, 'HH:mm')}"
-                ></td>
+                <td th:text="${#temporals.format(s.startTime, 'HH:mm')}"></td>
                 <td th:text="${s.booked}"></td>
                 <td th:text="${s.capacity}"></td>
                 <td>
