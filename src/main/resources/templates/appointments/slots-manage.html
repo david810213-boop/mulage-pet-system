@@ -307,6 +307,85 @@
           </div>
         </div>
 
+        <div class="card" style="margin-bottom: 1.25rem">
+          <h3 style="font-size: 15px; margin-bottom: 6px">
+            🗓️ 預設時段容量範本
+          </h3>
+          <p
+            style="
+              font-size: 12px;
+              color: var(--brown-light);
+              margin-bottom: 14px;
+            "
+          >
+            這裡設定的是「每天都套用的預設值」（不分星期幾，公休日不受影響），例如
+            11:00 固定可接 4 組、11:30 這格不開放、12:00 起每半小時固定接 1 組。
+            調整只會影響「以後新建立的日期」第一次載入時的初始上限；已經存在的日期
+            （已經有人查詢過或預約過的日期）要調整的話，請往下用「這一天各時段名額」
+            那張表個別覆寫，不會被這裡的範本回溯改動。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>時段</th>
+                <th>預設名額上限</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="t : ${templateSlots}">
+                <td
+                  th:text="${#temporals.format(t.slotTime, 'HH:mm')}"
+                ></td>
+                <td>
+                  <form
+                    method="post"
+                    action="/appointments/slots-manage/template/update"
+                    style="display: flex; gap: 6px; align-items: center"
+                  >
+                    <input type="hidden" name="date" th:value="${date}" />
+                    <input
+                      type="hidden"
+                      name="time"
+                      th:value="${#temporals.format(t.slotTime, 'HH:mm')}"
+                    />
+                    <input
+                      type="number"
+                      name="capacity"
+                      th:value="${t.capacity}"
+                      min="0"
+                      style="width: 70px; padding: 5px 6px"
+                    />
+                    <button
+                      type="submit"
+                      class="btn btn-outline"
+                      style="padding: 5px 12px; font-size: 12px"
+                    >
+                      儲存
+                    </button>
+                    <button
+                      type="submit"
+                      onclick="
+                        this.closest('form').querySelector(
+                          'input[name=capacity]',
+                        ).value = 0
+                      "
+                      class="btn btn-outline"
+                      style="
+                        padding: 5px 12px;
+                        font-size: 12px;
+                        color: #c62828;
+                        border-color: #c67a5c;
+                      "
+                    >
+                      預設關閉此時段
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <div class="card">
           <h3 style="font-size: 15px; margin-bottom: 6px">
             📅 <span th:text="${date}"></span>　各時段名額

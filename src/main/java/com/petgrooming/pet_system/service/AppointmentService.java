@@ -58,10 +58,11 @@ public class AppointmentService {
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
 
-    private static final LocalTime OPENING = LocalTime.of(11, 0);
-    private static final LocalTime CLOSING = LocalTime.of(19, 0);
-    private static final int SLOT_HOURS = 2;
-    private static final int SLOT_CAPACITY = 5; // 同時段最多 5 隻
+    // 需求（追加，2026-08-27）：營業時間／時段格線改抽到 BusinessHours 共用常數類別，
+    // 因為新增的「預設時段容量範本」（DefaultSlotCapacityTemplateService）也需要同一份格線，
+    // 避免兩邊各自寫一份、以後改一邊忘了改另一邊。時段長度也從原本固定 2 小時改成 30 分鐘一格。
+    private static final LocalTime OPENING = com.petgrooming.pet_system.config.BusinessHours.OPENING;
+    private static final LocalTime CLOSING = com.petgrooming.pet_system.config.BusinessHours.CLOSING;
     private static final LocalTime EARLY_SLOT_CUTOFF = LocalTime.of(11, 0); // 需求 13-3：隔天預約早於此時間要額外提醒準時到場
 
     @Transactional
@@ -387,7 +388,7 @@ public class AppointmentService {
 
         LocalTime current = OPENING;
         while (current.isBefore(CLOSING)) {
-            LocalTime next = current.plusHours(SLOT_HOURS);
+            LocalTime next = current.plusMinutes(com.petgrooming.pet_system.config.BusinessHours.SLOT_MINUTES);
             if (next.isAfter(CLOSING))
                 next = CLOSING;
 
