@@ -945,7 +945,7 @@
             <div class="slot-btn ${available ? "" : "unavailable"}"
                  data-start="${s.startTime}" data-end="${s.endTime}"
                  onclick="${available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ""}">
-              ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}${past ? "（已過時段）" : ""}
+              ${s.startTime.substring(0, 5)}${past ? "（已過時段）" : ""}
             </div>`;
             })
             .join("")}
