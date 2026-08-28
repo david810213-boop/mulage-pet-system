@@ -605,64 +605,8 @@
                         ✓ 確認預約
                       </button>
                     </form>
-                    <!-- 需求 7：店家編輯雙可見性備注（只有 STAFF/ADMIN 看得到這個表單，internalNote 只會出現在這裡） -->
-                    <details
-                      th:if="${user.staffOrAdmin}"
-                      style="font-size: 12px"
-                    >
-                      <summary style="cursor: pointer; color: var(--brown-mid)">
-                        ✏️ 編輯備注
-                      </summary>
-                      <form
-                        th:action="@{/appointments/{id}/notes(id=${a.id})}"
-                        method="post"
-                        style="
-                          display: flex;
-                          flex-direction: column;
-                          gap: 4px;
-                          margin-top: 6px;
-                          min-width: 180px;
-                        "
-                      >
-                        <label
-                          style="font-size: 11px; color: var(--brown-light)"
-                          >店家內部備注（僅後台看得到）</label
-                        >
-                        <textarea
-                          name="internalNote"
-                          rows="2"
-                          style="
-                            font-size: 12px;
-                            padding: 4px;
-                            border: 1px solid var(--cream-300);
-                            border-radius: 4px;
-                          "
-                          th:text="${a.internalNote}"
-                        ></textarea>
-                        <label
-                          style="font-size: 11px; color: var(--brown-light)"
-                          >會員可見備注</label
-                        >
-                        <textarea
-                          name="memberNote"
-                          rows="2"
-                          style="
-                            font-size: 12px;
-                            padding: 4px;
-                            border: 1px solid var(--cream-300);
-                            border-radius: 4px;
-                          "
-                          th:text="${a.memberNote}"
-                        ></textarea>
-                        <button
-                          type="submit"
-                          class="btn btn-outline"
-                          style="padding: 3px 10px; font-size: 12px"
-                        >
-                          儲存備注
-                        </button>
-                      </form>
-                    </details>
+                    <!-- 需求（追加，2026-08-27）：移除「編輯備注」——會員信息頁、服務結束核對流程
+                         都已經能編輯內部備注/會員可見備注，這裡重複多餘，直接拿掉。 -->
                     <!-- 現場開單（依預約編號）：已確認但尚未開單 -->
                     <a
                       th:if="${user.staffOrAdmin and a.status.name() == 'CONFIRMED' and !a.checkinOrderConfirmed}"
@@ -722,15 +666,18 @@
                       style="font-size: 11px; color: var(--brown-light)"
                       >請先結束服務才能核對</span
                     >
+                    <!-- 需求（追加，2026-08-27）：結帳按鈕改成跟現場開單一致的按鈕樣式（原本是純文字底線連結） -->
                     <a
                       th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
                       th:href="@{/payments/checkout/{id}(id=${a.id})}"
+                      class="btn"
                       style="
+                        padding: 3px 10px;
                         font-size: 12px;
-                        color: var(--brown-mid);
-                        text-decoration: underline;
+                        display: inline-block;
+                        text-decoration: none;
                       "
-                      >結帳</a
+                      >💰 結帳</a
                     >
                     <span
                       th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and a.status.name() == 'IN_PROGRESS' and !a.finalCheckDone}"
