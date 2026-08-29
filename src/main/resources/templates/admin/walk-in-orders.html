@@ -90,6 +90,13 @@
                 <!-- 唯一實際送出的欄位：無論用下拉選還是手打，值都同步進這裡 -->
                 <input type="text" id="petNameInput" name="petName" placeholder="寵物名稱（尚未選會員或非會員時手動輸入）"
                        style="width:100%; padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
+                <!-- 需求（追加，2026-08-29）：店家反饋現場開單遇到已鎖定套餐的狗，
+                     要跳去會員信息才能解鎖太繁瑣，直接在這裡加解鎖按鈕。
+                     刻意不整頁 reload（跟結帳頁不同），避免洗掉店員已經填的其他欄位。 -->
+                <div id="lockedPetBanner" style="display:none; margin-top:6px; padding:6px 8px; background:#fff8e6; border:1px solid #e6c366; border-radius:var(--radius-sm); font-size:12px;">
+                  🔒 已鎖定固定套餐：<strong id="lockedPetItemName"></strong>（$<span id="lockedPetItemPrice"></span>）
+                  <button type="button" onclick="unlockCurrentPet()" class="btn btn-outline" style="padding:2px 8px; font-size:11px; margin-left:6px;">🔓 解鎖，重新報價</button>
+                </div>
               </div>
               <div style="flex: 1; min-width: 160px;">
                 <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">訂單備註（選填）</label>
@@ -687,7 +694,47 @@
         if (this.value) petNameInput.value = this.value;
         const pet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
         if (pet) applySuggestedItem(pet);
+        renderLockedPetBanner(pet);
       });
+
+      // 需求（追加，2026-08-29）：現場開單頁面就地顯示鎖定狀態＋解鎖按鈕，
+      // 不用跳去會員信息頁。跟 suggestItemCodeForPet() 同樣的判斷條件
+      // （只有狗有鎖定機制）。
+      function renderLockedPetBanner(pet) {
+        const banner = document.getElementById('lockedPetBanner');
+        if (!pet || pet.petType !== 'DOG' || !pet.lockedGroomingItemId) {
+          banner.style.display = 'none';
+          return;
+        }
+        const locked = GROOMING_ITEMS.find(function (i) { return i.id === pet.lockedGroomingItemId; });
+        if (!locked) {
+          banner.style.display = 'none';
+          return;
+        }
+        document.getElementById('lockedPetItemName').textContent = locked.name;
+        document.getElementById('lockedPetItemPrice').textContent = locked.price;
+        banner.style.display = 'block';
+      }
+
+      async function unlockCurrentPet() {
+        const pet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
+        if (!pet) return;
+        if (!confirm('確定要解鎖嗎？解鎖後這隻狗會恢復成依體重重新選套餐。')) return;
+        try {
+          const res = await fetch('/api/admin/pets/' + pet.id + '/unlock-grooming-item', { method: 'PUT' });
+          if (!res.ok) {
+            alert('解鎖失敗，請重試');
+            return;
+          }
+          // 不整頁 reload：直接更新這筆本地資料，隱藏提示框，
+          // 並重新跑一次建議套餐邏輯（現在會依體重重新判斷）。
+          pet.lockedGroomingItemId = null;
+          renderLockedPetBanner(pet);
+          applySuggestedItem(pet);
+        } catch (e) {
+          alert('網路錯誤，請重試');
+        }
+      }
 
       // 點選單外面時收起建議清單
       document.addEventListener('click', function (e) {

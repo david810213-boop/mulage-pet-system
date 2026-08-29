@@ -207,6 +207,7 @@ public class AppointmentMvcController {
         // 的狗狗體重篩選是同一套邏輯，這裡額外把貓咪毛髮分類篩選也一併補上
         // （結帳頁目前只做了狗狗，沒做貓咪，是既有的缺口，先不動它，只在這裡補齊）。
         var pet = appointmentService.getPetForAppointment(id);
+        model.addAttribute("pet", pet); // 需求（追加，2026-08-29）：頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
         model.addAttribute("groomingItems", filterItemsForPetShape(
                 groomingItemService.getAllItems(), isExisting, target.getPetType(), pet));
         return "appointments/checkin-order";

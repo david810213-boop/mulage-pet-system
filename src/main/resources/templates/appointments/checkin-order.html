@@ -45,6 +45,27 @@
             </table>
           </div>
 
+          <!-- 需求（追加，2026-08-29）：店家反饋現場加單遇到已鎖定套餐的狗，
+               要跳去會員信息才能解鎖太繁瑣，直接在這裡加解鎖按鈕（沿用既有 API）。 -->
+          <div
+            class="card"
+            th:if="${pet != null and pet.lockedGroomingItemId != null}"
+            style="margin-bottom: 1.25rem; background:#fff8e6; border:1px solid #e6c366;"
+          >
+            <p style="margin: 0; font-size: 13px;">
+              🔒 這隻狗已經有固定套餐：<strong th:text="${pet.lockedItemName}"></strong>
+              （$<span th:text="${pet.lockedItemPrice}"></span>），上方菜單只會顯示這一項。
+            </p>
+            <button
+              type="button"
+              th:onclick="'unlockPet(' + ${pet.id} + ')'"
+              class="btn btn-outline"
+              style="padding:4px 10px; font-size:12px; margin-top: 8px;"
+            >
+              🔓 解鎖，重新報價
+            </button>
+          </div>
+
           <form method="post" th:action="@{/appointments/{id}/checkin-order(id=${appointment.id})}">
             <div class="card" style="margin-bottom: 1rem">
               <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 12px">
@@ -143,6 +164,23 @@
                   }
                 });
               });
+
+              // 需求（追加，2026-08-29）：這頁的解鎖直接整頁 reload——跟結帳頁的
+              // unlockPet() 邏輯一致，reload 後菜單會重新依體重篩選，是對的行為，
+              // 且這頁進來還沒填任何表單資料，reload 不會有洗掉輸入的問題。
+              async function unlockPet(petId) {
+                if (!confirm('確定要解鎖嗎？解鎖後菜單會恢復成依體重重新篩選。')) return;
+                try {
+                  const res = await fetch('/api/admin/pets/' + petId + '/unlock-grooming-item', { method: 'PUT' });
+                  if (!res.ok) {
+                    alert('解鎖失敗，請重試');
+                    return;
+                  }
+                  window.location.reload();
+                } catch (e) {
+                  alert('網路錯誤，請重試');
+                }
+              }
             </script>
 
             <div style="display: flex; gap: 12px">
