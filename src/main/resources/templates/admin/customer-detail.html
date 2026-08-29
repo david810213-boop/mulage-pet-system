@@ -646,6 +646,32 @@
                     </form>
                   </div>
 
+                  <!-- 需求（追加，2026-08-28）：後台會員信息目前看不到寵物的固定套餐鎖定狀態，
+                       補上顯示（沿用結帳頁/現場開單結帳頁同一套 API 跟按鈕邏輯）。
+                       只有狗狗有這個機制，貓咪沒有。 -->
+                  <div
+                    th:if="${p.petType.name() == 'DOG' and p.lockedGroomingItemId != null}"
+                    style="
+                      margin-top: 10px;
+                      padding: 8px 10px;
+                      background: #fff8e6;
+                      border: 1px solid #e6c366;
+                      border-radius: var(--radius-sm);
+                      font-size: 12.5px;
+                    "
+                  >
+                    🔒 已鎖定固定套餐：<strong th:text="${p.lockedItemName}"></strong>
+                    （$<span th:text="${p.lockedItemPrice}"></span>），預約/現場開單時只會帶出這一項
+                    <button
+                      type="button"
+                      th:onclick="'unlockPetAdmin(' + ${p.id} + ')'"
+                      class="btn btn-outline"
+                      style="padding: 3px 10px; font-size: 11.5px; margin-left: 8px;"
+                    >
+                      🔓 解鎖，重新報價
+                    </button>
+                  </div>
+
                   <!-- 需求（追加）：編輯寵物基本資料（名字/品種/體重/年齡），
                        物種不開放修改（見 PetService.updatePet 的說明）。
                        貓咪品種改成下拉選單（跟 LIFF「我的毛孩」編輯一致，選了
@@ -955,6 +981,23 @@
             let parsed = msg;
             try { parsed = JSON.parse(msg); } catch (e) { /* 純文字錯誤訊息，直接用 */ }
             alert(typeof parsed === "string" ? parsed : (parsed.message || "刪除失敗"));
+            return;
+          }
+          window.location.reload();
+        } catch (e) {
+          alert("網路錯誤，請重試");
+        }
+      }
+
+      // 需求（追加，2026-08-28）：後台會員信息頁「解鎖，重新報價」——沿用
+      // walk-in-order-checkout.html / payments/checkout.html 同一支既有 API，
+      // 不用新增後端端點。
+      async function unlockPetAdmin(petId) {
+        if (!confirm("確定要解鎖嗎？解鎖後下次預約/開單會恢復成依體重重新選套餐。")) return;
+        try {
+          const res = await fetch("/api/admin/pets/" + petId + "/unlock-grooming-item", { method: "PUT" });
+          if (!res.ok) {
+            alert("解鎖失敗，請重試");
             return;
           }
           window.location.reload();
