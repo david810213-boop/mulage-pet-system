@@ -202,8 +202,13 @@ public class AppointmentMvcController {
         model.addAttribute("appointment", target);
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
-        var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
-        model.addAttribute("groomingItems", filteredItems);
+        // 需求（追加，2026-08-28）：店家反饋現場加單流程要加快，不要整份菜單都列出來，
+        // 改成只顯示符合這隻寵物體型的項目——跟結帳頁（PaymentMvcController.checkoutPage）
+        // 的狗狗體重篩選是同一套邏輯，這裡額外把貓咪毛髮分類篩選也一併補上
+        // （結帳頁目前只做了狗狗，沒做貓咪，是既有的缺口，先不動它，只在這裡補齊）。
+        var pet = appointmentService.getPetForAppointment(id);
+        model.addAttribute("groomingItems", filterItemsForPetShape(
+                groomingItemService.getAllItems(), isExisting, target.getPetType(), pet));
         return "appointments/checkin-order";
     }
 
@@ -214,6 +219,45 @@ public class AppointmentMvcController {
         return items.stream()
                 .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                 .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
+                .toList();
+    }
+
+    // 需求（追加，2026-08-28）：在 filterItemsFor() 的基礎上，再依這隻寵物的體型
+    // （狗狗體重級距／貓咪毛髮分類）進一步篩選，只給現場加單頁面用——結帳頁維持
+    // 原本只做狗狗那一版，避免這次順手擴大改動範圍影響到已經在正常運作的結帳流程。
+    private List<com.petgrooming.pet_system.dto.GroomingItemResponse> filterItemsForPetShape(
+            List<com.petgrooming.pet_system.dto.GroomingItemResponse> items, boolean isExisting,
+            String petType, com.petgrooming.pet_system.dto.PetResponse pet) {
+        var base = filterItemsFor(items, isExisting, petType);
+        if (pet == null) return base;
+
+        Long lockedItemId = pet.getLockedGroomingItemId();
+        boolean isDog = "DOG".equalsIgnoreCase(petType);
+        boolean isCat = "CAT".equalsIgnoreCase(petType);
+
+        final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
+                isDog && lockedItemId == null && pet.getWeight() != null
+                        ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
+                        : null;
+        final String catCoatCategory =
+                isCat && pet.getCatCoatCategory() != null ? pet.getCatCoatCategory().name() : null;
+
+        return base.stream()
+                .filter(i -> {
+                    // 狗狗：已鎖定固定套餐的話，只顯示那個固定項目；沒鎖定則依體重級距篩選
+                    if (i.getDogWeightTier() != null) {
+                        if (lockedItemId != null) return i.getId().equals(lockedItemId);
+                        if (dogTier != null) return i.getDogWeightTier().equals(dogTier.name());
+                        return true; // 量不到體重（例如體重欄位還沒填）時保守顯示全部，避免誤擋
+                    }
+                    // 貓咪：依毛髮分類篩選；品種不在對照表裡（分類是 null）時不篩選，顯示全部讓店家人工判斷
+                    if (i.getCatCoatCategory() != null) {
+                        if (catCoatCategory != null) return i.getCatCoatCategory().equals(catCoatCategory);
+                        return true;
+                    }
+                    // 跟體型/毛髮分類無關的項目（例如指甲修剪、加購項目），不受這層篩選影響
+                    return true;
+                })
                 .toList();
     }
 
