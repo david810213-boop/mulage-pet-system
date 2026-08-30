@@ -555,7 +555,7 @@ public class AppointmentMvcController {
         }
 
         try {
-            AppointmentResponse res = appointmentService.book(req, bookingUsername);
+            AppointmentResponse res = appointmentService.book(req, bookingUsername, true);
             operationLogService.log(user, "APPOINTMENT", "BOOK",
                     "預約 " + res.getAppointmentCode(),
                     targetMemberName != null ? "代客建立（" + targetMemberName + "）：" + res.getPetName() : res.getPetName());

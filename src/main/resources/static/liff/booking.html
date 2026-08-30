@@ -475,8 +475,11 @@
           '<div class="loading-page" style="color:#8B0000">' + msg + "</div>";
       }
 
-      function todayStr() {
+      // 需求（追加，2026-08-30）：不開放顧客當天自己在 LIFF 提出預約申請，
+      // 日期選擇器最早只能選明天，並在下方顯示提示文字引導改用 LINE/電話聯繫。
+      function tomorrowStr() {
         const d = new Date();
+        d.setDate(d.getDate() + 1);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
@@ -512,7 +515,10 @@
         <h3>𖥸 選擇日期與時段</h3>
         <div class="field">
           <label>預約日期 <span class="req">*</span></label>
-          <input type="date" id="dateInput" min="${todayStr()}" onchange="onDateChange()" />
+          <input type="date" id="dateInput" min="${tomorrowStr()}" onchange="onDateChange()" />
+          <div style="font-size:12px; color:#8a6d3b; margin-top:6px; line-height:1.6;">
+            ⚠️ 不開放當天提出預約申請，如需要預約當日，請直接聯繫官方 LINE 或致電 0902-301-820
+          </div>
         </div>
         <div class="field" id="slotsField" style="display:none">
           <label>可預約時段 <span class="req">*</span></label>
