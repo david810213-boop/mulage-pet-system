@@ -218,7 +218,7 @@ public class WalkInOrderService {
         // 若這張單有綁定會員，通知家長可以來接寵物了
         if (saved.getMember() != null) {
             String notifyText = String.format(
-                    "【慕沐村 Mulage pet】您好，%s 的美容服務已經完成囉！%n隨時可以來店接毛孩回家 🐾",
+                    "【慕沐村 Mulage pet】✨您好，%s 的美容服務已經完成囉！%n🐾請於2小時內前來接寶貝回家喲~非常感謝您的配合❤️",
                     saved.getPetName());
             lineMessagingService.pushText(saved.getMember().getLineUserId(), notifyText);
         }
