@@ -63,7 +63,6 @@ public class AppointmentService {
     // 避免兩邊各自寫一份、以後改一邊忘了改另一邊。時段長度也從原本固定 2 小時改成 30 分鐘一格。
     private static final LocalTime OPENING = com.petgrooming.pet_system.config.BusinessHours.OPENING;
     private static final LocalTime CLOSING = com.petgrooming.pet_system.config.BusinessHours.CLOSING;
-    private static final LocalTime EARLY_SLOT_CUTOFF = LocalTime.of(11, 0); // 需求 13-3：隔天預約早於此時間要額外提醒準時到場
 
     @Transactional
     public AppointmentResponse book(AppointmentRequest req, String username) {
@@ -435,14 +434,35 @@ public class AppointmentService {
     }
 
     // 需求 13：預約確認通知文字內容 + 發送，供「店家點確認」與「當日臨時預約自動確認」共用
+    // 需求（追加，2026-08-30）：文案改版（店家指定新內容），改成完整的預約須知格式。
     private void sendConfirmedNotify(Appointment saved) {
-        // 因為每隻寵物的美容所需時間會依體型/毛長/性情而不同，這裡不承諾一個確切完成時間，
-        // 而是請會員留意店家後續來電或訊息通知的預計完成時間。
+        String dateStr = saved.getDate().format(java.time.format.DateTimeFormatter.ofPattern("M/d"));
         String notifyText = String.format(
-                "【慕沐村 Mulage pet】您好，%s 的美容預約已確認！%n" +
-                        "由於每隻毛孩的施作時間會依體型、毛況及個性而有所不同，" +
-                        "我們會在施作過程中致電或傳訊息通知您預計完成時間，請留意來電或訊息喔 🐾",
-                saved.getPetName());
+                "【慕沐村 Mulage pet】%n" +
+                        "〔✓ 預約確認〕%n" +
+                        "%s  %s%n" +
+                        "%s的美容預約已確認 ♡%n%n" +
+                        "⏰ 預約提醒%n" +
+                        "預約前一天將再次傳送訊息提醒您%n%n" +
+                        "𓂃 預約時間%n" +
+                        "・狗狗最早可於預約時間前 30 分鐘抵達%n" +
+                        "・遲到超過 20 分鐘，將自動取消當日預約，並視同臨時取消%n" +
+                        "・本店採全預約制，如需改期請提前告知%n%n" +
+                        "⌂ 接回時間%n" +
+                        "美容完成後請於 2 小時內接回%n" +
+                        "逾時將酌收一次性延遲服務費$200%n" +
+                        "如有特殊情況，請提前與我們詢問ɞ%n%n" +
+                        "୨୧ 取消／異動%n" +
+                        "預約前 24 小時內臨時取消，下次預約需支付50%% 訂金；未赴約訂金恕不退還。%n" +
+                        "會員臨時取消，當次取消費用（美容費用30%%）將直接由儲值金扣除。%n%n" +
+                        "🐾 美容小提醒%n" +
+                        "・腳底毛皆採平剃，如有特殊需求請提前告知%n" +
+                        "・為確保毛孩安全，現場採門禁管理，恕不開放家長等候%n%n" +
+                        "✦ 營業時間%n" +
+                        "最後接狗／貓時間為 19:30%n%n" +
+                        "感謝家長的配合與理解%n" +
+                        "期待與您和寶貝們相見♡",
+                dateStr, saved.getStartTime(), saved.getPetName());
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
     }
 
@@ -473,18 +493,22 @@ public class AppointmentService {
         log.info("[需求13-前日提醒] 已處理 {} 筆 {} 的預約提醒", targets.size(), tomorrow);
     }
 
-    // 需求 13-3：隔天預約時間在上午 11:00 前的，提醒訊息額外加註提醒準時到場
+    // 需求（追加，2026-08-30）：前一天預約提醒文案改版（店家指定新內容），
+    // 補回寵物名字（原始文案沒寫，店家確認要保留）。
+    // 原本這裡有一段「隔天預約時間早於 11:00 要額外提醒準時到場」的邏輯
+    // （EARLY_SLOT_CUTOFF），但店家開門時間本來就是 11:00，條件永遠不會成立，
+    // 是早就存在的死代碼，新範本也沒有適合放這句提醒的位置，順手一併拿掉。
     private String buildReminderText(Appointment appointment) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format(
-                "【慕沐村 Mulage pet】提醒您，%s 明天（%s）%s 有預約寵物美容服務喔！",
-                appointment.getPetName(),
-                appointment.getDate(),
-                appointment.getStartTime()));
-        if (appointment.getStartTime().isBefore(EARLY_SLOT_CUTOFF)) {
-            sb.append(" 請準時到場，歡迎提前15分鐘抵達 🐾");
-        }
-        return sb.toString();
+        return String.format(
+                "【慕沐村 Mulage pet】%n" +
+                        "🔔預約提醒 🔔%n" +
+                        "***明天 %s %s%n" +
+                        "%s有預約洗香香 𓈒𓏸%n" +
+                        "🚗開車前來的家長%n" +
+                        "可於社區大門外短暫停靠接送%n" +
+                        "請勿停放於「車道出入口」%n" +
+                        "明天見 ʚ",
+                appointment.getDate(), appointment.getStartTime(), appointment.getPetName());
     }
 
     // ── 店員開始服務：CONFIRMED → IN_PROGRESS（寵物已到店開始施作）──────────
@@ -560,9 +584,13 @@ public class AppointmentService {
                 "結束服務：預約 #" + appointment.getId());
 
         // 用官方 LINE 通知家長可以來店接寵物了
+        // 需求（追加，2026-08-30）：文案改版（店家指定新內容）。
         String notifyText = String.format(
-                "【慕沐村 Mulage pet】您好，%s 的美容服務已經完成囉！%n" +
-                        "隨時可以來店接毛孩回家 🐾",
+                "【慕沐村 Mulage pet】%n" +
+                        "𓂃 ✦ 美容完成 ✦ 𓂃%n" +
+                        "%s的美容服務完成囉 ɞ%n" +
+                        "再麻煩家長於 2 小時內%n" +
+                        "前來接寶貝回家 ♡",
                 saved.getPetName());
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
 
