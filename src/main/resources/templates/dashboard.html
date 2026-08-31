@@ -179,83 +179,141 @@
             <a href="/auth/switch-user" class="btn btn-ghost" th:if="${user != null and user.staffOrAdmin}">🔄 切換使用者</a>
           </div>
 
-          <!-- 待確認預約 -->
-          <div class="dash-panel">
-            <div class="dash-panel-header">
-              <h3>待確認預約</h3>
-              <a href="/appointments?status=PENDING_CONFIRM">查看全部 →</a>
-            </div>
-            <div th:if="${pendingAppointments == null or pendingAppointments.isEmpty()}" class="dash-empty">
-              目前沒有待確認的預約
-            </div>
-            <div th:each="a : ${pendingAppointments}" class="dash-row">
-              <div style="min-width: 90px">
-                <span th:text="${a.date}" style="color: var(--brown-dark); font-weight: 500"></span>
-                <span th:text="${a.startTime}" style="color: var(--brown-light); margin-left: 4px"></span>
+          <!-- 需求（追加，2026-08-31）：改成兩欄排版——左欄放待確認預約+會員名單，
+               右欄放待審核儲值+庫存管理，比照店家要求的畫面配置 -->
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 1.25rem;
+              align-items: start;
+            "
+          >
+            <div>
+              <!-- 待確認預約 -->
+              <div class="dash-panel">
+                <div class="dash-panel-header">
+                  <h3>待確認預約</h3>
+                  <a href="/appointments?status=PENDING_CONFIRM">查看全部 →</a>
+                </div>
+                <div th:if="${pendingAppointments == null or pendingAppointments.isEmpty()}" class="dash-empty">
+                  目前沒有待確認的預約
+                </div>
+                <div th:each="a : ${pendingAppointments}" class="dash-row">
+                  <div style="min-width: 90px">
+                    <span th:text="${a.date}" style="color: var(--brown-dark); font-weight: 500"></span>
+                    <span th:text="${a.startTime}" style="color: var(--brown-light); margin-left: 4px"></span>
+                  </div>
+                  <div style="flex: 1">
+                    <span th:text="${a.ownerName}" style="color: var(--brown-dark)"></span>
+                    <span th:text="'/ ' + ${a.petName}" style="color: var(--brown-light)"></span>
+                  </div>
+                  <span class="badge" style="background: var(--pending-bg); color: var(--pending-fg);">待確認</span>
+                  <form th:action="@{/appointments/{id}/confirm(id=${a.id})}" method="post">
+                    <button type="submit" class="btn" style="padding: 4px 12px; font-size: 12.5px;">確認</button>
+                  </form>
+                </div>
               </div>
-              <div style="flex: 1">
-                <span th:text="${a.ownerName}" style="color: var(--brown-dark)"></span>
-                <span th:text="'/ ' + ${a.petName}" style="color: var(--brown-light)"></span>
-              </div>
-              <span class="badge" style="background: var(--pending-bg); color: var(--pending-fg);">待確認</span>
-              <form th:action="@{/appointments/{id}/confirm(id=${a.id})}" method="post">
-                <button type="submit" class="btn" style="padding: 4px 12px; font-size: 12.5px;">確認</button>
-              </form>
-            </div>
-          </div>
 
-          <!-- 待審核儲值 -->
-          <div class="dash-panel">
-            <div class="dash-panel-header">
-              <h3>待審核儲值申請</h3>
-              <a href="/admin/wallets">查看全部 →</a>
-            </div>
-            <div th:if="${pendingTopups == null or pendingTopups.isEmpty()}" class="dash-empty">
-              目前沒有待審核的儲值申請
-            </div>
-            <div th:each="r : ${pendingTopups}" class="dash-row">
-              <div style="min-width: 100px">
-                <span th:text="${#temporals.format(r.createdAt, 'MM/dd HH:mm')}" style="color: var(--brown-light)"></span>
+              <!-- 會員名單 -->
+              <div class="dash-panel">
+                <div class="dash-panel-header">
+                  <h3>會員名單</h3>
+                  <a href="/admin/wallets">查看全部（<span th:text="${memberCount}"></span>）→</a>
+                </div>
+                <div th:if="${recentCustomers == null or recentCustomers.isEmpty()}" class="dash-empty">
+                  尚無會員資料
+                </div>
+                <div th:each="c : ${recentCustomers}" class="dash-row">
+                  <div style="flex: 1">
+                    <span th:text="${c.name}" style="color: var(--brown-dark)"></span>
+                    <span th:text="${c.username}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
+                  </div>
+                  <span
+                    th:text="'$' + ${#numbers.formatInteger(walletsByUsername.get(c.username).balance, 0, 'COMMA')}"
+                    style="color: var(--brown-mid)"
+                  ></span>
+                  <a
+                    th:href="@{/admin/wallets/{u}(u=${c.username})}"
+                    class="btn btn-outline"
+                    style="padding: 4px 12px; font-size: 12.5px;"
+                    >查看錢包</a
+                  >
+                </div>
               </div>
-              <div style="flex: 1">
-                <span th:text="${r.name}" style="color: var(--brown-dark)"></span>
-                <span th:text="${r.username}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
-              </div>
-              <span style="font-weight: 600; color: var(--brown-dark)" th:text="'$' + ${#numbers.formatInteger(r.amount, 0, 'COMMA')}"></span>
-              <form
-                th:action="@{/admin/topup/{id}/confirm(id=${r.id})}"
-                method="post"
-                onsubmit="return confirm('確認已收到匯款，要幫此會員加值嗎？');"
-              >
-                <button type="submit" class="btn" style="padding: 4px 12px; font-size: 12.5px;">確認入帳</button>
-              </form>
             </div>
-          </div>
 
-          <!-- 會員名單 -->
-          <div class="dash-panel">
-            <div class="dash-panel-header">
-              <h3>會員名單</h3>
-              <a href="/admin/wallets">查看全部（<span th:text="${memberCount}"></span>）→</a>
-            </div>
-            <div th:if="${recentCustomers == null or recentCustomers.isEmpty()}" class="dash-empty">
-              尚無會員資料
-            </div>
-            <div th:each="c : ${recentCustomers}" class="dash-row">
-              <div style="flex: 1">
-                <span th:text="${c.name}" style="color: var(--brown-dark)"></span>
-                <span th:text="${c.username}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
+            <div>
+              <!-- 待審核儲值 -->
+              <div class="dash-panel">
+                <div class="dash-panel-header">
+                  <h3>待審核儲值申請</h3>
+                  <a href="/admin/wallets">查看全部 →</a>
+                </div>
+                <div th:if="${pendingTopups == null or pendingTopups.isEmpty()}" class="dash-empty">
+                  目前沒有待審核的儲值申請
+                </div>
+                <div th:each="r : ${pendingTopups}" class="dash-row">
+                  <div style="min-width: 100px">
+                    <span th:text="${#temporals.format(r.createdAt, 'MM/dd HH:mm')}" style="color: var(--brown-light)"></span>
+                  </div>
+                  <div style="flex: 1">
+                    <span th:text="${r.name}" style="color: var(--brown-dark)"></span>
+                    <span th:text="${r.username}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
+                  </div>
+                  <span style="font-weight: 600; color: var(--brown-dark)" th:text="'$' + ${#numbers.formatInteger(r.amount, 0, 'COMMA')}"></span>
+                  <form
+                    th:action="@{/admin/topup/{id}/confirm(id=${r.id})}"
+                    method="post"
+                    onsubmit="return confirm('確認已收到匯款，要幫此會員加值嗎？');"
+                  >
+                    <button type="submit" class="btn" style="padding: 4px 12px; font-size: 12.5px;">確認入帳</button>
+                  </form>
+                </div>
               </div>
-              <span
-                th:text="'$' + ${#numbers.formatInteger(walletsByUsername.get(c.username).balance, 0, 'COMMA')}"
-                style="color: var(--brown-mid)"
-              ></span>
-              <a
-                th:href="@{/admin/wallets/{u}(u=${c.username})}"
-                class="btn btn-outline"
-                style="padding: 4px 12px; font-size: 12.5px;"
-                >查看錢包</a
-              >
+
+              <!-- 需求（追加，2026-08-31）：庫存管理區塊——展示零售商品庫存/上架情況，
+                   低庫存（<=5）排前面並用紅色標示，方便店家一眼看到要補貨的商品 -->
+              <div class="dash-panel">
+                <div class="dash-panel-header">
+                  <h3>
+                    庫存管理
+                    <span
+                      th:if="${lowStockCount > 0}"
+                      class="badge"
+                      style="background: #fdecea; color: #c0392b; margin-left: 6px; font-size: 11px;"
+                      th:text="${lowStockCount} + ' 項低庫存'"
+                    ></span>
+                  </h3>
+                  <a href="/admin/retail-products">查看全部（<span th:text="${retailProductCount}"></span>）→</a>
+                </div>
+                <div th:if="${retailStockPreview == null or retailStockPreview.isEmpty()}" class="dash-empty">
+                  尚未上架任何零售商品
+                </div>
+                <div th:each="p : ${retailStockPreview}" class="dash-row">
+                  <div style="flex: 1">
+                    <span th:text="${p.name}" style="color: var(--brown-dark)"></span>
+                    <span th:text="'$' + ${p.price}" style="color: var(--brown-light); font-size: 12px; margin-left: 4px"></span>
+                  </div>
+                  <span
+                    th:if="${p.stockQuantity == 0}"
+                    class="badge"
+                    style="background: #fdecea; color: #c0392b;"
+                    >缺貨</span
+                  >
+                  <span
+                    th:if="${p.stockQuantity > 0 and p.stockQuantity <= 5}"
+                    class="badge"
+                    style="background: #fdf3e3; color: #a9711d;"
+                    th:text="'低庫存 · 剩 ' + ${p.stockQuantity}"
+                  ></span>
+                  <span
+                    th:if="${p.stockQuantity > 5}"
+                    style="color: var(--brown-mid); font-size: 12.5px;"
+                    th:text="'庫存 ' + ${p.stockQuantity}"
+                  ></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

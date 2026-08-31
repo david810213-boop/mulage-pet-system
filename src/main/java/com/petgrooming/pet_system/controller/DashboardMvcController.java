@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.PetService;
+import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
@@ -33,6 +34,7 @@ public class DashboardMvcController {
     private final WalletService walletService;
     private final TransactionRepository transactionRepository;
     private final WalkInOrderRepository walkInOrderRepository;
+    private final RetailProductService retailProductService; // 需求（追加，2026-08-31）：Dashboard 庫存管理區塊
 
     /**
      * JWT 版獲取當前登入使用者
@@ -104,6 +106,19 @@ public class DashboardMvcController {
                 walletsByUsername.put(c.getUsername(), walletService.getWallet(c.getUsername()));
             }
 
+            // 需求（追加，2026-08-31）：Dashboard 新增庫存管理區塊，展示零售商品的
+            // 上架/庫存狀況。低庫存門檻先用固定數字（<=5）判斷，零售商品目前沒有
+            // 像 StoreSupply 那樣的「安全庫存量」欄位可以讀，如果之後店家想要
+            // 每個商品分別設定門檻，需要另外幫 RetailProduct 加欄位。
+            // 排序：庫存量低的排前面，最需要店家注意的商品最先看到。
+            var activeRetailProducts = retailProductService.listActive().stream()
+                    .sorted(Comparator.comparingInt(com.petgrooming.pet_system.model.RetailProduct::getStockQuantity))
+                    .toList();
+            long lowStockCount = activeRetailProducts.stream()
+                    .filter(p -> p.getStockQuantity() <= 5)
+                    .count();
+            var retailStockPreview = activeRetailProducts.stream().limit(8).toList();
+
             model.addAttribute("todayCount", todayCount);
             model.addAttribute("todayRevenue", todayRevenue);
             model.addAttribute("pendingConfirmCount", pendingConfirmCount);
@@ -113,6 +128,9 @@ public class DashboardMvcController {
             model.addAttribute("pendingTopups", pendingTopups);
             model.addAttribute("recentCustomers", recentCustomers);
             model.addAttribute("walletsByUsername", walletsByUsername);
+            model.addAttribute("retailStockPreview", retailStockPreview);
+            model.addAttribute("retailProductCount", activeRetailProducts.size());
+            model.addAttribute("lowStockCount", lowStockCount);
             model.addAttribute("today", today);
         } else {
             model.addAttribute("appointments",
