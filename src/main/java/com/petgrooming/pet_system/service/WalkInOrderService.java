@@ -218,17 +218,17 @@ public class WalkInOrderService {
         // 若這張單有綁定會員，通知家長可以來接寵物了
         // 需求（追加，2026-08-30）：文案改版（店家指定新內容），跟 AppointmentService
         // 同一份模板同步更新，避免只改一處造成兩個通知來源文字不一致。
+        // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免這幾個生僻
+        // Unicode 符號在存檔/複製貼上過程中位元組被弄壞，導致編譯器解析失敗
+        // （之前踩過的坑：曾經因為這個原因報 "illegal start of expression"）。
+        // 逃逸序列對照的符號說明，請見交付 README，不要把實際符號貼進這個檔案。
         if (saved.getMember() != null) {
             String notifyText = String.format(
-<<<<<<< HEAD
-                    "【慕沐村 Mulage pet】✨您好，%s 的美容服務已經完成囉！%n🐾請於2小時內前來接寶貝回家喲~非常感謝您的配合❤️",
-=======
                     "【慕沐村 Mulage pet】%n" +
-                            "𓂃 ✦ 美容完成 ✦ 𓂃%n" +
-                            "%s的美容服務完成囉 ɞ%n" +
+                            "\ud80c\udc83 \u2726 美容完成 \u2726 \ud80c\udc83%n" +
+                            "%s的美容服務完成囉 \u025e%n" +
                             "再麻煩家長於 2 小時內%n" +
-                            "前來接寶貝回家 ♡",
->>>>>>> c94acb3a4011f81d4196242a639257fe471664b2
+                            "前來接寶貝回家 \u2661",
                     saved.getPetName());
             lineMessagingService.pushText(saved.getMember().getLineUserId(), notifyText);
         }

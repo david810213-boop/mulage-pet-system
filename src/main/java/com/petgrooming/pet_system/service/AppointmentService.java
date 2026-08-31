@@ -449,33 +449,38 @@ public class AppointmentService {
 
     // 需求 13：預約確認通知文字內容 + 發送，供「店家點確認」與「當日臨時預約自動確認」共用
     // 需求（追加，2026-08-30）：文案改版（店家指定新內容），改成完整的預約須知格式。
+    // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免這些生僻 Unicode
+    // 符號在存檔/複製貼上過程中位元組被弄壞、導致編譯失敗（踩過的坑：
+    // "illegal start of expression"）。中文字本身沒有這個風險，維持原樣。
+    // 註解裡故意不放實際符號本身（連放在註解裡都曾經導致編譯錯誤），
+    // 逃逸序列對照的符號說明，請見交付 README，不要再貼進這個檔案。
     private void sendConfirmedNotify(Appointment saved) {
         String dateStr = saved.getDate().format(java.time.format.DateTimeFormatter.ofPattern("M/d"));
         String notifyText = String.format(
                 "【慕沐村 Mulage pet】%n" +
-                        "〔✓ 預約確認〕%n" +
+                        "\u3014\u2713 預約確認\u3015%n" +
                         "%s  %s%n" +
-                        "%s的美容預約已確認 ♡%n%n" +
-                        "⏰ 預約提醒%n" +
+                        "%s的美容預約已確認 \u2661%n%n" +
+                        "\u23f0 預約提醒%n" +
                         "預約前一天將再次傳送訊息提醒您%n%n" +
-                        "𓂃 預約時間%n" +
-                        "・狗狗最早可於預約時間前 30 分鐘抵達%n" +
-                        "・遲到超過 20 分鐘，將自動取消當日預約，並視同臨時取消%n" +
-                        "・本店採全預約制，如需改期請提前告知%n%n" +
-                        "⌂ 接回時間%n" +
+                        "\ud80c\udc83 預約時間%n" +
+                        "\u30fb狗狗最早可於預約時間前 30 分鐘抵達%n" +
+                        "\u30fb遲到超過 20 分鐘，將自動取消當日預約，並視同臨時取消%n" +
+                        "\u30fb本店採全預約制，如需改期請提前告知%n%n" +
+                        "\u2302 接回時間%n" +
                         "美容完成後請於 2 小時內接回%n" +
                         "逾時將酌收一次性延遲服務費$200%n" +
-                        "如有特殊情況，請提前與我們詢問ɞ%n%n" +
-                        "୨୧ 取消／異動%n" +
+                        "如有特殊情況，請提前與我們詢問\u025e%n%n" +
+                        "\u0b68\u0b67 取消／異動%n" +
                         "預約前 24 小時內臨時取消，下次預約需支付50%% 訂金；未赴約訂金恕不退還。%n" +
                         "會員臨時取消，當次取消費用（美容費用30%%）將直接由儲值金扣除。%n%n" +
-                        "🐾 美容小提醒%n" +
-                        "・腳底毛皆採平剃，如有特殊需求請提前告知%n" +
-                        "・為確保毛孩安全，現場採門禁管理，恕不開放家長等候%n%n" +
-                        "✦ 營業時間%n" +
+                        "\ud83d\udc3e 美容小提醒%n" +
+                        "\u30fb腳底毛皆採平剃，如有特殊需求請提前告知%n" +
+                        "\u30fb為確保毛孩安全，現場採門禁管理，恕不開放家長等候%n%n" +
+                        "\u2726 營業時間%n" +
                         "最後接狗／貓時間為 19:30%n%n" +
                         "感謝家長的配合與理解%n" +
-                        "期待與您和寶貝們相見♡",
+                        "期待與您和寶貝們相見\u2661",
                 dateStr, saved.getStartTime(), saved.getPetName());
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
     }
@@ -512,16 +517,19 @@ public class AppointmentService {
     // 原本這裡有一段「隔天預約時間早於 11:00 要額外提醒準時到場」的邏輯
     // （EARLY_SLOT_CUTOFF），但店家開門時間本來就是 11:00，條件永遠不會成立，
     // 是早就存在的死代碼，新範本也沒有適合放這句提醒的位置，順手一併拿掉。
+    // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免存檔/複製貼上
+    // 過程中位元組被弄壞導致編譯失敗（踩過的坑）。逃逸序列對照的符號說明，
+    // 請見交付 README，不要把實際符號貼進這個檔案（連放在註解裡都會出問題）。
     private String buildReminderText(Appointment appointment) {
         return String.format(
                 "【慕沐村 Mulage pet】%n" +
-                        "🔔預約提醒 🔔%n" +
+                        "\ud83d\udd14預約提醒 \ud83d\udd14%n" +
                         "***明天 %s %s%n" +
-                        "%s有預約洗香香 𓈒𓏸%n" +
-                        "🚗開車前來的家長%n" +
+                        "%s有預約洗香香 \ud80c\ude12\ud80c\udff8%n" +
+                        "\ud83d\ude97開車前來的家長%n" +
                         "可於社區大門外短暫停靠接送%n" +
                         "請勿停放於「車道出入口」%n" +
-                        "明天見 ʚ",
+                        "明天見 \u029a",
                 appointment.getDate(), appointment.getStartTime(), appointment.getPetName());
     }
 
@@ -599,12 +607,15 @@ public class AppointmentService {
 
         // 用官方 LINE 通知家長可以來店接寵物了
         // 需求（追加，2026-08-30）：文案改版（店家指定新內容）。
+        // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免存檔/複製貼上
+        // 過程中位元組被弄壞導致編譯失敗（踩過的坑，跟 WalkInOrderService 同一份模板）。
+        // 逃逸序列對照的符號說明，請見交付 README，不要把實際符號貼進這個檔案。
         String notifyText = String.format(
                 "【慕沐村 Mulage pet】%n" +
-                        "𓂃 ✦ 美容完成 ✦ 𓂃%n" +
-                        "%s的美容服務完成囉 ɞ%n" +
+                        "\ud80c\udc83 \u2726 美容完成 \u2726 \ud80c\udc83%n" +
+                        "%s的美容服務完成囉 \u025e%n" +
                         "再麻煩家長於 2 小時內%n" +
-                        "前來接寶貝回家 ♡",
+                        "前來接寶貝回家 \u2661",
                 saved.getPetName());
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
 
