@@ -894,6 +894,23 @@
         slotsField.style.display = "block";
         container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
 
+        // 需求（追加，2026-08-31）：不能只靠日期選擇器的 min 屬性擋今天——
+        // LINE 內建瀏覽器（LIFF webview）不完全可靠，同一台測試手機實測發現
+        // 還是選得到今天。這裡加一層 JS 防呆，選到今天直接明確提示，不用
+        // 等送出預約後才被後端擋下來、顯示不夠明確的錯誤。
+        const todayStrCheck = (() => {
+          const d = new Date();
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        })();
+        if (selectedDate === todayStrCheck) {
+          container.innerHTML =
+            '<div class="slots-empty">⚠️ 不開放當天提出預約申請，如需要預約當日，請直接聯繫官方 LINE 或致電 0902-301-820</div>';
+          return;
+        }
+
         try {
           // 需求 16：先檢查是否為公休日，是的話直接提示，不用等 /slots 回傳空清單
           const closedDates = await loadClosedDates();
@@ -1159,7 +1176,18 @@
             }),
           });
 
-          const data = await res.json().catch(() => null);
+          // 需求（追加，2026-08-31）：後端回傳的錯誤是純文字（不是 JSON），
+          // 用 res.json() 解析純文字會拋例外被 .catch() 吞掉，導致畫面只顯示
+          // 寫死的 res.status（例如「400」），看不到真正的錯誤原因——這是專案
+          // 疑難排解文件裡早就記過的同一個坑，這裡補上正確做法：先讀
+          // res.text()，能解析成 JSON 才當 JSON 用，不然直接顯示純文字本身。
+          const rawBody = await res.text();
+          let data = null;
+          try {
+            data = JSON.parse(rawBody);
+          } catch (e) {
+            data = rawBody;
+          }
           if (!res.ok) {
             showToast(
               "預約失敗：" +
