@@ -508,6 +508,16 @@
             <option value="">請選擇毛孩</option>
             ${myPets.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}（${escapeHtml(p.breed)}）</option>`).join("")}
           </select>
+          <!-- 需求（追加，2026-08-31）：選到貓咪時顯示預約時段小提醒，
+               引導家長優先選擇 11:00 或 16:00 後這兩個相對安靜的時段。 -->
+          <div
+            id="catBookingTip"
+            style="display:none; margin-top:8px; padding:8px 10px; background:#fdf3e3; border:1px solid #e6c366; border-radius:8px; font-size:12.5px; line-height:1.6; color:#8a6d3b;"
+          >
+            🐱 貓咪預約小提醒<br />
+            為了讓貓咪有較安靜、放鬆的美容環境，預約時建議優先選擇 11:00 或
+            16:00 後，這兩個時段現場相對較安靜 ♡
+          </div>
         </div>
       </div>
 
@@ -750,6 +760,12 @@
         const isExisting = !!(pet && pet.isExistingCustomer);
         const petType =
           pet && pet.petType ? String(pet.petType).toUpperCase() : null;
+
+        // 需求（追加，2026-08-31）：選到貓咪時顯示預約時段小提醒
+        const catTipEl = document.getElementById("catBookingTip");
+        if (catTipEl) {
+          catTipEl.style.display = petType === "CAT" ? "block" : "none";
+        }
         // 需求（追加，菜單簡化）：貓咪依品種自動判斷的毛髮分類（單層毛/雙層毛/長毛），
         // 只顯示對應分類的套餐項目。這隻貓的分類是 null 的話（特殊貓種、品種不在
         // 對照表裡），不篩選、顯示全部貓咪項目——讓店家人工協助這位顧客判斷，
