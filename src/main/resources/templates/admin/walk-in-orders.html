@@ -537,7 +537,11 @@
       }
 
       // 表單一開始至少給一行
-      addItemRow();
+      // 需求（追加，2026-09-04）：這行呼叫移到下面 petSelect 等變數宣告完成
+      // 之後才執行——之前 addItemRow() 內部沒有用到 petSelect，放在這裡沒問題；
+      // 這次改動讓 addItemRow() 內部會讀取 petSelect.value，提前呼叫會在
+      // petSelect 這個 const 變數還沒宣告時就存取它，直接讓整支 script 中斷
+      // 執行（後面的會員搜尋監聽器等全部不會註冊），是這次真的踩到的坑。
 
       // 待補經手人清單裡每一列的下拉選單，也用同一份員工資料填入
       document.querySelectorAll('.pending-staff-select').forEach(function (sel) {
@@ -556,6 +560,19 @@
       const memberSelectedTag  = document.getElementById('memberSelectedTag');
       const petSelect          = document.getElementById('petSelect');
       const petNameInput       = document.getElementById('petNameInput');
+
+      // 需求（追加，2026-08-24）：狗狗定價流程簡化——開單時自動帶入建議套餐，
+      // 完整的寵物資料（體重、是否已鎖定固定套餐）留著供查找。
+      // 需求（追加，2026-09-04）：這個宣告從原本比較後面的位置移到這裡——
+      // addItemRow() 現在會用到 currentPetsData，而 addItemRow() 在下面
+      // 馬上就會被呼叫一次（表單一開始給一行），如果宣告還留在後面，
+      // 一樣會踩到跟 petSelect 那次一樣的「const/let 提前存取」問題，
+      // 導致整支 script 中斷、後面的會員搜尋監聽器都不會註冊。
+      let currentPetsData = [];
+
+      // 需求（追加，2026-09-04）：addItemRow() 內部會用到上面剛宣告的
+      // petSelect、currentPetsData，一定要放在宣告完成之後才呼叫。
+      addItemRow();
 
       let searchDebounce = null;
 
@@ -694,7 +711,7 @@
       // fillPetSelect 原本只把 p.name/p.petTypeLabel 放進下拉選單的文字，
       // 完整的寵物資料（體重、是否已鎖定固定套餐）沒有留著，選了寵物之後
       // 沒辦法用來判斷該建議哪個套餐。這裡额外存一份完整資料供查找。
-      let currentPetsData = [];
+      // （宣告本身已經移到上面靠前的位置，這裡不再重複宣告一次。）
 
       // 跟後端 DogWeightTier 同一套體重級距邊界（見 booking.html/
       // walk-in-order-checkout.html 同樣的函式，三處刻意保持邏輯一致）。
