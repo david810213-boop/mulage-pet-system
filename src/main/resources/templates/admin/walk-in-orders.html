@@ -354,15 +354,72 @@
         });
       }
 
+      // 需求（追加，2026-09-04）：現場開單「建立新單」的服務項目下拉選單，
+      // 比照 LIFF／預約現場加單頁的做法，依選定寵物的物種／貓咪毛髮分類
+      // 篩選可選項目——之前這裡完全沒有篩選，選了貓也看得到狗的項目，
+      // 也看得到跟這隻貓毛髮分類不符的「單次」套餐。規則：
+      //   - 物種不符（GroomingItem.applicablePetType 跟寵物物種不同）的
+      //     項目濾掉，物種通用（applicablePetType 是 null）的項目兩邊都看得到
+      //   - 貓咪：依毛髮分類（catCoatCategory）進一步篩選「單次」套餐
+      //     （CAT013~024 這類設定了 catCoatCategory 的項目）；沒有設定
+      //     catCoatCategory 的項目（加購、基礎保養這類）不受這層篩選影響，
+      //     維持顯示——也就是店家要求的「保留單次項目」：只挑掉毛髮分類
+      //     不符的單次套餐，不會把整個分類的項目都藏起來
+      //   - 品種不在對照表裡（catCoatCategory 抓不到）的特殊貓種，不篩選，
+      //     顯示全部貓咪單次套餐讓店家人工判斷，跟 LIFF 行為一致
+      //   - 狗狗維持現狀，只篩物種、不篩體重級距（體重級距篩選是已知待辦，
+      //     這次沒有一併處理，避免範圍擴太大）
+      function filterItemsForPet(items, pet) {
+        if (!pet || !pet.petType) return items;
+        const petType = String(pet.petType).toUpperCase();
+        const catCoatCategory =
+          petType === 'CAT' && pet.catCoatCategory ? String(pet.catCoatCategory).toUpperCase() : null;
+        return items.filter(function (item) {
+          if (item.applicablePetType && String(item.applicablePetType).toUpperCase() !== petType) {
+            return false;
+          }
+          if (petType === 'CAT' && item.catCoatCategory) {
+            if (!catCoatCategory) return true; // 特殊貓種，不篩選
+            return String(item.catCoatCategory).toUpperCase() === catCoatCategory;
+          }
+          return true;
+        });
+      }
+
+      // 需求（追加，2026-09-04）：選寵物之後，重新篩選「已經存在」的項目列
+      // 下拉選單內容（新增的列會在 addItemRow() 裡自動套用篩選，不用另外處理）。
+      // 原本選的項目如果篩選後還在，保留選擇；不在了（例如換了不同物種/毛髮
+      // 分類的寵物）就清空，請店員重新選，避免送出跟寵物不符的項目。
+      function refreshItemRowOptions(pet) {
+        document.querySelectorAll('select[name="itemCodes"]').forEach(function (select) {
+          const previousValue = select.value;
+          select.innerHTML = '';
+          const emptyOpt = document.createElement('option');
+          emptyOpt.value = '';
+          emptyOpt.textContent = '請選擇項目';
+          select.appendChild(emptyOpt);
+          appendItemOptions(select, filterItemsForPet(POINT_ITEMS, pet));
+          if (otherItemsUnlocked) {
+            const group = document.createElement('optgroup');
+            group.label = '✨ 其他加購項目（不計分）';
+            appendItemOptions(group, filterItemsForPet(OTHER_ITEMS, pet));
+            select.appendChild(group);
+          }
+          const stillValid = Array.from(select.options).some(function (o) { return o.value === previousValue; });
+          select.value = stillValid ? previousValue : '';
+        });
+      }
+
       // 一旦任何一列選到「特殊項目」，把不計分項目補進所有現存的下拉選單（含之後新增的列）
       function unlockOtherItemsIfNeeded(select) {
         const selectedItem = GROOMING_ITEMS.find(function (i) { return i.itemCode === select.value; });
         if (selectedItem && selectedItem.performanceCategory === 'SPECIAL' && !otherItemsUnlocked) {
           otherItemsUnlocked = true;
+          const targetPet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
           document.querySelectorAll('select[name="itemCodes"]').forEach(function (sel) {
             const group = document.createElement('optgroup');
             group.label = '✨ 其他加購項目（不計分）';
-            appendItemOptions(group, OTHER_ITEMS);
+            appendItemOptions(group, filterItemsForPet(OTHER_ITEMS, targetPet));
             sel.appendChild(group);
           });
         }
@@ -388,7 +445,7 @@
         return select;
       }
 
-      function addItemRow() {
+      function addItemRow(pet) {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
 
@@ -399,12 +456,15 @@
         emptyOpt.value = '';
         emptyOpt.textContent = '請選擇項目';
         select.appendChild(emptyOpt);
-        appendItemOptions(select, POINT_ITEMS);
+        // 需求（追加，2026-09-04）：新增列時，依目前選定的寵物（如果呼叫端
+        // 沒有直接帶入 pet 參數，就從下拉選單目前的值反查）篩選可選項目。
+        const targetPet = pet !== undefined ? pet : currentPetsData.find(function (p) { return p.name === petSelect.value; });
+        appendItemOptions(select, filterItemsForPet(POINT_ITEMS, targetPet));
         // 若這一列建立時，其他列已經解鎖過不計分項目，這一列也要一併補上，維持一致
         if (otherItemsUnlocked) {
           const group = document.createElement('optgroup');
           group.label = '✨ 其他加購項目（不計分）';
-          appendItemOptions(group, OTHER_ITEMS);
+          appendItemOptions(group, filterItemsForPet(OTHER_ITEMS, targetPet));
           select.appendChild(group);
         }
         select.addEventListener('change', function () { unlockOtherItemsIfNeeded(select); });
@@ -693,6 +753,8 @@
       petSelect.addEventListener('change', function () {
         if (this.value) petNameInput.value = this.value;
         const pet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
+        // 需求（追加，2026-09-04）：換寵物時，重新篩選已經存在的項目列選項
+        refreshItemRowOptions(pet);
         if (pet) applySuggestedItem(pet);
         renderLockedPetBanner(pet);
       });
