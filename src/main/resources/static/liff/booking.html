@@ -767,8 +767,7 @@
         const specialApplicable =
           status.specialDiscountRate &&
           status.specialDiscountCategories &&
-          status.specialDiscountCategories.indexOf(item.performanceCategory) !==
-            -1;
+          status.specialDiscountCategories.indexOf(item.performanceCategory) !== -1;
         const memberApplicable =
           item.discountEligible &&
           typeof status.memberDiscountRate === "number" &&
@@ -782,16 +781,10 @@
             : { price: memberPrice, label: "會員折扣" };
         }
         if (specialApplicable) {
-          return {
-            price: price * status.specialDiscountRate,
-            label: status.specialDiscountLabel,
-          };
+          return { price: price * status.specialDiscountRate, label: status.specialDiscountLabel };
         }
         if (memberApplicable) {
-          return {
-            price: price * status.memberDiscountRate,
-            label: "會員折扣",
-          };
+          return { price: price * status.memberDiscountRate, label: "會員折扣" };
         }
         return { price, label: null };
       }
