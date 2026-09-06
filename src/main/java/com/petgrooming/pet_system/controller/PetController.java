@@ -147,7 +147,16 @@ public class PetController {
     // 才可能兩者都適用，狗狗只有首次體驗）跟會員儲值折扣分開回傳，前端渲染
     // 時自己取較優惠者，邏輯跟後端 resolvePreferredDiscount() 一致。
     @GetMapping("/{petId}/discount-status")
-    public ResponseEntity<?> getDiscountStatus(HttpServletRequest request, @PathVariable Long petId) {
+    public ResponseEntity<?> getDiscountStatus(
+            HttpServletRequest request,
+            @PathVariable Long petId,
+            // 需求（追加，2026-09-06）：距上次洗澡幾天／是否符合定期養護禮遇資格，
+            // 應該用「顧客實際選的預約日期」去算，不是永遠用「今天」——
+            // 例如顧客選好幾個月後的日期，等到那天早就超過90天，不該還顯示
+            // 符合資格。前端在選好日期後會帶這個參數重新查一次；還沒選日期時
+            // （例如剛選完毛孩、日期欄位還空著）不帶這個參數，退回用「今天」
+            // 當基準日，先讓使用者看到一個大概的狀態。
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String asOfDate) {
         try {
             petService.assertOwnership(petId, currentUsername(request));
             var pet = petService.getPetEntity(petId);
@@ -155,6 +164,16 @@ public class PetController {
             String petType = pet.getPetType().name();
             boolean isCat = "CAT".equals(petType);
             boolean isDog = "DOG".equals(petType);
+
+            LocalDate referenceDate = LocalDate.now();
+            if (asOfDate != null && !asOfDate.isBlank()) {
+                try {
+                    referenceDate = LocalDate.parse(asOfDate);
+                } catch (java.time.format.DateTimeParseException e) {
+                    // 格式錯誤就忽略，退回用今天，不要因為這個附加參數壞掉
+                    // 而讓整支 API 掛掉
+                }
+            }
 
             boolean firstVisitEligible = !petConsumptionHistoryService.hasPriorPaidService(
                     owner.getId(), pet.getName(), null);
@@ -164,7 +183,7 @@ public class PetController {
             if (isCat) {
                 var lastBath = catRewashDiscountService.findLastBathDate(owner.getId(), pet.getName());
                 if (lastBath.isPresent()) {
-                    lastBathDaysAgo = ChronoUnit.DAYS.between(lastBath.get(), LocalDate.now());
+                    lastBathDaysAgo = ChronoUnit.DAYS.between(lastBath.get(), referenceDate);
                     rewashEligible = lastBathDaysAgo >= 0 && lastBathDaysAgo < CatRewashDiscountService.REWASH_WINDOW_DAYS;
                 }
             }
@@ -175,7 +194,7 @@ public class PetController {
             Double specialRate = null;
             List<String> specialCategories = List.of();
 
-            // 首次體驗跟回洗優惠互斥，首次體驗優先判斷（邏輯跟結帳時
+            // 首次體驗跟定期養護禮遇互斥，首次體驗優先判斷（邏輯跟結帳時
             // populateDiscountInfo() 的判斷順序一致：先看是不是首次消費）
             if (isCat && firstVisitEligible) {
                 specialLabel = "首次體驗優惠";
@@ -186,7 +205,10 @@ public class PetController {
                 specialRate = DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
                 specialCategories = List.of("BATH_SMALL", "BATH_LARGE");
             } else if (isCat && rewashEligible) {
-                specialLabel = "回洗優惠";
+                // 需求（追加，2026-09-06）：文案改版，顧客端一律顯示「定期養護禮遇」，
+                // 不用「回洗優惠」這個比較像內部行話的講法。後台（例如「貓咪回洗
+                // 名單」管理頁）維持原本用語不變，這裡只改對顧客顯示的文字。
+                specialLabel = "定期養護禮遇";
                 specialRate = CatRewashDiscountService.REWASH_DISCOUNT_RATE;
                 specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
             }

@@ -744,7 +744,18 @@
         currentPetDiscountStatus = null;
         if (!petId) return;
         try {
-          const res = await fetch("/api/pets/" + petId + "/discount-status", {
+          // 需求（追加，2026-09-06）：距上次洗澡幾天／是否符合定期養護禮遇資格，
+          // 要用「顧客實際選的預約日期」去算，不是永遠用「今天」——例如選了
+          // 好幾個月後的日期，等到那天早就超過90天，不該還顯示符合資格。
+          // 選毛孩當下如果日期欄位還是空的（通常會先選毛孩才選日期），就先不帶
+          // 這個參數，後端會退回用「今天」當基準日；等選好日期後
+          // （onDateChange 裡也會呼叫這裡）就會用正確的日期重新查一次。
+          const url =
+            "/api/pets/" +
+            petId +
+            "/discount-status" +
+            (selectedDate ? "?asOfDate=" + encodeURIComponent(selectedDate) : "");
+          const res = await fetch(url, {
             headers: authHeaders(),
           });
           if (res.ok) {
@@ -851,7 +862,7 @@
             discountNoticeEl.style.background = "#f2f0ec";
             discountNoticeEl.style.borderColor = "#cfc9bb";
             discountNoticeEl.style.color = "#6b6656";
-            discountNoticeEl.textContent = `距上次洗澡 ${status.lastBathDaysAgo} 天，已超過 90 天回洗優惠期間`;
+            discountNoticeEl.textContent = `距上次洗澡 ${status.lastBathDaysAgo} 天，已超過 90 天定期養護禮遇期間`;
           } else {
             discountNoticeEl.style.display = "none";
           }
