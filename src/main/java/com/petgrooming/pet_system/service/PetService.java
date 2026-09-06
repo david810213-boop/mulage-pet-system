@@ -192,6 +192,21 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
+    // ── 需求（追加，2026-09-06）：寵物信息管理頁面 ──────────────────────────
+    // 用途：後台集中管理所有寵物（跨會員），把原本分散在「會員信息」寵物卡片、
+    // 「現場開單」/「預約現場加單」頁面才看得到的鎖定套餐狀態集中到一頁，
+    // 不用先找到會員、點進去才看得到。
+    public List<PetResponse> listAllPets() {
+        return petRepository.findByIsDeletedFalseOrderByNameAsc().stream()
+                .map(pet -> {
+                    var lockedItem = pet.getLockedGroomingItemId() != null
+                            ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
+                            : null;
+                    return PetResponse.from(pet, lockedItem);
+                })
+                .toList();
+    }
+
     // ── 3之2. 狗狗定價流程簡化：鎖定/解鎖固定套餐（新增）───────────────────
     // 用途：成犬結帳核對時，店員選出真正對應的套餐項目後，呼叫這個方法把
     // 這個項目「鎖」在寵物資料上，之後不用再重複選單。

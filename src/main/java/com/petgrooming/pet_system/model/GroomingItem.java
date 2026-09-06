@@ -106,4 +106,16 @@ public class GroomingItem {
     @Enumerated(EnumType.STRING)
     @Column(name = "dog_weight_tier")
     private com.petgrooming.pet_system.enums.DogWeightTier dogWeightTier;
+
+    // 需求（追加，2026-09-06）：狗狗套餐項目再依「毛長」細分——原本同一個體重
+    // 級距底下短毛/長毛兩種都會顯示、由顧客自己挑，改成搭配 Pet.coatType（店家
+    // 後台定義的毛長）自動篩選，只顯示符合這隻狗實際毛長的那一種，跟體重級距
+    // 篩選疊加使用（兩個條件都要符合）。
+    // 沿用 CoatType 這個既有 enum（雖然它還有 MEDIUM/UNDEFINED 兩個對狗狗套餐
+    // 沒有實際對應品項的值，但比另外新建一個功能重複的 enum 更簡潔一致）——
+    // 狗狗品項只會被標記 SHORT 或 LONG 兩種值。
+    // null = 跟毛長無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dog_coat_length")
+    private com.petgrooming.pet_system.enums.CoatType dogCoatLength;
 }

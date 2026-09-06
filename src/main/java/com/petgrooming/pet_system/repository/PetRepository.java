@@ -21,4 +21,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
 
     // 需求 8-2：查所有貓咪（回洗優惠名單篩選用）
     List<Pet> findByPetType(com.petgrooming.pet_system.enums.PetType petType);
+
+    // 需求（追加，2026-09-06）：寵物信息管理頁面用——列出所有未刪除的寵物，依名字排序
+    List<Pet> findByIsDeletedFalseOrderByNameAsc();
 }

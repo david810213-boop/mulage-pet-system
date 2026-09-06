@@ -19,7 +19,9 @@ public class GroomingItemResponse {
     private boolean requiresExistingCustomer; // 需求（追加）：僅限既有客戶
     private String applicablePetType; // 需求（追加）：適用物種（DOG/CAT/null=兩者皆可）
     private String catCoatCategory; // 需求（追加）：貓咪毛髮分類（SINGLE_LAYER/DOUBLE_LAYER/LONG_HAIR/null=與毛髮分類無關）
-    private String dogWeightTier; // 需求（追加）：狗狗體重級距（SMALL~EXTRA_LARGE/null=與體重級距無關）
+    private String dogWeightTier;
+    // 需求（追加，2026-09-06）：狗狗毛長篩選用
+    private String dogCoatLength; // 需求（追加）：狗狗體重級距（SMALL~EXTRA_LARGE/null=與體重級距無關）
     // 需求（追加，2026-08-26）：假日限定套餐——這個項目是不是「完整套餐」
     // （有副組成的項目才算），由 GroomingServiceImpl 組裝時額外查好塞進來，
     // 不是從 GroomingItem entity 直接映射（entity 本身沒有這個概念，是從
@@ -45,6 +47,7 @@ public class GroomingItemResponse {
         res.setApplicablePetType(item.getApplicablePetType() != null ? item.getApplicablePetType().name() : null);
         res.setCatCoatCategory(item.getCatCoatCategory() != null ? item.getCatCoatCategory().name() : null);
         res.setDogWeightTier(item.getDogWeightTier() != null ? item.getDogWeightTier().name() : null);
+        res.setDogCoatLength(item.getDogCoatLength() != null ? item.getDogCoatLength().name() : null);
         res.setDiscountEligible(item.isDiscountEligible());
         return res;
     }

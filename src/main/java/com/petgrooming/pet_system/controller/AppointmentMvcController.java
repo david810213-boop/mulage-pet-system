@@ -240,15 +240,24 @@ public class AppointmentMvcController {
                 isDog && lockedItemId == null && pet.getWeight() != null
                         ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
                         : null;
+        // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分，邏輯跟預約結帳頁
+        // （PaymentMvcController）同一套，見該處註解說明。
+        final com.petgrooming.pet_system.enums.CoatType petCoatType = pet.getCoatType();
+        final boolean coatDefined = isDog
+                && (petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
+                        || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG);
         final String catCoatCategory =
                 isCat && pet.getCatCoatCategory() != null ? pet.getCatCoatCategory().name() : null;
 
         return base.stream()
                 .filter(i -> {
-                    // 狗狗：已鎖定固定套餐的話，只顯示那個固定項目；沒鎖定則依體重級距篩選
+                    // 狗狗：已鎖定固定套餐的話，只顯示那個固定項目；沒鎖定則依體重級距＋毛長篩選
                     if (i.getDogWeightTier() != null) {
                         if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                        if (dogTier != null) return i.getDogWeightTier().equals(dogTier.name());
+                        if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
+                        if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
+                            return i.getDogCoatLength().equals(petCoatType.name());
+                        }
                         return true; // 量不到體重（例如體重欄位還沒填）時保守顯示全部，避免誤擋
                     }
                     // 貓咪：依毛髮分類篩選；品種不在對照表裡（分類是 null）時不篩選，顯示全部讓店家人工判斷

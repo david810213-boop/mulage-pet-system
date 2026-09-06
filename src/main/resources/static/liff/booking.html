@@ -799,7 +799,7 @@
              </div>`
           : `<div class="item-price">$${item.price}</div>`;
         return `
-      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-is-package="${item.isPackage ? "true" : "false"}">
+      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-dog-coat-length="${item.dogCoatLength || ""}" data-is-package="${item.isPackage ? "true" : "false"}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -888,6 +888,12 @@
           isDog && pet && !dogLockedItemId
             ? computeDogWeightTier(pet.weight)
             : null;
+        // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
+        // 幫這隻狗定義過毛長（短毛/長毛），除了體重級距要符合，毛長也要符合。
+        // 還沒定義（UNDEFINED）或定義成中長毛（MEDIUM，沒有對應品項分類）
+        // 就不篩毛長，維持「這個體重級距的都顯示」的行為。
+        const petCoatType = isDog && pet ? pet.coatType || null : null;
+        const coatDefined = petCoatType === "SHORT" || petCoatType === "LONG";
 
         // 需求（追加，2026-08-26）：假日（固定週六、週日）限定只能選完整套餐，
         // 通用單項加購（沒有副組成的項目，例如指甲修剪、貓咪基礎保養）整列隱藏，
@@ -936,6 +942,7 @@
             const applicable = row.dataset.applicablePetType || "";
             const itemCoatCategory = row.dataset.catCoatCategory || "";
             const itemDogTier = row.dataset.dogWeightTier || "";
+            const itemDogCoat = row.dataset.dogCoatLength || "";
             const isPackage = row.dataset.isPackage === "true";
             const itemId = row.dataset.itemId;
             const cb = row.querySelector("input[type=checkbox]");
@@ -964,11 +971,25 @@
             if (itemDogTier && !dogLockedItemId && dogWeightTier) {
               blockedByDogTier = itemDogTier !== dogWeightTier;
             }
+            // 需求（追加，2026-09-06）：毛長篩選，只在體重級距已經符合、且店家
+            // 已經定義毛長時才進一步篩，避免跟體重篩選規則疊加出奇怪的行為。
+            let blockedByDogCoat = false;
+            if (
+              itemDogTier &&
+              !dogLockedItemId &&
+              dogWeightTier &&
+              itemDogTier === dogWeightTier &&
+              coatDefined &&
+              itemDogCoat
+            ) {
+              blockedByDogCoat = itemDogCoat !== petCoatType;
+            }
             if (
               blockedByExisting ||
               blockedBySpecies ||
               blockedByCoat ||
               blockedByDogTier ||
+              blockedByDogCoat ||
               blockedByDogLock ||
               blockedByHoliday
             ) {

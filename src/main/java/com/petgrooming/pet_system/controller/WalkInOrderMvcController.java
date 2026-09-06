@@ -4,7 +4,6 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
@@ -31,7 +30,6 @@ public class WalkInOrderMvcController {
     private final WalkInOrderService walkInOrderService;
     private final GroomingService groomingService;
     private final UserService userService;
-    private final AppointmentService appointmentService;
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.WalletService walletService; // 需求 15
     private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 15
@@ -216,6 +214,11 @@ public class WalkInOrderMvcController {
                     pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
                             ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
                             : null;
+            // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分，邏輯跟預約結帳頁
+            // （PaymentMvcController）同一套，見該處註解說明。
+            final com.petgrooming.pet_system.enums.CoatType petCoatType = pet != null ? pet.getCoatType() : null;
+            final boolean coatDefined = petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
+                    || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG;
 
             // 需求（追加，2026-08-24 修正）：先抓一份完整、沒被篩過的服務項目清單，
             // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份
@@ -244,7 +247,10 @@ public class WalkInOrderMvcController {
                         // 沒有標體重級距的項目（通用加購）不受這條規則影響
                         if (i.getDogWeightTier() == null) return true;
                         if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                        if (dogTier != null) return i.getDogWeightTier().equals(dogTier.name());
+                        if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
+                        if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
+                            return i.getDogCoatLength().equals(petCoatType.name());
+                        }
                         return true; // 抓不到這隻狗的體重資料（例如純現場客沒建檔），不篩選，讓店員自己選
                     })
                     .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單

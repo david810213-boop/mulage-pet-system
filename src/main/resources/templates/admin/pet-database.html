@@ -1,0 +1,203 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-TW">
+  <head
+    th:replace="~{fragments/header :: common-head('寵物信息管理 | 慕沐村 Mulage pet')}"
+  ></head>
+  <body>
+    <div class="page-wrapper">
+      <div th:replace="~{fragments/nav :: nav}"></div>
+      <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h2 style="margin: 0">🐾 寵物信息管理</h2>
+          <a href="/admin/customers" class="btn">← 回會員信息</a>
+        </div>
+
+        <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
+          這裡集中列出全站所有寵物，狗狗的「鎖定固定套餐」可以直接在這裡操作，
+          不用先找到會員或跳去現場開單頁面。毛長（短毛/長毛）要先到「會員信息」
+          裡對應寵物的完整編輯頁定義，這裡只負責顯示跟鎖定套餐，不能改毛長。
+        </p>
+
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <input
+            type="text"
+            id="searchBox"
+            placeholder="搜尋寵物名或會員姓名..."
+            style="width: 100%; padding: 8px 10px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);"
+          />
+        </div>
+
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>寵物</th>
+                <th>會員</th>
+                <th>物種／品種</th>
+                <th>體重</th>
+                <th>毛長</th>
+                <th>目前套餐狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="petsTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--brown-light); padding: 20px;">
+                  載入中...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script th:inline="javascript">
+      const PETS = /*[[${pets}]]*/ [];
+      const GROOMING_ITEMS = /*[[${groomingItems}]]*/ [];
+
+      // 跟後端 DogWeightTier 同一套體重級距邊界（見 booking.html/
+      // walk-in-order-checkout.html 同樣的函式，刻意保持邏輯一致）。
+      function computeDogWeightTier(weight) {
+        const tiers = [
+          { code: "SMALL", max: 5 },
+          { code: "MEDIUM_SMALL", max: 10 },
+          { code: "MEDIUM", max: 16 },
+          { code: "MEDIUM_LARGE", max: 22 },
+          { code: "LARGE", max: 27 },
+          { code: "EXTRA_LARGE", max: Infinity },
+        ];
+        for (const t of tiers) {
+          if (weight <= t.max) return t.code;
+        }
+        return "EXTRA_LARGE";
+      }
+
+      // 需求（追加，2026-09-06）：找出符合這隻狗目前體重級距＋毛長的候選套餐，
+      // 給「鎖定套餐」的下拉選單用。跟 booking.html 等處的篩選規則一致：
+      // 毛長還沒定義（UNDEFINED）或定義成中長毛（MEDIUM，沒有對應品項分類）
+      // 就不篩毛長，兩種都列出來讓店員自己判斷選哪個。
+      function candidateItemsForDog(pet) {
+        const tier = computeDogWeightTier(pet.weight);
+        const coatDefined = pet.coatType === "SHORT" || pet.coatType === "LONG";
+        return GROOMING_ITEMS.filter((i) => {
+          if (i.dogWeightTier !== tier) return false;
+          if (coatDefined && i.dogCoatLength) return i.dogCoatLength === pet.coatType;
+          return true;
+        });
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]),
+        );
+      }
+
+      function lockActionCellHtml(pet) {
+        if (pet.petType !== "DOG") {
+          return '<span style="color: var(--brown-light); font-size: 12.5px;">不適用（僅狗狗適用）</span>';
+        }
+        if (pet.lockedGroomingItemId) {
+          return `
+            <div style="font-size: 12.5px;">
+              <div style="margin-bottom: 6px;">🔒 已鎖定：<strong>${escapeHtml(pet.lockedItemName)}</strong>　$${pet.lockedItemPrice}</div>
+              <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="unlockPet(${pet.id})">解鎖，重新報價</button>
+            </div>`;
+        }
+        const candidates = candidateItemsForDog(pet);
+        if (!candidates.length) {
+          return '<span style="color: var(--brown-light); font-size: 12.5px;">目前體重/毛長找不到對應套餐</span>';
+        }
+        const options = candidates
+          .map((i) => `<option value="${i.id}">${escapeHtml(i.name)}（$${i.price}）</option>`)
+          .join("");
+        return `
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <select id="lockSelect-${pet.id}" style="padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
+              ${options}
+            </select>
+            <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
+          </div>`;
+      }
+
+      function petRowHtml(pet) {
+        const coatLabelMap = { SHORT: "短毛", LONG: "長毛", MEDIUM: "中長毛", UNDEFINED: "未定義" };
+        return `
+        <tr data-pet-id="${pet.id}" data-search="${escapeHtml((pet.name + " " + pet.ownerName).toLowerCase())}">
+          <td>${escapeHtml(pet.name)}</td>
+          <td>${escapeHtml(pet.ownerName)}</td>
+          <td>${pet.petTypeLabel} / ${escapeHtml(pet.breed)}</td>
+          <td>${pet.weight} kg</td>
+          <td>${coatLabelMap[pet.coatType] || "未定義"}</td>
+          <td id="statusCell-${pet.id}">${lockActionCellHtml(pet)}</td>
+          <td>
+            <a href="#" onclick="alert('請到「會員信息」找到這位會員，點寵物旁的「完整編輯」即可修改毛長／其他資料'); return false;"
+               style="font-size: 12px;">完整編輯 →</a>
+          </td>
+        </tr>`;
+      }
+
+      function renderTable() {
+        const tbody = document.getElementById("petsTableBody");
+        if (!PETS.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="7" style="text-align:center; color:var(--brown-light); padding:20px;">目前沒有任何寵物資料</td></tr>';
+          return;
+        }
+        tbody.innerHTML = PETS.map(petRowHtml).join("");
+      }
+
+      async function lockPet(petId) {
+        const select = document.getElementById("lockSelect-" + petId);
+        const groomingItemId = select ? select.value : null;
+        if (!groomingItemId) return;
+        try {
+          const res = await fetch("/api/admin/pets/" + petId + "/lock-grooming-item", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ groomingItemId: Number(groomingItemId) }),
+          });
+          const rawBody = await res.text();
+          if (!res.ok) {
+            alert("鎖定失敗：" + rawBody);
+            return;
+          }
+          const updated = JSON.parse(rawBody);
+          const idx = PETS.findIndex((p) => p.id === petId);
+          if (idx !== -1) PETS[idx] = updated;
+          document.getElementById("statusCell-" + petId).innerHTML = lockActionCellHtml(updated);
+        } catch (e) {
+          alert("鎖定失敗：" + e.message);
+        }
+      }
+
+      async function unlockPet(petId) {
+        try {
+          const res = await fetch("/api/admin/pets/" + petId + "/unlock-grooming-item", {
+            method: "PUT",
+          });
+          const rawBody = await res.text();
+          if (!res.ok) {
+            alert("解鎖失敗：" + rawBody);
+            return;
+          }
+          const updated = JSON.parse(rawBody);
+          const idx = PETS.findIndex((p) => p.id === petId);
+          if (idx !== -1) PETS[idx] = updated;
+          document.getElementById("statusCell-" + petId).innerHTML = lockActionCellHtml(updated);
+        } catch (e) {
+          alert("解鎖失敗：" + e.message);
+        }
+      }
+
+      document.getElementById("searchBox").addEventListener("input", function () {
+        const kw = this.value.trim().toLowerCase();
+        document.querySelectorAll("#petsTableBody tr[data-pet-id]").forEach((row) => {
+          row.style.display = !kw || row.dataset.search.includes(kw) ? "" : "none";
+        });
+      });
+
+      renderTable();
+    </script>
+  </body>
+</html>
