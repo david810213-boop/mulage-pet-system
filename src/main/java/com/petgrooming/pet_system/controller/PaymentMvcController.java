@@ -154,13 +154,13 @@ public class PaymentMvcController {
                         ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
                         : null;
         // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
-        // 幫這隻狗定義過毛長（短毛/長毛），除了體重級距要符合，毛長也要符合，
-        // 不再讓短毛/長毛兩種都顯示出來給選。還沒定義（UNDEFINED）或定義成
-        // 中長毛（MEDIUM，狗狗品項沒有對應的中長毛分類）就不篩毛長，維持原本
-        // 「這個體重級距的都顯示」的行為，避免因為分類對不上而誤篩掉整個級距。
+        // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。中長毛現在
+        // 也有自己對應的套餐了（DOG049~072），一併算「已定義」。只有還沒
+        // 定義（UNDEFINED）才不篩毛長，維持「這個體重級距的都顯示」。
         final com.petgrooming.pet_system.enums.CoatType petCoatType = pet != null ? pet.getCoatType() : null;
         final boolean coatDefined = petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG;
+                || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
+                || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM;
         model.addAttribute("groomingItems", groomingService.getAllItems().stream()
                 .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                 .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))

@@ -218,7 +218,8 @@ public class WalkInOrderMvcController {
             // （PaymentMvcController）同一套，見該處註解說明。
             final com.petgrooming.pet_system.enums.CoatType petCoatType = pet != null ? pet.getCoatType() : null;
             final boolean coatDefined = petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                    || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG;
+                    || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
+                    || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM;
 
             // 需求（追加，2026-08-24 修正）：先抓一份完整、沒被篩過的服務項目清單，
             // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份

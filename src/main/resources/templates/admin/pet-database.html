@@ -79,7 +79,10 @@
       // 就不篩毛長，兩種都列出來讓店員自己判斷選哪個。
       function candidateItemsForDog(pet) {
         const tier = computeDogWeightTier(pet.weight);
-        const coatDefined = pet.coatType === "SHORT" || pet.coatType === "LONG";
+        const coatDefined =
+          pet.coatType === "SHORT" ||
+          pet.coatType === "LONG" ||
+          pet.coatType === "MEDIUM";
         return GROOMING_ITEMS.filter((i) => {
           if (i.dogWeightTier !== tier) return false;
           if (coatDefined && i.dogCoatLength) return i.dogCoatLength === pet.coatType;

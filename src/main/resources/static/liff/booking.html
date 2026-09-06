@@ -889,11 +889,14 @@
             ? computeDogWeightTier(pet.weight)
             : null;
         // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
-        // 幫這隻狗定義過毛長（短毛/長毛），除了體重級距要符合，毛長也要符合。
-        // 還沒定義（UNDEFINED）或定義成中長毛（MEDIUM，沒有對應品項分類）
-        // 就不篩毛長，維持「這個體重級距的都顯示」的行為。
+        // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。
+        // 中長毛現在也有自己對應的套餐了（DOG049~072），一併算「已定義」。
+        // 只有還沒定義（UNDEFINED）才不篩毛長，維持「這個體重級距的都顯示」。
         const petCoatType = isDog && pet ? pet.coatType || null : null;
-        const coatDefined = petCoatType === "SHORT" || petCoatType === "LONG";
+        const coatDefined =
+          petCoatType === "SHORT" ||
+          petCoatType === "LONG" ||
+          petCoatType === "MEDIUM";
 
         // 需求（追加，2026-08-26）：假日（固定週六、週日）限定只能選完整套餐，
         // 通用單項加購（沒有副組成的項目，例如指甲修剪、貓咪基礎保養）整列隱藏，

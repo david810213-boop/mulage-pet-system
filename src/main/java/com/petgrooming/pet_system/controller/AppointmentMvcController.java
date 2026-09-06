@@ -245,7 +245,8 @@ public class AppointmentMvcController {
         final com.petgrooming.pet_system.enums.CoatType petCoatType = pet.getCoatType();
         final boolean coatDefined = isDog
                 && (petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                        || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG);
+                        || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
+                        || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM);
         final String catCoatCategory =
                 isCat && pet.getCatCoatCategory() != null ? pet.getCatCoatCategory().name() : null;
 
