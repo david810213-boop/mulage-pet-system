@@ -100,11 +100,16 @@
         if (pet.petType !== "DOG") {
           return '<span style="color: var(--brown-light); font-size: 12.5px;">不適用（僅狗狗適用）</span>';
         }
+        // 需求（追加，2026-09-06）：解鎖按鈕放在跟鎖定按鈕同一個視覺位置
+        // （下拉選單+按鈕同一行），換一個對比色（紅色系，區別金色的鎖定
+        // 按鈕），排版盡量跟「未鎖定」狀態一致，不要一個換行一個不換行。
         if (pet.lockedGroomingItemId) {
           return `
-            <div style="font-size: 12.5px;">
-              <div style="margin-bottom: 6px;">🔒 已鎖定：<strong>${escapeHtml(pet.lockedItemName)}</strong>　$${pet.lockedItemPrice}</div>
-              <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="unlockPet(${pet.id})">解鎖，重新報價</button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <span style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
+                🔒 ${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）
+              </span>
+              <button type="button" style="padding: 4px 10px; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer;" onclick="unlockPet(${pet.id})">解鎖</button>
             </div>`;
         }
         const candidates = candidateItemsForDog(pet);
@@ -116,10 +121,10 @@
           .join("");
         return `
           <div style="display: flex; gap: 6px; align-items: center;">
-            <select id="lockSelect-${pet.id}" style="padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
+            <select id="lockSelect-${pet.id}" style="padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm); max-width: 180px;">
               ${options}
             </select>
-            <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
+            <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px; white-space: nowrap; min-height: auto;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
           </div>`;
       }
 
