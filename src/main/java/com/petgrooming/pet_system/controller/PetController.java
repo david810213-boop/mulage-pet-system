@@ -2,14 +2,22 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.dto.PetDiscountStatusResponse;
+import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.CatRewashDiscountService;
+import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.OperationLogService;
+import com.petgrooming.pet_system.service.PetConsumptionHistoryService;
 import com.petgrooming.pet_system.service.PetService;
+import com.petgrooming.pet_system.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
@@ -19,6 +27,12 @@ public class PetController {
 
     private final PetService petService;
     private final OperationLogService operationLogService;
+    // 需求（追加，2026-09-04）：寵物折扣狀態查詢用
+    private final PetConsumptionHistoryService petConsumptionHistoryService;
+    private final CatRewashDiscountService catRewashDiscountService;
+    private final CatFirstVisitDiscountService catFirstVisitDiscountService;
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService;
+    private final WalletService walletService;
 
     // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
     // 不論是店家網頁登入（WEB）還是顧客 LINE 登入（LINE），走同一套機制
@@ -122,6 +136,65 @@ public class PetController {
                     "寵物 " + res.getName() + " #" + res.getId(), null);
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ── GET /api/pets/{petId}/discount-status ──────────────────────────────
+    // 需求（追加，2026-09-04）：LIFF 預約頁顯示「距上次洗澡幾天、優惠期內/
+    // 已過期」，以及服務項目要不要顯示「原價劃掉+折扣價」的判斷資料來源。
+    // 三種折扣互斥擇優：首次體驗優惠／90天回洗優惠（兩者本身也互斥，貓咪
+    // 才可能兩者都適用，狗狗只有首次體驗）跟會員儲值折扣分開回傳，前端渲染
+    // 時自己取較優惠者，邏輯跟後端 resolvePreferredDiscount() 一致。
+    @GetMapping("/{petId}/discount-status")
+    public ResponseEntity<?> getDiscountStatus(HttpServletRequest request, @PathVariable Long petId) {
+        try {
+            petService.assertOwnership(petId, currentUsername(request));
+            var pet = petService.getPetEntity(petId);
+            var owner = pet.getOwner();
+            String petType = pet.getPetType().name();
+            boolean isCat = "CAT".equals(petType);
+            boolean isDog = "DOG".equals(petType);
+
+            boolean firstVisitEligible = !petConsumptionHistoryService.hasPriorPaidService(
+                    owner.getId(), pet.getName(), null);
+
+            boolean rewashEligible = false;
+            Long lastBathDaysAgo = null;
+            if (isCat) {
+                var lastBath = catRewashDiscountService.findLastBathDate(owner.getId(), pet.getName());
+                if (lastBath.isPresent()) {
+                    lastBathDaysAgo = ChronoUnit.DAYS.between(lastBath.get(), LocalDate.now());
+                    rewashEligible = lastBathDaysAgo >= 0 && lastBathDaysAgo < CatRewashDiscountService.REWASH_WINDOW_DAYS;
+                }
+            }
+
+            double memberDiscountRate = walletService.getWallet(owner.getUsername()).getDiscount();
+
+            String specialLabel = null;
+            Double specialRate = null;
+            List<String> specialCategories = List.of();
+
+            // 首次體驗跟回洗優惠互斥，首次體驗優先判斷（邏輯跟結帳時
+            // populateDiscountInfo() 的判斷順序一致：先看是不是首次消費）
+            if (isCat && firstVisitEligible) {
+                specialLabel = "首次體驗優惠";
+                specialRate = CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+                specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
+            } else if (isDog && firstVisitEligible) {
+                specialLabel = "首次體驗優惠";
+                specialRate = DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+                specialCategories = List.of("BATH_SMALL", "BATH_LARGE");
+            } else if (isCat && rewashEligible) {
+                specialLabel = "回洗優惠";
+                specialRate = CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+                specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
+            }
+
+            return ResponseEntity.ok(new PetDiscountStatusResponse(
+                    petType, firstVisitEligible, rewashEligible, lastBathDaysAgo,
+                    memberDiscountRate, specialLabel, specialRate, specialCategories));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

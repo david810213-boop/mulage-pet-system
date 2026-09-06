@@ -314,6 +314,10 @@
               ${p.hasSeparationAnxiety ? "⚠️ 有分離焦慮" : "分離焦慮：無"}
             </span>
           </div>
+          <!-- 需求（追加，2026-09-04）：折扣資格狀態（距上次洗澡幾天/優惠期內
+               或已過期/首次體驗優惠），選好毛孩清單後非同步逐一補上，避免
+               拖慢整頁的初次載入速度。 -->
+          <div class="pet-tags" id="discountTag-${p.id}"></div>
           <div class="pet-info">
             體重：<b>${p.weight} kg</b>　年齡：<b>${p.age} 歲</b>
             ${p.notes ? "<br>注意事項：<b>" + escapeHtml(p.notes) + "</b>" : ""}
@@ -329,6 +333,10 @@
       `,
             )
             .join("");
+
+          // 需求（追加，2026-09-04）：逐一補上每隻寵物的折扣狀態標籤，
+          // 用 Promise.all 平行打，不要一隻一隻等，減少總等待時間。
+          Promise.all(pets.map((p) => loadDiscountTag(p.id)));
         } catch (e) {
           document.getElementById("app").innerHTML =
             '<div class="loading" style="color:#8B0000">載入毛孩失敗：' +
@@ -337,12 +345,50 @@
         }
       }
 
+      // 需求（追加，2026-09-04）：抓單一寵物的折扣資格狀態，塞進對應的
+      // pet-tags 區塊。抓失敗（例如網路問題）就靜默留空，不影響整頁其他功能。
+      async function loadDiscountTag(petId) {
+        const el = document.getElementById("discountTag-" + petId);
+        if (!el) return;
+        try {
+          const res = await fetch("/api/pets/" + petId + "/discount-status", {
+            headers: {
+              Authorization: "Bearer " + jwtToken,
+              "ngrok-skip-browser-warning": "true",
+            },
+          });
+          if (!res.ok) return;
+          const status = await res.json();
+
+          if (status.specialDiscountLabel) {
+            const daysText =
+              typeof status.lastBathDaysAgo === "number"
+                ? `距上次洗澡 ${status.lastBathDaysAgo} 天　`
+                : "";
+            el.innerHTML = `<span class="ptag" style="background:#eef6ec; color:#3d6b34; border:1px solid #a9d1a0;">🎉 ${daysText}${escapeHtml(status.specialDiscountLabel)}期內</span>`;
+          } else if (
+            typeof status.lastBathDaysAgo === "number" &&
+            !status.rewashEligible
+          ) {
+            el.innerHTML = `<span class="ptag" style="background:#f2f0ec; color:#6b6656; border:1px solid #cfc9bb;">距上次洗澡 ${status.lastBathDaysAgo} 天，已過優惠期</span>`;
+          }
+          // 都不符合（例如狗狗、且不是首次消費）就不顯示任何標籤，維持畫面簡潔。
+        } catch (e) {
+          // 靜默失敗，不影響其他寵物卡片
+        }
+      }
+
       // --- 上傳/更換寵物照片 ---
       // 需求（追加，2026-08-26）：顧客自己刪除毛孩。有預約或消費紀錄的話，
       // 後端 PetService.deletePet() 會擋下並回傳明確的錯誤訊息，這裡直接
       // 顯示後端給的訊息，不用自己重複判斷。
       async function deletePet(petId, petName) {
-        if (!confirm(`確定要刪除「${petName}」嗎？刪除後不會再顯示在毛孩清單裡，但過往的預約/消費紀錄不會受影響。`)) return;
+        if (
+          !confirm(
+            `確定要刪除「${petName}」嗎？刪除後不會再顯示在毛孩清單裡，但過往的預約/消費紀錄不會受影響。`,
+          )
+        )
+          return;
         try {
           const res = await fetch("/api/pets/" + petId, {
             method: "DELETE",
@@ -351,8 +397,16 @@
           if (!res.ok) {
             const msg = await res.text().catch(() => "");
             let parsed = msg;
-            try { parsed = JSON.parse(msg); } catch (e) { /* 純文字錯誤訊息，直接用 */ }
-            alert(typeof parsed === "string" ? parsed : (parsed.message || "刪除失敗"));
+            try {
+              parsed = JSON.parse(msg);
+            } catch (e) {
+              /* 純文字錯誤訊息，直接用 */
+            }
+            alert(
+              typeof parsed === "string"
+                ? parsed
+                : parsed.message || "刪除失敗",
+            );
             return;
           }
           loadPets();

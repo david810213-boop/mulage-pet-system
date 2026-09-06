@@ -518,6 +518,12 @@
             為了讓貓咪有較安靜、放鬆的美容環境，預約時建議優先選擇 11:00 或
             16:00 後，這兩個時段現場相對較安靜 ♡
           </div>
+          <!-- 需求（追加，2026-09-04）：顯示這隻寵物目前的折扣資格狀態
+               （距上次洗澡幾天／優惠期內或已過期／首次體驗優惠）。 -->
+          <div
+            id="petDiscountNotice"
+            style="display:none; margin-top:8px; padding:8px 10px; background:#eef6ec; border:1px solid #a9d1a0; border-radius:8px; font-size:12.5px; line-height:1.6; color:#3d6b34;"
+          ></div>
         </div>
       </div>
 
@@ -729,21 +735,90 @@
         return day === 0 || day === 6;
       }
 
+      // 需求（追加，2026-09-04）：這隻寵物目前的折扣資格狀態（首次體驗/回洗/
+      // 會員儲值折扣），選毛孩之後打 /api/pets/{petId}/discount-status 抓一次，
+      // 服務項目清單渲染時用來判斷要不要顯示「原價劃掉+折扣價」。
+      let currentPetDiscountStatus = null;
+
+      async function loadPetDiscountStatus(petId) {
+        currentPetDiscountStatus = null;
+        if (!petId) return;
+        try {
+          const res = await fetch("/api/pets/" + petId + "/discount-status", {
+            headers: authHeaders(),
+          });
+          if (res.ok) {
+            currentPetDiscountStatus = await res.json();
+          }
+        } catch (e) {
+          // 抓不到就當作沒有折扣資訊，價格照原價顯示，不擋預約流程
+        }
+      }
+
+      // 依 currentPetDiscountStatus，算出這個項目「較優惠」的折扣後價格；
+      // 三種折扣互斥擇優，邏輯跟後端 resolvePreferredDiscount() 一致：
+      // 特殊優惠（首次體驗/回洗）跟會員儲值折扣都適用時，取金額較低者，
+      // 打平時優先算特殊優惠（跟後端 <= 判斷一致）。都不適用則回傳原價。
+      function resolveDiscountedPrice(item) {
+        const price = Number(item.price);
+        const status = currentPetDiscountStatus;
+        if (!status) return { price, label: null };
+
+        const specialApplicable =
+          status.specialDiscountRate &&
+          status.specialDiscountCategories &&
+          status.specialDiscountCategories.indexOf(item.performanceCategory) !==
+            -1;
+        const memberApplicable =
+          item.discountEligible &&
+          typeof status.memberDiscountRate === "number" &&
+          status.memberDiscountRate < 1;
+
+        if (specialApplicable && memberApplicable) {
+          const specialPrice = price * status.specialDiscountRate;
+          const memberPrice = price * status.memberDiscountRate;
+          return specialPrice <= memberPrice
+            ? { price: specialPrice, label: status.specialDiscountLabel }
+            : { price: memberPrice, label: "會員折扣" };
+        }
+        if (specialApplicable) {
+          return {
+            price: price * status.specialDiscountRate,
+            label: status.specialDiscountLabel,
+          };
+        }
+        if (memberApplicable) {
+          return {
+            price: price * status.memberDiscountRate,
+            label: "會員折扣",
+          };
+        }
+        return { price, label: null };
+      }
+
       function itemRowHtml(item) {
+        const resolved = resolveDiscountedPrice(item);
+        const hasDiscount = resolved.price < Number(item.price) - 0.01;
+        const priceHtml = hasDiscount
+          ? `<div class="item-price">
+               <span style="text-decoration: line-through; color: #a89f8c; font-size: 12px; margin-right: 4px;">$${item.price}</span>
+               <span style="color: #d9822b; font-weight: 700;">$${Math.round(resolved.price)}</span>
+             </div>`
+          : `<div class="item-price">$${item.price}</div>`;
         return `
       <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-is-package="${item.isPackage ? "true" : "false"}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
-            <div class="item-name">${escapeHtml(item.name)}</div>
+            <div class="item-name">${escapeHtml(item.name)}${hasDiscount ? ` <span style="font-size:11px; color:#d9822b;">（${escapeHtml(resolved.label)}）</span>` : ""}</div>
             ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ""}
           </div>
         </label>
-        <div class="item-price">$${item.price}</div>
+        ${priceHtml}
       </div>`;
       }
 
-      function onPetChange() {
+      async function onPetChange() {
         const sel = document.getElementById("petSelect");
         selectedPetId = sel.value || null;
 
@@ -755,6 +830,42 @@
             selectedItemCodes.add(code),
           );
         }
+
+        // 需求（追加，2026-09-04）：抓這隻寵物的折扣資格狀態（首次體驗/回洗/
+        // 會員儲值折扣），畫面上顯示提示文字，服務項目清單也要重新渲染一次
+        // 才能套用正確的折扣後價格（itemRowHtml 是在渲染當下讀
+        // currentPetDiscountStatus，第一次渲染整份清單時通常還沒選毛孩）。
+        await loadPetDiscountStatus(selectedPetId);
+        const discountNoticeEl = document.getElementById("petDiscountNotice");
+        if (discountNoticeEl) {
+          const status = currentPetDiscountStatus;
+          if (status && status.specialDiscountLabel) {
+            const daysText =
+              typeof status.lastBathDaysAgo === "number"
+                ? `距上次洗澡 ${status.lastBathDaysAgo} 天，`
+                : "";
+            discountNoticeEl.style.display = "block";
+            discountNoticeEl.style.background = "#eef6ec";
+            discountNoticeEl.style.borderColor = "#a9d1a0";
+            discountNoticeEl.style.color = "#3d6b34";
+            discountNoticeEl.textContent = `🎉 ${daysText}目前適用「${status.specialDiscountLabel}」，服務項目已自動顯示折扣後價格 ♡`;
+          } else if (
+            status &&
+            typeof status.lastBathDaysAgo === "number" &&
+            !status.rewashEligible
+          ) {
+            discountNoticeEl.style.display = "block";
+            discountNoticeEl.style.background = "#f2f0ec";
+            discountNoticeEl.style.borderColor = "#cfc9bb";
+            discountNoticeEl.style.color = "#6b6656";
+            discountNoticeEl.textContent = `距上次洗澡 ${status.lastBathDaysAgo} 天，已超過 90 天回洗優惠期間`;
+          } else {
+            discountNoticeEl.style.display = "none";
+          }
+        }
+        document.getElementById("itemsContainer").innerHTML = groomingItems
+          .map(itemRowHtml)
+          .join("");
 
         // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
         const isExisting = !!(pet && pet.isExistingCustomer);
@@ -844,21 +955,28 @@
               itemCoatCategory !== catCoatCategory;
             // 假日只能選套餐：非套餐項目（沒有副組成）在假日整列隱藏。
             const blockedByHoliday = isHoliday && !isPackage;
-            // 只有「有標體重級距」的項目（DOG 主力套餐）才受這條規則影響，
-            // 通用加購項目（itemDogTier 是空字串）不受影響。
+            // 需求（追加，2026-09-06）：店家反饋鎖定固定套餐後，畫面應該只顯示
+            // 鎖定的那一項，連通用加購項目（指甲修剪等，沒有標體重級距）也要
+            // 一併隱藏——這是對 2026-08-24 原始設計的調整：原本「不受影響：
+            // 沒有標 dogWeightTier 的項目維持原本篩選邏輯」，現在改成「已鎖定
+            // 套餐時，除了鎖定的那一項，其餘全部隱藏，不分有沒有標體重級距」。
+            // 還沒鎖定的狗（依體重篩選中）維持原樣，加購項目不受影響。
+            let blockedByDogLock = false;
+            if (dogLockedItemId) {
+              blockedByDogLock = String(itemId) !== String(dogLockedItemId);
+            }
+            // 只有「有標體重級距」的項目（DOG 主力套餐）才受依體重篩選規則影響，
+            // 通用加購項目（itemDogTier 是空字串）在「還沒鎖定」的狀態下不受影響。
             let blockedByDogTier = false;
-            if (itemDogTier) {
-              if (dogLockedItemId) {
-                blockedByDogTier = String(itemId) !== String(dogLockedItemId);
-              } else if (dogWeightTier) {
-                blockedByDogTier = itemDogTier !== dogWeightTier;
-              }
+            if (itemDogTier && !dogLockedItemId && dogWeightTier) {
+              blockedByDogTier = itemDogTier !== dogWeightTier;
             }
             if (
               blockedByExisting ||
               blockedBySpecies ||
               blockedByCoat ||
               blockedByDogTier ||
+              blockedByDogLock ||
               blockedByHoliday
             ) {
               row.style.display = "none";

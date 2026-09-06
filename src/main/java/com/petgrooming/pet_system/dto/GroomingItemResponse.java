@@ -25,6 +25,10 @@ public class GroomingItemResponse {
     // 不是從 GroomingItem entity 直接映射（entity 本身沒有這個概念，是從
     // 「有沒有副組成」這個既有訊號動態算出來的）。
     private Boolean isPackage;
+    // 需求（追加，2026-09-04）：LIFF 預約頁要顯示「原價劃掉+折扣價」，
+    // 需要知道這個項目是否參與會員儲值折扣（原本只有後端結帳計算會用到，
+    // 沒有暴露給前端）。
+    private boolean discountEligible;
 
     // 靜態工廠：將 Entity 映射成 DTO
     public static GroomingItemResponse from(GroomingItem item) {
@@ -41,6 +45,7 @@ public class GroomingItemResponse {
         res.setApplicablePetType(item.getApplicablePetType() != null ? item.getApplicablePetType().name() : null);
         res.setCatCoatCategory(item.getCatCoatCategory() != null ? item.getCatCoatCategory().name() : null);
         res.setDogWeightTier(item.getDogWeightTier() != null ? item.getDogWeightTier().name() : null);
+        res.setDiscountEligible(item.isDiscountEligible());
         return res;
     }
 }
