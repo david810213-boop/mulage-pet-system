@@ -36,7 +36,7 @@
                 <th>物種／品種</th>
                 <th>體重</th>
                 <th>毛長</th>
-                <th>目前套餐狀態</th>
+                <th style="min-width: 320px;">目前套餐狀態</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -103,13 +103,17 @@
         // 需求（追加，2026-09-06）：解鎖按鈕放在跟鎖定按鈕同一個視覺位置
         // （下拉選單+按鈕同一行），換一個對比色（紅色系，區別金色的鎖定
         // 按鈕），排版盡量跟「未鎖定」狀態一致，不要一個換行一個不換行。
+        // 需求（追加，2026-09-07）：店家反饋下拉選單太窄、文字被截斷太多，
+        // 加寬到接近整欄寬度（配合上面 <th> 給的 min-width:320px）；鎖定/
+        // 解鎖按鈕改成固定寬度，讓兩種狀態視覺大小一致，且固定落在同一個
+        // 位置（欄位最右側），不會因為下拉選單內容長短跑位。
         if (pet.lockedGroomingItemId) {
           return `
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <span style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="flex: 1 1 auto; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
                 🔒 ${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）
               </span>
-              <button type="button" style="padding: 4px 10px; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer;" onclick="unlockPet(${pet.id})">解鎖</button>
+              <button type="button" style="flex: 0 0 auto; width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer; text-align: center;" onclick="unlockPet(${pet.id})">解鎖</button>
             </div>`;
         }
         const candidates = candidateItemsForDog(pet);
@@ -120,11 +124,11 @@
           .map((i) => `<option value="${i.id}">${escapeHtml(i.name)}（$${i.price}）</option>`)
           .join("");
         return `
-          <div style="display: flex; gap: 6px; align-items: center;">
-            <select id="lockSelect-${pet.id}" style="padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm); max-width: 180px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="lockSelect-${pet.id}" style="flex: 1 1 auto; min-width: 0; padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
               ${options}
             </select>
-            <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px; white-space: nowrap; min-height: auto;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
+            <button type="button" class="btn btn-primary" style="flex: 0 0 auto; width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; text-align: center;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
           </div>`;
       }
 
