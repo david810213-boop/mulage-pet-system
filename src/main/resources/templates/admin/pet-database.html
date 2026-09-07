@@ -36,13 +36,15 @@
                 <th>物種／品種</th>
                 <th>體重</th>
                 <th>毛長</th>
+                <th>絕育狀況</th>
                 <th>目前套餐狀態</th>
+                <th>套餐操作</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody id="petsTableBody">
               <tr>
-                <td colspan="7" style="text-align: center; color: var(--brown-light); padding: 20px;">
+                <td colspan="9" style="text-align: center; color: var(--brown-light); padding: 20px;">
                   載入中...
                 </td>
               </tr>
@@ -96,29 +98,18 @@
         );
       }
 
-      function lockActionCellHtml(pet) {
+      // 需求（追加，2026-09-07 第三次調整）：店家反饋鎖定/解鎖按鈕不要
+      // 貼著下拉選單，拆成兩個獨立欄位——「目前套餐狀態」只放顯示用的
+      // 下拉選單/已鎖定說明文字，「套餐操作」欄放鎖定/解鎖按鈕本身。
+      // 下拉選單維持固定 230px 貼合最長選項文字寬度。
+      function statusDisplayHtml(pet) {
         if (pet.petType !== "DOG") {
           return '<span style="color: var(--brown-light); font-size: 12.5px;">不適用（僅狗狗適用）</span>';
         }
-        // 需求（追加，2026-09-06）：解鎖按鈕放在跟鎖定按鈕同一個視覺位置
-        // （下拉選單+按鈕同一行），換一個對比色（紅色系，區別金色的鎖定
-        // 按鈕），排版盡量跟「未鎖定」狀態一致，不要一個換行一個不換行。
-        // 需求（追加，2026-09-07）：店家反饋下拉選單太窄、文字被截斷太多，
-        // 加寬到接近整欄寬度（配合上面 <th> 給的 min-width:320px）；鎖定/
-        // 解鎖按鈕改成固定寬度，讓兩種狀態視覺大小一致，且固定落在同一個
-        // 位置（欄位最右側），不會因為下拉選單內容長短跑位。
-        // 需求（追加，2026-09-07 第二次調整）：店家反饋改成 flex:1 後
-        // 下拉選單太寬、留了太多空白，改成固定寬度剛好貼合最長選項文字
-        // （例如「中小型犬-中長毛-中階定制調理（$2900）」22 個字），不強制
-        // 撐滿整個欄位。按鈕維持固定 68px，兩種狀態排版一致。
         if (pet.lockedGroomingItemId) {
-          return `
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <span style="width: 230px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
-                🔒 ${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）
-              </span>
-              <button type="button" style="flex: 0 0 auto; width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer; text-align: center;" onclick="unlockPet(${pet.id})">解鎖</button>
-            </div>`;
+          return `<span style="display: inline-block; width: 230px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
+            🔒 ${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）
+          </span>`;
         }
         const candidates = candidateItemsForDog(pet);
         if (!candidates.length) {
@@ -127,13 +118,19 @@
         const options = candidates
           .map((i) => `<option value="${i.id}">${escapeHtml(i.name)}（$${i.price}）</option>`)
           .join("");
-        return `
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <select id="lockSelect-${pet.id}" style="width: 230px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
-              ${options}
-            </select>
-            <button type="button" class="btn btn-primary" style="flex: 0 0 auto; width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; text-align: center;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
-          </div>`;
+        return `<select id="lockSelect-${pet.id}" style="width: 230px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
+          ${options}
+        </select>`;
+      }
+
+      function lockActionButtonHtml(pet) {
+        if (pet.petType !== "DOG") return "";
+        if (pet.lockedGroomingItemId) {
+          return `<button type="button" style="width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer; text-align: center;" onclick="unlockPet(${pet.id})">解鎖</button>`;
+        }
+        const candidates = candidateItemsForDog(pet);
+        if (!candidates.length) return "";
+        return `<button type="button" class="btn btn-primary" style="width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; text-align: center;" onclick="lockPet(${pet.id})">🔒 鎖定</button>`;
       }
 
       function petRowHtml(pet) {
@@ -145,7 +142,9 @@
           <td>${pet.petTypeLabel} / ${escapeHtml(pet.breed)}</td>
           <td>${pet.weight} kg</td>
           <td>${coatLabelMap[pet.coatType] || "未定義"}</td>
-          <td id="statusCell-${pet.id}">${lockActionCellHtml(pet)}</td>
+          <td>${pet.isNeutered ? "已絕育" : "未絕育"}</td>
+          <td id="statusCell-${pet.id}">${statusDisplayHtml(pet)}</td>
+          <td id="actionCell-${pet.id}">${lockActionButtonHtml(pet)}</td>
           <td>
             <a href="#" onclick="alert('請到「會員信息」找到這位會員，點寵物旁的「完整編輯」即可修改毛長／其他資料'); return false;"
                style="font-size: 12px;">完整編輯 →</a>
@@ -181,7 +180,8 @@
           const updated = JSON.parse(rawBody);
           const idx = PETS.findIndex((p) => p.id === petId);
           if (idx !== -1) PETS[idx] = updated;
-          document.getElementById("statusCell-" + petId).innerHTML = lockActionCellHtml(updated);
+          document.getElementById("statusCell-" + petId).innerHTML = statusDisplayHtml(updated);
+          document.getElementById("actionCell-" + petId).innerHTML = lockActionButtonHtml(updated);
         } catch (e) {
           alert("鎖定失敗：" + e.message);
         }
@@ -200,7 +200,8 @@
           const updated = JSON.parse(rawBody);
           const idx = PETS.findIndex((p) => p.id === petId);
           if (idx !== -1) PETS[idx] = updated;
-          document.getElementById("statusCell-" + petId).innerHTML = lockActionCellHtml(updated);
+          document.getElementById("statusCell-" + petId).innerHTML = statusDisplayHtml(updated);
+          document.getElementById("actionCell-" + petId).innerHTML = lockActionButtonHtml(updated);
         } catch (e) {
           alert("解鎖失敗：" + e.message);
         }
