@@ -36,7 +36,7 @@
                 <th>物種／品種</th>
                 <th>體重</th>
                 <th>毛長</th>
-                <th style="min-width: 320px;">目前套餐狀態</th>
+                <th>目前套餐狀態</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -107,10 +107,14 @@
         // 加寬到接近整欄寬度（配合上面 <th> 給的 min-width:320px）；鎖定/
         // 解鎖按鈕改成固定寬度，讓兩種狀態視覺大小一致，且固定落在同一個
         // 位置（欄位最右側），不會因為下拉選單內容長短跑位。
+        // 需求（追加，2026-09-07 第二次調整）：店家反饋改成 flex:1 後
+        // 下拉選單太寬、留了太多空白，改成固定寬度剛好貼合最長選項文字
+        // （例如「中小型犬-中長毛-中階定制調理（$2900）」22 個字），不強制
+        // 撐滿整個欄位。按鈕維持固定 68px，兩種狀態排版一致。
         if (pet.lockedGroomingItemId) {
           return `
             <div style="display: flex; gap: 8px; align-items: center;">
-              <span style="flex: 1 1 auto; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
+              <span style="width: 230px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
                 🔒 ${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）
               </span>
               <button type="button" style="flex: 0 0 auto; width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer; text-align: center;" onclick="unlockPet(${pet.id})">解鎖</button>
@@ -125,7 +129,7 @@
           .join("");
         return `
           <div style="display: flex; gap: 8px; align-items: center;">
-            <select id="lockSelect-${pet.id}" style="flex: 1 1 auto; min-width: 0; padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
+            <select id="lockSelect-${pet.id}" style="width: 230px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);">
               ${options}
             </select>
             <button type="button" class="btn btn-primary" style="flex: 0 0 auto; width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; text-align: center;" onclick="lockPet(${pet.id})">🔒 鎖定</button>
