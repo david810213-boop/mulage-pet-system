@@ -19,6 +19,7 @@ import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalletRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.utils.CsvImportFileReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,10 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -71,7 +69,7 @@ public class MemberImportService {
         for (MemberImportRow row : rows) {
             String error = validateRow(row);
             if (error != null) {
-                rowErrors.add("第 " + row.getRowNumber() + " 列：" + error);
+                rowErrors.add("第 " + row.getRowNumber() + " 列寵物資料解析失敗：" + error);
             } else {
                 validRows.add(row);
             }
@@ -329,24 +327,50 @@ public class MemberImportService {
     }
 
     private String validateRow(MemberImportRow row) {
-        if (isBlank(row.getOwnerName())) return "家長姓名不能空白";
-        if (isBlank(row.getPhone())) return "電話不能空白";
-        if (isBlank(row.getPetName())) return "毛孩名字不能空白";
-        if (isBlank(row.getPetTypeRaw())) return "物種不能空白";
-        if (isBlank(row.getBreed())) return "品種不能空白";
+        // 編碼異常優先判斷：欄位裡出現 U+FFFD（置換字元）代表讀檔時該欄位沒被正確解碼，
+        // 這種列直接擋下並講清楚是哪個欄位，不要讓亂碼資料寫進資料庫。
+        String garbledField = firstGarbledField(row);
+        if (garbledField != null) {
+            return "疑似編碼異常，" + garbledField + "欄位內含無法辨識的字元，請將原始 CSV 另存成 UTF-8 或 Big5 後重新上傳";
+        }
+        if (isBlank(row.getOwnerName())) return "家長姓名欄位為空";
+        if (isBlank(row.getPhone())) return "電話欄位為空";
+        if (isBlank(row.getPetName())) return "毛孩名字欄位為空";
+        if (isBlank(row.getPetTypeRaw())) return "物種欄位為空";
+        if (isBlank(row.getBreed())) return "品種欄位為空";
         try {
             double w = Double.parseDouble(row.getWeightRaw().trim());
-            if (w <= 0) return "體重必須大於 0";
+            if (w <= 0) return "體重欄位必須大於 0";
         } catch (Exception e) {
-            return "體重格式錯誤：" + row.getWeightRaw();
+            return "體重欄位格式錯誤：" + row.getWeightRaw();
         }
         try {
             double a = Double.parseDouble(row.getAgeRaw().trim()); // 需求（追加）：允許小數年齡
-            if (a < 0) return "年齡不能是負數";
+            if (a < 0) return "年齡欄位不能是負數";
         } catch (Exception e) {
-            return "年齡格式錯誤：" + row.getAgeRaw();
+            return "年齡欄位格式錯誤：" + row.getAgeRaw();
         }
         return null;
+    }
+
+    // 回傳第一個含有 U+FFFD 置換字元的欄位中文名稱，沒有就回傳 null。
+    // 用來在編碼 fallback 仍無法乾淨解碼時，讓錯誤訊息指出是哪一欄出問題。
+    private String firstGarbledField(MemberImportRow row) {
+        if (containsReplacementChar(row.getOwnerName())) return "家長姓名";
+        if (containsReplacementChar(row.getPhone())) return "電話";
+        if (containsReplacementChar(row.getPetName())) return "毛孩名字";
+        if (containsReplacementChar(row.getPetTypeRaw())) return "物種";
+        if (containsReplacementChar(row.getBreed())) return "品種";
+        if (containsReplacementChar(row.getNotes())) return "注意事項";
+        return null;
+    }
+
+    // U+FFFD：解碼器遇到無法對應的位元組時填入的「置換字元」，出現在欄位裡幾乎
+    // 一定代表原始檔案編碼跟解碼用的編碼對不上。
+    private static final char REPLACEMENT_CHAR = 0xFFFD;
+
+    private boolean containsReplacementChar(String s) {
+        return s != null && s.indexOf(REPLACEMENT_CHAR) >= 0;
     }
 
     private boolean isBlank(String s) {
@@ -371,31 +395,45 @@ public class MemberImportService {
     // 欄位順序固定：家長姓名,電話,毛孩名字,物種,品種,體重,年齡,是否分離焦慮,注意事項
     // 不支援欄位值裡包含逗號（例如注意事項寫「怕生,咬人」會被誤判成兩欄）——
     // 這是簡化實作的已知限制，交付時要在後台頁面上明確提醒店家避免在內容裡打逗號。
+    //
+    // 編碼：交給 CsvImportFileReader 偵測（UTF-8 BOM / 無 BOM 時嚴格試 UTF-8→Big5→GBK），
+    // 不再假設檔案一定是 UTF-8；BOM 也在那邊一併去掉，避免黏在第一個欄位值前面。
     private List<MemberImportRow> parseCsv(MultipartFile file) throws IOException {
         List<MemberImportRow> rows = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line = reader.readLine(); // 表頭，跳過不處理
-            int rowNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) continue;
-                rowNumber++;
-                String[] cols = line.split(",", -1);
-                MemberImportRow row = new MemberImportRow();
-                row.setRowNumber(rowNumber);
-                row.setOwnerName(col(cols, 0));
-                row.setPhone(col(cols, 1));
-                row.setPetName(col(cols, 2));
-                row.setPetTypeRaw(col(cols, 3));
-                row.setBreed(col(cols, 4));
-                row.setWeightRaw(col(cols, 5));
-                row.setAgeRaw(col(cols, 6));
-                row.setSeparationAnxietyRaw(col(cols, 7));
-                row.setNotes(col(cols, 8));
-                rows.add(row);
-            }
+        CsvImportFileReader.Parsed parsed = CsvImportFileReader.read(file);
+        logDetectedCharset("會員資料", parsed);
+
+        List<String> lines = parsed.lines();
+        int rowNumber = 0;
+        for (int i = 1; i < lines.size(); i++) { // i=0 是表頭，跳過不處理
+            String line = lines.get(i);
+            if (line.isBlank()) continue;
+            rowNumber++;
+            String[] cols = line.split(",", -1);
+            MemberImportRow row = new MemberImportRow();
+            row.setRowNumber(rowNumber);
+            row.setOwnerName(col(cols, 0));
+            row.setPhone(col(cols, 1));
+            row.setPetName(col(cols, 2));
+            row.setPetTypeRaw(col(cols, 3));
+            row.setBreed(col(cols, 4));
+            row.setWeightRaw(col(cols, 5));
+            row.setAgeRaw(col(cols, 6));
+            row.setSeparationAnxietyRaw(col(cols, 7));
+            row.setNotes(col(cols, 8));
+            rows.add(row);
         }
         return rows;
+    }
+
+    // 讀檔時把偵測到的編碼寫進 log，方便店家上傳出問題時對照排查。
+    private void logDetectedCharset(String label, CsvImportFileReader.Parsed parsed) {
+        if (parsed.isLenientFallback()) {
+            log.warn("⚠️ [{}匯入] 無法確定 CSV 檔案編碼，已改用 UTF-8 寬鬆模式讀取，內容可能有亂碼，"
+                    + "請確認原始檔另存為 UTF-8 或 Big5", label);
+        } else {
+            log.info("📄 [{}匯入] 偵測到 CSV 檔案編碼：{}", label, parsed.getCharset().displayName());
+        }
     }
 
     private String col(String[] cols, int idx) {
@@ -403,46 +441,50 @@ public class MemberImportService {
     }
 
     // 需求（追加）：儲值餘額 CSV 解析。欄位順序：電話,儲值餘額
+    // 編碼同 parseCsv，交給 CsvImportFileReader 偵測，不假設一定是 UTF-8。
     private List<WalletImportRow> parseWalletCsv(MultipartFile file) throws IOException {
         List<WalletImportRow> rows = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line = reader.readLine(); // 跳過表頭
-            int rowNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) continue;
-                rowNumber++;
-                String[] cols = line.split(",", -1);
-                WalletImportRow row = new WalletImportRow();
-                row.setRowNumber(rowNumber);
-                row.setPhone(col(cols, 0));
-                row.setBalanceRaw(col(cols, 1));
-                rows.add(row);
-            }
+        CsvImportFileReader.Parsed parsed = CsvImportFileReader.read(file);
+        logDetectedCharset("儲值餘額", parsed);
+
+        List<String> lines = parsed.lines();
+        int rowNumber = 0;
+        for (int i = 1; i < lines.size(); i++) { // i=0 是表頭，跳過
+            String line = lines.get(i);
+            if (line.isBlank()) continue;
+            rowNumber++;
+            String[] cols = line.split(",", -1);
+            WalletImportRow row = new WalletImportRow();
+            row.setRowNumber(rowNumber);
+            row.setPhone(col(cols, 0));
+            row.setBalanceRaw(col(cols, 1));
+            rows.add(row);
         }
         return rows;
     }
 
     // 需求（追加）：消費紀錄 CSV 解析。欄位順序：電話,毛孩名字,消費日期,金額,備註
+    // 編碼同 parseCsv，交給 CsvImportFileReader 偵測，不假設一定是 UTF-8。
     private List<ConsumptionImportRow> parseConsumptionCsv(MultipartFile file) throws IOException {
         List<ConsumptionImportRow> rows = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line = reader.readLine(); // 跳過表頭
-            int rowNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) continue;
-                rowNumber++;
-                String[] cols = line.split(",", -1);
-                ConsumptionImportRow row = new ConsumptionImportRow();
-                row.setRowNumber(rowNumber);
-                row.setPhone(col(cols, 0));
-                row.setPetName(col(cols, 1));
-                row.setDateRaw(col(cols, 2));
-                row.setAmountRaw(col(cols, 3));
-                row.setNote(col(cols, 4));
-                rows.add(row);
-            }
+        CsvImportFileReader.Parsed parsed = CsvImportFileReader.read(file);
+        logDetectedCharset("消費紀錄", parsed);
+
+        List<String> lines = parsed.lines();
+        int rowNumber = 0;
+        for (int i = 1; i < lines.size(); i++) { // i=0 是表頭，跳過
+            String line = lines.get(i);
+            if (line.isBlank()) continue;
+            rowNumber++;
+            String[] cols = line.split(",", -1);
+            ConsumptionImportRow row = new ConsumptionImportRow();
+            row.setRowNumber(rowNumber);
+            row.setPhone(col(cols, 0));
+            row.setPetName(col(cols, 1));
+            row.setDateRaw(col(cols, 2));
+            row.setAmountRaw(col(cols, 3));
+            row.setNote(col(cols, 4));
+            rows.add(row);
         }
         return rows;
     }
