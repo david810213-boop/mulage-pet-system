@@ -111,7 +111,7 @@
                   th:each="pet : ${myPets}"
                   th:value="${pet.id}"
                   th:text="${pet.name + '（' + pet.sizeCategoryLabel + '・' + pet.coatTypeLabel + '）'}"
-                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')},data-existing=${pet.isExistingCustomer},data-pettype=${pet.petType}"
+                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')},data-existing=${pet.isExistingCustomer},data-pettype=${pet.petType},data-weight=${pet.weight},data-coat-type=${pet.coatType},data-cat-coat-category=${pet.catCoatCategory},data-locked-item-id=${pet.lockedGroomingItemId}"
                 ></option>
               </select>
               <p
@@ -215,7 +215,7 @@
                   th:each="item : ${groomingItems}"
                   th:if="${item.performanceCategory != 'OTHER'}"
                   th:class="${item.performanceCategory == 'SPECIAL'} ? 'special-trigger-label' : ''"
-                  th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType}"
+                  th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType},data-item-id=${item.id},data-dog-weight-tier=${item.dogWeightTier},data-dog-coat-length=${item.dogCoatLength},data-cat-coat-category=${item.catCoatCategory}"
                   style="
                     display: flex;
                     align-items: center;
@@ -275,7 +275,7 @@
                   <label
                     th:each="item : ${groomingItems}"
                     th:if="${item.performanceCategory == 'OTHER'}"
-                    th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType}"
+                    th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType},data-item-id=${item.id},data-dog-weight-tier=${item.dogWeightTier},data-dog-coat-length=${item.dogCoatLength},data-cat-coat-category=${item.catCoatCategory}"
                     style="
                       display: flex;
                       align-items: center;
@@ -752,6 +752,23 @@
         }
       }
 
+      // 跟其他頁面（現場開單/結帳頁/預約現場加單頁）同一套體重級距邊界，
+      // 三處刻意保持邏輯一致。
+      function computeDogWeightTier(weight) {
+        const tiers = [
+          { code: "SMALL", max: 5 },
+          { code: "MEDIUM_SMALL", max: 10 },
+          { code: "MEDIUM", max: 16 },
+          { code: "MEDIUM_LARGE", max: 22 },
+          { code: "LARGE", max: 27 },
+          { code: "EXTRA_LARGE", max: Infinity },
+        ];
+        for (const tier of tiers) {
+          if (weight <= tier.max) return tier.code;
+        }
+        return "EXTRA_LARGE";
+      }
+
       function autoCheckItems() {
         const select = document.getElementById("petSelect");
         const selected = select.options[select.selectedIndex];
@@ -759,14 +776,58 @@
         const isExisting = selected.dataset.existing === "true"; // 需求（追加）
         const petType = (selected.dataset.pettype || "").toUpperCase(); // 需求（追加）
 
-        // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
+        // 需求（追加，2026-09-08）：狗狗依「體重＋毛長」篩選、貓咪依毛髮分類篩選，
+        // 補齊代客預約頁面原本完全沒做的體型篩選（跟現場開單/結帳頁/預約現場
+        // 加單頁同一套邏輯）。已鎖定固定套餐的狗只留鎖定那一項；毛長未定義時
+        // 只看體重，維持顯示該體重級距全部項目，不誤擋。
+        const weightRaw = selected.dataset.weight;
+        const weight = weightRaw ? parseFloat(weightRaw) : null;
+        const coatType = (selected.dataset.coatType || "").toUpperCase();
+        const catCoatCategory = (selected.dataset.catCoatCategory || "").toUpperCase();
+        const lockedItemId = selected.dataset.lockedItemId || "";
+        const isDog = petType === "DOG";
+        const dogTier =
+          isDog && !lockedItemId && weight !== null && !isNaN(weight)
+            ? computeDogWeightTier(weight)
+            : null;
+        const coatDefined =
+          isDog && (coatType === "SHORT" || coatType === "LONG" || coatType === "MEDIUM");
+
+        // 需求（追加）：僅限既有客戶／適用物種／體型（體重+毛長/毛髮分類），
+        // 不符合資格的項目整列隱藏（連同勾選一起清掉）
         document.querySelectorAll("label[data-requires-existing]").forEach((label) => {
           const requiresExisting = label.dataset.requiresExisting === "true";
           const applicable = label.dataset.applicablePetType || "";
+          const dogWeightTier = label.dataset.dogWeightTier || "";
+          const dogCoatLength = label.dataset.dogCoatLength || "";
+          const labelCatCoatCategory = label.dataset.catCoatCategory || "";
           const cb = label.querySelector('input[name="selectedItems"]');
           const blockedByExisting = requiresExisting && !isExisting;
           const blockedBySpecies = applicable && petType && applicable.toUpperCase() !== petType;
-          if (blockedByExisting || blockedBySpecies) {
+
+          let blockedByShape = false;
+          if (isDog && dogWeightTier) {
+            if (lockedItemId) {
+              blockedByShape = (label.dataset.itemId || "") !== lockedItemId;
+            } else if (dogTier && dogWeightTier !== dogTier) {
+              blockedByShape = true;
+            } else if (
+              dogTier &&
+              coatDefined &&
+              dogCoatLength &&
+              dogCoatLength.toUpperCase() !== coatType
+            ) {
+              blockedByShape = true;
+            }
+            // dogTier 算不出來（例如體重欄位還沒填）時保守顯示全部，避免誤擋
+          } else if (petType === "CAT" && labelCatCoatCategory) {
+            if (catCoatCategory && labelCatCoatCategory.toUpperCase() !== catCoatCategory) {
+              blockedByShape = true;
+            }
+            // 特殊貓種（catCoatCategory 為空）不篩選，顯示全部讓店家人工判斷
+          }
+
+          if (blockedByExisting || blockedBySpecies || blockedByShape) {
             label.style.display = "none";
             if (cb) cb.checked = false;
           } else {
