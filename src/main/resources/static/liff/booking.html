@@ -1079,8 +1079,10 @@
             return;
           }
 
+          const pet = myPets.find((p) => String(p.id) === String(selectedPetId));
+          const petTypeParam = pet && pet.petType ? "&petType=" + encodeURIComponent(pet.petType) : "";
           const res = await fetch(
-            "/api/appointments/slots?date=" + selectedDate,
+            "/api/appointments/slots?date=" + selectedDate + petTypeParam,
             { headers: authHeaders() },
           );
           if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1123,16 +1125,20 @@
             .map((s, i) => {
               const past = isPast(s.startTime);
               const available = s.available && !past;
+              // 需求（追加，2026-09-08）：時段限定物種時，不管有沒有帶 petType 都會回傳
+              // allowedPetType，這裡加個小標籤讓顧客知道「為什麼」，不只是單純變成灰色。
+              const restrictTag =
+                s.allowedPetType === "DOG" ? "🐕" : s.allowedPetType === "CAT" ? "🐱" : "";
               return `
             <div class="slot-btn ${available ? "" : "unavailable"}"
                  data-start="${s.startTime}" data-end="${s.endTime}"
                  onclick="${available ? `onSlotClick(this, '${s.startTime}', '${s.endTime}')` : ""}">
-              ${s.startTime.substring(0, 5)}${past ? "（已過時段）" : ""}
+              ${s.startTime.substring(0, 5)}${restrictTag}${past ? "（已過時段）" : ""}
             </div>`;
             })
             .join("")}
         </div>
-        <div class="slots-hint">灰色時段已被預約或時間已過，請選擇其他時段</div>
+        <div class="slots-hint">灰色時段已被預約、時間已過，或該時段限定物種與所選毛孩不符，請選擇其他時段</div>
       `;
         } catch (e) {
           container.innerHTML =

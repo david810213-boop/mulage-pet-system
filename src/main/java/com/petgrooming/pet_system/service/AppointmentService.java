@@ -131,6 +131,18 @@ public class AppointmentService {
         // 1f. 需求 3：同時段最多 5 隻（併發安全）。
         // 先確保計數列存在（獨立交易），再於本交易內加悲觀鎖 +1；額滿則丟出例外。
         slotCapacityService.ensureSlot(req.getDate(), req.getStartTime());
+
+        // 1f-2. 需求（追加，2026-09-08）：時段可以限定只開放特定物種預約（避免同時段
+        // 狗貓混雜，造成寵物緊迫）。不管顧客自己在 LIFF 訂、還是店員代客預約都要遵守，
+        // 因為這個限制關乎「同時段實際會有哪些寵物在店裡」，跟是誰操作送出無關——
+        // 跟「不開放預約當天」那個限制（staffAssisted 可以略過）性質不同。
+        com.petgrooming.pet_system.enums.PetType slotAllowedPetType =
+                slotCapacityService.getAllowedPetType(req.getDate(), req.getStartTime());
+        if (slotAllowedPetType != null && slotAllowedPetType != pet.getPetType()) {
+            throw new IllegalArgumentException(
+                    "此時段目前僅開放" + slotAllowedPetType.getDescription() + "預約，請選擇其他時段");
+        }
+
         try {
             slotCapacityService.reserve(req.getDate(), req.getStartTime());
         } catch (IllegalStateException e) {
@@ -391,6 +403,14 @@ public class AppointmentService {
 
     // ── 查詢可預約時段（需求 3：回傳每個時段剩餘名額，上限 5）──────────────
     public List<TimeSlotResponse> getAvailableSlots(LocalDate date) {
+        return getAvailableSlots(date, null);
+    }
+
+    // 需求（追加，2026-09-08）：時段可以限定只開放特定物種預約（避免同時段狗貓混雜，
+    // 造成寵物緊迫）。帶入 petType 時，該時段限定的物種跟這隻寵物不符的話，一併反映在
+    // available 上（不只是名額滿）；不管有沒有帶 petType，allowedPetType 都會回傳，
+    // 讓前端可以標示提示文字（例如「🐕限定」），不用等使用者選到寵物才看得出限制。
+    public List<TimeSlotResponse> getAvailableSlots(LocalDate date, com.petgrooming.pet_system.enums.PetType petType) {
         List<TimeSlotResponse> allSlots = new ArrayList<>();
 
         // 需求 16：公休日當天不開放任何時段，直接回傳空清單
@@ -408,8 +428,12 @@ public class AppointmentService {
             int booked = slotCapacityService.bookedCount(date, current);
             int capacity = slotCapacityService.getCapacity(date, current);
             int remaining = Math.max(0, capacity - booked);
+            com.petgrooming.pet_system.enums.PetType allowedPetType =
+                    slotCapacityService.getAllowedPetType(date, current);
+            boolean speciesMismatch = petType != null && allowedPetType != null && allowedPetType != petType;
             allSlots.add(new TimeSlotResponse(
-                    current, next, remaining > 0, booked, capacity, remaining));
+                    current, next, remaining > 0 && !speciesMismatch, booked, capacity, remaining,
+                    allowedPetType != null ? allowedPetType.name() : null));
 
             current = next;
         }

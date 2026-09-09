@@ -53,6 +53,16 @@ public class DefaultSlotCapacityTemplateService {
     }
 
     /**
+     * 需求（追加，2026-09-08）：查某個時段預設限定的物種（null＝不限制），
+     * 資料庫裡還沒有這一列的話回傳 null（保險預設不限制）。
+     */
+    public com.petgrooming.pet_system.enums.PetType getAllowedPetType(LocalTime slotTime) {
+        return templateRepository.findBySlotTime(slotTime)
+                .map(DefaultSlotCapacityTemplate::getAllowedPetType)
+                .orElse(null);
+    }
+
+    /**
      * 後台頁面顯示用：回傳完整時段格線清單，資料庫裡還沒有的時段自動補一列預設值進去
      * （lazy 自我初始化，跟 ClosedDateService.getWeeklyClosureSetting() 同一套寫法），
      * 這樣店家在後台看到的一定是完整的一份表格，不會有缺格。
@@ -73,19 +83,28 @@ public class DefaultSlotCapacityTemplateService {
     }
 
     /**
-     * 店家在後台調整某個時段的預設名額上限。
-     * ⚠️ 這只會影響「以後新建立的日期」在第一次被查詢/預約時的初始上限，
+     * 店家在後台調整某個時段的預設名額上限，以及（需求追加，2026-09-08）預設限定
+     * 的物種（null＝不限制，兩者皆可）。
+     * ⚠️ 這只會影響「以後新建立的日期」在第一次被查詢/預約時的初始值，
      * 已經存在的 SlotCapacity 列（不管是已經有人預約過、還是店家之前手動覆寫過的日期）
      * 不會被這個調整回溯影響——跟「調整名額上限」（單一天覆寫）是分開的兩件事。
      */
     @Transactional
-    public void setCapacity(LocalTime slotTime, int newCapacity) {
+    public void setCapacity(LocalTime slotTime, int newCapacity,
+                             com.petgrooming.pet_system.enums.PetType allowedPetType) {
         if (newCapacity < 0) {
             throw new IllegalArgumentException("名額上限不能小於 0");
         }
         DefaultSlotCapacityTemplate row = templateRepository.findBySlotTime(slotTime)
                 .orElseGet(() -> DefaultSlotCapacityTemplate.builder().slotTime(slotTime).build());
         row.setCapacity(newCapacity);
+        row.setAllowedPetType(allowedPetType);
         templateRepository.save(row);
+    }
+
+    /** 相容舊呼叫端（不調整物種限制）。 */
+    @Transactional
+    public void setCapacity(LocalTime slotTime, int newCapacity) {
+        setCapacity(slotTime, newCapacity, getAllowedPetType(slotTime));
     }
 }

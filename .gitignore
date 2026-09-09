@@ -53,3 +53,9 @@ ngrok.exe
 *.log
 .DS_Store
 Thumbs.db
+
+# Claude Code 本機設定與 session 資料，不應上傳
+.claude/settings.local.json
+.claude/settings.local.*
+.claude/history/
+.mcp.json

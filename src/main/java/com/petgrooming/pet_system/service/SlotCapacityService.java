@@ -45,6 +45,8 @@ public class SlotCapacityService {
                     .slotTime(time)
                     .booked(0)
                     .capacity(defaultSlotCapacityTemplateService.getCapacity(time))
+                    // 需求（追加，2026-09-08）：新建立的一天，物種限制初始值也從範本帶入
+                    .allowedPetType(defaultSlotCapacityTemplateService.getAllowedPetType(time))
                     .build());
         } catch (DataIntegrityViolationException e) {
             // 併發下另一交易已插入，忽略即可（列已存在）
@@ -99,13 +101,26 @@ public class SlotCapacityService {
     }
 
     /**
+     * 需求（追加，2026-09-08）：查某時段目前限定的物種（null＝不限制），該日該時段
+     * 還沒建立計數列的話，回傳範本裡設定的預設值。
+     */
+    public com.petgrooming.pet_system.enums.PetType getAllowedPetType(LocalDate date, LocalTime time) {
+        return slotRepo.findBySlotDateAndSlotTime(date, time)
+                .map(SlotCapacity::getAllowedPetType)
+                .orElseGet(() -> defaultSlotCapacityTemplateService.getAllowedPetType(time));
+    }
+
+    /**
      * 需求 1：店家手動調整「特定日期＋特定時段」的名額上限，或直接關閉（設為 0）。
-     * 只影響「剩餘可預約名額」，已經預約成功的紀錄（booked 數）完全不受影響——
-     * 即使把 capacity 調到比 booked 還低，現有預約仍然有效，只是不能再新增預約進這個時段。
+     * 需求（追加，2026-09-08）：同時可以覆寫這一天這個時段限定的物種（null＝不限制）。
+     * 只影響「剩餘可預約名額」與「這個時段能不能約」，已經預約成功的紀錄（booked 數）
+     * 完全不受影響——即使把 capacity 調到比 booked 還低、或改成限定物種跟現有預約的
+     * 寵物不符，現有預約仍然有效，只是不能再新增預約進這個時段。
      * 這個調整是單次生效（只影響這一天這個時段），不會套用重複規則。
      */
     @Transactional
-    public void setCapacity(LocalDate date, LocalTime time, int newCapacity) {
+    public void setCapacity(LocalDate date, LocalTime time, int newCapacity,
+                             com.petgrooming.pet_system.enums.PetType allowedPetType) {
         if (newCapacity < 0) {
             throw new IllegalArgumentException("名額上限不能小於 0");
         }
@@ -113,6 +128,13 @@ public class SlotCapacityService {
         SlotCapacity slot = slotRepo.findBySlotDateAndSlotTime(date, time)
                 .orElseThrow(() -> new IllegalStateException("時段建立失敗"));
         slot.setCapacity(newCapacity);
+        slot.setAllowedPetType(allowedPetType);
         slotRepo.save(slot);
+    }
+
+    /** 相容舊呼叫端（不調整物種限制）。 */
+    @Transactional
+    public void setCapacity(LocalDate date, LocalTime time, int newCapacity) {
+        setCapacity(date, time, newCapacity, getAllowedPetType(date, time));
     }
 }

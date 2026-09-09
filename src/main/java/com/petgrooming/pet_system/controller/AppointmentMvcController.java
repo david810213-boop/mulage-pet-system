@@ -620,26 +620,43 @@ public class AppointmentMvcController {
     // 需求（追加，2026-08-27）：店家調整「預設時段容量範本」某個時段的預設名額上限。
     // 只影響以後新建立的日期的初始值，不會回溯影響已經存在的日期
     // （已存在的日期要調整的話，用下面既有的「這一天各時段名額」表格覆寫）。
+    // 需求（追加，2026-09-08）：一併調整這個時段預設限定的物種（空字串＝不限制）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/template/update")
     public String updateDefaultSlotCapacityTemplate(HttpServletRequest request,
                                      @RequestParam
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
                                      @RequestParam int capacity,
+                                     @RequestParam(required = false) String allowedPetType,
                                      @RequestParam(required = false)
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                      RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            defaultSlotCapacityTemplateService.setCapacity(time, capacity);
+            com.petgrooming.pet_system.enums.PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
+            defaultSlotCapacityTemplateService.setCapacity(time, capacity, parsedPetType);
             operationLogService.log(user, "APPOINTMENT", "SET_DEFAULT_SLOT_CAPACITY",
-                    time.toString(), "預設範本調整為 " + capacity + " 位");
+                    time.toString(), "預設範本調整為 " + capacity + " 位"
+                            + (parsedPetType != null ? "，僅限" + parsedPetType.getDescription() : ""));
             ra.addFlashAttribute("successMsg",
-                    time + " 的預設時段容量已調整為 " + capacity + " 位（往後新的日期會套用這個預設值）");
+                    time + " 的預設時段容量已調整為 " + capacity + " 位"
+                            + (parsedPetType != null ? "，僅限" + parsedPetType.getDescription() + "預約" : "")
+                            + "（往後新的日期會套用這個預設值）");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "調整失敗：" + e.getMessage());
         }
         return "redirect:/appointments/slots-manage" + (date != null ? "?date=" + date : "");
+    }
+
+    // 需求（追加，2026-09-08）：時段管理表單裡的物種下拉選單值轉成 PetType，
+    // 空字串／null／不合法值一律當「不限制」，兩個時段管理 POST endpoint 共用。
+    private com.petgrooming.pet_system.enums.PetType parsePetTypeOrNull(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return com.petgrooming.pet_system.enums.PetType.valueOf(raw.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // ── POST /appointments/slots-manage/weekly-closure ─────────────────────
@@ -696,6 +713,7 @@ public class AppointmentMvcController {
     }
 
     // ── POST /appointments/slots-manage/update ───────────────────────────
+    // 需求（追加，2026-09-08）：一併調整這一天這個時段限定的物種（空字串＝不限制）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/update")
     public String updateSlotCapacity(HttpServletRequest request,
@@ -704,14 +722,18 @@ public class AppointmentMvcController {
                                      @RequestParam
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
                                      @RequestParam int capacity,
+                                     @RequestParam(required = false) String allowedPetType,
                                      RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            slotCapacityService.setCapacity(date, time, capacity);
+            com.petgrooming.pet_system.enums.PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
+            slotCapacityService.setCapacity(date, time, capacity, parsedPetType);
             operationLogService.log(user, "APPOINTMENT", "SET_SLOT_CAPACITY",
-                    date + " " + time, "調整為 " + capacity + " 位");
+                    date + " " + time, "調整為 " + capacity + " 位"
+                            + (parsedPetType != null ? "，僅限" + parsedPetType.getDescription() : ""));
             ra.addFlashAttribute("successMsg",
-                    date + " " + time + " 時段名額已調整為 " + capacity + " 位");
+                    date + " " + time + " 時段名額已調整為 " + capacity + " 位"
+                            + (parsedPetType != null ? "，僅限" + parsedPetType.getDescription() + "預約" : ""));
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "調整失敗：" + e.getMessage());
         }

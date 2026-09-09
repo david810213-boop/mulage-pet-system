@@ -328,17 +328,18 @@
                 <th>已預約</th>
                 <th>目前上限</th>
                 <th>剩餘名額</th>
+                <th>限定物種</th>
                 <th>調整名額上限</th>
               </tr>
             </thead>
             <tbody>
               <tr th:if="${#lists.isEmpty(slots) and isClosedToday}">
-                <td colspan="5" class="empty">
+                <td colspan="6" class="empty">
                   當天為公休日，不顯示可調整時段（取消公休後才會恢復）
                 </td>
               </tr>
               <tr th:if="${#lists.isEmpty(slots) and !isClosedToday}">
-                <td colspan="5" class="empty">當天沒有可調整的時段</td>
+                <td colspan="6" class="empty">當天沒有可調整的時段</td>
               </tr>
               <tr th:each="s : ${slots}">
                 <td th:text="${#temporals.format(s.startTime, 'HH:mm')}"></td>
@@ -357,10 +358,15 @@
                   >
                 </td>
                 <td>
+                  <span th:if="${s.allowedPetType == null}" style="color: var(--brown-light)">不限制</span>
+                  <span th:if="${s.allowedPetType == 'DOG'}">🐕 僅限狗</span>
+                  <span th:if="${s.allowedPetType == 'CAT'}">🐱 僅限貓</span>
+                </td>
+                <td>
                   <form
                     method="post"
                     action="/appointments/slots-manage/update"
-                    style="display: flex; gap: 6px; align-items: center"
+                    style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap"
                   >
                     <input type="hidden" name="date" th:value="${date}" />
                     <input
@@ -375,6 +381,11 @@
                       min="0"
                       style="width: 70px; padding: 5px 6px"
                     />
+                    <select name="allowedPetType" style="padding: 5px 6px">
+                      <option value="" th:selected="${s.allowedPetType == null}">不限制</option>
+                      <option value="DOG" th:selected="${s.allowedPetType == 'DOG'}">僅限狗</option>
+                      <option value="CAT" th:selected="${s.allowedPetType == 'CAT'}">僅限貓</option>
+                    </select>
                     <button
                       type="submit"
                       class="btn btn-outline"
@@ -429,6 +440,7 @@
             <thead>
               <tr>
                 <th>時段</th>
+                <th>限定物種</th>
                 <th>預設名額上限</th>
               </tr>
             </thead>
@@ -436,10 +448,15 @@
               <tr th:each="t : ${templateSlots}">
                 <td th:text="${#temporals.format(t.slotTime, 'HH:mm')}"></td>
                 <td>
+                  <span th:if="${t.allowedPetType == null}" style="color: var(--brown-light)">不限制</span>
+                  <span th:if="${t.allowedPetType != null and t.allowedPetType.name() == 'DOG'}">🐕 僅限狗</span>
+                  <span th:if="${t.allowedPetType != null and t.allowedPetType.name() == 'CAT'}">🐱 僅限貓</span>
+                </td>
+                <td>
                   <form
                     method="post"
                     action="/appointments/slots-manage/template/update"
-                    style="display: flex; gap: 6px; align-items: center"
+                    style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap"
                   >
                     <input type="hidden" name="date" th:value="${date}" />
                     <input
@@ -454,6 +471,11 @@
                       min="0"
                       style="width: 70px; padding: 5px 6px"
                     />
+                    <select name="allowedPetType" style="padding: 5px 6px">
+                      <option value="" th:selected="${t.allowedPetType == null}">不限制</option>
+                      <option value="DOG" th:selected="${t.allowedPetType != null and t.allowedPetType.name() == 'DOG'}">僅限狗</option>
+                      <option value="CAT" th:selected="${t.allowedPetType != null and t.allowedPetType.name() == 'CAT'}">僅限貓</option>
+                    </select>
                     <button
                       type="submit"
                       class="btn btn-outline"

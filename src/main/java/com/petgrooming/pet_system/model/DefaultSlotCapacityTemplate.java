@@ -43,4 +43,10 @@ public class DefaultSlotCapacityTemplate {
     @Column(nullable = false)
     @Builder.Default
     private int capacity = 5;        // 這個時段預設的名額上限，設 0 代表這個時段預設不開放
+
+    // 需求（追加，2026-09-08）：限定這個時段預設只能預約特定物種，跟 SlotCapacity
+    // 同一套欄位設計（null＝不限制）。新建立一天的計數列時會從這裡帶入初始值。
+    @Column(name = "allowed_pet_type")
+    @Enumerated(EnumType.STRING)
+    private com.petgrooming.pet_system.enums.PetType allowedPetType;
 }
