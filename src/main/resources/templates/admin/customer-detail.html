@@ -282,28 +282,6 @@
               th:if="${#strings.startsWith(customer.username, 'imported_')}"
               th:attr="data-imported-username=${customer.username}"
               id="mergeSourceBox"
-              style="
-                margin-bottom: 14px;
-                padding: 12px;
-                background: #fff3e0;
-                border: 1px solid #ffcc80;
-                border-radius: var(--radius-sm);
-              "
-            >
-              <h4 style="font-size: 13px; color: #e65100; margin: 0 0 6px">
-                🔗 這是匯入資料建立的暫時帳號
-              </h4>
-              <p
-                style="
-                  font-size: 12px;
-                  color: var(--brown-mid);
-                  margin: 0 0 8px;
-                "
-              >
-                如果顧客的 LINE
-                帳號已經自己先填過資料，沒辦法用電話號碼自動認領，可以在這裡搜尋顧客的
-                LINE
-                會員帳號，手動把寵物／消費／儲值資料合併過去（不會覆蓋對方已填的姓名、電話）。
               </p>
               <div style="position: relative">
                 <input

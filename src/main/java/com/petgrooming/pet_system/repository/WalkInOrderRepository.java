@@ -17,4 +17,7 @@ public interface WalkInOrderRepository extends JpaRepository<WalkInOrder, Long> 
 
     // 某會員的現場單
     List<WalkInOrder> findByMemberUsernameOrderByCreatedAtDesc(String username);
+
+    // 需求（追加，2026-09-08）：手動綁定既有匯入資料——過戶這個會員名下所有現場單
+    List<WalkInOrder> findByMemberId(Long memberId);
 }

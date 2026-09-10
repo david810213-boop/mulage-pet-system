@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.MemberNoteRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class AdminMemberController {
     private final UserService userService;
     private final PetService petService;
     private final com.petgrooming.pet_system.repository.PetRepository petRepository;
+    private final MemberImportService memberImportService; // 需求（追加，2026-09-08）：手動綁定既有匯入資料
 
     // ── GET /api/admin/members/search?keyword=xxx ───────────────────────────
     // 現場開單：依姓名/帳號搜尋會員，解決 LINE 登入會員帳號是 line_xxx 內碼問題
@@ -108,6 +110,25 @@ public class AdminMemberController {
                     "adminNote", saved == null ? "" : saved));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ── POST /api/admin/members/merge ───────────────────────────────────────
+    // 需求（追加，2026-09-08）：手動綁定既有匯入資料。用在顧客的 LINE 帳號
+    // 自己已經先填過資料，導致 claimByPhone() 的防呆擋下自動認領時，由店家
+    // 人工判斷後手動合併。importedUsername 必須是 imported_ 開頭的匯入暫時
+    // 帳號，targetUsername 是要合併過去的真正會員帳號（通常是 line_ 開頭）。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/merge")
+    public ResponseEntity<?> merge(@RequestBody Map<String, String> req) {
+        try {
+            String importedUsername = req.get("importedUsername");
+            String targetUsername = req.get("targetUsername");
+            memberImportService.manualMerge(importedUsername, targetUsername);
+            return ResponseEntity.ok(Map.of(
+                    "message", "已將 " + importedUsername + " 的資料合併到 " + targetUsername));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

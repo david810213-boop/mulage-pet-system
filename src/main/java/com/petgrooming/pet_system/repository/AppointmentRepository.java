@@ -14,6 +14,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 查某使用者的所有預約（對應原本 getReceiptsByUser）
     List<Appointment> findByUserUsername(String username);
 
+    // 需求（追加，2026-09-08）：手動綁定既有匯入資料——過戶這個會員名下所有預約
+    List<Appointment> findByUserId(Long userId);
+
     // 查某天的所有預約（用來計算已佔用時段）
     List<Appointment> findByDate(LocalDate date);
 
