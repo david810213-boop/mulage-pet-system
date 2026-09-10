@@ -1422,9 +1422,12 @@
         // Thymeleaf 不會處理 /*[[${...}]]*/ 這種內嵌語法，會整段當成 JS 註解留在
         // 原地，導致變數永遠拿到空字串。改成讀 HTML 屬性（data-imported-username），
         // 這個屬性是用 th:attr 在一般 HTML 渲染階段就設好的，不受這個限制影響。
-        const importedUsername =
-          document.getElementById("mergeSourceBox").dataset.importedUsername ||
-          "";
+        // 需求（防呆補強，2026-09-10）：改用可選鏈，就算這個元素當下抓不到
+        // （例如瀏覽器快取到混合版本的頁面）也不會噴例外中斷整段 script——
+        // 這裡如果直接中斷，會連下面搜尋框的事件監聽器都沒機會註冊上去，
+        // 造成「打字完全沒反應」，跟現場開單會員搜尋失效是同一種模式的坑。
+        const mergeSourceEl = document.getElementById("mergeSourceBox");
+        const importedUsername = mergeSourceEl?.dataset?.importedUsername || "";
         let selectedTarget = null;
         let debounceTimer = null;
 
