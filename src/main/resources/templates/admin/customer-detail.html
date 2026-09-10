@@ -275,6 +275,89 @@
               >
             </div>
 
+            <!-- 需求（追加，2026-09-08）：手動綁定既有匯入資料。只有匯入建立的
+                 暫時帳號（username 以 imported_ 開頭）才會顯示，用在顧客的 LINE
+                 帳號自己已經先填過資料、導致無法自動認領這筆匯入資料的情況 -->
+            <div
+              th:if="${#strings.startsWith(customer.username, 'imported_')}"
+              th:attr="data-imported-username=${customer.username}"
+              id="mergeSourceBox"
+              style="
+                margin-bottom: 14px;
+                padding: 12px;
+                background: #fff3e0;
+                border: 1px solid #ffcc80;
+                border-radius: var(--radius-sm);
+              "
+            >
+              <h4 style="font-size: 13px; color: #e65100; margin: 0 0 6px">
+                🔗 這是匯入資料建立的暫時帳號
+              </h4>
+              <p
+                style="
+                  font-size: 12px;
+                  color: var(--brown-mid);
+                  margin: 0 0 8px;
+                "
+              >
+                如果顧客的 LINE
+                帳號已經自己先填過資料，沒辦法用電話號碼自動認領，可以在這裡搜尋顧客的
+                LINE
+                會員帳號，手動把寵物／消費／儲值資料合併過去（不會覆蓋對方已填的姓名、電話）。
+              </p>
+              <div style="position: relative">
+                <input
+                  type="text"
+                  id="mergeTargetSearch"
+                  placeholder="輸入顧客姓名搜尋 LINE 會員帳號..."
+                  autocomplete="off"
+                  style="
+                    width: 100%;
+                    padding: 8px 10px;
+                    border: 1px solid var(--cream-300);
+                    border-radius: var(--radius-sm);
+                    font-size: 13px;
+                    box-sizing: border-box;
+                  "
+                />
+                <div
+                  id="mergeTargetSuggestions"
+                  style="
+                    display: none;
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: #fff;
+                    border: 1px solid var(--cream-300);
+                    border-radius: var(--radius-sm);
+                    max-height: 220px;
+                    overflow-y: auto;
+                    z-index: 10;
+                  "
+                ></div>
+              </div>
+              <div
+                id="mergeTargetSelected"
+                style="font-size: 12px; color: #2e7d32; margin-top: 6px"
+              ></div>
+              <button
+                type="button"
+                id="mergeConfirmBtn"
+                class="btn"
+                disabled
+                style="
+                  margin-top: 10px;
+                  background: #e65100;
+                  color: #fff;
+                  opacity: 0.5;
+                  cursor: not-allowed;
+                "
+              >
+                合併到這個帳號
+              </button>
+            </div>
+
             <div class="cd-info-row">
               <span>手機號碼</span
               ><span th:text="${customer.phone} ?: '尚未填寫'"></span>
@@ -503,17 +586,35 @@
                       gap: 8px;
                     "
                   >
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px">
                       <!-- 需求 17：寵物大頭照，沒有照片就顯示預設圖示 -->
                       <img
                         th:if="${p.photoUrl != null}"
                         th:src="${p.photoUrl}"
-                        style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--cream-300);"
+                        style="
+                          width: 44px;
+                          height: 44px;
+                          border-radius: 50%;
+                          object-fit: cover;
+                          border: 1px solid var(--cream-300);
+                        "
                       />
                       <div
                         th:unless="${p.photoUrl != null}"
-                        style="width: 44px; height: 44px; border-radius: 50%; background: var(--cream-100); display:flex; align-items:center; justify-content:center; font-size:20px; border: 1px solid var(--cream-300);"
-                      >🐾</div>
+                        style="
+                          width: 44px;
+                          height: 44px;
+                          border-radius: 50%;
+                          background: var(--cream-100);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          font-size: 20px;
+                          border: 1px solid var(--cream-300);
+                        "
+                      >
+                        🐾
+                      </div>
                       <div>
                         <span
                           style="
@@ -535,29 +636,58 @@
                         ></span>
                         <a
                           th:href="@{/admin/pets/{id}/edit(id=${p.id})}"
-                          style="font-size: 11.5px; color: #8a6f3f; text-decoration: underline; margin-left: 8px;"
-                        >完整編輯</a>
+                          style="
+                            font-size: 11.5px;
+                            color: #8a6f3f;
+                            text-decoration: underline;
+                            margin-left: 8px;
+                          "
+                          >完整編輯</a
+                        >
                         <!-- 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄
                              會被後端擋下並顯示明確錯誤訊息。HTML 表單不支援 DELETE method，
                              改用 JS fetch 呼叫。 -->
                         <button
                           type="button"
                           th:onclick="'deletePetAdmin(' + ${p.id} + ')'"
-                          style="font-size: 11.5px; color: #c0392b; background: none; border: none; text-decoration: underline; cursor: pointer; margin-left: 8px; padding: 0;"
-                        >刪除</button>
+                          style="
+                            font-size: 11.5px;
+                            color: #c0392b;
+                            background: none;
+                            border: none;
+                            text-decoration: underline;
+                            cursor: pointer;
+                            margin-left: 8px;
+                            padding: 0;
+                          "
+                        >
+                          刪除
+                        </button>
                         <form
                           th:action="@{/admin/wallets/{u}/pets/{id}/photo(u=${customer.username},id=${p.id})}"
                           method="post"
                           enctype="multipart/form-data"
-                          style="margin-top: 4px;"
+                          style="margin-top: 4px"
                         >
                           <input
                             type="hidden"
                             name="returnTo"
                             th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
                           />
-                          <input type="file" name="file" accept="image/*" style="font-size: 11px; max-width: 180px;" required />
-                          <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;">上傳照片</button>
+                          <input
+                            type="file"
+                            name="file"
+                            accept="image/*"
+                            style="font-size: 11px; max-width: 180px"
+                            required
+                          />
+                          <button
+                            type="submit"
+                            class="btn btn-outline"
+                            style="padding: 2px 8px; font-size: 11px"
+                          >
+                            上傳照片
+                          </button>
                         </form>
                       </div>
                     </div>
@@ -660,13 +790,20 @@
                       font-size: 12.5px;
                     "
                   >
-                    🔒 已鎖定固定套餐：<strong th:text="${p.lockedItemName}"></strong>
-                    （$<span th:text="${p.lockedItemPrice}"></span>），預約/現場開單時只會帶出這一項
+                    🔒 已鎖定固定套餐：<strong
+                      th:text="${p.lockedItemName}"
+                    ></strong>
+                    （$<span th:text="${p.lockedItemPrice}"></span
+                    >），預約/現場開單時只會帶出這一項
                     <button
                       type="button"
                       th:onclick="'unlockPetAdmin(' + ${p.id} + ')'"
                       class="btn btn-outline"
-                      style="padding: 3px 10px; font-size: 11.5px; margin-left: 8px;"
+                      style="
+                        padding: 3px 10px;
+                        font-size: 11.5px;
+                        margin-left: 8px;
+                      "
                     >
                       🔓 解鎖，重新報價
                     </button>
@@ -677,31 +814,67 @@
                        貓咪品種改成下拉選單（跟 LIFF「我的毛孩」編輯一致，選了
                        系統會自動重新判斷毛髮分類），狗狗維持文字輸入。 -->
                   <details style="margin-top: 8px">
-                    <summary style="cursor: pointer; font-size: 12.5px; color: var(--cream-600);">
+                    <summary
+                      style="
+                        cursor: pointer;
+                        font-size: 12.5px;
+                        color: var(--cream-600);
+                      "
+                    >
                       ✏️ 編輯基本資料
                     </summary>
                     <form
                       th:action="@{/admin/wallets/{u}/pets/{id}/edit(u=${customer.username},id=${p.id})}"
                       method="post"
-                      style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; align-items: end;"
+                      style="
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 8px;
+                        margin-top: 8px;
+                        align-items: end;
+                      "
                     >
-                      <input type="hidden" name="petType" th:value="${p.petType}" />
+                      <input
+                        type="hidden"
+                        name="petType"
+                        th:value="${p.petType}"
+                      />
                       <input
                         type="hidden"
                         name="returnTo"
                         th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
                       />
                       <div>
-                        <label style="display:block; font-size:11px; color: var(--brown-light);">名字</label>
-                        <input type="text" name="name" th:value="${p.name}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                        <label
+                          style="
+                            display: block;
+                            font-size: 11px;
+                            color: var(--brown-light);
+                          "
+                          >名字</label
+                        >
+                        <input
+                          type="text"
+                          name="name"
+                          th:value="${p.name}"
+                          required
+                          style="width: 100%; padding: 4px; font-size: 12.5px"
+                        />
                       </div>
                       <div>
-                        <label style="display:block; font-size:11px; color: var(--brown-light);">品種</label>
+                        <label
+                          style="
+                            display: block;
+                            font-size: 11px;
+                            color: var(--brown-light);
+                          "
+                          >品種</label
+                        >
                         <select
                           th:if="${p.petType.name() == 'CAT'}"
                           name="breed"
                           required
-                          style="width:100%; padding:4px; font-size:12.5px;"
+                          style="width: 100%; padding: 4px; font-size: 12.5px"
                         >
                           <option value="">請選擇</option>
                           <option
@@ -725,18 +898,53 @@
                           name="breed"
                           th:value="${p.breed}"
                           required
-                          style="width:100%; padding:4px; font-size:12.5px;"
+                          style="width: 100%; padding: 4px; font-size: 12.5px"
                         />
                       </div>
                       <div>
-                        <label style="display:block; font-size:11px; color: var(--brown-light);">體重(kg)</label>
-                        <input type="number" step="0.1" name="weight" th:value="${p.weight}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                        <label
+                          style="
+                            display: block;
+                            font-size: 11px;
+                            color: var(--brown-light);
+                          "
+                          >體重(kg)</label
+                        >
+                        <input
+                          type="number"
+                          step="0.1"
+                          name="weight"
+                          th:value="${p.weight}"
+                          required
+                          style="width: 100%; padding: 4px; font-size: 12.5px"
+                        />
                       </div>
                       <div>
-                        <label style="display:block; font-size:11px; color: var(--brown-light);">年齡</label>
-                        <input type="number" name="age" th:value="${p.age}" required style="width:100%; padding:4px; font-size:12.5px;" />
+                        <label
+                          style="
+                            display: block;
+                            font-size: 11px;
+                            color: var(--brown-light);
+                          "
+                          >年齡</label
+                        >
+                        <input
+                          type="number"
+                          name="age"
+                          th:value="${p.age}"
+                          required
+                          style="width: 100%; padding: 4px; font-size: 12.5px"
+                        />
                       </div>
-                      <button type="submit" class="btn btn-outline" style="grid-column: span 4; padding:4px 10px; font-size:12px;">
+                      <button
+                        type="submit"
+                        class="btn btn-outline"
+                        style="
+                          grid-column: span 4;
+                          padding: 4px 10px;
+                          font-size: 12px;
+                        "
+                      >
                         儲存基本資料
                       </button>
                     </form>
@@ -775,21 +983,42 @@
                       <img
                         th:if="${n.photoUrl != null}"
                         th:src="${n.photoUrl}"
-                        style="width: 100%; max-width: 220px; border-radius: 8px; margin-top: 6px; display: block;"
+                        style="
+                          width: 100%;
+                          max-width: 220px;
+                          border-radius: 8px;
+                          margin-top: 6px;
+                          display: block;
+                        "
                       />
                       <form
                         th:action="@{/admin/wallets/{u}/grooming-notes/{id}/photo(u=${customer.username},id=${n.id})}"
                         method="post"
                         enctype="multipart/form-data"
-                        style="margin-top: 6px; display: flex; align-items: center; gap: 6px;"
+                        style="
+                          margin-top: 6px;
+                          display: flex;
+                          align-items: center;
+                          gap: 6px;
+                        "
                       >
                         <input
                           type="hidden"
                           name="returnTo"
                           th:value="@{/admin/customers/{u}(u=${customer.username})} + '#tab-pets'"
                         />
-                        <input type="file" name="file" accept="image/*" style="font-size: 11px; max-width: 160px;" required />
-                        <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;">
+                        <input
+                          type="file"
+                          name="file"
+                          accept="image/*"
+                          style="font-size: 11px; max-width: 160px"
+                          required
+                        />
+                        <button
+                          type="submit"
+                          class="btn btn-outline"
+                          style="padding: 2px 8px; font-size: 11px"
+                        >
                           <span th:if="${n.photoUrl == null}">加照片</span>
                           <span th:if="${n.photoUrl != null}">換照片</span>
                         </button>
@@ -842,7 +1071,9 @@
                           color: var(--brown-light);
                         "
                       >
-                        <span th:text="${c.sourceLabel} + ' · ' + ${c.code}"></span>
+                        <span
+                          th:text="${c.sourceLabel} + ' · ' + ${c.code}"
+                        ></span>
                         <span
                           th:text="${c.time != null ? #temporals.format(c.time, 'yyyy-MM-dd HH:mm') : '—'} + ' · ' + ${c.handledBy} + ' · ' + ${c.paymentMethodLabel}"
                         ></span>
@@ -973,14 +1204,29 @@
       // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄的話後端
       // 會擋下並回傳明確錯誤訊息，這裡直接顯示，不用自己重複判斷邏輯。
       async function deletePetAdmin(petId) {
-        if (!confirm("確定要刪除這隻寵物嗎？刪除後不會再顯示在清單裡，但過往的預約/消費紀錄不會受影響。")) return;
+        if (
+          !confirm(
+            "確定要刪除這隻寵物嗎？刪除後不會再顯示在清單裡，但過往的預約/消費紀錄不會受影響。",
+          )
+        )
+          return;
         try {
-          const res = await fetch("/api/admin/pets/" + petId, { method: "DELETE" });
+          const res = await fetch("/api/admin/pets/" + petId, {
+            method: "DELETE",
+          });
           if (!res.ok) {
             const msg = await res.text().catch(() => "");
             let parsed = msg;
-            try { parsed = JSON.parse(msg); } catch (e) { /* 純文字錯誤訊息，直接用 */ }
-            alert(typeof parsed === "string" ? parsed : (parsed.message || "刪除失敗"));
+            try {
+              parsed = JSON.parse(msg);
+            } catch (e) {
+              /* 純文字錯誤訊息，直接用 */
+            }
+            alert(
+              typeof parsed === "string"
+                ? parsed
+                : parsed.message || "刪除失敗",
+            );
             return;
           }
           window.location.reload();
@@ -993,9 +1239,17 @@
       // walk-in-order-checkout.html / payments/checkout.html 同一支既有 API，
       // 不用新增後端端點。
       async function unlockPetAdmin(petId) {
-        if (!confirm("確定要解鎖嗎？解鎖後下次預約/開單會恢復成依體重重新選套餐。")) return;
+        if (
+          !confirm(
+            "確定要解鎖嗎？解鎖後下次預約/開單會恢復成依體重重新選套餐。",
+          )
+        )
+          return;
         try {
-          const res = await fetch("/api/admin/pets/" + petId + "/unlock-grooming-item", { method: "PUT" });
+          const res = await fetch(
+            "/api/admin/pets/" + petId + "/unlock-grooming-item",
+            { method: "PUT" },
+          );
           if (!res.ok) {
             alert("解鎖失敗，請重試");
             return;
@@ -1144,7 +1398,8 @@
           </div>`
           : "";
 
-        const hasDiscountAmount = d.chargedAmount != null && d.chargedAmount !== d.totalAmount;
+        const hasDiscountAmount =
+          d.chargedAmount != null && d.chargedAmount !== d.totalAmount;
 
         body.innerHTML = `
           <div class="cd-detail-section">
@@ -1174,6 +1429,165 @@
       function closeConsumeDetailOnBackdrop(e) {
         if (e.target.id === "cdDetailBackdrop") closeConsumeDetail();
       }
+
+      // 需求（追加，2026-09-08）：手動綁定既有匯入資料——搜尋目標會員帳號
+      (function initManualMerge() {
+        const searchBox = document.getElementById("mergeTargetSearch");
+        if (!searchBox) return; // 不是匯入暫時帳號，這個區塊沒有渲染，不用初始化
+
+        const suggestionsBox = document.getElementById(
+          "mergeTargetSuggestions",
+        );
+        const selectedBox = document.getElementById("mergeTargetSelected");
+        const confirmBtn = document.getElementById("mergeConfirmBtn");
+        // 需求（修正，2026-09-10）：這個 <script> 標籤沒有 th:inline="javascript"，
+        // Thymeleaf 不會處理 /*[[${...}]]*/ 這種內嵌語法，會整段當成 JS 註解留在
+        // 原地，導致變數永遠拿到空字串。改成讀 HTML 屬性（data-imported-username），
+        // 這個屬性是用 th:attr 在一般 HTML 渲染階段就設好的，不受這個限制影響。
+        const importedUsername =
+          document.getElementById("mergeSourceBox").dataset.importedUsername ||
+          "";
+        let selectedTarget = null;
+        let debounceTimer = null;
+
+        function setSelected(target) {
+          selectedTarget = target;
+          if (target) {
+            selectedBox.textContent =
+              "✓ 已選定合併目標：" +
+              target.name +
+              "（" +
+              target.username +
+              "）";
+            confirmBtn.disabled = false;
+            confirmBtn.style.opacity = "1";
+            confirmBtn.style.cursor = "pointer";
+          } else {
+            selectedBox.textContent = "";
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.cursor = "not-allowed";
+          }
+        }
+
+        searchBox.addEventListener("input", function () {
+          setSelected(null);
+          const keyword = searchBox.value.trim();
+          clearTimeout(debounceTimer);
+          if (!keyword) {
+            suggestionsBox.style.display = "none";
+            return;
+          }
+          debounceTimer = setTimeout(function () {
+            fetch(
+              "/api/admin/members/search?keyword=" +
+                encodeURIComponent(keyword),
+            )
+              .then(function (res) {
+                return res.json();
+              })
+              .then(function (results) {
+                // 排除其他匯入暫時帳號，只能合併到真正在使用的會員帳號
+                const filtered = (results || []).filter(function (u) {
+                  return !u.username.startsWith("imported_");
+                });
+                if (filtered.length === 0) {
+                  suggestionsBox.innerHTML =
+                    '<div style="padding:8px 10px;font-size:13px;color:var(--brown-light);">找不到符合的會員</div>';
+                  suggestionsBox.style.display = "block";
+                  return;
+                }
+                suggestionsBox.innerHTML = filtered
+                  .map(function (u) {
+                    return (
+                      '<div class="merge-suggestion" data-username="' +
+                      u.username +
+                      '" data-name="' +
+                      u.name +
+                      '" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--cream-200);">' +
+                      u.name +
+                      '　<span style="color:var(--brown-light);">' +
+                      u.username +
+                      "</span></div>"
+                    );
+                  })
+                  .join("");
+                suggestionsBox.style.display = "block";
+              })
+              .catch(function () {
+                suggestionsBox.style.display = "none";
+              });
+          }, 250);
+        });
+
+        suggestionsBox.addEventListener("click", function (e) {
+          const row = e.target.closest(".merge-suggestion");
+          if (!row) return;
+          searchBox.value = row.dataset.name;
+          suggestionsBox.style.display = "none";
+          setSelected({
+            username: row.dataset.username,
+            name: row.dataset.name,
+          });
+        });
+
+        document.addEventListener("click", function (e) {
+          if (
+            !e.target.closest("#mergeTargetSearch") &&
+            !e.target.closest("#mergeTargetSuggestions")
+          ) {
+            suggestionsBox.style.display = "none";
+          }
+        });
+
+        confirmBtn.addEventListener("click", function () {
+          if (!selectedTarget) return;
+          const ok = confirm(
+            "確定要把「" +
+              importedUsername +
+              "」的寵物／消費／儲值資料合併到「" +
+              selectedTarget.name +
+              "（" +
+              selectedTarget.username +
+              "）」嗎？\n\n" +
+              "此動作無法復原，合併後這個匯入暫時帳號會被刪除。",
+          );
+          if (!ok) return;
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = "合併中...";
+          fetch("/api/admin/members/merge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              importedUsername: importedUsername,
+              targetUsername: selectedTarget.username,
+            }),
+          })
+            .then(function (res) {
+              return res.text().then(function (text) {
+                let body;
+                try {
+                  body = JSON.parse(text);
+                } catch (e) {
+                  body = { error: text };
+                }
+                if (!res.ok) throw new Error(body.error || "合併失敗");
+                return body;
+              });
+            })
+            .then(function (body) {
+              alert(body.message || "合併完成");
+              window.location.href =
+                "/admin/customers/" +
+                encodeURIComponent(selectedTarget.username);
+            })
+            .catch(function (err) {
+              alert("合併失敗：" + err.message);
+              confirmBtn.disabled = false;
+              confirmBtn.textContent = "合併到這個帳號";
+            });
+        });
+      })();
     </script>
   </body>
 </html>
