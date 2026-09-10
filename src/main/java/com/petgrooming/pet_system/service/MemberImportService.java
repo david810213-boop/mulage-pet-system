@@ -42,11 +42,11 @@ import java.util.*;
  * 匯入邏輯：
  * - CSV 一列＝一隻毛孩，依「電話號碼」分組，同一組只建立一筆會員帳號，底下掛多隻寵物
  * - 電話號碼在系統裡已經存在的（不管是已經真的用過 LINE 登入、或之前已經匯入過），
- *   整組直接跳過，不覆蓋、不重複建立——這份匯入功能設計成可以重複執行同一份 CSV
- *   也不會出錯或製造重複資料，方便店家分批匯入或匯入失敗後重跑
+ * 整組直接跳過，不覆蓋、不重複建立——這份匯入功能設計成可以重複執行同一份 CSV
+ * 也不會出錯或製造重複資料，方便店家分批匯入或匯入失敗後重跑
  * - 匯入建立的帳號 lineUserId 是 null（還沒被任何人認領），username 用
- *   「imported_電話號碼」這種內部識別碼（顧客不會用這個登入，只是資料庫裡需要
- *   一個唯一值），之後靠 {@link #claimByPhone} 讓顧客自己用 LINE 登入認領
+ * 「imported_電話號碼」這種內部識別碼（顧客不會用這個登入，只是資料庫裡需要
+ * 一個唯一值），之後靠 {@link #claimByPhone} 讓顧客自己用 LINE 登入認領
  */
 @Service
 @RequiredArgsConstructor
@@ -168,7 +168,8 @@ public class MemberImportService {
             int balance;
             try {
                 balance = Integer.parseInt(row.getBalanceRaw().trim());
-                if (balance < 0) throw new NumberFormatException();
+                if (balance < 0)
+                    throw new NumberFormatException();
             } catch (Exception e) {
                 errors.add("第 " + row.getRowNumber() + " 列：儲值餘額格式錯誤：" + row.getBalanceRaw());
                 continue;
@@ -250,7 +251,8 @@ public class MemberImportService {
             }
             try {
                 amount = Integer.parseInt(row.getAmountRaw().trim());
-                if (amount < 0) throw new NumberFormatException();
+                if (amount < 0)
+                    throw new NumberFormatException();
             } catch (Exception e) {
                 errors.add("第 " + row.getRowNumber() + " 列：金額格式錯誤：" + row.getAmountRaw());
                 continue;
@@ -290,7 +292,6 @@ public class MemberImportService {
                 .rowErrors(errors)
                 .build();
     }
-
 
     // 用途：顧客第一次用 LINE 登入時系統會自動建一筆空白新帳號（既有機制，不動它），
     // 這裡是額外的動作——把電話號碼比對到的「匯入但還沒被認領」的舊資料，整批
@@ -342,13 +343,13 @@ public class MemberImportService {
     //
     // 跟 claimByPhone() 的差異：
     // ① 不覆蓋目標會員的姓名/電話——目標帳號通常已經有自己填的真實資料，
-    //    這是店家人工判斷合併，不該用匯入資料蓋掉顧客自己填寫的內容
+    // 這是店家人工判斷合併，不該用匯入資料蓋掉顧客自己填寫的內容
     // ② 額外過戶消費紀錄（WalkInOrder）、預約（Appointment）、待處理的儲值
-    //    申請（TopUpRequest）——這幾樣 claimByPhone() 原本沒有處理，如果匯入
-    //    帳號名下曾經匯入過消費紀錄或有這些關聯資料，直接刪除會撞到外鍵
-    //    約束；這裡改成先過戶再刪除，理由是同一套「不留孤兒資料」原則
+    // 申請（TopUpRequest）——這幾樣 claimByPhone() 原本沒有處理，如果匯入
+    // 帳號名下曾經匯入過消費紀錄或有這些關聯資料，直接刪除會撞到外鍵
+    // 約束；這裡改成先過戶再刪除，理由是同一套「不留孤兒資料」原則
     // ③ 儲值餘額用「加總」，不是覆蓋——跟 CSV 儲值餘額批次匯入的既有規則
-    //    一致，避免弄丟金額
+    // 一致，避免弄丟金額
     @Transactional
     public void manualMerge(String importedUsername, String targetUsername) {
         User imported = userRepository.findByUsername(importedUsername)
@@ -371,6 +372,18 @@ public class MemberImportService {
             pet.setOwner(target);
         }
         petRepository.saveAll(pets);
+        // 需求（修正，2026-09-10，重大 bug）：User.pets 是 cascade = CascadeType.ALL
+        // 的雙向一對多關聯。上面只透過 petRepository 改了 pets 資料表的 owner_id，
+        // 但 imported 這個 User 物件自己記憶體裡的 pets 集合並沒有跟著同步移除這些
+        // 寵物——下面 userRepository.delete(imported) 觸發 cascade 刪除時，Hibernate
+        // 是依 imported.getPets() 這個集合當下的狀態去判斷「該連帶刪除哪些寵物」，
+        // 如果因為 flush 時機問題讓它認定這些寵物還在 imported 名下，就會把已經
+        // 過戶到 target 的寵物一起級聯刪除掉，造成資料遺失（已實際發生過一次，
+        // 已確認寵物資料真的被刪除，不是查詢問題）。修法：先強制 flush 讓過戶
+        // 寫進資料庫，再明確清空 imported 記憶體裡的 pets 集合，雙重保險避免
+        // 這個經典的 JPA 雙向關聯坑，不能只做其中一步。
+        petRepository.flush();
+        imported.getPets().clear();
 
         // 過戶消費紀錄（現場開單）
         List<WalkInOrder> orders = walkInOrderRepository.findByMemberId(imported.getId());
@@ -418,20 +431,27 @@ public class MemberImportService {
         if (garbledField != null) {
             return "疑似編碼異常，" + garbledField + "欄位內含無法辨識的字元，請將原始 CSV 另存成 UTF-8 或 Big5 後重新上傳";
         }
-        if (isBlank(row.getOwnerName())) return "家長姓名欄位為空";
-        if (isBlank(row.getPhone())) return "電話欄位為空";
-        if (isBlank(row.getPetName())) return "毛孩名字欄位為空";
-        if (isBlank(row.getPetTypeRaw())) return "物種欄位為空";
-        if (isBlank(row.getBreed())) return "品種欄位為空";
+        if (isBlank(row.getOwnerName()))
+            return "家長姓名欄位為空";
+        if (isBlank(row.getPhone()))
+            return "電話欄位為空";
+        if (isBlank(row.getPetName()))
+            return "毛孩名字欄位為空";
+        if (isBlank(row.getPetTypeRaw()))
+            return "物種欄位為空";
+        if (isBlank(row.getBreed()))
+            return "品種欄位為空";
         try {
             double w = Double.parseDouble(row.getWeightRaw().trim());
-            if (w <= 0) return "體重欄位必須大於 0";
+            if (w <= 0)
+                return "體重欄位必須大於 0";
         } catch (Exception e) {
             return "體重欄位格式錯誤：" + row.getWeightRaw();
         }
         try {
             double a = Double.parseDouble(row.getAgeRaw().trim()); // 需求（追加）：允許小數年齡
-            if (a < 0) return "年齡欄位不能是負數";
+            if (a < 0)
+                return "年齡欄位不能是負數";
         } catch (Exception e) {
             return "年齡欄位格式錯誤：" + row.getAgeRaw();
         }
@@ -441,12 +461,18 @@ public class MemberImportService {
     // 回傳第一個含有 U+FFFD 置換字元的欄位中文名稱，沒有就回傳 null。
     // 用來在編碼 fallback 仍無法乾淨解碼時，讓錯誤訊息指出是哪一欄出問題。
     private String firstGarbledField(MemberImportRow row) {
-        if (containsReplacementChar(row.getOwnerName())) return "家長姓名";
-        if (containsReplacementChar(row.getPhone())) return "電話";
-        if (containsReplacementChar(row.getPetName())) return "毛孩名字";
-        if (containsReplacementChar(row.getPetTypeRaw())) return "物種";
-        if (containsReplacementChar(row.getBreed())) return "品種";
-        if (containsReplacementChar(row.getNotes())) return "注意事項";
+        if (containsReplacementChar(row.getOwnerName()))
+            return "家長姓名";
+        if (containsReplacementChar(row.getPhone()))
+            return "電話";
+        if (containsReplacementChar(row.getPetName()))
+            return "毛孩名字";
+        if (containsReplacementChar(row.getPetTypeRaw()))
+            return "物種";
+        if (containsReplacementChar(row.getBreed()))
+            return "品種";
+        if (containsReplacementChar(row.getNotes()))
+            return "注意事項";
         return null;
     }
 
@@ -464,8 +490,10 @@ public class MemberImportService {
 
     private PetType parsePetType(String raw) {
         String trimmed = raw.trim();
-        if (CAT_LABELS.contains(trimmed)) return PetType.CAT;
-        if (DOG_LABELS.contains(trimmed)) return PetType.DOG;
+        if (CAT_LABELS.contains(trimmed))
+            return PetType.CAT;
+        if (DOG_LABELS.contains(trimmed))
+            return PetType.DOG;
         return PetType.OTHER;
     }
 
@@ -492,7 +520,8 @@ public class MemberImportService {
         int rowNumber = 0;
         for (int i = 1; i < lines.size(); i++) { // i=0 是表頭，跳過不處理
             String line = lines.get(i);
-            if (line.isBlank()) continue;
+            if (line.isBlank())
+                continue;
             rowNumber++;
             String[] cols = line.split(",", -1);
             MemberImportRow row = new MemberImportRow();
@@ -536,7 +565,8 @@ public class MemberImportService {
         int rowNumber = 0;
         for (int i = 1; i < lines.size(); i++) { // i=0 是表頭，跳過
             String line = lines.get(i);
-            if (line.isBlank()) continue;
+            if (line.isBlank())
+                continue;
             rowNumber++;
             String[] cols = line.split(",", -1);
             WalletImportRow row = new WalletImportRow();
@@ -559,7 +589,8 @@ public class MemberImportService {
         int rowNumber = 0;
         for (int i = 1; i < lines.size(); i++) { // i=0 是表頭，跳過
             String line = lines.get(i);
-            if (line.isBlank()) continue;
+            if (line.isBlank())
+                continue;
             rowNumber++;
             String[] cols = line.split(",", -1);
             ConsumptionImportRow row = new ConsumptionImportRow();
