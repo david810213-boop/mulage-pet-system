@@ -282,6 +282,28 @@
               th:if="${#strings.startsWith(customer.username, 'imported_')}"
               th:attr="data-imported-username=${customer.username}"
               id="mergeSourceBox"
+              style="
+                margin-bottom: 14px;
+                padding: 12px;
+                background: #fff3e0;
+                border: 1px solid #ffcc80;
+                border-radius: var(--radius-sm);
+              "
+            >
+              <h4 style="font-size: 13px; color: #e65100; margin: 0 0 6px">
+                🔗 這是匯入資料建立的暫時帳號
+              </h4>
+              <p
+                style="
+                  font-size: 12px;
+                  color: var(--brown-mid);
+                  margin: 0 0 8px;
+                "
+              >
+                如果顧客的 LINE
+                帳號已經自己先填過資料，沒辦法用電話號碼自動認領，可以在這裡搜尋顧客的
+                LINE
+                會員帳號，手動把寵物／消費／儲值資料合併過去（不會覆蓋對方已填的姓名、電話）。
               </p>
               <div style="position: relative">
                 <input
@@ -1418,9 +1440,14 @@
         );
         const selectedBox = document.getElementById("mergeTargetSelected");
         const confirmBtn = document.getElementById("mergeConfirmBtn");
-        // 需求（修正，2026-09-10）：這個 <script> 標籤沒有 th:inline="javascript"，
-        // Thymeleaf 不會處理 /*[[${...}]]*/ 這種內嵌語法，會整段當成 JS 註解留在
-        // 原地，導致變數永遠拿到空字串。改成讀 HTML 屬性（data-imported-username），
+        // 需求（修正，2026-09-10）：這個 <script> 標籤原本用 Thymeleaf 內嵌表達式
+        // 語法去讀伺服器端變數，但 Thymeleaf 對 script 標籤預設就會自動嘗試處理
+        // 這種內嵌語法（不需要另外宣告才會生效），寫法本身格式不對，會讓樣板
+        // 渲染到這裡直接拋例外中斷，後面的內容整段送不出來（包括下面搜尋框的
+        // 事件監聽器，導致「打字完全沒反應」）。⚠️ 教訓：連在註解裡用文字說明
+        // 這個問題時，都不能把該內嵌語法的實際符號原封不動貼出來，一貼上去
+        // 一樣會被誤判成真正的表達式去解析——只能用文字描述，這裡不示範實際
+        // 符號本身。改成讀 HTML 屬性（data-imported-username）避開這整個問題，
         // 這個屬性是用 th:attr 在一般 HTML 渲染階段就設好的，不受這個限制影響。
         // 需求（防呆補強，2026-09-10）：改用可選鏈，就算這個元素當下抓不到
         // （例如瀏覽器快取到混合版本的頁面）也不會噴例外中斷整段 script——
