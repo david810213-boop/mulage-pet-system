@@ -275,6 +275,86 @@
               >
             </div>
 
+            <!-- 需求（追加，2026-09-08）：手動綁定既有匯入資料。只有匯入建立的
+                 暫時帳號（username 以 imported_ 開頭）才會顯示，用在顧客的 LINE
+                 帳號自己已經先填過資料、導致無法自動認領這筆匯入資料的情況 -->
+            <div
+              th:if="${#strings.startsWith(customer.username, 'imported_')}"
+              style="
+                margin-bottom: 14px;
+                padding: 12px;
+                background: #fff3e0;
+                border: 1px solid #ffcc80;
+                border-radius: var(--radius-sm);
+              "
+            >
+              <h4 style="font-size: 13px; color: #e65100; margin: 0 0 6px">
+                🔗 這是匯入資料建立的暫時帳號
+              </h4>
+              <p
+                style="
+                  font-size: 12px;
+                  color: var(--brown-mid);
+                  margin: 0 0 8px;
+                "
+              >
+                如果顧客的 LINE
+                帳號已經自己先填過資料，沒辦法用電話號碼自動認領，可以在這裡搜尋顧客的
+                LINE 會員帳號，手動把寵物／消費／儲值資料合併過去（不會覆蓋對方已填的姓名、電話）。
+              </p>
+              <div style="position: relative">
+                <input
+                  type="text"
+                  id="mergeTargetSearch"
+                  placeholder="輸入顧客姓名搜尋 LINE 會員帳號..."
+                  autocomplete="off"
+                  style="
+                    width: 100%;
+                    padding: 8px 10px;
+                    border: 1px solid var(--cream-300);
+                    border-radius: var(--radius-sm);
+                    font-size: 13px;
+                    box-sizing: border-box;
+                  "
+                />
+                <div
+                  id="mergeTargetSuggestions"
+                  style="
+                    display: none;
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: #fff;
+                    border: 1px solid var(--cream-300);
+                    border-radius: var(--radius-sm);
+                    max-height: 220px;
+                    overflow-y: auto;
+                    z-index: 10;
+                  "
+                ></div>
+              </div>
+              <div
+                id="mergeTargetSelected"
+                style="font-size: 12px; color: #2e7d32; margin-top: 6px"
+              ></div>
+              <button
+                type="button"
+                id="mergeConfirmBtn"
+                class="btn"
+                disabled
+                style="
+                  margin-top: 10px;
+                  background: #e65100;
+                  color: #fff;
+                  opacity: 0.5;
+                  cursor: not-allowed;
+                "
+              >
+                合併到這個帳號
+              </button>
+            </div>
+
             <div class="cd-info-row">
               <span>手機號碼</span
               ><span th:text="${customer.phone} ?: '尚未填寫'"></span>
@@ -1174,6 +1254,125 @@
       function closeConsumeDetailOnBackdrop(e) {
         if (e.target.id === "cdDetailBackdrop") closeConsumeDetail();
       }
+
+      // 需求（追加，2026-09-08）：手動綁定既有匯入資料——搜尋目標會員帳號
+      (function initManualMerge() {
+        const searchBox = document.getElementById("mergeTargetSearch");
+        if (!searchBox) return; // 不是匯入暫時帳號，這個區塊沒有渲染，不用初始化
+
+        const suggestionsBox = document.getElementById("mergeTargetSuggestions");
+        const selectedBox = document.getElementById("mergeTargetSelected");
+        const confirmBtn = document.getElementById("mergeConfirmBtn");
+        const importedUsername = /*[[${customer.username}]]*/ "";
+        let selectedTarget = null;
+        let debounceTimer = null;
+
+        function setSelected(target) {
+          selectedTarget = target;
+          if (target) {
+            selectedBox.textContent = "✓ 已選定合併目標：" + target.name + "（" + target.username + "）";
+            confirmBtn.disabled = false;
+            confirmBtn.style.opacity = "1";
+            confirmBtn.style.cursor = "pointer";
+          } else {
+            selectedBox.textContent = "";
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.cursor = "not-allowed";
+          }
+        }
+
+        searchBox.addEventListener("input", function () {
+          setSelected(null);
+          const keyword = searchBox.value.trim();
+          clearTimeout(debounceTimer);
+          if (!keyword) {
+            suggestionsBox.style.display = "none";
+            return;
+          }
+          debounceTimer = setTimeout(function () {
+            fetch("/api/admin/members/search?keyword=" + encodeURIComponent(keyword))
+              .then(function (res) { return res.json(); })
+              .then(function (results) {
+                // 排除其他匯入暫時帳號，只能合併到真正在使用的會員帳號
+                const filtered = (results || []).filter(
+                  function (u) { return !u.username.startsWith("imported_"); }
+                );
+                if (filtered.length === 0) {
+                  suggestionsBox.innerHTML =
+                    '<div style="padding:8px 10px;font-size:13px;color:var(--brown-light);">找不到符合的會員</div>';
+                  suggestionsBox.style.display = "block";
+                  return;
+                }
+                suggestionsBox.innerHTML = filtered
+                  .map(function (u) {
+                    return (
+                      '<div class="merge-suggestion" data-username="' + u.username +
+                      '" data-name="' + u.name +
+                      '" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--cream-200);">' +
+                      u.name + '　<span style="color:var(--brown-light);">' + u.username + '</span></div>'
+                    );
+                  })
+                  .join("");
+                suggestionsBox.style.display = "block";
+              })
+              .catch(function () {
+                suggestionsBox.style.display = "none";
+              });
+          }, 250);
+        });
+
+        suggestionsBox.addEventListener("click", function (e) {
+          const row = e.target.closest(".merge-suggestion");
+          if (!row) return;
+          searchBox.value = row.dataset.name;
+          suggestionsBox.style.display = "none";
+          setSelected({ username: row.dataset.username, name: row.dataset.name });
+        });
+
+        document.addEventListener("click", function (e) {
+          if (!e.target.closest("#mergeTargetSearch") && !e.target.closest("#mergeTargetSuggestions")) {
+            suggestionsBox.style.display = "none";
+          }
+        });
+
+        confirmBtn.addEventListener("click", function () {
+          if (!selectedTarget) return;
+          const ok = confirm(
+            "確定要把「" + importedUsername + "」的寵物／消費／儲值資料合併到「" +
+            selectedTarget.name + "（" + selectedTarget.username + "）」嗎？\n\n" +
+            "此動作無法復原，合併後這個匯入暫時帳號會被刪除。"
+          );
+          if (!ok) return;
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = "合併中...";
+          fetch("/api/admin/members/merge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              importedUsername: importedUsername,
+              targetUsername: selectedTarget.username,
+            }),
+          })
+            .then(function (res) {
+              return res.text().then(function (text) {
+                let body;
+                try { body = JSON.parse(text); } catch (e) { body = { error: text }; }
+                if (!res.ok) throw new Error(body.error || "合併失敗");
+                return body;
+              });
+            })
+            .then(function (body) {
+              alert(body.message || "合併完成");
+              window.location.href = "/admin/customers/" + encodeURIComponent(selectedTarget.username);
+            })
+            .catch(function (err) {
+              alert("合併失敗：" + err.message);
+              confirmBtn.disabled = false;
+              confirmBtn.textContent = "合併到這個帳號";
+            });
+        });
+      })();
     </script>
   </body>
 </html>

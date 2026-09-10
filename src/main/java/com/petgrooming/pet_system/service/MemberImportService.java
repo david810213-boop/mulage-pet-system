@@ -19,6 +19,10 @@ import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalletRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.repository.TopUpRequestRepository;
+import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.model.TopUpRequest;
+import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.utils.CsvImportFileReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +59,8 @@ public class MemberImportService {
     private final PasswordEncoder passwordEncoder;
     private final WalletRepository walletRepository; // 需求（追加）：儲值餘額匯入
     private final WalkInOrderRepository walkInOrderRepository; // 需求（追加）：消費紀錄匯入
+    private final TopUpRequestRepository topUpRequestRepository; // 需求（追加，2026-09-08）：手動綁定
+    private final AppointmentRepository appointmentRepository; // 需求（追加，2026-09-08）：手動綁定
 
     private static final Set<String> CAT_LABELS = Set.of("貓", "CAT", "cat");
     private static final Set<String> DOG_LABELS = Set.of("狗", "DOG", "dog");
@@ -324,6 +330,85 @@ public class MemberImportService {
                 currentUser.getUsername(), normalized, pets.size());
 
         return currentUser;
+    }
+
+    // ── 需求（追加，2026-09-08）：店家後台手動綁定既有匯入資料 ──────────────
+    //
+    // 使用時機：顧客的 LINE 帳號自己已經先填過個人資料/新增過毛孩（例如測試時
+    // 不小心先手動填了，沒有先用電話號碼認領），導致 claimByPhone() 的防呆
+    // 擋下自動認領（"這個帳號已經填過資料了，無法再認領其他會員資料"）。這種
+    // 情況只能由店家在後台人工判斷「這確實是同一個人」，手動把匯入的暫時帳號
+    // 資料合併過去。
+    //
+    // 跟 claimByPhone() 的差異：
+    // ① 不覆蓋目標會員的姓名/電話——目標帳號通常已經有自己填的真實資料，
+    //    這是店家人工判斷合併，不該用匯入資料蓋掉顧客自己填寫的內容
+    // ② 額外過戶消費紀錄（WalkInOrder）、預約（Appointment）、待處理的儲值
+    //    申請（TopUpRequest）——這幾樣 claimByPhone() 原本沒有處理，如果匯入
+    //    帳號名下曾經匯入過消費紀錄或有這些關聯資料，直接刪除會撞到外鍵
+    //    約束；這裡改成先過戶再刪除，理由是同一套「不留孤兒資料」原則
+    // ③ 儲值餘額用「加總」，不是覆蓋——跟 CSV 儲值餘額批次匯入的既有規則
+    //    一致，避免弄丟金額
+    @Transactional
+    public void manualMerge(String importedUsername, String targetUsername) {
+        User imported = userRepository.findByUsername(importedUsername)
+                .orElseThrow(() -> new IllegalArgumentException("找不到這個匯入帳號：" + importedUsername));
+        if (!imported.getUsername().startsWith("imported_")) {
+            throw new IllegalArgumentException("只能合併「既有會員資料匯入」建立的暫時帳號（帳號以 imported_ 開頭），這筆不是");
+        }
+        User target = userRepository.findByUsername(targetUsername)
+                .orElseThrow(() -> new IllegalArgumentException("找不到目標會員帳號：" + targetUsername));
+        if (imported.getId().equals(target.getId())) {
+            throw new IllegalArgumentException("來源跟目標是同一個帳號");
+        }
+        if (target.getUsername().startsWith("imported_")) {
+            throw new IllegalArgumentException("目標帳號也是匯入用的暫時帳號，請選一個真正在使用的會員帳號");
+        }
+
+        // 過戶寵物（改 owner，不是複製一份新的）
+        List<Pet> pets = petRepository.findByOwnerId(imported.getId());
+        for (Pet pet : pets) {
+            pet.setOwner(target);
+        }
+        petRepository.saveAll(pets);
+
+        // 過戶消費紀錄（現場開單）
+        List<WalkInOrder> orders = walkInOrderRepository.findByMemberId(imported.getId());
+        for (WalkInOrder order : orders) {
+            order.setMember(target);
+        }
+        walkInOrderRepository.saveAll(orders);
+
+        // 過戶預約紀錄
+        List<Appointment> appointments = appointmentRepository.findByUserId(imported.getId());
+        for (Appointment appt : appointments) {
+            appt.setUser(target);
+        }
+        appointmentRepository.saveAll(appointments);
+
+        // 過戶待處理/歷史儲值申請
+        List<TopUpRequest> topUps = topUpRequestRepository.findByUserId(imported.getId());
+        for (TopUpRequest t : topUps) {
+            t.setUser(target);
+        }
+        topUpRequestRepository.saveAll(topUps);
+
+        // 儲值餘額加總到目標會員的錢包，不是覆蓋
+        walletRepository.findByUserId(imported.getId()).ifPresent(importedWallet -> {
+            if (importedWallet.getBalance() != null && importedWallet.getBalance() > 0) {
+                Wallet targetWallet = walletRepository.findByUserId(target.getId())
+                        .orElseThrow(() -> new IllegalStateException("目標會員沒有錢包，資料異常，請聯絡工程人員"));
+                int targetBalance = targetWallet.getBalance() != null ? targetWallet.getBalance() : 0;
+                targetWallet.setBalance(targetBalance + importedWallet.getBalance());
+                walletRepository.save(targetWallet);
+            }
+            walletRepository.delete(importedWallet);
+        });
+
+        userRepository.delete(imported);
+
+        log.info("✨ [手動綁定] 店家手動把匯入帳號 {} 的資料合併到會員 {}，過戶 {} 隻寵物、{} 筆消費紀錄、{} 筆預約、{} 筆儲值申請",
+                importedUsername, targetUsername, pets.size(), orders.size(), appointments.size(), topUps.size());
     }
 
     private String validateRow(MemberImportRow row) {

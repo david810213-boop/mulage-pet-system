@@ -15,4 +15,7 @@ public interface TopUpRequestRepository extends JpaRepository<TopUpRequest, Long
 
     // 店家後台：依狀態撈申請（待核帳清單用 PENDING）
     List<TopUpRequest> findByStatusOrderByCreatedAtAsc(TopUpStatus status);
+
+    // 需求（追加，2026-09-08）：手動綁定既有匯入資料——過戶這個會員名下的儲值申請
+    List<TopUpRequest> findByUserId(Long userId);
 }
