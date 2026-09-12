@@ -47,9 +47,14 @@
           <form
             method="get"
             action="/appointments/slots-manage"
-            style="display: flex; gap: 12px; align-items: end"
+            style="
+              display: flex;
+              gap: 12px;
+              align-items: end;
+              flex-wrap: wrap;
+            "
           >
-            <div class="field" style="margin: 0">
+            <div class="field" style="margin: 0; max-width: 220px">
               <label>選擇日期</label>
               <input type="date" name="date" th:value="${date}" />
             </div>
