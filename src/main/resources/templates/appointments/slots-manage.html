@@ -4,6 +4,19 @@
     th:replace="~{fragments/header :: common-head('時段管理 | 慕沐村 Mulage pet')}"
   ></head>
   <body>
+    <style>
+      /* 需求（修正，2026-09-13）：這頁表格在窄一點的螢幕（例如平板）上排版會跑掉——
+         欄位一多（尤其加了「限定物種」下拉選單那欄之後），瀏覽器自動表格排版
+         會把可以換行的欄位硬擠到只剩個位數寬度，變成文字一個字一行直排。
+         修法：文字強制不換行，欄寬不夠時改成整個表格橫向捲動，不擠壓欄位。 */
+      .table-scroll {
+        overflow-x: auto;
+      }
+      .table-scroll table th,
+      .table-scroll table td {
+        white-space: nowrap;
+      }
+    </style>
     <div class="page-wrapper">
       <div th:replace="~{fragments/nav :: nav}"></div>
       <div class="content">
@@ -273,6 +286,7 @@
             >
               近期公休日：
             </p>
+            <div class="table-scroll">
             <table>
               <thead>
                 <tr>
@@ -304,6 +318,7 @@
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         </div>
 
@@ -321,6 +336,7 @@
             調整只影響「剩餘可預約名額」，已經預約成功的紀錄不受影響，即使把名額調得比已預約數還低也不會取消現有預約。
             這裡的調整只針對這一天這個時段，不會套用到其他日期。
           </p>
+          <div class="table-scroll">
           <table>
             <thead>
               <tr>
@@ -415,6 +431,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
 
         <!-- 需求（追加，2026-08-28）：範本不太會常更動，改排到「這一天各時段名額」下方，
@@ -436,6 +453,7 @@
             （已經有人查詢過或預約過的日期）要調整的話，請往上用「這一天各時段名額」
             那張表個別覆寫，不會被這裡的範本回溯改動。
           </p>
+          <div class="table-scroll">
           <table>
             <thead>
               <tr>
@@ -505,6 +523,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

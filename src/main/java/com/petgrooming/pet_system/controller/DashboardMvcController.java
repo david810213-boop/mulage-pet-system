@@ -73,6 +73,7 @@ public class DashboardMvcController {
                     .count();
             long pendingConfirmCount = allAdmin.stream()
                     .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
+                    .filter(a -> !a.getDate().isBefore(today))
                     .count();
 
             // 今日營收：預約結帳(Transaction) + 現場開單(WalkInOrder) 當日已付款金額加總
@@ -88,8 +89,14 @@ public class DashboardMvcController {
             int todayRevenue = appointmentRevenueToday + walkInRevenueToday;
 
             // 待確認預約清單（依日期時間排序，最多顯示前 8 筆）
+            // 需求（修正，2026-09-13）：過去只用 status 篩選，導致已經過了預約日期、
+            // 但店家一直沒去點「確認」的舊資料會一直卡在這個清單裡（例如今天是
+            // 9/13，但清單還顯示 9/9 的待確認預約）。加上日期不早於今天的條件，
+            // 過期的待確認預約不再顯示在這裡（預約本身的狀態、資料都不受影響，
+            // 只是不出現在 Dashboard 這個清單，店家仍可在「預約列表」查到）。
             List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> pendingAppointments = allAdmin.stream()
                     .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
+                    .filter(a -> !a.getDate().isBefore(today))
                     .sorted(Comparator.comparing(com.petgrooming.pet_system.dto.AppointmentAdminResponse::getDate)
                             .thenComparing(com.petgrooming.pet_system.dto.AppointmentAdminResponse::getStartTime))
                     .limit(8)
