@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.repository.RetailProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,15 +48,15 @@ public class RetailProductService {
 
     public RetailProduct getById(Long id) {
         return retailProductRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("找不到商品 #" + id));
+                .orElseThrow(() -> new InventoryException("找不到商品 #" + id));
     }
 
     @Transactional
     public RetailProduct create(String name, int price, int stockQuantity, String description, int unitCost) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("商品名稱不可為空");
-        if (price < 0) throw new IllegalArgumentException("售價不可為負數");
-        if (stockQuantity < 0) throw new IllegalArgumentException("庫存量不可為負數");
-        if (unitCost < 0) throw new IllegalArgumentException("成本不可為負數");
+        if (name == null || name.isBlank()) throw new InventoryException("商品名稱不可為空");
+        if (price < 0) throw new InventoryException("售價不可為負數");
+        if (stockQuantity < 0) throw new InventoryException("庫存量不可為負數");
+        if (unitCost < 0) throw new InventoryException("成本不可為負數");
         return retailProductRepository.save(RetailProduct.builder()
                 .name(name.trim())
                 .price(price)
@@ -68,9 +69,9 @@ public class RetailProductService {
     @Transactional
     public void update(Long id, String name, int price, String description, int unitCost) {
         RetailProduct product = getById(id);
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("商品名稱不可為空");
-        if (price < 0) throw new IllegalArgumentException("售價不可為負數");
-        if (unitCost < 0) throw new IllegalArgumentException("成本不可為負數");
+        if (name == null || name.isBlank()) throw new InventoryException("商品名稱不可為空");
+        if (price < 0) throw new InventoryException("售價不可為負數");
+        if (unitCost < 0) throw new InventoryException("成本不可為負數");
         product.setName(name.trim());
         product.setPrice(price);
         product.setDescription(description == null || description.isBlank() ? null : description.trim());
@@ -83,7 +84,7 @@ public class RetailProductService {
     public void adjustStock(Long id, int delta) {
         RetailProduct product = getById(id);
         int newQuantity = product.getStockQuantity() + delta;
-        if (newQuantity < 0) throw new IllegalArgumentException("庫存量不可調整為負數（目前庫存 " + product.getStockQuantity() + "）");
+        if (newQuantity < 0) throw new InventoryException("庫存量不可調整為負數（目前庫存 " + product.getStockQuantity() + "）");
         product.setStockQuantity(newQuantity);
         retailProductRepository.save(product);
     }
@@ -104,7 +105,7 @@ public class RetailProductService {
         RetailProduct product = getById(id);
         int remaining = product.getStockQuantity() - quantity;
         if (remaining < 0) {
-            throw new IllegalArgumentException("「" + product.getName() + "」庫存不足（剩餘 "
+            throw new InventoryException("「" + product.getName() + "」庫存不足（剩餘 "
                     + product.getStockQuantity() + "，需要 " + quantity + "）");
         }
         product.setStockQuantity(remaining);

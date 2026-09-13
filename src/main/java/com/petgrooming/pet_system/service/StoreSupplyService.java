@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.StoreSupply;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.notification.LineMessagingService;
@@ -31,14 +32,14 @@ public class StoreSupplyService {
 
     public StoreSupply getById(Long id) {
         return storeSupplyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("找不到店用洗劑 #" + id));
+                .orElseThrow(() -> new InventoryException("找不到店用洗劑 #" + id));
     }
 
     @Transactional
     public StoreSupply create(String name, int stockQuantity, int safetyStockThreshold, int unitCost) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("品名不可為空");
+        if (name == null || name.isBlank()) throw new InventoryException("品名不可為空");
         if (stockQuantity < 0 || safetyStockThreshold < 0 || unitCost < 0) {
-            throw new IllegalArgumentException("數量/成本不可為負數");
+            throw new InventoryException("數量/成本不可為負數");
         }
         return storeSupplyRepository.save(StoreSupply.builder()
                 .name(name.trim())
@@ -51,8 +52,8 @@ public class StoreSupplyService {
     @Transactional
     public void update(Long id, String name, int safetyStockThreshold, int unitCost) {
         StoreSupply supply = getById(id);
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("品名不可為空");
-        if (safetyStockThreshold < 0 || unitCost < 0) throw new IllegalArgumentException("數量/成本不可為負數");
+        if (name == null || name.isBlank()) throw new InventoryException("品名不可為空");
+        if (safetyStockThreshold < 0 || unitCost < 0) throw new InventoryException("數量/成本不可為負數");
         supply.setName(name.trim());
         supply.setSafetyStockThreshold(safetyStockThreshold);
         supply.setUnitCost(unitCost);
@@ -62,7 +63,7 @@ public class StoreSupplyService {
     // 進貨補貨：只會讓庫存變多，不會觸發低庫存通知（進貨當然是庫存變充足，不是變少）
     @Transactional
     public void restock(Long id, int quantity) {
-        if (quantity <= 0) throw new IllegalArgumentException("進貨數量必須大於 0");
+        if (quantity <= 0) throw new InventoryException("進貨數量必須大於 0");
         StoreSupply supply = getById(id);
         supply.setStockQuantity(supply.getStockQuantity() + quantity);
         storeSupplyRepository.save(supply);
@@ -72,11 +73,11 @@ public class StoreSupplyService {
     // ── 需求 7-2：員工領用登記，扣庫存；低於安全庫存量自動發 LINE 通知全體人員叫貨 ──
     @Transactional
     public void recordUsage(Long id, int quantity, String staffUsername, String note) {
-        if (quantity <= 0) throw new IllegalArgumentException("領用數量必須大於 0");
+        if (quantity <= 0) throw new InventoryException("領用數量必須大於 0");
         StoreSupply supply = getById(id);
         int remaining = supply.getStockQuantity() - quantity;
         if (remaining < 0) {
-            throw new IllegalArgumentException("「" + supply.getName() + "」庫存不足（剩餘 "
+            throw new InventoryException("「" + supply.getName() + "」庫存不足（剩餘 "
                     + supply.getStockQuantity() + "，需要 " + quantity + "）");
         }
         supply.setStockQuantity(remaining);

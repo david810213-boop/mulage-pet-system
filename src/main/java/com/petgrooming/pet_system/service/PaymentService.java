@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Transaction;
@@ -60,32 +61,32 @@ public class PaymentService {
                                         String username) {
         // 1a. 確認預約存在
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException("找不到該預約"));
 
         // 1b. 確認使用者與權限
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException("找不到使用者"));
 
         boolean isOwner       = appointment.getUser().getId().equals(user.getId());
         boolean isStaffOrAdmin = user.isStaffOrAdmin();
 
         if (!isOwner && !isStaffOrAdmin) {
-            throw new IllegalArgumentException("權限不足：只能結自己的帳");
+            throw new PaymentException("權限不足：只能結自己的帳");
         }
 
         // 1c. 確認尚未付款
         if (appointment.isPaid()) {
-            throw new IllegalArgumentException("此預約已完成結帳");
+            throw new PaymentException("此預約已完成結帳");
         }
 
         // 1c-2. 必須先完成「進行中核對」（店員與家長現場核對本次美容狀況並簽名），才能結帳
         if (!appointment.isFinalCheckDone()) {
-            throw new IllegalArgumentException("請先完成進行中預約的核對（美容狀況備註 + 家長簽名）後才能結帳");
+            throw new PaymentException("請先完成進行中預約的核對（美容狀況備註 + 家長簽名）後才能結帳");
         }
 
         // 1d. 確認沒有重複交易紀錄
         if (transactionRepository.findByAppointmentId(appointmentId).isPresent()) {
-            throw new IllegalArgumentException("此預約已有交易紀錄");
+            throw new PaymentException("此預約已有交易紀錄");
         }
 
         // 1d-2. 需求（追加）：結帳成功才真的扣加購零售商品的庫存（不管付款方式是不是匯款待對帳，
@@ -114,7 +115,7 @@ public class PaymentService {
         //   - 折扣後金額才是實際扣款與交易紀錄的最終金額
         if (req.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET) {
             if (!isStaffOrAdmin) {
-                throw new IllegalArgumentException("儲值金結帳僅限店家/員工於後台操作");
+                throw new PaymentException("儲值金結帳僅限店家/員工於後台操作");
             }
             double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
             // 需求 5：改成逐項目判斷是否可享折扣，不再對整筆金額統一打折。
@@ -168,22 +169,22 @@ public class PaymentService {
     @Transactional
     public TransactionResponse confirmWireTransferPayment(Long appointmentId, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException("找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new IllegalArgumentException("權限不足：僅店家 / 員工可確認收款");
+            throw new PaymentException("權限不足：僅店家 / 員工可確認收款");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException("找不到該預約"));
 
         Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到此預約的交易紀錄"));
+                .orElseThrow(() -> new PaymentException("找不到此預約的交易紀錄"));
 
         if (transaction.getPaymentMethod() != com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER) {
-            throw new IllegalArgumentException("此交易不是匯款付款，無需確認收款");
+            throw new PaymentException("此交易不是匯款付款，無需確認收款");
         }
         if (transaction.isPaid()) {
-            throw new IllegalArgumentException("此筆匯款已確認收款過，請勿重複操作");
+            throw new PaymentException("此筆匯款已確認收款過，請勿重複操作");
         }
 
         transaction.setPaid(true);
@@ -264,20 +265,20 @@ public class PaymentService {
     @Transactional
     public void refund(Long appointmentId, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException("找不到使用者"));
         if (!user.isStaffOrAdmin()) {
-            throw new IllegalArgumentException("權限不足：僅店家 / 員工可操作退款");
+            throw new PaymentException("權限不足：僅店家 / 員工可操作退款");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException("找不到該預約"));
 
         if (!appointment.isPaid()) {
-            throw new IllegalArgumentException("此預約尚未結帳，無法退款");
+            throw new PaymentException("此預約尚未結帳，無法退款");
         }
 
         Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到此預約的交易紀錄"));
+                .orElseThrow(() -> new PaymentException("找不到此預約的交易紀錄"));
 
         // 1. 若原本用儲值金付款，退回儲值餘額
         if (transaction.getPaymentMethod() == PaymentMethod.WALLET) {

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.exception.AppointmentException;
 import com.petgrooming.pet_system.model.SlotCapacity;
 import com.petgrooming.pet_system.repository.SlotCapacityRepository;
 import lombok.RequiredArgsConstructor;
@@ -61,10 +62,10 @@ public class SlotCapacityService {
     @Transactional
     public void reserve(LocalDate date, LocalTime time) {
         SlotCapacity slot = slotRepo.lockSlot(date, time)
-                .orElseThrow(() -> new IllegalStateException("時段計數列不存在，請先 ensureSlot"));
+                .orElseThrow(() -> new AppointmentException("時段計數列不存在，請先 ensureSlot"));
 
         if (slot.getBooked() >= slot.getCapacity()) {
-            throw new IllegalStateException("此時段已額滿（上限 " + slot.getCapacity() + " 隻）");
+            throw new AppointmentException("此時段已額滿（上限 " + slot.getCapacity() + " 隻）");
         }
         slot.setBooked(slot.getBooked() + 1);
         slotRepo.save(slot);
@@ -122,11 +123,11 @@ public class SlotCapacityService {
     public void setCapacity(LocalDate date, LocalTime time, int newCapacity,
                              com.petgrooming.pet_system.enums.PetType allowedPetType) {
         if (newCapacity < 0) {
-            throw new IllegalArgumentException("名額上限不能小於 0");
+            throw new AppointmentException("名額上限不能小於 0");
         }
         ensureSlot(date, time);
         SlotCapacity slot = slotRepo.findBySlotDateAndSlotTime(date, time)
-                .orElseThrow(() -> new IllegalStateException("時段建立失敗"));
+                .orElseThrow(() -> new AppointmentException("時段建立失敗"));
         slot.setCapacity(newCapacity);
         slot.setAllowedPetType(allowedPetType);
         slotRepo.save(slot);

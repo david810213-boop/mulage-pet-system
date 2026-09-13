@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;  
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
+import com.petgrooming.pet_system.exception.GroomingItemException;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -30,7 +31,7 @@ public class GroomingServiceImpl implements GroomingService {
     public void createItem(GroomingItemRequest request) {
         // 1. 防重機制：檢查 ItemCode（如 GS001）是否已經存在於資料庫
         if (groomingItemRepository.existsByItemCode(request.getItemCode())) {
-            throw new IllegalArgumentException("建立失敗：項目代碼 [" + request.getItemCode() + "] 已存在！");
+            throw new GroomingItemException("建立失敗：項目代碼 [" + request.getItemCode() + "] 已存在！");
         }
 
         // 2. 建立全新的 Entity 並將 DTO 的資料填入
@@ -111,7 +112,7 @@ public class GroomingServiceImpl implements GroomingService {
     @Transactional
     public GroomingItemResponse updateItem(Long id, UpdateGroomingItemRequest request) {
         GroomingItem item = groomingItemRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("修改失敗：找不到 ID 為 " + id + " 的美容項目"));
+                .orElseThrow(() -> new GroomingItemException("修改失敗：找不到 ID 為 " + id + " 的美容項目"));
 
         item.setName(request.getName());
         item.setDescription(request.getDescription());
@@ -132,7 +133,7 @@ public class GroomingServiceImpl implements GroomingService {
     @Transactional
     public void deleteItem(Long id) {
         GroomingItem item = groomingItemRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("刪除失敗：找不到 ID 為 " + id + " 的美容項目"));
+                .orElseThrow(() -> new GroomingItemException("刪除失敗：找不到 ID 為 " + id + " 的美容項目"));
 
         item.setDeleted(true); 
         groomingItemRepository.save(item);

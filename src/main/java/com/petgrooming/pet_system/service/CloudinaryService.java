@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.petgrooming.pet_system.exception.MediaException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -56,14 +57,14 @@ public class CloudinaryService {
      */
     public UploadResult upload(MultipartFile file, String folder) {
         if (!configured) {
-            throw new IllegalStateException("圖床尚未設定完成，請聯絡系統管理員設定 Cloudinary 環境變數");
+            throw new MediaException("圖床尚未設定完成，請聯絡系統管理員設定 Cloudinary 環境變數");
         }
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("請選擇要上傳的圖片");
+            throw new MediaException("請選擇要上傳的圖片");
         }
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("只能上傳圖片檔案");
+            throw new MediaException("只能上傳圖片檔案");
         }
 
         try {
@@ -77,7 +78,7 @@ public class CloudinaryService {
             return new UploadResult(url, publicId);
         } catch (IOException e) {
             log.error("[Cloudinary] 上傳失敗", e);
-            throw new IllegalStateException("圖片上傳失敗，請稍後再試：" + e.getMessage());
+            throw new MediaException("圖片上傳失敗，請稍後再試：" + e.getMessage());
         }
     }
 

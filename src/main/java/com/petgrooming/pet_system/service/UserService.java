@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.ResetPasswordRequest;
 import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,7 @@ public class UserService {
     // ── 2. 查 User entity（AuthMvcController 登入後建立 Session 用）
     public User getUserEntityByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
     }
 
     // ── 需求 8：店家後台備注會員特殊資訊（後台專用）─────────────────────────
@@ -55,7 +56,7 @@ public class UserService {
     // ── 3. 註冊（CUSTOMER）────────────────────────────────────────────────
     public UserResponse register(RegisterRequest req) {
         if (userRepository.existsByUsername(req.getUsername())) {
-            throw new IllegalArgumentException("帳號已存在：" + req.getUsername());
+            throw new MemberException("帳號已存在：" + req.getUsername());
         }
         User user = User.builder()
                 .username(req.getUsername())
@@ -71,13 +72,13 @@ public class UserService {
     public UserResponse getMe(String username) {
         return userRepository.findByUsername(username)
                 .map(UserResponse::from)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
     }
 
     // ── 4.5 會員編輯自己的基本資料（年齡／職業／居住區域／來源）──────────
     public UserResponse updateProfile(String username, UpdateProfileRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
 
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
@@ -157,7 +158,7 @@ public class UserService {
 
     public User getUserEntityById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + id));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + id));
     }
 
     // ── 8. LINE 登入：依 lineUserId 查找會員，找不到就自動建立（CUSTOMER）──
@@ -183,7 +184,7 @@ public class UserService {
 
     public UserResponse createStaff(CreateStaffRequest req) {
         if (userRepository.existsByUsername(req.getUsername())) {
-            throw new IllegalArgumentException("帳號已存在：" + req.getUsername());
+            throw new MemberException("帳號已存在：" + req.getUsername());
         }
         User staff = User.builder()
                 .username(req.getUsername())
@@ -198,10 +199,10 @@ public class UserService {
     // ── 9. ADMIN 重設員工／管理員密碼（不需驗證舊密碼，僅 ADMIN 可操作）──────
     public void resetPassword(Long userId, ResetPasswordRequest req) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + userId));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + userId));
         if (user.isCustomer()) {
             // 顧客帳號走 LINE 登入，沒有密碼登入需求，不開放重設
-            throw new IllegalArgumentException("顧客帳號不支援密碼重設");
+            throw new MemberException("顧客帳號不支援密碼重設");
         }
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
@@ -210,10 +211,10 @@ public class UserService {
     // ── 10. 員工／管理員自行修改密碼（需驗證舊密碼）─────────────────────
     public void changePassword(String username, ChangePasswordRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
 
         if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("目前密碼不正確");
+            throw new MemberException("目前密碼不正確");
         }
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
@@ -223,13 +224,13 @@ public class UserService {
     // 員工/管理員自己設定 4 位數 PIN（需先驗證密碼，避免旁人隨便亂設）
     public void setSwitchPin(String username, String currentPassword, String newPin) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new IllegalArgumentException("目前密碼不正確");
+            throw new MemberException("目前密碼不正確");
         }
         if (newPin == null || !newPin.matches("\\d{4}")) {
-            throw new IllegalArgumentException("PIN 碼必須是 4 位數字");
+            throw new MemberException("PIN 碼必須是 4 位數字");
         }
         user.setSwitchPin(passwordEncoder.encode(newPin));
         userRepository.save(user);

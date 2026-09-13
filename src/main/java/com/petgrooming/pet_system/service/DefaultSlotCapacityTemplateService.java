@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.config.BusinessHours;
+import com.petgrooming.pet_system.exception.AppointmentException;
 import com.petgrooming.pet_system.model.DefaultSlotCapacityTemplate;
 import com.petgrooming.pet_system.repository.DefaultSlotCapacityTemplateRepository;
 import lombok.RequiredArgsConstructor;
@@ -93,7 +94,7 @@ public class DefaultSlotCapacityTemplateService {
     public void setCapacity(LocalTime slotTime, int newCapacity,
                              com.petgrooming.pet_system.enums.PetType allowedPetType) {
         if (newCapacity < 0) {
-            throw new IllegalArgumentException("名額上限不能小於 0");
+            throw new AppointmentException("名額上限不能小於 0");
         }
         DefaultSlotCapacityTemplate row = templateRepository.findBySlotTime(slotTime)
                 .orElseGet(() -> DefaultSlotCapacityTemplate.builder().slotTime(slotTime).build());

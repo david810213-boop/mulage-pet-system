@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.exception.PerformanceException;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.MonthlyPerformance;
@@ -42,7 +43,7 @@ public class PerformanceService {
                                        PerformanceCategory category, Double points,
                                        LocalDate serviceDate, String note) {
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + staffId));
+                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
 
         PerformanceRecord record = PerformanceRecord.builder()
                 .staff(staff)
@@ -62,7 +63,7 @@ public class PerformanceService {
                                              PerformanceCategory category, Double points,
                                              LocalDate serviceDate, String note) {
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + staffId));
+                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
 
         PerformanceRecord record = PerformanceRecord.builder()
                 .staff(staff)
@@ -85,23 +86,23 @@ public class PerformanceService {
     @Transactional
     public PerformanceRecord splitRecord(Long sourceRecordId, Long toStaffId, String note) {
         PerformanceRecord source = recordRepo.findById(sourceRecordId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到原始績效紀錄：" + sourceRecordId));
+                .orElseThrow(() -> new PerformanceException("找不到原始績效紀錄：" + sourceRecordId));
 
         if (source.getPoints() == null || source.getPoints() <= 0) {
-            throw new IllegalArgumentException("原始紀錄目前積分為 0，無法拆分");
+            throw new PerformanceException("原始紀錄目前積分為 0，無法拆分");
         }
         if (source.getSplitFromRecordId() != null) {
-            throw new IllegalArgumentException("這筆紀錄本身就是拆分產生的，不能再次拆分");
+            throw new PerformanceException("這筆紀錄本身就是拆分產生的，不能再次拆分");
         }
         if (recordRepo.existsBySplitFromRecordId(source.getId())) {
-            throw new IllegalArgumentException("這筆紀錄已經拆分過，不能重複拆分");
+            throw new PerformanceException("這筆紀錄已經拆分過，不能重複拆分");
         }
 
         User toStaff = userRepository.findById(toStaffId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + toStaffId));
+                .orElseThrow(() -> new PerformanceException("找不到員工：" + toStaffId));
 
         if (source.getStaff().getId().equals(toStaffId)) {
-            throw new IllegalArgumentException("拆分對象不可與原負責員工相同");
+            throw new PerformanceException("拆分對象不可與原負責員工相同");
         }
 
         // 對半平分，統一四捨五入到小數點第一位，避免多次拆分後尾數越來越長
@@ -179,12 +180,12 @@ public class PerformanceService {
     public void cancelSettlement(int year, int month) {
         YearMonth target = YearMonth.of(year, month);
         if (!target.equals(YearMonth.now())) {
-            throw new IllegalArgumentException("只能取消「當月」的結算，避免影響已對外發放獎金的過去月份");
+            throw new PerformanceException("只能取消「當月」的結算，避免影響已對外發放獎金的過去月份");
         }
         LocalDate ymKey = target.atDay(1);
         List<MonthlyPerformance> rows = monthlyRepo.findByYearMonthOrderByTotalPointsDesc(ymKey);
         if (rows.isEmpty()) {
-            throw new IllegalArgumentException("此月份尚未結算過，無需取消");
+            throw new PerformanceException("此月份尚未結算過，無需取消");
         }
         monthlyRepo.deleteAll(rows);
         log.info("已取消 {} 的結算，共 {} 筆", target, rows.size());
@@ -267,7 +268,7 @@ public class PerformanceService {
     // ── 我的績效：員工查詢自己今日/當月累積積分，以及距離下一級距還差幾分 ──
     public com.petgrooming.pet_system.dto.StaffProgressResponse getMyProgress(Long staffId, LocalDate today) {
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + staffId));
+                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
 
         double todayPoints = recordRepo.findByServiceDate(today).stream()
                 .filter(r -> r.getStaff().getId().equals(staffId))
@@ -425,7 +426,7 @@ public class PerformanceService {
     @Transactional
     public BonusTier createBonusTier(int minPoints, int maxPoints, int bonusAmount) {
         if (minPoints > maxPoints) {
-            throw new IllegalArgumentException("下限不能大於上限");
+            throw new PerformanceException("下限不能大於上限");
         }
         return bonusTierRepository.save(
                 BonusTier.builder().minPoints(minPoints).maxPoints(maxPoints).bonusAmount(bonusAmount).build());
@@ -434,10 +435,10 @@ public class PerformanceService {
     @Transactional
     public void updateBonusTier(Long id, int minPoints, int maxPoints, int bonusAmount) {
         if (minPoints > maxPoints) {
-            throw new IllegalArgumentException("下限不能大於上限");
+            throw new PerformanceException("下限不能大於上限");
         }
         BonusTier tier = bonusTierRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("找不到級距 #" + id));
+                .orElseThrow(() -> new PerformanceException("找不到級距 #" + id));
         tier.setMinPoints(minPoints);
         tier.setMaxPoints(maxPoints);
         tier.setBonusAmount(bonusAmount);
