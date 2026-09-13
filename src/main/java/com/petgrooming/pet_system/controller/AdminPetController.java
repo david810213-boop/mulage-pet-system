@@ -39,7 +39,7 @@ public class AdminPetController {
                                                @RequestBody java.util.Map<String, Long> body) {
         Long groomingItemId = body.get("groomingItemId");
         if (groomingItemId == null) {
-            return ResponseEntity.badRequest().body("請提供 groomingItemId");
+            return ResponseEntity.badRequest().body(com.petgrooming.pet_system.dto.ErrorResponse.of("請提供 groomingItemId"));
         }
         return ResponseEntity.ok(petService.lockGroomingItem(petId, groomingItemId));
     }
@@ -58,7 +58,7 @@ public class AdminPetController {
                                            @RequestBody java.util.Map<String, Double> body) {
         Double weight = body.get("weight");
         if (weight == null || weight <= 0) {
-            return ResponseEntity.badRequest().body("請提供有效的體重");
+            return ResponseEntity.badRequest().body(com.petgrooming.pet_system.dto.ErrorResponse.of("請提供有效的體重"));
         }
         return ResponseEntity.ok(petService.updateWeight(petId, weight));
     }

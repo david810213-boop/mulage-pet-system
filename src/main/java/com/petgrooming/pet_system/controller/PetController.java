@@ -112,7 +112,7 @@ public class PetController {
             HttpServletRequest request) {
         var pet = petService.getPetEntity(id);
         if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
-            return ResponseEntity.status(403).body("只能上傳自己寵物的照片");
+            return ResponseEntity.status(403).body(com.petgrooming.pet_system.dto.ErrorResponse.of("只能上傳自己寵物的照片"));
         }
         PetResponse res = petService.updatePhoto(id, file);
         operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",

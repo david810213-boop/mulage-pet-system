@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.dto.ErrorResponse;
 import com.petgrooming.pet_system.dto.LineLoginRequest;
 import com.petgrooming.pet_system.dto.LineLoginResponse;
 import com.petgrooming.pet_system.dto.LineVerifyResponse;
@@ -67,13 +68,13 @@ public class LineAuthController {
             verified = verifyIdToken(req.getIdToken());
         } catch (RestClientResponseException e) {
             log.warn("LINE idToken 驗證失敗: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("idToken 無效或已過期");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("idToken 無效或已過期"));
         }
 
         // 2. 確認 token 是發給「我們的」LINE Login Channel，避免被其他應用程式的 token 冒用
         if (!channelId.equals(verified.getAud())) {
             log.warn("idToken aud 不符，預期: {}，實際: {}", channelId, verified.getAud());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("idToken 不屬於本系統");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("idToken 不屬於本系統"));
         }
 
         // 3. 依 LINE userId 查找會員，找不到就自動建立
@@ -120,7 +121,7 @@ public class LineAuthController {
         String idToken = body.get("idToken");
         String code = body.get("code");
         if (idToken == null || idToken.isBlank() || code == null || code.isBlank()) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", "請提供驗證碼"));
+            return ResponseEntity.badRequest().body(ErrorResponse.of("請提供驗證碼"));
         }
 
         LineVerifyResponse verified;
@@ -129,11 +130,11 @@ public class LineAuthController {
         } catch (RestClientResponseException e) {
             log.warn("LINE idToken 驗證失敗（綁定流程）: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(java.util.Map.of("message", "LINE 登入驗證失敗，請重新開啟頁面再試一次"));
+                    .body(ErrorResponse.of("LINE 登入驗證失敗，請重新開啟頁面再試一次"));
         }
         if (!channelId.equals(verified.getAud())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(java.util.Map.of("message", "idToken 不屬於本系統"));
+                    .body(ErrorResponse.of("idToken 不屬於本系統"));
         }
 
         User bound = lineBindService.bindByCode(code, verified.getSub());
@@ -151,11 +152,11 @@ public class LineAuthController {
     public ResponseEntity<?> claimByPhone(HttpServletRequest request, @RequestBody java.util.Map<String, String> body) {
         String username = (String) request.getAttribute("tokenUsername");
         if (username == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "請先登入"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("請先登入"));
         }
         String phone = body.get("phone");
         if (phone == null || phone.isBlank()) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", "請輸入電話號碼"));
+            return ResponseEntity.badRequest().body(ErrorResponse.of("請輸入電話號碼"));
         }
         User current = userService.getUserEntityByUsername(username);
         User claimed = memberImportService.claimByPhone(current, phone);
