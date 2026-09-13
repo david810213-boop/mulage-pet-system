@@ -37,15 +37,10 @@ public class AppointmentController {
     public ResponseEntity<?> book(
             @RequestBody AppointmentRequest req,
             HttpServletRequest request) {
-        try {
-            AppointmentResponse res = appointmentService.book(req, currentUsername(request));
-            operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "BOOK",
-                    "預約 " + res.getAppointmentCode(), res.getPetName());
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            // 時間超出營業時間、時段重疊等錯誤
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        AppointmentResponse res = appointmentService.book(req, currentUsername(request));
+        operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "BOOK",
+                "預約 " + res.getAppointmentCode(), res.getPetName());
+        return ResponseEntity.ok(res);
     }
 
     // ── GET /api/appointments/my ───────────────────────────────────────────
@@ -70,23 +65,31 @@ public class AppointmentController {
             @PathVariable Long id,
             @RequestBody(required = false) CancelAppointmentRequest req,
             HttpServletRequest request) {
-        try {
-            AppointmentResponse res = appointmentService.cancel(id, req, currentUsername(request));
-            operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "CANCEL",
-                    "預約 " + res.getAppointmentCode(),
-                    req != null && req.getReason() != null ? req.getReason() : "顧客自行取消");
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        AppointmentResponse res = appointmentService.cancel(id, req, currentUsername(request));
+        operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "CANCEL",
+                "預約 " + res.getAppointmentCode(),
+                req != null && req.getReason() != null ? req.getReason() : "顧客自行取消");
+        return ResponseEntity.ok(res);
     }
 
-    // ── GET /api/appointments/slots?date=2025-06-01 ────────────────────────
-    // 查詢某天可預約時段（對應原本 generateDailySlots + getAvailableSlots）
+    // ── GET /api/appointments/slots?date=2025-06-01[&petType=DOG] ──────────
+    // 查詢某天可預約時段（對應原本 generateDailySlots + getAvailableSlots）。
+    // 需求（追加，2026-09-08）：帶入 petType 時，該時段限定的物種跟這隻寵物不符
+    // 也會反映在 available 上；petType 格式不合法（不是 DOG/CAT）就當作沒帶，
+    // 不讓前端傳壞值時整支 API 500。
     @GetMapping("/slots")
     public ResponseEntity<List<TimeSlotResponse>> getAvailableSlots(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(appointmentService.getAvailableSlots(date));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String petType) {
+        com.petgrooming.pet_system.enums.PetType parsedPetType = null;
+        if (petType != null && !petType.isBlank()) {
+            try {
+                parsedPetType = com.petgrooming.pet_system.enums.PetType.valueOf(petType.toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // 不合法的值當作沒帶，不篩選物種
+            }
+        }
+        return ResponseEntity.ok(appointmentService.getAvailableSlots(date, parsedPetType));
     }
 
     // ── GET /api/appointments/closed-dates ───────────────────────────────
@@ -104,10 +107,6 @@ public class AppointmentController {
     // 取得某筆預約的完整消費明細（服務項目、金額、付款方式、經手人等），供 LIFF 點擊查看用
     @GetMapping("/{id}/detail")
     public ResponseEntity<?> getDetail(@PathVariable Long id, HttpServletRequest request) {
-        try {
-            return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, currentUsername(request)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, currentUsername(request)));
     }
 }

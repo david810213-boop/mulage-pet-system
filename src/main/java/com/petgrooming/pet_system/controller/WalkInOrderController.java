@@ -36,11 +36,7 @@ public class WalkInOrderController {
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody WalkInOrderCreateRequest req,
             HttpServletRequest request) {
-        try {
-            return ResponseEntity.ok(walkInOrderService.create(req, currentUsername(request)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(walkInOrderService.create(req, currentUsername(request)));
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
@@ -52,11 +48,7 @@ public class WalkInOrderController {
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/{id}")
     public ResponseEntity<?> getOne(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(walkInOrderService.getById(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(walkInOrderService.getById(id));
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
@@ -69,12 +61,8 @@ public class WalkInOrderController {
     @PutMapping("/items/{itemId}/operator")
     public ResponseEntity<?> fillOperator(@PathVariable Long itemId,
             @Valid @RequestBody FillOperatorRequest req) {
-        try {
-            walkInOrderService.fillOperator(itemId, req.getStaffId());
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        walkInOrderService.fillOperator(itemId, req.getStaffId());
+        return ResponseEntity.ok().build();
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })

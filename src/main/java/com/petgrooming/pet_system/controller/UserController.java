@@ -28,27 +28,19 @@ public class UserController {
     // 查詢自己的資料，身分取自 JWT（店家帳密登入或顧客 LINE 登入皆適用）
     @GetMapping("/me")
     public ResponseEntity<?> getMe(HttpServletRequest request) {
-        try {
-            String username = (String) request.getAttribute("tokenUsername");
-            UserResponse res = userService.getMe(username);
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        String username = (String) request.getAttribute("tokenUsername");
+        UserResponse res = userService.getMe(username);
+        return ResponseEntity.ok(res);
     }
 
     // ── PUT /api/users/me ───────────────────────────────────────────────────
     // 會員編輯自己的基本資料（年齡／職業／居住區域／得知來源），身分取自 JWT
     @PutMapping("/me")
     public ResponseEntity<?> updateMe(@Valid @RequestBody UpdateProfileRequest req, HttpServletRequest request) {
-        try {
-            String username = (String) request.getAttribute("tokenUsername");
-            UserResponse res = userService.updateProfile(username, req);
-            operationLogService.logByUsername(username, "CUSTOMER", "UPDATE_PROFILE", "會員 " + username, null);
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        String username = (String) request.getAttribute("tokenUsername");
+        UserResponse res = userService.updateProfile(username, req);
+        operationLogService.logByUsername(username, "CUSTOMER", "UPDATE_PROFILE", "會員 " + username, null);
+        return ResponseEntity.ok(res);
     }
 
     // ── GET /api/users ─────────────────────────────────────────────────────
@@ -72,14 +64,10 @@ public class UserController {
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/staff")
     public ResponseEntity<?> createStaff(@Valid @RequestBody CreateStaffRequest req, HttpServletRequest request) {
-        try {
-            UserResponse res = userService.createStaff(req);
-            operationLogService.logByUsername((String) request.getAttribute("tokenUsername"),
-                    "AUTH", "CREATE_STAFF", "新員工 " + res.getUsername(), null);
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        UserResponse res = userService.createStaff(req);
+        operationLogService.logByUsername((String) request.getAttribute("tokenUsername"),
+                "AUTH", "CREATE_STAFF", "新員工 " + res.getUsername(), null);
+        return ResponseEntity.ok(res);
     }
 
 }

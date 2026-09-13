@@ -89,28 +89,20 @@ public class AdminMemberController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{username}/note")
     public ResponseEntity<?> getNote(@PathVariable String username) {
-        try {
-            return ResponseEntity.ok(Map.of(
-                    "username", username,
-                    "adminNote", userService.getAdminNote(username) == null
-                            ? "" : userService.getAdminNote(username)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(Map.of(
+                "username", username,
+                "adminNote", userService.getAdminNote(username) == null
+                        ? "" : userService.getAdminNote(username)));
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PutMapping("/{username}/note")
     public ResponseEntity<?> setNote(@PathVariable String username,
                                      @RequestBody MemberNoteRequest req) {
-        try {
-            String saved = userService.setAdminNote(username, req.getAdminNote());
-            return ResponseEntity.ok(Map.of(
-                    "username", username,
-                    "adminNote", saved == null ? "" : saved));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        String saved = userService.setAdminNote(username, req.getAdminNote());
+        return ResponseEntity.ok(Map.of(
+                "username", username,
+                "adminNote", saved == null ? "" : saved));
     }
 
     // ── POST /api/admin/members/merge ───────────────────────────────────────
@@ -121,14 +113,10 @@ public class AdminMemberController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/merge")
     public ResponseEntity<?> merge(@RequestBody Map<String, String> req) {
-        try {
-            String importedUsername = req.get("importedUsername");
-            String targetUsername = req.get("targetUsername");
-            memberImportService.manualMerge(importedUsername, targetUsername);
-            return ResponseEntity.ok(Map.of(
-                    "message", "已將 " + importedUsername + " 的資料合併到 " + targetUsername));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        String importedUsername = req.get("importedUsername");
+        String targetUsername = req.get("targetUsername");
+        memberImportService.manualMerge(importedUsername, targetUsername);
+        return ResponseEntity.ok(Map.of(
+                "message", "已將 " + importedUsername + " 的資料合併到 " + targetUsername));
     }
 }

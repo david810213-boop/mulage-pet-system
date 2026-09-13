@@ -59,21 +59,17 @@ public class CustomerWalletAdminController {
             @PathVariable String username,
             @Valid @RequestBody DepositRequest req,
             HttpServletRequest request) {
+        WalletResponse res = walletService.deposit(username, req);
+        String reviewer = currentUsername(request);
         try {
-            WalletResponse res = walletService.deposit(username, req);
-            String reviewer = currentUsername(request);
-            try {
-                var targetCustomer = userService.getUserEntityByUsername(username);
-                String reviewerName = reviewer != null ? userService.getUserEntityByUsername(reviewer).getName() : "系統管理員";
-                topUpService.recordManualTopup(targetCustomer, req.getAmount(), reviewerName, req.getNote());
-            } catch (Exception ignored) {
-                // 補登儲值申請紀錄失敗不影響已完成的儲值本身，僅財務報表統計可能漏這一筆
-            }
-            operationLogService.logByUsername(reviewer, "WALLET", "DEPOSIT",
-                    "會員 " + username, "+$" + req.getAmount() + (req.getNote() != null ? "（" + req.getNote() + "）" : ""));
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            var targetCustomer = userService.getUserEntityByUsername(username);
+            String reviewerName = reviewer != null ? userService.getUserEntityByUsername(reviewer).getName() : "系統管理員";
+            topUpService.recordManualTopup(targetCustomer, req.getAmount(), reviewerName, req.getNote());
+        } catch (Exception ignored) {
+            // 補登儲值申請紀錄失敗不影響已完成的儲值本身，僅財務報表統計可能漏這一筆
         }
+        operationLogService.logByUsername(reviewer, "WALLET", "DEPOSIT",
+                "會員 " + username, "+$" + req.getAmount() + (req.getNote() != null ? "（" + req.getNote() + "）" : ""));
+        return ResponseEntity.ok(res);
     }
 }

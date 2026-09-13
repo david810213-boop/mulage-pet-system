@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestCreate;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.TopUpStatus;
+import com.petgrooming.pet_system.exception.WalletException;
 import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.TopUpRequestRepository;
@@ -40,7 +41,7 @@ public class TopUpService {
     @Transactional
     public TopUpRequestResponse submit(String username, TopUpRequestCreate req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("找不到使用者"));
+                .orElseThrow(() -> new WalletException("找不到使用者"));
 
         TopUpRequest topUp = TopUpRequest.builder()
                 .user(user)
@@ -71,10 +72,10 @@ public class TopUpService {
     @Transactional
     public TopUpRequestResponse confirm(Long id, String reviewerName) {
         TopUpRequest topUp = topUpRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("找不到此儲值申請"));
+                .orElseThrow(() -> new WalletException("找不到此儲值申請"));
 
         if (topUp.getStatus() != TopUpStatus.PENDING) {
-            throw new IllegalArgumentException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
+            throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
         }
 
         // 真正加值：複用既有錢包儲值邏輯（含贈點 / 升卡）
@@ -97,10 +98,10 @@ public class TopUpService {
     @Transactional
     public TopUpRequestResponse reject(Long id, String reviewerName, String reason) {
         TopUpRequest topUp = topUpRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("找不到此儲值申請"));
+                .orElseThrow(() -> new WalletException("找不到此儲值申請"));
 
         if (topUp.getStatus() != TopUpStatus.PENDING) {
-            throw new IllegalArgumentException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
+            throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
         }
 
         topUp.setStatus(TopUpStatus.REJECTED);

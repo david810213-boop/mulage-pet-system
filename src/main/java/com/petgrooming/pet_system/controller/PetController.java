@@ -47,14 +47,10 @@ public class PetController {
     public ResponseEntity<?> addPet(
             HttpServletRequest request,
             @Valid @RequestBody PetRequest petRequest) {
-        try {
-            PetResponse res = petService.addPet(currentUsername(request), petRequest);
-            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "ADD_PET",
-                    "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        PetResponse res = petService.addPet(currentUsername(request), petRequest);
+        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "ADD_PET",
+                "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
+        return ResponseEntity.ok(res);
     }
 
     // ── PUT /api/pets/{petId} ────────────────────────────────────────────────
@@ -67,15 +63,11 @@ public class PetController {
             HttpServletRequest request,
             @PathVariable Long petId,
             @Valid @RequestBody PetRequest petRequest) {
-        try {
-            petService.assertOwnership(petId, currentUsername(request));
-            PetResponse res = petService.updatePet(petId, petRequest);
-            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPDATE_PET",
-                    "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        petService.assertOwnership(petId, currentUsername(request));
+        PetResponse res = petService.updatePet(petId, petRequest);
+        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPDATE_PET",
+                "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
+        return ResponseEntity.ok(res);
     }
 
     // ── DELETE /api/pets/{petId} ──────────────────────────────────────────
@@ -83,15 +75,11 @@ public class PetController {
     // 有預約或消費紀錄的話會被 PetService.deletePet() 擋下（見該方法說明）。
     @DeleteMapping("/{petId}")
     public ResponseEntity<?> deletePet(HttpServletRequest request, @PathVariable Long petId) {
-        try {
-            petService.assertOwnership(petId, currentUsername(request));
-            petService.deletePet(petId);
-            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "DELETE_PET",
-                    "寵物 #" + petId, null);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        petService.assertOwnership(petId, currentUsername(request));
+        petService.deletePet(petId);
+        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "DELETE_PET",
+                "寵物 #" + petId, null);
+        return ResponseEntity.ok().build();
     }
 
     // ── GET /api/pets/cat-breeds ────────────────────────────────────────────
@@ -111,12 +99,8 @@ public class PetController {
     // ── GET /api/pets/my ───────────────────────────────────────────────────
     @GetMapping("/my")
     public ResponseEntity<?> getMyPets(HttpServletRequest request) {
-        try {
-            List<PetResponse> res = petService.getMyPets(currentUsername(request));
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        List<PetResponse> res = petService.getMyPets(currentUsername(request));
+        return ResponseEntity.ok(res);
     }
 
     // ── POST /api/pets/{id}/photo ────────────────────────────────────────
@@ -126,18 +110,14 @@ public class PetController {
             @PathVariable Long id,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             HttpServletRequest request) {
-        try {
-            var pet = petService.getPetEntity(id);
-            if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
-                return ResponseEntity.status(403).body("只能上傳自己寵物的照片");
-            }
-            PetResponse res = petService.updatePhoto(id, file);
-            operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",
-                    "寵物 " + res.getName() + " #" + res.getId(), null);
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        var pet = petService.getPetEntity(id);
+        if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
+            return ResponseEntity.status(403).body("只能上傳自己寵物的照片");
         }
+        PetResponse res = petService.updatePhoto(id, file);
+        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",
+                "寵物 " + res.getName() + " #" + res.getId(), null);
+        return ResponseEntity.ok(res);
     }
 
     // ── GET /api/pets/{petId}/discount-status ──────────────────────────────
@@ -157,68 +137,64 @@ public class PetController {
             // （例如剛選完毛孩、日期欄位還空著）不帶這個參數，退回用「今天」
             // 當基準日，先讓使用者看到一個大概的狀態。
             @org.springframework.web.bind.annotation.RequestParam(required = false) String asOfDate) {
-        try {
-            petService.assertOwnership(petId, currentUsername(request));
-            var pet = petService.getPetEntity(petId);
-            var owner = pet.getOwner();
-            String petType = pet.getPetType().name();
-            boolean isCat = "CAT".equals(petType);
-            boolean isDog = "DOG".equals(petType);
+        petService.assertOwnership(petId, currentUsername(request));
+        var pet = petService.getPetEntity(petId);
+        var owner = pet.getOwner();
+        String petType = pet.getPetType().name();
+        boolean isCat = "CAT".equals(petType);
+        boolean isDog = "DOG".equals(petType);
 
-            LocalDate referenceDate = LocalDate.now();
-            if (asOfDate != null && !asOfDate.isBlank()) {
-                try {
-                    referenceDate = LocalDate.parse(asOfDate);
-                } catch (java.time.format.DateTimeParseException e) {
-                    // 格式錯誤就忽略，退回用今天，不要因為這個附加參數壞掉
-                    // 而讓整支 API 掛掉
-                }
+        LocalDate referenceDate = LocalDate.now();
+        if (asOfDate != null && !asOfDate.isBlank()) {
+            try {
+                referenceDate = LocalDate.parse(asOfDate);
+            } catch (java.time.format.DateTimeParseException e) {
+                // 格式錯誤就忽略，退回用今天，不要因為這個附加參數壞掉
+                // 而讓整支 API 掛掉
             }
-
-            boolean firstVisitEligible = !petConsumptionHistoryService.hasPriorPaidService(
-                    owner.getId(), pet.getName(), null);
-
-            boolean rewashEligible = false;
-            Long lastBathDaysAgo = null;
-            if (isCat) {
-                var lastBath = catRewashDiscountService.findLastBathDate(owner.getId(), pet.getName());
-                if (lastBath.isPresent()) {
-                    lastBathDaysAgo = ChronoUnit.DAYS.between(lastBath.get(), referenceDate);
-                    rewashEligible = lastBathDaysAgo >= 0 && lastBathDaysAgo < CatRewashDiscountService.REWASH_WINDOW_DAYS;
-                }
-            }
-
-            double memberDiscountRate = walletService.getWallet(owner.getUsername()).getDiscount();
-
-            String specialLabel = null;
-            Double specialRate = null;
-            List<String> specialCategories = List.of();
-
-            // 首次體驗跟定期養護禮遇互斥，首次體驗優先判斷（邏輯跟結帳時
-            // populateDiscountInfo() 的判斷順序一致：先看是不是首次消費）
-            if (isCat && firstVisitEligible) {
-                specialLabel = "首次體驗優惠";
-                specialRate = CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-                specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
-            } else if (isDog && firstVisitEligible) {
-                specialLabel = "首次體驗優惠";
-                specialRate = DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-                specialCategories = List.of("BATH_SMALL", "BATH_LARGE");
-            } else if (isCat && rewashEligible) {
-                // 需求（追加，2026-09-06）：文案改版，顧客端一律顯示「定期養護禮遇」，
-                // 不用「回洗優惠」這個比較像內部行話的講法。後台（例如「貓咪回洗
-                // 名單」管理頁）維持原本用語不變，這裡只改對顧客顯示的文字。
-                specialLabel = "定期養護禮遇";
-                specialRate = CatRewashDiscountService.REWASH_DISCOUNT_RATE;
-                specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
-            }
-
-            return ResponseEntity.ok(new PetDiscountStatusResponse(
-                    petType, firstVisitEligible, rewashEligible, lastBathDaysAgo,
-                    memberDiscountRate, specialLabel, specialRate, specialCategories));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
         }
+
+        boolean firstVisitEligible = !petConsumptionHistoryService.hasPriorPaidService(
+                owner.getId(), pet.getName(), null);
+
+        boolean rewashEligible = false;
+        Long lastBathDaysAgo = null;
+        if (isCat) {
+            var lastBath = catRewashDiscountService.findLastBathDate(owner.getId(), pet.getName());
+            if (lastBath.isPresent()) {
+                lastBathDaysAgo = ChronoUnit.DAYS.between(lastBath.get(), referenceDate);
+                rewashEligible = lastBathDaysAgo >= 0 && lastBathDaysAgo < CatRewashDiscountService.REWASH_WINDOW_DAYS;
+            }
+        }
+
+        double memberDiscountRate = walletService.getWallet(owner.getUsername()).getDiscount();
+
+        String specialLabel = null;
+        Double specialRate = null;
+        List<String> specialCategories = List.of();
+
+        // 首次體驗跟定期養護禮遇互斥，首次體驗優先判斷（邏輯跟結帳時
+        // populateDiscountInfo() 的判斷順序一致：先看是不是首次消費）
+        if (isCat && firstVisitEligible) {
+            specialLabel = "首次體驗優惠";
+            specialRate = CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+            specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
+        } else if (isDog && firstVisitEligible) {
+            specialLabel = "首次體驗優惠";
+            specialRate = DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
+            specialCategories = List.of("BATH_SMALL", "BATH_LARGE");
+        } else if (isCat && rewashEligible) {
+            // 需求（追加，2026-09-06）：文案改版，顧客端一律顯示「定期養護禮遇」，
+            // 不用「回洗優惠」這個比較像內部行話的講法。後台（例如「貓咪回洗
+            // 名單」管理頁）維持原本用語不變，這裡只改對顧客顯示的文字。
+            specialLabel = "定期養護禮遇";
+            specialRate = CatRewashDiscountService.REWASH_DISCOUNT_RATE;
+            specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
+        }
+
+        return ResponseEntity.ok(new PetDiscountStatusResponse(
+                petType, firstVisitEligible, rewashEligible, lastBathDaysAgo,
+                memberDiscountRate, specialLabel, specialRate, specialCategories));
     }
 }
 

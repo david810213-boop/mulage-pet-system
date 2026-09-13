@@ -47,12 +47,8 @@ public class PaymentController {
             @PathVariable Long appointmentId,
             @RequestBody CheckoutRequest req,
             HttpServletRequest request) {
-        try {
-            TransactionResponse res = paymentService.checkout(appointmentId, req, currentUsername(request));
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        TransactionResponse res = paymentService.checkout(appointmentId, req, currentUsername(request));
+        return ResponseEntity.ok(res);
     }
 
     // ── GET /api/payments/my ───────────────────────────────────────────────

@@ -136,15 +136,9 @@ public class LineAuthController {
                     .body(java.util.Map.of("message", "idToken 不屬於本系統"));
         }
 
-        try {
-            User bound = lineBindService.bindByCode(code, verified.getSub());
-            operationLogService.logByUsername(bound.getUsername(), "AUTH", "BIND_LINE", bound.getUsername(), null);
-            return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
-        } catch (IllegalArgumentException e) {
-            // 需求（追加）：跟成功回應一樣統一回 JSON（不要跟別的端點一個回純文字一個回 JSON，
-            // 這種不一致是這次「錯誤訊息被吞掉」問題的根源）
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
-        }
+        User bound = lineBindService.bindByCode(code, verified.getSub());
+        operationLogService.logByUsername(bound.getUsername(), "AUTH", "BIND_LINE", bound.getUsername(), null);
+        return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
     }
 
     // ── POST /api/line/claim-by-phone ───────────────────────────────────
@@ -163,13 +157,9 @@ public class LineAuthController {
         if (phone == null || phone.isBlank()) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", "請輸入電話號碼"));
         }
-        try {
-            User current = userService.getUserEntityByUsername(username);
-            User claimed = memberImportService.claimByPhone(current, phone);
-            operationLogService.logByUsername(username, "CUSTOMER", "CLAIM_MEMBER_DATA", claimed.getName(), phone);
-            return ResponseEntity.ok(UserResponse.from(claimed));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
-        }
+        User current = userService.getUserEntityByUsername(username);
+        User claimed = memberImportService.claimByPhone(current, phone);
+        operationLogService.logByUsername(username, "CUSTOMER", "CLAIM_MEMBER_DATA", claimed.getName(), phone);
+        return ResponseEntity.ok(UserResponse.from(claimed));
     }
 }

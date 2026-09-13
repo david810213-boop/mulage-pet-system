@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.exception.AuthException;
+import org.springframework.http.HttpStatus;
 import com.petgrooming.pet_system.model.LineBindToken;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.LineBindTokenRepository;
@@ -39,15 +41,15 @@ public class LineBindService {
     @Transactional
     public User bindByCode(String code, String lineUserId) {
         LineBindToken token = lineBindTokenRepository.findByCodeAndUsedFalse(code)
-                .orElseThrow(() -> new IllegalArgumentException("驗證碼不存在或已使用過，請回後台重新產生"));
+                .orElseThrow(() -> new AuthException("驗證碼不存在或已使用過，請回後台重新產生", HttpStatus.BAD_REQUEST));
 
         long minutesElapsed = ChronoUnit.MINUTES.between(token.getCreatedAt(), LocalDateTime.now());
         if (minutesElapsed > CODE_EXPIRY_MINUTES) {
-            throw new IllegalArgumentException("驗證碼已過期（超過 " + CODE_EXPIRY_MINUTES + " 分鐘），請回後台重新產生");
+            throw new AuthException("驗證碼已過期（超過 " + CODE_EXPIRY_MINUTES + " 分鐘），請回後台重新產生", HttpStatus.BAD_REQUEST);
         }
 
         User user = userRepository.findByUsername(token.getTargetUsername())
-                .orElseThrow(() -> new IllegalArgumentException("找不到對應的帳號"));
+                .orElseThrow(() -> new AuthException("找不到對應的帳號", HttpStatus.BAD_REQUEST));
 
         user.setLineUserId(lineUserId);
         userRepository.save(user);

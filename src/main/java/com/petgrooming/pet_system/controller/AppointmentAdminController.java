@@ -45,13 +45,9 @@ public class AppointmentAdminController {
     public ResponseEntity<?> confirm(@PathVariable Long id,
                                      @RequestBody(required = false) ConfirmAppointmentRequest req,
                                      HttpServletRequest request) {
-        try {
-            AppointmentResponse res = appointmentService.confirm(
-                    id, req != null ? req.getConfirmedTime() : null, currentUsername(request));
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        AppointmentResponse res = appointmentService.confirm(
+                id, req != null ? req.getConfirmedTime() : null, currentUsername(request));
+        return ResponseEntity.ok(res);
     }
 
     // 需求 7：設定雙可見性備注
@@ -60,12 +56,8 @@ public class AppointmentAdminController {
     public ResponseEntity<?> setNotes(@PathVariable Long id,
                                       @RequestBody AppointmentNoteRequest req,
                                       HttpServletRequest request) {
-        try {
-            AppointmentAdminResponse res = appointmentService.setNotes(
-                    id, req.getInternalNote(), req.getMemberNote(), currentUsername(request));
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        AppointmentAdminResponse res = appointmentService.setNotes(
+                id, req.getInternalNote(), req.getMemberNote(), currentUsername(request));
+        return ResponseEntity.ok(res);
     }
 }

@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.Wallet;
@@ -302,13 +303,13 @@ public class MemberImportService {
     @Transactional
     public User claimByPhone(User currentUser, String phone) {
         if (currentUser.getProfileCompletedAt() != null) {
-            throw new IllegalArgumentException("這個帳號已經填過資料了，無法再認領其他會員資料");
+            throw new MemberException("這個帳號已經填過資料了，無法再認領其他會員資料");
         }
         String normalized = normalizePhone(phone);
         User imported = userRepository.findByPhoneAndLineUserIdIsNull(normalized)
-                .orElseThrow(() -> new IllegalArgumentException("查無符合這支電話的既有會員資料"));
+                .orElseThrow(() -> new MemberException("查無符合這支電話的既有會員資料"));
         if (imported.getId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("查無符合這支電話的既有會員資料");
+            throw new MemberException("查無符合這支電話的既有會員資料");
         }
 
         // 過戶基本資料（這裡的 currentUser 一定是還沒填過資料的全新帳號，見上面
@@ -347,17 +348,17 @@ public class MemberImportService {
     @Transactional
     public void manualMerge(String importedUsername, String targetUsername) {
         User imported = userRepository.findByUsername(importedUsername)
-                .orElseThrow(() -> new IllegalArgumentException("找不到這個匯入帳號：" + importedUsername));
+                .orElseThrow(() -> new MemberException("找不到這個匯入帳號：" + importedUsername));
         if (!imported.getUsername().startsWith("imported_")) {
-            throw new IllegalArgumentException("只能合併「既有會員資料匯入」建立的暫時帳號（帳號以 imported_ 開頭），這筆不是");
+            throw new MemberException("只能合併「既有會員資料匯入」建立的暫時帳號（帳號以 imported_ 開頭），這筆不是");
         }
         User target = userRepository.findByUsername(targetUsername)
-                .orElseThrow(() -> new IllegalArgumentException("找不到目標會員帳號：" + targetUsername));
+                .orElseThrow(() -> new MemberException("找不到目標會員帳號：" + targetUsername));
         if (imported.getId().equals(target.getId())) {
-            throw new IllegalArgumentException("來源跟目標是同一個帳號");
+            throw new MemberException("來源跟目標是同一個帳號");
         }
         if (target.getUsername().startsWith("imported_")) {
-            throw new IllegalArgumentException("目標帳號也是匯入用的暫時帳號，請選一個真正在使用的會員帳號");
+            throw new MemberException("目標帳號也是匯入用的暫時帳號，請選一個真正在使用的會員帳號");
         }
 
         // 需求（追加，2026-09-11）：目標帳號原本沒填電話才帶入匯入資料的電話，
@@ -433,7 +434,7 @@ public class MemberImportService {
         walletRepository.findByUserId(imported.getId()).ifPresent(importedWallet -> {
             if (importedWallet.getBalance() != null && importedWallet.getBalance() > 0) {
                 Wallet targetWallet = walletRepository.findByUserId(target.getId())
-                        .orElseThrow(() -> new IllegalStateException("目標會員沒有錢包，資料異常，請聯絡工程人員"));
+                        .orElseThrow(() -> new MemberException("目標會員沒有錢包，資料異常，請聯絡工程人員"));
                 int targetBalance = targetWallet.getBalance() != null ? targetWallet.getBalance() : 0;
                 targetWallet.setBalance(targetBalance + importedWallet.getBalance());
                 walletRepository.save(targetWallet);

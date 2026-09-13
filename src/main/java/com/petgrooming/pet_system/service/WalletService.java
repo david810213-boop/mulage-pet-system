@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.dto.WalletTransactionResponse;
 import com.petgrooming.pet_system.enums.MemberCardTier;
 import com.petgrooming.pet_system.enums.WalletTransactionType;
+import com.petgrooming.pet_system.exception.WalletException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.Wallet;
 import com.petgrooming.pet_system.model.WalletTransaction;
@@ -87,10 +88,10 @@ public class WalletService {
 
         // 加鎖重新讀取，鎖持有到本交易 commit
         Wallet wallet = walletRepository.lockByUserId(user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("找不到錢包"));
+                .orElseThrow(() -> new WalletException("找不到錢包"));
 
         if (wallet.getBalance() < amount) {
-            throw new IllegalArgumentException("儲值金餘額不足，目前餘額：$" + wallet.getBalance());
+            throw new WalletException("儲值金餘額不足，目前餘額：$" + wallet.getBalance());
         }
         wallet.setBalance(wallet.getBalance() - amount);
 
@@ -114,7 +115,7 @@ public class WalletService {
 
         // 加鎖重新讀取，避免跟同一時間其他扣款/退款動作互相覆蓋
         Wallet wallet = walletRepository.lockByUserId(user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("找不到錢包"));
+                .orElseThrow(() -> new WalletException("找不到錢包"));
 
         wallet.setBalance(wallet.getBalance() + amount);
 

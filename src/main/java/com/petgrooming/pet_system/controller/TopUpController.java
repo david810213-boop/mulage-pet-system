@@ -41,14 +41,10 @@ public class TopUpController {
     @PostMapping("/api/topup")
     public ResponseEntity<?> submit(@Valid @RequestBody TopUpRequestCreate req,
                                     HttpServletRequest request) {
-        try {
-            var res = topUpService.submit(currentUsername(request), req);
-            operationLogService.logByUsername(currentUsername(request), "WALLET", "TOPUP_REQUEST",
-                    "會員 " + currentUsername(request), "+$" + req.getAmount() + "（末五碼 " + req.getLastFiveDigits() + "）");
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        var res = topUpService.submit(currentUsername(request), req);
+        operationLogService.logByUsername(currentUsername(request), "WALLET", "TOPUP_REQUEST",
+                "會員 " + currentUsername(request), "+$" + req.getAmount() + "（末五碼 " + req.getLastFiveDigits() + "）");
+        return ResponseEntity.ok(res);
     }
 
     // ── 顧客查自己的申請 ────────────────────────────────────────────────────
@@ -68,14 +64,10 @@ public class TopUpController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/api/admin/topup/{id}/confirm")
     public ResponseEntity<?> confirm(@PathVariable Long id, HttpServletRequest request) {
-        try {
-            var res = topUpService.confirm(id, currentUsername(request));
-            operationLogService.logByUsername(currentUsername(request), "WALLET", "TOPUP_CONFIRM",
-                    "儲值申請 #" + id, null);
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        var res = topUpService.confirm(id, currentUsername(request));
+        operationLogService.logByUsername(currentUsername(request), "WALLET", "TOPUP_CONFIRM",
+                "儲值申請 #" + id, null);
+        return ResponseEntity.ok(res);
     }
 
     // ── 店家駁回 ────────────────────────────────────────────────────────────
@@ -84,14 +76,10 @@ public class TopUpController {
     public ResponseEntity<?> reject(@PathVariable Long id,
                                     @RequestBody(required = false) TopUpReviewRequest req,
                                     HttpServletRequest request) {
-        try {
-            String reason = req != null ? req.getRejectReason() : null;
-            var res = topUpService.reject(id, currentUsername(request), reason);
-            operationLogService.logByUsername(currentUsername(request), "WALLET", "TOPUP_REJECT",
-                    "儲值申請 #" + id, reason);
-            return ResponseEntity.ok(res);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        String reason = req != null ? req.getRejectReason() : null;
+        var res = topUpService.reject(id, currentUsername(request), reason);
+        operationLogService.logByUsername(currentUsername(request), "WALLET", "TOPUP_REJECT",
+                "儲值申請 #" + id, reason);
+        return ResponseEntity.ok(res);
     }
 }
