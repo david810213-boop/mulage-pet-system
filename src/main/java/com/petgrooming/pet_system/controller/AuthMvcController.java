@@ -58,7 +58,17 @@ public class AuthMvcController {
             return "auth/login";
         }
 
-        Optional<User> userOpt = userService.authenticate(req.getUsername(), req.getPassword());
+        Optional<User> userOpt;
+        try {
+            userOpt = userService.authenticate(req.getUsername(), req.getPassword());
+        } catch (IllegalArgumentException e) {
+            // 需求（追加，2026-09-17）：帳號被鎖定時，UserService.authenticate()
+            // 會丟 AuthException 帶友善訊息（含剩餘分鐘數），跟單純密碼錯誤分開
+            // 顯示，不要混在一起變成同一句「帳號或密碼錯誤」。
+            model.addAttribute("redirect", redirect);
+            model.addAttribute("errorMsg", e.getMessage());
+            return "auth/login";
+        }
 
         if (userOpt.isPresent()) {
             User user = userOpt.get();

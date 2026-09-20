@@ -59,6 +59,18 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;    // 帳號是否啟用（預留停用功能）
 
+    // ── 需求（追加，2026-09-17）：登入暴力破解防護 ─────────────────────────
+    // 只用在帳密登入（LoginController.login），LINE 顧客端用 idToken 驗證，
+    // 不是猜密碼，不受這個機制影響。
+    @Builder.Default
+    @Column(name = "failed_login_attempts", columnDefinition = "int default 0", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    // 帳號被鎖定到什麼時候（null 代表沒有被鎖）。連續密碼答錯達到門檻時設定，
+    // 成功登入或鎖定時間過了之後清空。
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
     // ── 會員基本資料（供店家記錄分析用，選填）───────────────────────────
     @Column
     private Integer age;                // 年齡

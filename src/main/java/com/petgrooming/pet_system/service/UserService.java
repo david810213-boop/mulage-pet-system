@@ -7,14 +7,18 @@ import com.petgrooming.pet_system.dto.ResetPasswordRequest;
 import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.exception.AuthException;
 import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Optional;
@@ -27,12 +31,63 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // ── 需求（追加，2026-09-17）：登入暴力破解防護 ─────────────────────────
+    // 連續密碼答錯達到這個次數，帳號鎖定一段時間，鎖定期間內即使密碼正確
+    // 也一律拒絕，避免帳密被無限次嘗試。用 @Value 讓店家/工程之後可以透過
+    // Railway 環境變數調整門檻，不用改程式碼重新部署。只影響帳密登入
+    // （AuthMvcController），LINE 顧客端用 idToken 驗證，不是猜密碼，
+    // 不受影響。
+    @Value("${LOGIN_MAX_FAILED_ATTEMPTS:5}")
+    private int maxFailedAttempts;
+
+    @Value("${LOGIN_LOCKOUT_MINUTES:15}")
+    private int lockoutMinutes;
+
     // ── 1. 認證登入（回傳 Optional<User>，讓 Controller 自行決定處理方式）──
+    // 帳號在鎖定期間時，直接丟 AuthException（帶友善訊息跟剩餘分鐘數），
+    // 讓 Controller 可以跟「帳號或密碼錯誤」分開顯示不同文字，不會混淆使用者。
     public Optional<User> authenticate(String username, String password) {
-        return userRepository.findByUsername(username)
-                .filter(u -> passwordEncoder.matches(password, u.getPassword()))
+        Optional<User> userOpt = userRepository.findByUsername(username)
                 .filter(u -> Boolean.TRUE.equals(u.getIsActive()));
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        User user = userOpt.get();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (user.getLockedUntil() != null) {
+            if (user.getLockedUntil().isAfter(now)) {
+                long minutesLeft = ChronoUnit.MINUTES.between(now, user.getLockedUntil()) + 1;
+                throw new AuthException(
+                        "登入失敗次數過多，帳號已暫時鎖定，請約 " + minutesLeft + " 分鐘後再試",
+                        HttpStatus.TOO_MANY_REQUESTS);
+            }
+            // 鎖定時間已過，清空鎖定狀態，允許重新開始嘗試
+            user.setLockedUntil(null);
+            user.setFailedLoginAttempts(0);
+        }
+
+        if (passwordEncoder.matches(password, user.getPassword())) {
+            if (user.getFailedLoginAttempts() > 0) {
+                user.setFailedLoginAttempts(0);
+                userRepository.save(user);
+            }
+            return Optional.of(user);
+        }
+
+        // 密碼錯誤：累計失敗次數，達到門檻就鎖定帳號
+        int attempts = user.getFailedLoginAttempts() + 1;
+        if (attempts >= maxFailedAttempts) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(now.plusMinutes(lockoutMinutes));
+        } else {
+            user.setFailedLoginAttempts(attempts);
+        }
+        userRepository.save(user);
+        return Optional.empty();
     }
+
 
     // ── 2. 查 User entity（AuthMvcController 登入後建立 Session 用）
     public User getUserEntityByUsername(String username) {
