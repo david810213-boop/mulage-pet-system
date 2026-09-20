@@ -40,4 +40,18 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 注意：Appointment 沒有直接關聯 Pet 實體（只存 petName 快照），
     // 沿用需求 9 既有的「(會員, 寵物名) 配對識別同一隻寵物」慣例。
     List<Appointment> findByUserIdAndPetNameAndPaidTrue(Long userId, String petName);
+
+    // 需求（修正，2026-09-13）：N+1 查詢優化。getAllForAdmin()/getAllAppointments()
+    // 原本用 findAll() 撈全部預約，DTO 轉換時逐筆存取 a.getUser()（LAZY）跟
+    // a.getSelectedItems()（雖然是 EAGER，但預設用逐筆 SELECT 撈，不是 JOIN），
+    // 資料一多，每次載入預約列表都會觸發幾百條額外 SQL。改用 JOIN FETCH 把
+    // user、selectedItems 併進同一條查詢一次撈出來，只需要 1 條 SQL（selectedItems
+    // 是多對多，JOIN 之後同一筆預約會因為對應多個項目重複出現，用 DISTINCT
+    // 讓 Hibernate 在組裝結果時把同一筆預約的重複列合併回一筆）。
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT a FROM Appointment a " +
+            "LEFT JOIN FETCH a.user " +
+            "LEFT JOIN FETCH a.selectedItems " +
+            "ORDER BY a.id DESC")
+    List<Appointment> findAllWithUserAndItems();
 }

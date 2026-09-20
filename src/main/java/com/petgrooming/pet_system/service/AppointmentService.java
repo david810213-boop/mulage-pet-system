@@ -315,7 +315,7 @@ public class AppointmentService {
 
     // ── 查詢所有預約（STAFF/ADMIN）────────────────────────────────────────
     public List<AppointmentResponse> getAllAppointments() {
-        List<Appointment> appointments = appointmentRepository.findAll();
+        List<Appointment> appointments = appointmentRepository.findAllWithUserAndItems();
         // 需求（追加，2026-08-26 修正）：批次撈出所有這些預約核對後的實際項目，
         // 一次查完分組好，不要在迴圈裡一筆一筆查（避免 N+1）。
         java.util.Map<Long, List<com.petgrooming.pet_system.model.AppointmentItem>> checkinItemsByAppt =
@@ -352,8 +352,17 @@ public class AppointmentService {
     }
 
     // ── 店家後台查詢所有預約（含內部備注，需求 7）──────────────────────────
+    // 需求（修正，2026-09-13，N+1 查詢優化）：這支方法是專案裡已知效能問題
+    // （Dashboard/預約列表載入慢）的根本原因。原本 findAll() 之後，DTO 轉換
+    // 逐筆存取 a.getUser()（觸發一次額外查詢）、a.getSelectedItems()（EAGER
+    // 多對多，也是逐筆額外查詢），加上迴圈內對每一筆預約各呼叫一次
+    // transactionRepository.findByAppointmentId()查有沒有待對帳的匯款交易，
+    // 三個來源疊加，資料一多，單次載入可能觸發幾百條 SQL。現在全部改成批次
+    // 查詢：findAllWithUserAndItems() 用 JOIN FETCH 把預約、使用者、選擇項目
+    // 一次查完；待對帳交易改成 findByAppointmentIdIn() 一次撈出全部再用 id
+    // 分組，迴圈內只查 Map，不再另外打資料庫。
     public List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> getAllForAdmin() {
-        List<Appointment> appointments = appointmentRepository.findAll();
+        List<Appointment> appointments = appointmentRepository.findAllWithUserAndItems();
         // 需求（追加，2026-08-26 修正）：同 getAllAppointments() 的說明，批次撈核對後項目。
         java.util.Map<Long, List<com.petgrooming.pet_system.model.AppointmentItem>> checkinItemsByAppt =
                 appointmentItemRepository.findByAppointmentIdIn(
@@ -362,18 +371,30 @@ public class AppointmentService {
                         .collect(java.util.stream.Collectors.groupingBy(
                                 ci -> ci.getAppointment().getId()));
 
+        // 需求（追加，2026-09-13）：批次撈出全部預約對應的交易紀錄，取代原本
+        // 迴圈內逐筆呼叫 transactionRepository.findByAppointmentId() 的寫法。
+        // 一筆預約理論上最多一筆交易（結帳時建立），用 id 分組後每組取第一筆即可。
+        java.util.Map<Long, com.petgrooming.pet_system.model.Transaction> transactionByAppt =
+                transactionRepository.findByAppointmentIdIn(
+                                appointments.stream().map(Appointment::getId).toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                tx -> tx.getAppointment().getId(),
+                                tx -> tx,
+                                (first, second) -> first));
+
         return appointments.stream()
                 .map(a -> {
                     var res = com.petgrooming.pet_system.dto.AppointmentAdminResponse.from(a);
                     res.setDisplayItemNames(buildDisplayItemNames(a, checkinItemsByAppt.get(a.getId())));
                     // 需求 10：查這筆預約有沒有「待對帳」的匯款交易（已建立交易但尚未確認收款）
-                    transactionRepository.findByAppointmentId(a.getId()).ifPresent(tx -> {
-                        if (tx.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
-                                && !tx.isPaid()) {
-                            res.setPendingWireTransfer(true);
-                            res.setPendingTransactionId(tx.getId());
-                        }
-                    });
+                    var tx = transactionByAppt.get(a.getId());
+                    if (tx != null
+                            && tx.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
+                            && !tx.isPaid()) {
+                        res.setPendingWireTransfer(true);
+                        res.setPendingTransactionId(tx.getId());
+                    }
                     return res;
                 })
                 .toList();
