@@ -254,6 +254,7 @@ public class WalletMvcController {
     // ── POST /admin/wallets/{username}/deposit ─────────────────────────────
     // 幫顧客儲值
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @com.petgrooming.pet_system.annotation.RequireCsrf
     @PostMapping("/{username}/deposit")
     public String deposit(@PathVariable String username,
                           @Valid @ModelAttribute DepositRequest req,

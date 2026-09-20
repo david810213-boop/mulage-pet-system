@@ -54,6 +54,7 @@ public class CustomerWalletAdminController {
     // ── POST /api/admin/wallet/{username}/deposit ──────────────────────────
     // 幫指定顧客儲值（收到現金/匯款後由店家操作）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @com.petgrooming.pet_system.annotation.RequireCsrf
     @PostMapping("/{username}/deposit")
     public ResponseEntity<?> deposit(
             @PathVariable String username,

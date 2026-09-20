@@ -59,6 +59,8 @@ public class LoginInterceptor implements HandlerInterceptor {
                 request.setAttribute("tokenUsername", claims.getSubject());
                 request.setAttribute("tokenRole", claims.get("role", String.class));
                 request.setAttribute("tokenSource", claims.get("source", String.class));
+                // 需求（追加，2026-09-17）：CSRF Token 防護，供 CsrfInterceptor 核對用
+                request.setAttribute("tokenCsrf", claims.get("csrf", String.class));
                 return true; // 放行
             }
         }

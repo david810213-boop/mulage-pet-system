@@ -35,4 +35,24 @@ public final class CookieUtils {
         }
         return sb.toString();
     }
+
+    /**
+     * 需求（追加，2026-09-17）：CSRF Token 專用 Cookie，刻意不帶 HttpOnly——
+     * 前端 JS 需要讀出這個值，才能在高風險操作（密碼變更、建立員工帳號、
+     * 帳號合併、手動儲值、刪除操作）送出時一併帶上，讓後端 CsrfInterceptor
+     * 核對跟 JWT 裡內嵌的 csrf claim 是否一致。跨站的攻擊頁面讀不到這個
+     * Cookie 的值（瀏覽器同源政策擋下），沒辦法組出正確的驗證資訊，藉此
+     * 擋下偽造請求；同時仍然帶 SameSite=Lax，雙重防護不衝突。
+     */
+    public static String buildReadableCookieHeader(String name, String value, long maxAgeSeconds, boolean secure) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append('=').append(value == null ? "" : value);
+        sb.append("; Path=/");
+        sb.append("; Max-Age=").append(maxAgeSeconds);
+        sb.append("; SameSite=Lax");
+        if (secure) {
+            sb.append("; Secure");
+        }
+        return sb.toString();
+    }
 }

@@ -1168,6 +1168,14 @@
     </div>
 
     <script>
+      // 需求（追加，2026-09-17）：CSRF Token 防護，讀取登入時拿到的
+      // XSRF-TOKEN Cookie，高風險操作（例如下方的手動綁定合併）送出時
+      // 用 X-CSRF-Token 標頭一起帶上，後端 CsrfInterceptor 會核對。
+      function readCsrfCookie() {
+        const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : "";
+      }
+
       function switchTab(btn) {
         document.querySelectorAll(".cd-tab-btn").forEach(function (b) {
           b.classList.remove("active");
@@ -1191,6 +1199,8 @@
         try {
           const res = await fetch("/api/admin/pets/" + petId, {
             method: "DELETE",
+            // 需求（追加，2026-09-17）：CSRF Token 防護，刪除操作不可逆
+            headers: { "X-CSRF-Token": readCsrfCookie() },
           });
           if (!res.ok) {
             const msg = await res.text().catch(() => "");
@@ -1543,7 +1553,12 @@
           confirmBtn.textContent = "合併中...";
           fetch("/api/admin/members/merge", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              // 需求（追加，2026-09-17）：CSRF Token 防護，這是不可逆的高風險
+              // 操作，加上驗證標頭。
+              "X-CSRF-Token": readCsrfCookie(),
+            },
             body: JSON.stringify({
               importedUsername: importedUsername,
               targetUsername: selectedTarget.username,

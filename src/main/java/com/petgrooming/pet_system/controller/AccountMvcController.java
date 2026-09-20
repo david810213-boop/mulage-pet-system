@@ -40,6 +40,7 @@ public class AccountMvcController {
     }
 
     // ── POST /account/password ─────────────────────────────────────────────
+    @com.petgrooming.pet_system.annotation.RequireCsrf
     @PostMapping("/password")
     public String changePassword(@RequestParam String oldPassword,
                                  @RequestParam String newPassword,

@@ -60,9 +60,24 @@ public class JwtUtils {
      * @return 加密後的 JWT 字串
      */
     public String generateToken(String username, String role, String source) {
+        return generateToken(username, role, source, null);
+    }
+
+    /**
+     * 需求（追加，2026-09-17）：CSRF Token 防護——店家後台帳密登入時額外帶入
+     * 一組隨機產生的 csrfToken，內嵌進 JWT 的 claim 裡（跟 role/source 一樣
+     * 靠簽章保護，外部無法偽造）。呼叫端同時要把這個值另外用一個可讀 Cookie
+     * 存起來（見 CookieUtils.buildReadableCookieHeader()），前端才能在高風險
+     * 操作時讀出來一起送出。csrfToken 傳 null 代表不需要這個機制（例如 LINE
+     * 顧客端登入，維持現有兩個 overload 呼叫端完全不用改）。
+     */
+    public String generateToken(String username, String role, String source, String csrfToken) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role); // 把角色權限塞進 Payload
         claims.put("source", source);
+        if (csrfToken != null) {
+            claims.put("csrf", csrfToken);
+        }
 
         return Jwts.builder()
                 .setClaims(claims)

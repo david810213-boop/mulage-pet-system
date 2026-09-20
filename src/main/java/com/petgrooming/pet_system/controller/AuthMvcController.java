@@ -74,7 +74,11 @@ public class AuthMvcController {
             User user = userOpt.get();
 
             // 4. 關鍵核心：生成 JWT Token
-            String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name());
+            // 需求（追加，2026-09-17）：CSRF Token 防護——額外產生一組隨機值
+            // 內嵌進 JWT，同時另外用一個可讀 Cookie 存起來，供高風險操作
+            // （密碼變更、建立員工帳號、帳號合併、手動儲值、刪除操作）核對用。
+            String csrfToken = java.util.UUID.randomUUID().toString();
+            String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "WEB", csrfToken);
 
             operationLogService.log(user, "AUTH", "LOGIN", user.getUsername(), null);
 
@@ -84,6 +88,11 @@ public class AuthMvcController {
             response.addHeader("Set-Cookie",
                     com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
                             "JWT_TOKEN", token, 86400, cookieSecure));
+            // CSRF Token 用可讀 Cookie 存放（不能 HttpOnly，前端 JS 要讀得到），
+            // 有效期跟 JWT_TOKEN 一致。
+            response.addHeader("Set-Cookie",
+                    com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                            "XSRF-TOKEN", csrfToken, 86400, cookieSecure));
 
             if (redirect != null && !redirect.isBlank() && !redirect.startsWith("/auth")) {
                 return "redirect:" + redirect;
@@ -148,6 +157,10 @@ public class AuthMvcController {
         response.addHeader("Set-Cookie",
                 com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", "", 0, cookieSecure));
+        // 需求（追加，2026-09-17）：CSRF Token 的可讀 Cookie 一併清除
+        response.addHeader("Set-Cookie",
+                com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                        "XSRF-TOKEN", "", 0, cookieSecure));
 
         return "redirect:/auth/login";
     }

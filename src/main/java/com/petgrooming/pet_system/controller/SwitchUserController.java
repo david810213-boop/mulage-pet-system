@@ -4,7 +4,6 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.JwtUtils;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -88,14 +87,21 @@ public class SwitchUserController {
         }
 
         // 驗證通過：直接簽發目標帳號的 JWT，換掉目前的登入 Cookie
-        String token = jwtUtils.generateToken(target.getUsername(), target.getRole().name());
+        // 需求（追加，2026-09-17）：CSRF Token 防護——切換使用者也要重新產生
+        // csrfToken 並更新 XSRF-TOKEN Cookie，否則切換後的帳號在鎖定的高風險
+        // 操作（密碼變更、帳號合併、手動儲值、刪除操作）上會因為 tokenCsrf
+        // 對不上而被一律擋下，直到重新登出登入為止。順手改用跟登入流程一致的
+        // CookieUtils（帶 SameSite=Lax），原本這裡是用舊版 Cookie API 直接
+        // addCookie()，沒有這層保護。
+        String csrfToken = java.util.UUID.randomUUID().toString();
+        String token = jwtUtils.generateToken(target.getUsername(), target.getRole().name(), "WEB", csrfToken);
 
-        Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(cookieSecure);
-        jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(86400);
-        response.addCookie(jwtCookie);
+        response.addHeader("Set-Cookie",
+                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                        "JWT_TOKEN", token, 86400, cookieSecure));
+        response.addHeader("Set-Cookie",
+                com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                        "XSRF-TOKEN", csrfToken, 86400, cookieSecure));
 
         operationLogService.log(currentUser, "AUTH", "SWITCH_USER",
                 target.getUsername(), "由 " + currentUser.getUsername() + " 切換身份");

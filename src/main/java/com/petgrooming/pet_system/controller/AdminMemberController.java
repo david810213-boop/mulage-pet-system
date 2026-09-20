@@ -111,6 +111,7 @@ public class AdminMemberController {
     // 人工判斷後手動合併。importedUsername 必須是 imported_ 開頭的匯入暫時
     // 帳號，targetUsername 是要合併過去的真正會員帳號（通常是 line_ 開頭）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @com.petgrooming.pet_system.annotation.RequireCsrf
     @PostMapping("/merge")
     public ResponseEntity<?> merge(@RequestBody Map<String, String> req) {
         String importedUsername = req.get("importedUsername");
