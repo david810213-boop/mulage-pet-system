@@ -1161,6 +1161,36 @@ img.grayscale {
   }
 }
 
+/* ── 桌面（滑鼠裝置）：側欄預設收合成一條細邊，滑鼠移過去才展開顯示完整選單，
+   讓內容區（尤其是欄位多的表格）平常就能用滿版寬度，不用再往右捲動。
+   刻意只在夠寬的桌面尺寸生效（跟上面「平板」的斷點交界對齊），平板/手機
+   維持原本點擊手風琴的操作方式不變，因為觸控裝置沒有滑鼠 hover，收合起來
+   反而會讓選單被永久藏起來、摸不到 ── */
+@media (min-width: 1195px) {
+  .nav-side {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 14px;
+    min-width: 14px;
+    height: 100vh;
+    overflow: hidden;
+    z-index: 50;
+    transition: width 0.18s ease;
+  }
+  .nav-side:hover,
+  .nav-side:focus-within {
+    width: 216px;
+    min-width: 216px;
+    overflow-y: auto;
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.28);
+  }
+  .content,
+  .content-sm {
+    margin-left: 14px;
+  }
+}
+
 /* ── 手機：螢幕窄到放不下垂直側欄，攤平成上方橫向捲動列 ── */
 @media (max-width: 640px) {
   .page-wrapper {
