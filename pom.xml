@@ -34,6 +34,22 @@
 			<groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>  
 		</dependency>
+		<!-- 需求（追加，2026-09-17）：正式站監控（Sentry 錯誤追蹤）。版本號已上網
+		     查證存在於 Maven Central，這支 sentry-spring-boot-4-starter 是
+		     專門對應 Spring Boot 4.x 的版本（依賴 spring-boot-starter 4.1.0），
+		     跟一般常見的 -jakarta 版本（對應 Spring Boot 3.x）不同，這個專案
+		     用 Spring Boot 4.0.6，要用這一支才對。 -->
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-spring-boot-4-starter</artifactId>
+			<version>8.56.0</version>
+		</dependency>
+		<!-- 需求（追加，2026-09-17）：健康檢查路徑（/actuator/health），供
+		     Railway 平滑部署健康檢查跟外部 Uptime 監控服務使用。 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>

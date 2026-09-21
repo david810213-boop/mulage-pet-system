@@ -85,3 +85,30 @@ google:
     service-account-json-base64: ${GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON_BASE64:}
     calendar-id: ${GOOGLE_CALENDAR_ID:}
 
+# 需求（追加，2026-09-17）：正式站監控——Sentry 錯誤追蹤。
+# 到 https://sentry.io 註冊、建立一個 Java/Spring Boot 專案，Sentry 會給一組
+# DSN（長得像 https://xxxx@xxxx.ingest.sentry.io/xxxx），設成環境變數 SENTRY_DSN。
+# 還沒申請好之前留空即可——Sentry SDK 偵測到 DSN 是空字串會自動停用，
+# 不會讓系統啟動失敗，也不會出現任何錯誤訊息刷畫面。
+# traces-sample-rate 設 0.1 代表只抽樣 10% 的請求記錄效能追蹤（不是錯誤，
+# 是額外的效能監控功能），這個規模的系統流量不大，10% 已經足夠觀察，
+# 不用設 100% 徒增資料量跟費用；例外/錯誤永遠都會回報，不受這個抽樣比例影響。
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:production}
+  traces-sample-rate: 0.1
+
+# 需求（追加，2026-09-17）：健康檢查路徑，供 Railway 部署健康檢查（設定路徑
+# 見 Railway 服務設定的 Healthcheck Path 欄位，填 /actuator/health）跟外部
+# Uptime 監控服務（UptimeRobot、Better Stack 等）共用。只公開 health 這個
+# endpoint，不要把 Actuator 其他端點（env、beans、heapdump 等，可能洩漏內部
+# 設定或環境變數）一起打開。
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
