@@ -1,0 +1,48 @@
+# 需求（追加，2026-09-17）：依賴套件漏洞掃描（正式上線前準備工作清單第五節，
+# 資安加固優先序第 3 項）。目前 pom.xml 的依賴版本純手動盯，沒有自動化機制
+# 檢查已知漏洞，這個檔案啟用 GitHub 內建的 Dependabot：定期掃描 pom.xml，
+# 發現有安全更新或版本落後時自動開 Pull Request，不用自己記得手動查。
+#
+# 設定考量（單人維護專案，避免每週被一堆 PR 淹沒）：
+# - 每週檢查一次（不是每天）——重要安全更新不會因此延遲太久，同時不會太吵
+# - 小版本/修補版本更新（minor/patch）合併成一個 PR 一起處理，通常都是
+#   相容性風險低的小改動；大版本更新（major，可能有破壞性變更）維持各自
+#   獨立一個 PR，方便逐一仔細確認再合併，不要跟其他更新混在一起看
+# - open-pull-requests-limit 設 5，避免長期沒空處理時 PR 一直堆積
+#
+# 這份設定檔本身不需要額外的 GitHub 帳號權限設定就會生效——只要這個檔案
+# 存在於預設分支的 .github/ 目錄下，GitHub 就會自動依照設定開始掃描，
+# 不需要另外去後台按開關。第一次啟用後，如果 pom.xml 已經有落後的版本，
+# 通常會在幾小時內就看到第一批 PR。
+version: 2
+updates:
+  # Maven 依賴（pom.xml）——這個專案唯一的後端套件管理方式
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch-updates:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions 工作流程依賴——目前這個專案還沒有 CI/CD workflow，
+  # 但預先加這條設定沒有壞處：沒有 workflow 檔案時 Dependabot 就是單純
+  # 沒有東西可以掃，之後如果新增 .github/workflows/*.yml，不用再回頭
+  # 補這段設定。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
