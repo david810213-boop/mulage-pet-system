@@ -1146,9 +1146,11 @@ img.grayscale {
 }
 
 /* ── 行動裝置 ──────────────────────────────────────────────────────────── */
-/* ── 平板（iPad 等）：側欄固定顯示不攤平，維持垂直排列，
-   只是把子分類展開方式從「滑鼠 hover」交給下面 JS 的點擊手風琴接手，
-   這裡只加大觸控熱區，不改變版面結構 ── */
+/* ── 平板（iPad 等）：側欄改成固定定位，可以用右側凸出的圓形按鈕手動收合/
+   展開——觸控裝置沒有滑鼠 hover 這個動作，所以收合交給「點一下」控制，
+   不是靠移過去自動展開。收合狀態會存進 localStorage，下次用同一台平板
+   打開網站時維持上次的選擇，不用每次都重新點一次。子分類（會員管理、
+   庫存管理等）的展開方式維持原本下面 JS 那段「點擊手風琴」不變。 ── */
 @media (min-width: 641px) and (max-width: 1194px) {
   .nav-link {
     padding: 13px 14px;
@@ -1159,36 +1161,64 @@ img.grayscale {
   .nav-cat-flyout .nav-link {
     padding: 11px 14px 11px 22px;
   }
-}
 
-/* ── 桌面（滑鼠裝置）：側欄預設收合成一條細邊，滑鼠移過去才展開顯示完整選單，
-   讓內容區（尤其是欄位多的表格）平常就能用滿版寬度，不用再往右捲動。
-   刻意只在夠寬的桌面尺寸生效（跟上面「平板」的斷點交界對齊），平板/手機
-   維持原本點擊手風琴的操作方式不變，因為觸控裝置沒有滑鼠 hover，收合起來
-   反而會讓選單被永久藏起來、摸不到 ── */
-@media (min-width: 1195px) {
   .nav-side {
     position: fixed;
     left: 0;
     top: 0;
-    width: 14px;
-    min-width: 14px;
-    height: 100vh;
-    overflow: hidden;
-    z-index: 50;
-    transition: width 0.18s ease;
-  }
-  .nav-side:hover,
-  .nav-side:focus-within {
     width: 216px;
     min-width: 216px;
+    height: 100vh;
+    z-index: 50;
+    transition: width 0.18s ease;
     overflow-y: auto;
-    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.28);
   }
   .content,
   .content-sm {
+    margin-left: 216px;
+    transition: margin-left 0.18s ease;
+  }
+
+  .page-wrapper.nav-collapsed .nav-side {
+    width: 14px;
+    min-width: 14px;
+    overflow: hidden;
+  }
+  .page-wrapper.nav-collapsed .content,
+  .page-wrapper.nav-collapsed .content-sm {
     margin-left: 14px;
   }
+
+  .nav-toggle-btn {
+    display: flex;
+  }
+}
+
+/* 收合/展開按鈕：預設完全隱藏（桌面、手機都不需要），只在上面平板的
+   尺寸範圍內顯示（見上方 .nav-toggle-btn { display: flex } 覆寫）。
+   用 position: fixed 固定在畫面上，不放進 .nav-side 裡面，避免收合時
+   被 .nav-side 的 overflow: hidden 一起裁掉。 */
+.nav-toggle-btn {
+  display: none;
+  position: fixed;
+  top: 18px;
+  left: 226px;
+  z-index: 60;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand-deep);
+  color: #fff;
+  font-size: 14px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: left 0.18s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.page-wrapper.nav-collapsed .nav-toggle-btn {
+  left: 24px;
 }
 
 /* ── 手機：螢幕窄到放不下垂直側欄，攤平成上方橫向捲動列 ── */

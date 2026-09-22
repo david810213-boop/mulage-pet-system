@@ -4,6 +4,17 @@
     <!-- 用法完全不變：<div th:replace="~{fragments/nav :: nav}"></div>
          目前頁面的高亮由下方小段 script 依網址自動判斷，模板不用改。 -->
     <nav th:fragment="nav" class="nav-side">
+      <!-- 需求（追加，2026-09-22）：平板專用的收合/展開按鈕。觸控裝置沒有
+           滑鼠 hover，收合交給「點一下」控制。按鈕本身是 position: fixed，
+           對應的 CSS 只在平板寬度範圍（641px~1194px）顯示，桌面/手機看不到。 -->
+      <button
+        type="button"
+        class="nav-toggle-btn"
+        aria-label="收合或展開選單"
+        onclick="window.__toggleNavCollapse()"
+      >
+        ≡
+      </button>
       <a href="/dashboard" class="nav-brand">
         <div class="nav-brand-info">
           <div class="name">慕沐村</div>
@@ -108,6 +119,34 @@
 
       <script th:inline="none">
         (function () {
+          // 需求（追加，2026-09-22）：平板收合按鈕邏輯，記住上次選擇。
+          // 用 .page-wrapper 當作收合狀態的掛載點（見 modernist.css 的
+          // .page-wrapper.nav-collapsed 規則），不是掛在 .nav-side 本身，
+          // 這樣同一個 class 可以同時控制側欄寬度跟內容區的左邊界。
+          var NAV_COLLAPSE_KEY = "navCollapsed";
+          window.__toggleNavCollapse = function () {
+            var pageWrapper = document.querySelector(".page-wrapper");
+            if (!pageWrapper) return;
+            var isCollapsed = pageWrapper.classList.toggle("nav-collapsed");
+            try {
+              localStorage.setItem(NAV_COLLAPSE_KEY, isCollapsed ? "1" : "0");
+            } catch (e) {
+              // 少數瀏覽器隱私模式下 localStorage 可能無法寫入，忽略即可，
+              // 只是這次操作不會被記住，不影響當下的收合/展開本身
+            }
+          };
+          (function restoreNavCollapseState() {
+            var pageWrapper = document.querySelector(".page-wrapper");
+            if (!pageWrapper) return;
+            var saved = null;
+            try {
+              saved = localStorage.getItem(NAV_COLLAPSE_KEY);
+            } catch (e) {
+              /* 讀不到就當作沒存過，維持預設展開狀態 */
+            }
+            if (saved === "1") pageWrapper.classList.add("nav-collapsed");
+          })();
+
           var path = window.location.pathname;
           var links = document.querySelectorAll(".nav-side .nav-link");
           var best = null;
