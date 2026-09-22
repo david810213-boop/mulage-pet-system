@@ -119,15 +119,29 @@
 
       <script th:inline="none">
         (function () {
-          // 需求（追加，2026-09-22）：平板收合按鈕邏輯，記住上次選擇。
-          // 用 .page-wrapper 當作收合狀態的掛載點（見 modernist.css 的
-          // .page-wrapper.nav-collapsed 規則），不是掛在 .nav-side 本身，
-          // 這樣同一個 class 可以同時控制側欄寬度跟內容區的左邊界。
+          // 需求（修正，2026-09-22 第二次）：平板收合按鈕邏輯，記住上次選擇。
+          // 改成把 class 加在 <html> 根節點上（document.documentElement），
+          // 不是 .page-wrapper——因為「這台裝置是不是觸控裝置」是裝置層級
+          // 的屬性，跟目前在哪個頁面無關，掛在 <html> 上最單純，一定是
+          // .nav-side / .content 的祖先節點，CSS 選取器不用擔心層級問題。
           var NAV_COLLAPSE_KEY = "navCollapsed";
+          var root = document.documentElement;
+
+          // ⚠️ 偵測「是不是觸控裝置」不能用 CSS 的 (hover: none) 判斷——
+          // iPadOS 從 13 版起會刻意回報「有精確滑鼠」，即使是純觸控也一樣，
+          // 這是蘋果為了讓網站對 iPad 提供桌面版體驗、避免被誤判成手機而
+          // 做的偽裝。也不能只看 "ontouchstart" in window——這個判斷方式
+          // 本身不可靠，不少桌面瀏覽器環境即使不支援觸控，也會定義這個
+          // 屬性，用 jsdom 模擬驗證時就實際抓到這個誤判。改成只看
+          // navigator.maxTouchPoints，這是目前公認最可靠、業界推薦用來
+          // 繞過 iPad 偽裝行為、正確辨識觸控能力的方式。
+          var isTouchDevice = navigator.maxTouchPoints && navigator.maxTouchPoints > 0;
+          if (isTouchDevice) {
+            root.classList.add("is-touch-device");
+          }
+
           window.__toggleNavCollapse = function () {
-            var pageWrapper = document.querySelector(".page-wrapper");
-            if (!pageWrapper) return;
-            var isCollapsed = pageWrapper.classList.toggle("nav-collapsed");
+            var isCollapsed = root.classList.toggle("nav-collapsed");
             try {
               localStorage.setItem(NAV_COLLAPSE_KEY, isCollapsed ? "1" : "0");
             } catch (e) {
@@ -136,15 +150,13 @@
             }
           };
           (function restoreNavCollapseState() {
-            var pageWrapper = document.querySelector(".page-wrapper");
-            if (!pageWrapper) return;
             var saved = null;
             try {
               saved = localStorage.getItem(NAV_COLLAPSE_KEY);
             } catch (e) {
               /* 讀不到就當作沒存過，維持預設展開狀態 */
             }
-            if (saved === "1") pageWrapper.classList.add("nav-collapsed");
+            if (saved === "1") root.classList.add("nav-collapsed");
           })();
 
           var path = window.location.pathname;

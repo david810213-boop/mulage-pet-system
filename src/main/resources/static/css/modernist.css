@@ -1164,44 +1164,47 @@ img.grayscale {
    圓形按鈕手動收合/展開。收合狀態會存進 localStorage，下次用同一台
    裝置打開網站時維持上次的選擇。子分類（會員管理、庫存管理等）的展開
    方式維持原本下面 JS 那段「點擊手風琴」不變。
-   ⚠️ 2026-09-22 修正：原本用「螢幕寬度區間」（641px~1194px）判斷是不是
-   平板，但 iPad Pro 這類大尺寸平板橫放時，可視寬度可能超過 1194px、
-   比一般筆電螢幕還寬，用寬度區間會誤判成桌面，完全套用不到收合功能。
-   改用 (hover: none) and (pointer: coarse) 直接偵測「這台裝置有沒有
-   滑鼠游標可以 hover、輸入方式是不是粗略的觸控」，不管螢幕多寬、直向
-   橫向，只要是真正的觸控裝置（沒有滑鼠）就會生效，桌面/筆電就算把
-   瀏覽器縮到很窄，因為有滑鼠，也不會誤套用這個收合行為。 ── */
-@media (hover: none) and (pointer: coarse) {
-  .nav-side {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 216px;
-    min-width: 216px;
-    height: 100vh;
-    z-index: 50;
-    transition: width 0.18s ease;
-    overflow-y: auto;
-  }
-  .content,
-  .content-sm {
-    margin-left: 216px;
-    transition: margin-left 0.18s ease;
-  }
+   ⚠️ 2026-09-22 第二次修正：原本改用 CSS 的 (hover: none) and
+   (pointer: coarse) 判斷，理論上應該能正確偵測觸控裝置，但實測在 iPad
+   上完全沒生效——原因是 iPadOS 從 13 版起，Safari（以及所有 iPadOS 上的
+   瀏覽器，底層都被規定要用 WebKit）刻意在這類特徵偵測上回報「有精確
+   滑鼠可以 hover」，即使實際上是純觸控、沒有接滑鼠也一樣，這是蘋果為了
+   讓網站對 iPad 提供「桌面版體驗」、不要被誤判成手機而做的刻意偽裝。
+   CSS 層級的 hover/pointer 偵測在 iPad 上因此完全不可靠。
+   改成用 JavaScript 偵測 navigator.maxTouchPoints（見 nav.html 裡的
+   對應邏輯）——這是業界公認繞過 iPad 這個偽裝行為、正確辨識「這台裝置
+   能不能真的觸控」的標準做法。偵測到是觸控裝置後，JS 會在 <html> 上
+   加一個 .is-touch-device class，這裡改成直接認這個 class，不再依賴
+   任何 CSS media query 去猜測裝置類型。 ── */
+.is-touch-device .nav-side {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 216px;
+  min-width: 216px;
+  height: 100vh;
+  z-index: 50;
+  transition: width 0.18s ease;
+  overflow-y: auto;
+}
+.is-touch-device .content,
+.is-touch-device .content-sm {
+  margin-left: 216px;
+  transition: margin-left 0.18s ease;
+}
 
-  .page-wrapper.nav-collapsed .nav-side {
-    width: 14px;
-    min-width: 14px;
-    overflow: hidden;
-  }
-  .page-wrapper.nav-collapsed .content,
-  .page-wrapper.nav-collapsed .content-sm {
-    margin-left: 14px;
-  }
+.is-touch-device.nav-collapsed .nav-side {
+  width: 14px;
+  min-width: 14px;
+  overflow: hidden;
+}
+.is-touch-device.nav-collapsed .content,
+.is-touch-device.nav-collapsed .content-sm {
+  margin-left: 14px;
+}
 
-  .nav-toggle-btn {
-    display: flex;
-  }
+.is-touch-device .nav-toggle-btn {
+  display: flex;
 }
 
 /* 收合/展開按鈕：預設完全隱藏（桌面滑鼠裝置、手機都不需要），只在上面
