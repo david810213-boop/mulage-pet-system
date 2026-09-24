@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.config;
 
 import com.petgrooming.pet_system.interceptor.CsrfInterceptor;
 import com.petgrooming.pet_system.interceptor.LoginInterceptor;
+import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.interceptor.RoleInterceptor;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -23,6 +24,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * order(2) RoleInterceptor → 確認角色是否有權限（讀 @RequireRole）
  * order(3) CsrfInterceptor → 確認 CSRF token 是否正確（讀 @RequireCsrf，
  *          只標在高風險端點上，需求見 2026-09-17 追加說明）
+ * order(4) MobileRedirectInterceptor → 員工用手機開啟有手機版的頁面時，
+ *          自動導向 /m 底下的對應頁面（需求，2026-09-24）
  */
 @Configuration
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class WebConfig implements WebMvcConfigurer {
         private final LoginInterceptor loginInterceptor;
         private final RoleInterceptor roleInterceptor;
         private final CsrfInterceptor csrfInterceptor;
+        private final MobileRedirectInterceptor mobileRedirectInterceptor;
 
         // ngrok 免費版會在第一次訪問時顯示安全警告頁面，加上這個 header 讓 ngrok 跳過該頁面
         // 讓 LIFF webview 能直接載入頁面，不被中途攔截
@@ -43,6 +47,22 @@ public class WebConfig implements WebMvcConfigurer {
                 });
                 bean.addUrlPatterns("/*");
                 bean.setOrder(1);
+                return bean;
+        }
+
+        // 需求（2026-09-24）：員工手機版 PWA 的 service worker 檔案放在 /pwa/sw.js，
+        // 預設只能控制 /pwa/ 底下的頁面；加上這個 header，允許它控制 /m/ 底下的手機版頁面。
+        @Bean
+        public FilterRegistrationBean<Filter> serviceWorkerScopeFilter() {
+                FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<>();
+                bean.setFilter((ServletRequest req, ServletResponse res, FilterChain chain) -> {
+                        HttpServletResponse httpRes = (HttpServletResponse) res;
+                        httpRes.setHeader("Service-Worker-Allowed", "/m/");
+                        httpRes.setHeader("Cache-Control", "no-cache");
+                        chain.doFilter(req, res);
+                });
+                bean.addUrlPatterns("/pwa/sw.js");
+                bean.setOrder(2);
                 return bean;
         }
 
@@ -73,6 +93,7 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/js/**",
                                                 "/images/**",
                                                 "/static/**",
+                                                "/pwa/**",
                                                 "/actuator/**",
                                                 "/error",
                                                 "/favicon.ico")
@@ -88,7 +109,7 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/api/line/bind",
                                                 "/test/**",
                                                 "/liff/**",
-                                                "/css/**", "/js/**", "/images/**", "/static/**",
+                                                "/css/**", "/js/**", "/images/**", "/static/**", "/pwa/**",
                                                 "/actuator/**",
                                                 "/error", "/favicon.ico")
                                 .order(2);
@@ -105,9 +126,24 @@ public class WebConfig implements WebMvcConfigurer {
                                                 "/api/line/bind",
                                                 "/test/**",
                                                 "/liff/**",
-                                                "/css/**", "/js/**", "/images/**", "/static/**",
+                                                "/css/**", "/js/**", "/images/**", "/static/**", "/pwa/**",
                                                 "/actuator/**",
                                                 "/error", "/favicon.ico")
                                 .order(3);
+
+                // 4. 員工手機版自動導向（在登入檢查之後，才讀得到角色）
+                // 只對 GET 且在對照表裡的網頁版路徑生效，其餘請求直接放行
+                registry.addInterceptor(mobileRedirectInterceptor)
+                                .addPathPatterns("/**")
+                                .excludePathPatterns(
+                                                "/auth/**",
+                                                "/api/**",
+                                                "/m/**",
+                                                "/test/**",
+                                                "/liff/**",
+                                                "/css/**", "/js/**", "/images/**", "/static/**", "/pwa/**",
+                                                "/actuator/**",
+                                                "/error", "/favicon.ico")
+                                .order(4);
         }
 }

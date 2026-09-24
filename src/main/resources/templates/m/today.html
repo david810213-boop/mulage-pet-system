@@ -1,0 +1,156 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('今日 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+
+<div class="toast" th:if="${toast}" role="status"><svg class="i"><use href="#i-check"/></svg><span th:text="${toast}"></span></div>
+<div class="toast err" th:if="${toastError}" role="alert"><span th:text="${toastError}"></span></div>
+
+<header class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="hero-date" th:text="${todayLabel}">9 月 25 日 週五</div>
+      <h1 th:text="${greeting + '，' + (#strings.isEmpty(user.name) ? user.username : user.name)}">早安</h1>
+    </div>
+    <a href="/admin/wallets" class="hero-icon" aria-label="儲值審核">
+      <svg class="i"><use href="#i-wallet"/></svg>
+      <span class="dot" th:if="${pendingTopupCount > 0}"></span>
+    </a>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="n num" th:text="${todayCards.size()}">0</div>
+      <div class="l">今日毛孩</div>
+    </div>
+    <a href="#pending" class="stat" th:classappend="${pendingConfirmCount > 0} ? 'alert'">
+      <div class="n num" th:text="${pendingConfirmCount}">0</div>
+      <div class="l">待確認</div>
+    </a>
+    <a href="/admin/wallets" class="stat" th:classappend="${pendingTopupCount > 0} ? 'alert'">
+      <div class="n num" th:text="${pendingTopupCount}">0</div>
+      <div class="l">儲值待審</div>
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <a href="/admin/retail-products" class="notice warn" th:if="${lowStockCount > 0}">
+    <svg class="i"><use href="#i-alert"/></svg>
+    <span th:text="${lowStockCount + ' 項零售商品低庫存'}">低庫存</span>
+    <svg class="i go"><use href="#i-chev"/></svg>
+  </a>
+
+  <div class="section-h">
+    <h2>今日行程</h2>
+    <small th:if="${!todayCards.isEmpty()}" th:text="${todayCards.size() + ' 隻毛孩'}"></small>
+  </div>
+
+  <div class="empty" th:if="${todayCards.isEmpty()}">今天沒有預約，可以用下方的＋現場開單。</div>
+
+  <div class="tl" th:unless="${todayCards.isEmpty()}">
+    <th:block th:each="c, st : ${todayCards}">
+      <div class="now" th:if="${st.index == nowIndex}" aria-label="現在時間"><span class="t" th:text="${nowLabel}">13:10</span><i></i></div>
+      <div class="slot" th:classappend="${c.state}">
+        <div class="tm" th:text="${c.time}">10:00</div>
+        <button type="button" class="card js-appt"
+                th:attr="data-id=${c.id},data-pet=${c.petName},data-initial=${c.petInitial},data-species=${c.species},data-species-label=${c.speciesLabel},data-date=${c.dateLabel},data-time=${c.time},data-items=${c.items},data-owner=${c.ownerName},data-status=${c.statusLabel},data-state=${c.state},data-note=${c.note},data-amount=${c.totalAmount},data-pending=${c.pending}">
+          <span class="av" th:classappend="${c.species}" th:text="${c.petInitial}">豆</span>
+          <span class="main">
+            <span class="nm" th:text="${c.petName}">豆豆</span>
+            <span class="sb" style="display:block" th:text="${c.items}">精緻洗</span>
+          </span>
+          <span class="tag-pending" th:if="${c.pending}">待確認</span>
+          <span class="pill live" th:if="${c.state == 'live'}">進行中</span>
+        </button>
+      </div>
+    </th:block>
+    <div class="now" th:if="${nowIndex == todayCards.size()}" aria-label="現在時間"><span class="t" th:text="${nowLabel}">13:10</span><i></i></div>
+  </div>
+
+  <div id="pending" th:unless="${upcomingPending.isEmpty()}">
+    <div class="section-h">
+      <h2>之後的待確認</h2>
+      <small th:text="${upcomingPending.size() + ' 筆'}"></small>
+    </div>
+    <button type="button" class="card js-appt" th:each="c : ${upcomingPending}"
+            th:attr="data-id=${c.id},data-pet=${c.petName},data-initial=${c.petInitial},data-species=${c.species},data-species-label=${c.speciesLabel},data-date=${c.dateLabel},data-time=${c.time},data-items=${c.items},data-owner=${c.ownerName},data-status=${c.statusLabel},data-state=${c.state},data-note=${c.note},data-amount=${c.totalAmount},data-pending=${c.pending}">
+      <span class="av" th:classappend="${c.species}" th:text="${c.petInitial}">可</span>
+      <span class="main">
+        <span class="nm" th:text="${c.petName}">可樂</span>
+        <span class="sb num" style="display:block" th:text="${c.dateLabel + ' ' + c.time}">9/26 10:30</span>
+      </span>
+      <span class="tag-pending">確認</span>
+    </button>
+  </div>
+
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetPet">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <span class="av lg" id="sheetAv"></span>
+    <div class="t"><b id="sheetPet"></b><span id="sheetSpecies"></span></div>
+    <span class="pill" id="sheetStatus"></span>
+  </div>
+  <div class="kv"><span class="k">時間</span><span class="v num" id="sheetWhen"></span></div>
+  <div class="kv"><span class="k">項目</span><span class="v" id="sheetItems"></span></div>
+  <div class="kv"><span class="k">飼主</span><span class="v" id="sheetOwner"></span></div>
+  <div class="kv"><span class="k">預估金額</span><span class="v num" id="sheetAmount"></span></div>
+  <div class="memo" id="sheetNote" hidden></div>
+  <div class="btn-row">
+    <a class="btn sec" id="sheetWeb" href="/appointments">在網頁版處理</a>
+    <form method="post" id="sheetConfirmForm" class="grow">
+      <button type="submit" class="btn pri"><svg class="i"><use href="#i-check"/></svg>確認預約</button>
+    </form>
+  </div>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('today')}"></nav>
+
+<script>
+  (function () {
+    var body = document.body;
+    var form = document.getElementById("sheetConfirmForm");
+    var statusPill = document.getElementById("sheetStatus");
+    var av = document.getElementById("sheetAv");
+    var note = document.getElementById("sheetNote");
+    function set(id, text) { document.getElementById(id).textContent = text || ""; }
+
+    function openSheet(d) {
+      set("sheetPet", d.pet);
+      set("sheetSpecies", d.speciesLabel);
+      set("sheetWhen", d.date + " " + d.time);
+      set("sheetItems", d.items || "未選項目");
+      set("sheetOwner", d.owner);
+      set("sheetAmount", "NT$ " + Number(d.amount || 0).toLocaleString());
+      av.textContent = d.initial;
+      av.className = "av lg " + (d.species || "");
+      statusPill.textContent = d.status;
+      statusPill.className = "pill " + (d.state === "pending" ? "pending" : d.state === "done" ? "done" : d.state === "live" ? "live" : "ok");
+      if (d.note) { note.textContent = d.note; note.hidden = false; } else { note.hidden = true; }
+      var isPending = d.pending === "true";
+      form.style.display = isPending ? "flex" : "none";
+      form.action = "/m/appointments/" + encodeURIComponent(d.id) + "/confirm";
+      document.getElementById("sheetWeb").href = "/appointments?keyword=" + encodeURIComponent(d.id);
+      body.classList.add("sheet-open");
+    }
+    function closeSheet() { body.classList.remove("sheet-open"); }
+
+    document.querySelectorAll(".js-appt").forEach(function (el) {
+      el.addEventListener("click", function () { openSheet(el.dataset); });
+    });
+    document.getElementById("sheetDim").addEventListener("click", closeSheet);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
+    form.addEventListener("submit", function () {
+      var b = form.querySelector("button");
+      b.disabled = true;
+      b.textContent = "確認中…";
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

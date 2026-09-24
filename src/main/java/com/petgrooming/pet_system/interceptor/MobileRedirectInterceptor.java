@@ -1,0 +1,98 @@
+package com.petgrooming.pet_system.interceptor;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.util.Map;
+
+/**
+ * 員工手機版自動導向（需求，2026-09-24）。
+ *
+ * 規則：
+ * 1. 只處理 GET、非 /api 的頁面請求，且只對 ADMIN / STAFF 生效（顧客不受影響）
+ * 2. 只導向「已經有手機版」的頁面，對照表見 DESKTOP_TO_MOBILE；
+ *    還沒做手機版的頁面照常顯示網頁版，不會被擋住
+ * 3. Cookie VIEW_MODE=desktop：員工手動選了網頁版，一律不導向
+ *    Cookie VIEW_MODE=mobile：員工手動選了手機版，不管什麼裝置都導向
+ *    沒有 Cookie：依 User-Agent 判斷是不是手機
+ *
+ * 裝置判斷刻意只認「手機」（iPhone / Android 手機），iPad 維持網頁版。
+ * 判斷完全在伺服器端用 User-Agent 做，不依賴瀏覽器的觸控偵測，
+ * 避開 iPadOS 偽裝成桌面裝置那一類問題。
+ */
+@Component
+public class MobileRedirectInterceptor implements HandlerInterceptor {
+
+    public static final String VIEW_MODE_COOKIE = "VIEW_MODE";
+
+    // 網頁版路徑 → 手機版路徑。之後每做完一批手機版頁面，就在這裡補上對照。
+    private static final Map<String, String> DESKTOP_TO_MOBILE = Map.of(
+            "/dashboard", "/m/");
+
+    @Override
+    public boolean preHandle(@NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull Object handler) throws Exception {
+
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+        String target = DESKTOP_TO_MOBILE.get(request.getRequestURI());
+        if (target == null) {
+            return true;
+        }
+        String role = (String) request.getAttribute("tokenRole");
+        if (!"ADMIN".equals(role) && !"STAFF".equals(role)) {
+            return true;
+        }
+
+        String mode = readViewMode(request);
+        boolean goMobile;
+        if ("desktop".equals(mode)) {
+            goMobile = false;
+        } else if ("mobile".equals(mode)) {
+            goMobile = true;
+        } else {
+            goMobile = isPhone(request);
+        }
+
+        if (goMobile) {
+            response.sendRedirect(target);
+            return false;
+        }
+        return true;
+    }
+
+    private String readViewMode(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie c : cookies) {
+            if (VIEW_MODE_COOKIE.equals(c.getName())) {
+                return c.getValue();
+            }
+        }
+        return null;
+    }
+
+    static boolean isPhone(HttpServletRequest request) {
+        String chMobile = request.getHeader("Sec-CH-UA-Mobile");
+        if ("?1".equals(chMobile)) {
+            return true;
+        }
+        String ua = request.getHeader("User-Agent");
+        if (ua == null) {
+            return false;
+        }
+        if (ua.contains("iPhone") || ua.contains("iPod")) {
+            return true;
+        }
+        // Android 平板的 UA 不帶 "Mobile"，只有 Android 手機才帶
+        return ua.contains("Android") && ua.contains("Mobile");
+    }
+}

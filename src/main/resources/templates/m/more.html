@@ -1,0 +1,87 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('更多 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+
+<header class="topbar"><h1>更多</h1></header>
+
+<main class="wrap">
+  <div class="me">
+    <span class="av lg" th:text="${#strings.isEmpty(user.name)} ? '員' : ${#strings.substring(user.name, 0, 1)}">小</span>
+    <div>
+      <div th:text="${#strings.isEmpty(user.name)} ? ${user.username} : ${user.name}">小芸</div>
+      <small th:text="${user.admin} ? '管理員' : '美容師'">美容師</small>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-h"><h2>預約與營運</h2></div>
+    <div class="menu">
+      <a href="/appointments"><span class="ico"><svg class="i"><use href="#i-cal"/></svg></span><span class="lbl">預約列表</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/appointments/select-member"><span class="ico"><svg class="i"><use href="#i-plus"/></svg></span><span class="lbl">代客預約</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/appointments/slots-manage"><span class="ico"><svg class="i"><use href="#i-clock"/></svg></span><span class="lbl">時段管理</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/walk-in-orders"><span class="ico"><svg class="i"><use href="#i-receipt"/></svg></span><span class="lbl">現場開單</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/wallets"><span class="ico"><svg class="i"><use href="#i-wallet"/></svg></span><span class="lbl">儲值管理</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/payments"><span class="ico"><svg class="i"><use href="#i-file"/></svg></span><span class="lbl">交易紀錄</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-h"><h2>會員與毛孩</h2></div>
+    <div class="menu">
+      <a href="/admin/customers"><span class="ico"><svg class="i"><use href="#i-users"/></svg></span><span class="lbl">會員信息</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/pet-database"><span class="ico"><svg class="i"><use href="#i-paw"/></svg></span><span class="lbl">寵物信息管理</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/cat-rewash"><span class="ico"><svg class="i"><use href="#i-cat"/></svg></span><span class="lbl">貓咪回洗名單</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/my-profile"><span class="ico"><svg class="i"><use href="#i-users"/></svg></span><span class="lbl">編輯個人信息</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-h"><h2>庫存</h2></div>
+    <div class="menu">
+      <a href="/admin/retail-products"><span class="ico"><svg class="i"><use href="#i-box"/></svg></span><span class="lbl">零售商品</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/store-supplies"><span class="ico"><svg class="i"><use href="#i-box"/></svg></span><span class="lbl">店用洗劑</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-h"><h2>績效</h2></div>
+    <div class="menu">
+      <a href="/admin/performance/my"><span class="ico"><svg class="i"><use href="#i-chart"/></svg></span><span class="lbl">我的績效</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/performance"><span class="ico"><svg class="i"><use href="#i-chart"/></svg></span><span class="lbl">績效管理</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    </div>
+  </section>
+
+  <section th:if="${user.admin}">
+    <div class="section-h"><h2>後台管理</h2></div>
+    <div class="menu">
+      <a href="/admin"><span class="ico"><svg class="i"><use href="#i-cog"/></svg></span><span class="lbl">管理後台（服務項目、財務報表）</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/payments/bank-account"><span class="ico"><svg class="i"><use href="#i-wallet"/></svg></span><span class="lbl">匯款帳號設定</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/payments/company-signature"><span class="ico"><svg class="i"><use href="#i-file"/></svg></span><span class="lbl">乙方簽名檔設定</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/payments/pricing-settings"><span class="ico"><svg class="i"><use href="#i-cog"/></svg></span><span class="lbl">體重定價門檻設定</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/cat-breed-coat-mapping"><span class="ico"><svg class="i"><use href="#i-cat"/></svg></span><span class="lbl">貓咪品種毛髮分類對照表</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/member-import"><span class="ico"><svg class="i"><use href="#i-users"/></svg></span><span class="lbl">既有會員資料匯入</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/admin/operation-logs"><span class="ico"><svg class="i"><use href="#i-file"/></svg></span><span class="lbl">操作紀錄</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-h"><h2>帳號</h2></div>
+    <div class="menu">
+      <a href="/account/password"><span class="ico"><svg class="i"><use href="#i-lock"/></svg></span><span class="lbl">修改密碼</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/account/pin"><span class="ico"><svg class="i"><use href="#i-lock"/></svg></span><span class="lbl">設定 PIN 碼</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/account/bind-line"><span class="ico"><svg class="i"><use href="#i-line"/></svg></span><span class="lbl">綁定 LINE</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/auth/switch-user"><span class="ico"><svg class="i"><use href="#i-swap"/></svg></span><span class="lbl">切換使用者</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/m/switch?to=desktop"><span class="ico"><svg class="i"><use href="#i-monitor"/></svg></span><span class="lbl">切換到網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+      <a href="/auth/logout" class="danger"><span class="ico"><svg class="i"><use href="#i-out"/></svg></span><span class="lbl">登出</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    </div>
+  </section>
+
+  <p style="text-align:center;color:var(--mute);font-size:12px;margin:18px 0 0">標「網頁版」的功能會先開啟網頁版頁面，手機版陸續推出中</p>
+</main>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>
