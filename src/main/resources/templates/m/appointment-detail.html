@@ -1,0 +1,155 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head(${card.petName} + ' · 預約')}"></head>
+<body class="has-actionbar">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/appointments" class="icon-btn" aria-label="回預約列表"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px" th:text="${card.dateLabel} + ' ' + ${card.time}">9/25 週五 13:30</div>
+    <div class="sub num" th:text="${a.appointmentCode}">AP042</div>
+  </div>
+  <span class="stage" th:classappend="${card.stage}" th:text="${card.stageLabel}">待確認</span>
+</header>
+
+<main class="wrap">
+
+  <section class="pet-hero">
+    <div class="row1">
+      <span class="av lg" th:classappend="${card.species}" th:text="${card.petInitial}">豆</span>
+      <div style="flex:1;min-width:0">
+        <div class="nm" th:text="${card.petName}">豆豆</div>
+        <div class="meta">
+          <span th:text="${card.speciesLabel}">狗狗</span><th:block th:if="${pet != null and pet.breed != null and !pet.breed.isEmpty()}">，<span th:text="${pet.breed}">柴犬</span></th:block>
+        </div>
+      </div>
+    </div>
+    <div class="tags" th:if="${pet != null}">
+      <span class="tag num" th:if="${pet.weight != null}" th:text="(${pet.weight % 1 == 0} ? ${#numbers.formatInteger(pet.weight, 1)} : ${#numbers.formatDecimal(pet.weight, 1, 1)}) + ' kg'">13 kg</span>
+      <span class="tag" th:if="${pet.coatType != null and pet.coatType.name() != 'UNDEFINED'}" th:text="${pet.coatTypeLabel}">中長毛</span>
+      <span class="tag" th:if="${pet.catCoatCategoryLabel != null}" th:text="${pet.catCoatCategoryLabel}">雙層毛</span>
+      <span class="tag" th:if="${pet.gender != null and !pet.gender.isEmpty()}" th:text="${pet.gender}">公</span>
+      <span class="tag" th:if="${pet.isNeutered != null and pet.isNeutered}">已絕育</span>
+      <span class="tag warn" th:if="${pet.hasSeparationAnxiety != null and pet.hasSeparationAnxiety}">分離焦慮</span>
+      <span class="tag" th:if="${pet.personalityTags != null and !pet.personalityTags.isEmpty()}"
+            th:each="t : ${#strings.arraySplit(pet.personalityTags, ',')}" th:text="${t}">親人</span>
+    </div>
+
+    <div class="steps" th:if="${step >= 0}" aria-label="流程進度">
+      <div class="st" th:each="label, it : ${ {'確認','開單','服務','核對','結帳'} }"
+           th:classappend="${it.index < step} ? 'done' : (${it.index == step} ? 'cur' : '')">
+        <i></i><span th:text="${label}">確認</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="lock-box" th:if="${pet != null and pet.lockedGroomingItemId != null}">
+    <svg class="i"><use href="#i-lock"/></svg>
+    <div class="t">
+      <small>固定套餐</small>
+      <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
+    </div>
+    <span class="num" th:if="${pet.lockedItemPrice != null}" th:text="'NT$ ' + ${#numbers.formatDecimal(pet.lockedItemPrice, 1, 'COMMA', 0, 'POINT')}">900</span>
+  </div>
+
+  <section class="panel">
+    <div class="kv"><span class="k">飼主</span><span class="v" th:text="${a.ownerName}">陳小姐</span></div>
+    <div class="kv" th:if="${pet != null and pet.ownerPhone != null and !pet.ownerPhone.isEmpty()}">
+      <span class="k">電話</span>
+      <span class="v"><a th:href="'tel:' + ${pet.ownerPhone}"><svg class="i" style="width:16px;height:16px"><use href="#i-phone"/></svg><span class="num" th:text="${pet.ownerPhone}">0912</span></a></span>
+    </div>
+    <div class="kv"><span class="k">項目</span>
+      <span class="v" th:text="${card.items.isEmpty()} ? '未選項目' : ${card.items}">精緻洗</span></div>
+    <div class="kv"><span class="k" th:text="${a.paid} ? '結帳金額' : '預估金額'">預估金額</span>
+      <span class="v num" th:text="'NT$ ' + ${#numbers.formatInteger(a.totalAmount, 1, 'COMMA')}">NT$ 900</span></div>
+  </section>
+
+  <section class="panel" th:if="${(pet != null and pet.notes != null and !pet.notes.isEmpty()) or (a.internalNote != null and !a.internalNote.isEmpty()) or (a.memberNote != null and !a.memberNote.isEmpty()) or (a.finalCheckNote != null and !a.finalCheckNote.isEmpty())}">
+    <th:block th:if="${pet != null and pet.notes != null and !pet.notes.isEmpty()}">
+      <div class="panel-title">毛孩注意事項</div><p th:text="${pet.notes}"></p>
+    </th:block>
+    <th:block th:if="${a.internalNote != null and !a.internalNote.isEmpty()}">
+      <div class="panel-title">內部備注</div><p th:text="${a.internalNote}"></p>
+    </th:block>
+    <th:block th:if="${a.memberNote != null and !a.memberNote.isEmpty()}">
+      <div class="panel-title">給家長的備注</div><p th:text="${a.memberNote}"></p>
+    </th:block>
+    <th:block th:if="${a.finalCheckNote != null and !a.finalCheckNote.isEmpty()}">
+      <div class="panel-title">核對備注</div><p th:text="${a.finalCheckNote}"></p>
+    </th:block>
+  </section>
+
+  <section class="panel" th:if="${a.cancelled}">
+    <div class="panel-title">取消紀錄</div>
+    <p><span th:text="${a.cancelledBy}"></span><th:block th:if="${a.cancelReason != null}">：<span th:text="${a.cancelReason}"></span></th:block></p>
+  </section>
+</main>
+
+<!-- 底部動作列：依流程階段顯示下一步 -->
+<div class="actionbar" th:unless="${a.cancelled}">
+
+  <form th:if="${card.stage == 'confirm'}" method="post" th:action="@{/m/appointments/{id}/confirm(id=${a.id})}" class="btn-row js-once">
+    <button type="submit" class="btn pri"><svg class="i"><use href="#i-check"/></svg>確認預約</button>
+  </form>
+
+  <div th:if="${card.stage == 'checkin'}" class="btn-row">
+    <a th:href="@{/m/appointments/{id}/checkin(id=${a.id})}" class="btn pri">到店開單</a>
+  </div>
+
+  <form th:if="${card.stage == 'start'}" method="post" th:action="@{/m/appointments/{id}/start(id=${a.id})}" class="btn-row js-once">
+    <button type="submit" class="btn pri"><svg class="i"><use href="#i-play"/></svg>開始服務</button>
+  </form>
+
+  <form th:if="${card.stage == 'serving'}" method="post" th:action="@{/m/appointments/{id}/end-service(id=${a.id})}" class="btn-row js-once"
+        data-confirm="確定結束服務嗎？系統會通知家長來店接毛孩。">
+    <button type="submit" class="btn pri"><svg class="i"><use href="#i-flag"/></svg>結束服務，通知家長</button>
+  </form>
+
+  <th:block th:if="${card.stage == 'check'}">
+    <div class="hint">核對與簽名目前先在網頁版完成</div>
+    <div class="btn-row"><a th:href="@{/appointments/{id}/final-check(id=${a.id})}" class="btn pri">核對與簽名</a></div>
+  </th:block>
+
+  <form th:if="${card.stage == 'wire'}" method="post" th:action="@{/m/appointments/{id}/confirm-wire(id=${a.id})}" class="btn-row js-once"
+        data-confirm="確認已收到這筆匯款嗎？確認後訂單轉為已完成。">
+    <button type="submit" class="btn pri"><svg class="i"><use href="#i-check"/></svg>確認已收到匯款</button>
+  </form>
+
+  <th:block th:if="${canCheckout}">
+    <div class="hint" th:if="${card.stage == 'pay'}">結帳目前先在網頁版完成</div>
+    <div class="btn-row">
+      <a th:href="@{/payments/checkout/{id}(id=${a.id})}" class="btn" th:classappend="${card.stage == 'pay'} ? 'wood' : 'sec'">前往結帳</a>
+    </div>
+  </th:block>
+
+  <form th:if="${canCancel}" method="post" th:action="@{/m/appointments/{id}/cancel(id=${a.id})}" class="btn-row js-once"
+        data-confirm="確定要取消這筆預約嗎？">
+    <input type="hidden" name="reason" value="店家手機版取消" />
+    <button type="submit" class="btn ghost-danger">取消預約</button>
+  </form>
+
+  <form th:if="${card.stage == 'done'}" method="post" th:action="@{/m/appointments/{id}/refund(id=${a.id})}" class="btn-row js-once"
+        data-confirm="確定要退款嗎？退款後預約會回到「已確認」狀態，需要重新開單、重新結帳。">
+    <button type="submit" class="btn ghost-danger">退款</button>
+  </form>
+</div>
+
+<script>
+  // 需要二次確認的操作跳確認視窗；送出後按鈕鎖住，避免連點送出兩次
+  document.querySelectorAll("form.js-once").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      var msg = form.dataset.confirm;
+      if (msg && !window.confirm(msg)) {
+        e.preventDefault();
+        return;
+      }
+      var b = form.querySelector("button[type=submit]");
+      if (b) { b.disabled = true; }
+    });
+  });
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

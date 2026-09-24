@@ -1,0 +1,145 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('到店開單 · ' + ${card.petName})}"></head>
+<body class="has-actionbar">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a th:href="@{/m/appointments/{id}(id=${a.id})}" class="icon-btn" aria-label="回預約詳情"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">到店開單</div>
+    <div class="sub" th:text="${card.dateLabel} + ' ' + ${card.time}">9/25 週五 13:30</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="pet-hero">
+    <div class="row1">
+      <span class="av lg" th:classappend="${card.species}" th:text="${card.petInitial}">豆</span>
+      <div style="flex:1;min-width:0">
+        <div class="nm" th:text="${card.petName}">豆豆</div>
+        <div class="meta" th:if="${pet != null}">
+          <span th:if="${pet.breed != null}" th:text="${pet.breed}">柴犬</span>
+          <span class="num" th:if="${pet.weight != null}" th:text="(${pet.weight % 1 == 0} ? ${#numbers.formatInteger(pet.weight, 1)} : ${#numbers.formatDecimal(pet.weight, 1, 1)}) + ' kg'">13 kg</span>
+          <span th:if="${pet.coatType != null and pet.coatType.name() != 'UNDEFINED'}" th:text="${pet.coatTypeLabel}">中長毛</span>
+          <span th:if="${pet.catCoatCategoryLabel != null}" th:text="${pet.catCoatCategoryLabel}">雙層毛</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="lock-box" th:if="${pet != null and pet.lockedGroomingItemId != null}"
+       id="lockBox" th:attr="data-pet-id=${pet.id}">
+    <svg class="i"><use href="#i-lock"/></svg>
+    <div class="t">
+      <small>已鎖定固定套餐，只顯示這一項</small>
+      <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
+    </div>
+    <button type="button" id="unlockBtn">解鎖重新報價</button>
+  </div>
+
+  <form method="post" id="checkinForm" th:action="@{/m/appointments/{id}/checkin(id=${a.id})}">
+    <div class="section-h">
+      <h2>本次服務項目</h2>
+      <small>預設帶入顧客預約的項目</small>
+    </div>
+
+    <div class="empty" th:if="${mainItems.isEmpty()}">沒有符合這隻毛孩的服務項目，請到網頁版確認體重、毛長設定。</div>
+
+    <label class="pick" th:each="item : ${mainItems}">
+      <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
+             th:checked="${preselected.contains(item.itemCode)}"
+             th:attr="data-price=${item.price != null ? item.price : 0},data-special=${item.performanceCategory == 'SPECIAL'}" />
+      <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
+      <span class="nm" th:text="${item.name}">精緻洗</span>
+      <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">900</span>
+    </label>
+
+    <details class="more-items" id="otherItems" th:unless="${otherItems.isEmpty()}">
+      <summary>其他加購（不計積分）<svg class="i"><use href="#i-chev"/></svg></summary>
+      <label class="pick" th:each="item : ${otherItems}">
+        <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
+               th:checked="${preselected.contains(item.itemCode)}"
+               th:attr="data-price=${item.price != null ? item.price : 0}" />
+        <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
+        <span class="nm" th:text="${item.name}">加購</span>
+        <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">150</span>
+      </label>
+    </details>
+  </form>
+</main>
+
+<div class="actionbar">
+  <div class="form-err" id="formErr" hidden>請至少勾選一個服務項目</div>
+  <div class="total-row">
+    <div class="sum"><small id="countLabel">已選 0 項</small><b class="num" id="totalLabel">0</b></div>
+    <button type="submit" form="checkinForm" class="btn pri" id="submitBtn">確認開單</button>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var form = document.getElementById("checkinForm");
+    var boxes = form.querySelectorAll("input[name=itemCodes]");
+    var err = document.getElementById("formErr");
+    var other = document.getElementById("otherItems");
+
+    function refresh() {
+      var n = 0, sum = 0;
+      boxes.forEach(function (b) {
+        if (b.checked) { n++; sum += Number(b.dataset.price || 0); }
+      });
+      document.getElementById("countLabel").textContent = "已選 " + n + " 項";
+      document.getElementById("totalLabel").textContent = "NT$ " + Math.round(sum).toLocaleString();
+      if (n > 0) err.hidden = true;
+    }
+
+    boxes.forEach(function (b) {
+      b.addEventListener("change", function () {
+        // 跟網頁版一樣：勾了特殊項目，就把其他加購清單展開
+        if (b.checked && b.dataset.special === "true" && other) other.open = true;
+        refresh();
+      });
+      // 顧客原本就選了加購項目時，直接展開讓店員看得到
+      if (b.checked && other && other.contains(b)) other.open = true;
+    });
+    refresh();
+
+    form.addEventListener("submit", function (e) {
+      var any = Array.prototype.some.call(boxes, function (b) { return b.checked; });
+      if (!any) {
+        e.preventDefault();
+        err.hidden = false;
+        return;
+      }
+      var btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.textContent = "開單中…";
+    });
+
+    var unlock = document.getElementById("unlockBtn");
+    if (unlock) {
+      unlock.addEventListener("click", function () {
+        if (!window.confirm("解鎖後會改回依體重、毛長重新篩選菜單，確定嗎？")) return;
+        var petId = document.getElementById("lockBox").dataset.petId;
+        unlock.disabled = true;
+        fetch("/api/admin/pets/" + encodeURIComponent(petId) + "/unlock-grooming-item", { method: "PUT" })
+          .then(function (res) {
+            return res.text().then(function (t) {
+              if (!res.ok) {
+                var msg = "解鎖失敗";
+                try { msg = JSON.parse(t).message || msg; } catch (x) {}
+                throw new Error(msg);
+              }
+            });
+          })
+          .then(function () { location.reload(); })
+          .catch(function (e) { unlock.disabled = false; window.alert(e.message); });
+      });
+    }
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

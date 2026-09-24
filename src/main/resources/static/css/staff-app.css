@@ -763,6 +763,528 @@ svg.i {
   }
 }
 
+/* ==========================================================================
+   第二批（2026-09-24）：預約列表、預約詳情、到店開單
+   ========================================================================== */
+
+/* ── 頁首返回鈕／圖示按鈕 ─────────────────────────────────────────────── */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--forest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.topbar .sub {
+  font-size: 13px;
+  color: var(--mute);
+}
+
+/* ── 搜尋 ────────────────────────────────────────────────────────────── */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 0 14px;
+  height: 46px;
+  color: var(--mute);
+}
+
+.search input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 15px;
+  background: none;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.search input::placeholder {
+  color: #a3b0a8;
+}
+
+.search .clear {
+  color: var(--mute);
+}
+
+/* ── 日期列 ──────────────────────────────────────────────────────────── */
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.day {
+  background: var(--paper);
+  border-radius: 14px;
+  padding: 6px 0 7px;
+  text-align: center;
+  position: relative;
+}
+
+.day .w {
+  font-size: 11px;
+  color: var(--mute);
+}
+
+.day .d {
+  font: 700 18px/1.2 var(--num);
+}
+
+.day .c {
+  font: 500 10px var(--num);
+  color: var(--wood-ink);
+  height: 13px;
+}
+
+.day.on {
+  background: var(--forest);
+  color: #fff;
+}
+
+.day.on .w,
+.day.on .c {
+  color: var(--forest-mute);
+}
+
+/* ── 篩選膠囊（可橫向滑動）─────────────────────────────────────────── */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 12px -16px 0;
+  padding: 0 16px 2px;
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.chip b {
+  font: 700 12px var(--num);
+  background: var(--amber);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.chip.on {
+  background: var(--forest);
+  color: #fff;
+}
+
+/* ── 日期分組標題 ────────────────────────────────────────────────────── */
+.group-h {
+  margin: 20px 4px 8px;
+  font-size: 14px;
+  color: var(--mute);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── 列表卡片的時間欄 ────────────────────────────────────────────────── */
+.card .time {
+  font: 700 17px/1 var(--num);
+  width: 48px;
+  flex: 0 0 auto;
+  color: var(--forest);
+}
+
+.card.cancelled {
+  opacity: 0.5;
+}
+
+/* ── 流程階段膠囊 ────────────────────────────────────────────────────── */
+.stage {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  white-space: nowrap;
+  background: var(--sage);
+  color: var(--forest);
+}
+
+.stage.confirm,
+.stage.wire {
+  background: var(--amber-soft);
+  color: var(--amber-ink);
+}
+
+.stage.checkin,
+.stage.check,
+.stage.pay {
+  background: var(--wood-soft);
+  color: var(--wood-ink);
+}
+
+.stage.serving {
+  background: var(--forest);
+  color: #fff;
+}
+
+.stage.done {
+  background: var(--line);
+  color: var(--mute);
+}
+
+.stage.cancelled {
+  background: var(--coral-soft);
+  color: var(--coral-ink);
+}
+
+/* ── 詳情頁：毛孩區塊 ────────────────────────────────────────────────── */
+.pet-hero {
+  background: var(--paper);
+  border-radius: 24px;
+  padding: 16px;
+}
+
+.pet-hero .row1 {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.pet-hero .nm {
+  font-size: 21px;
+}
+
+.pet-hero .meta {
+  font-size: 13px;
+  color: var(--mute);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tag {
+  font-size: 12.5px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.tag.warn {
+  background: var(--coral-soft);
+  color: var(--coral-ink);
+}
+
+/* ── 詳情頁：流程條 ──────────────────────────────────────────────────── */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: 16px;
+  position: relative;
+}
+
+.steps::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--line);
+}
+
+.st {
+  text-align: center;
+  font-size: 12px;
+  color: var(--mute);
+  position: relative;
+}
+
+.st i {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin: 0 auto 4px;
+  background: var(--paper);
+  border: 2px solid var(--line);
+  font-style: normal;
+}
+
+.st.done i {
+  background: var(--forest);
+  border-color: var(--forest);
+}
+
+.st.done i::after {
+  content: "";
+  display: block;
+  width: 9px;
+  height: 5px;
+  border: solid #fff;
+  border-width: 0 0 2px 2px;
+  transform: translate(5px, 6px) rotate(-45deg);
+}
+
+.st.cur i {
+  border-color: var(--wood);
+  background: var(--wood-soft);
+  box-shadow: 0 0 0 4px rgba(183, 131, 79, 0.15);
+}
+
+.st.cur {
+  color: var(--wood-ink);
+}
+
+/* ── 詳情頁：資訊區塊 ────────────────────────────────────────────────── */
+.panel {
+  background: var(--paper);
+  border-radius: 22px;
+  padding: 4px 16px;
+  margin-top: 10px;
+}
+
+.panel .kv .v a {
+  color: var(--forest);
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.panel-title {
+  font-size: 13px;
+  color: var(--mute);
+  padding: 12px 0 2px;
+}
+
+.panel p {
+  margin: 4px 0 12px;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.lock-box {
+  margin-top: 10px;
+  background: var(--forest);
+  color: #eaf2ec;
+  border-radius: 20px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lock-box .t {
+  flex: 1;
+  min-width: 0;
+}
+
+.lock-box small {
+  display: block;
+  font-size: 12px;
+  color: var(--forest-mute);
+}
+
+.lock-box button {
+  font-size: 12px;
+  padding: 7px 11px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ── 底部固定動作列（取代分頁列的頁面用）─────────────────────────── */
+body.has-actionbar {
+  padding-bottom: calc(210px + var(--safe-bottom));
+}
+
+.actionbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--paper);
+  border-radius: 26px 26px 0 0;
+  padding: 12px 16px calc(14px + var(--safe-bottom));
+  box-shadow: 0 -10px 30px -16px rgba(20, 40, 30, 0.35);
+  z-index: 30;
+}
+
+.actionbar .hint {
+  font-size: 12.5px;
+  color: var(--mute);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.actionbar .btn-row + .btn-row {
+  margin-top: 8px;
+}
+
+.btn.wood {
+  background: var(--wood);
+  color: #fff;
+}
+
+.btn.wood:active {
+  background: var(--wood-press);
+}
+
+.btn.ghost-danger {
+  background: none;
+  color: var(--coral-ink);
+  height: 40px;
+  font-size: 14px;
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+}
+
+/* ── 到店開單：可勾選的項目卡 ────────────────────────────────────────── */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border-radius: 18px;
+  padding: 13px 14px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+}
+
+.pick + .pick {
+  margin-top: 8px;
+}
+
+.pick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pick .box {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 2px solid #c7d3cb;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+}
+
+.pick .box svg.i {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.6;
+}
+
+.pick .nm {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+}
+
+.pick .pr {
+  font: 500 15px var(--num);
+  color: var(--forest);
+}
+
+.pick:has(input:checked) {
+  border-color: var(--forest);
+}
+
+.pick:has(input:checked) .box {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #fff;
+}
+
+.pick:has(input:focus-visible) {
+  outline: 2px solid var(--wood);
+  outline-offset: 2px;
+}
+
+details.more-items {
+  margin-top: 14px;
+}
+
+details.more-items summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px;
+  font-size: 14px;
+  color: var(--mute);
+}
+
+details.more-items summary::-webkit-details-marker {
+  display: none;
+}
+
+details.more-items summary svg.i {
+  transition: transform 0.2s ease;
+}
+
+details.more-items[open] summary svg.i {
+  transform: rotate(90deg);
+}
+
+.total-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.total-row .sum small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.total-row .sum b {
+  font: 700 24px/1 var(--num);
+}
+
+.total-row .btn {
+  flex: 1;
+}
+
+.form-err {
+  color: var(--coral-ink);
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
 /* 在電腦上預覽手機版時，內容維持手機寬度置中，不要被拉得太寬 */
 @media (min-width: 560px) {
   body {
@@ -774,6 +1296,11 @@ svg.i {
   .sheet,
   .toast {
     max-width: 456px;
+    margin: 0 auto;
+  }
+
+  .actionbar {
+    max-width: 480px;
     margin: 0 auto;
   }
 

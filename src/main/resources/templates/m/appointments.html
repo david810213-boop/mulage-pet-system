@@ -1,0 +1,65 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('預約 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <h1>預約</h1>
+  <a href="/appointments/select-member" class="icon-btn" aria-label="代客預約"><svg class="i"><use href="#i-plus"/></svg></a>
+</header>
+
+<main class="wrap">
+  <form method="get" action="/m/appointments" class="search" role="search">
+    <svg class="i"><use href="#i-search"/></svg>
+    <input type="search" name="q" th:value="${q}" placeholder="毛孩、飼主或預約編號" enterkeyhint="search" autocomplete="off" />
+    <a th:if="${!q.isEmpty()}" href="/m/appointments" class="clear" aria-label="清除搜尋"><svg class="i"><use href="#i-x"/></svg></a>
+  </form>
+
+  <nav class="days" aria-label="選擇日期" th:if="${q.isEmpty()}">
+    <a th:each="d : ${days}" class="day" th:classappend="${d.on} ? 'on'"
+       th:href="${d.on} ? '/m/appointments' : '/m/appointments?date=' + ${d.iso}">
+      <div class="w" th:text="${d.week}">今天</div>
+      <div class="d num" th:text="${d.day}">25</div>
+      <div class="c" th:text="${d.count > 0} ? ${d.count} : ''">3</div>
+    </a>
+  </nav>
+
+  <nav class="chips" aria-label="篩選" th:if="${q.isEmpty()}">
+    <a href="/m/appointments" class="chip" th:classappend="${f == 'upcoming'} ? 'on'">近期</a>
+    <a href="/m/appointments?f=pending" class="chip" th:classappend="${f == 'pending'} ? 'on'">待確認<b th:if="${pendingCount > 0}" th:text="${pendingCount}">2</b></a>
+    <a href="/m/appointments?f=serving" class="chip" th:classappend="${f == 'serving'} ? 'on'">服務中<b th:if="${servingCount > 0}" th:text="${servingCount}" style="background:var(--forest-2)">1</b></a>
+    <a href="/m/appointments?f=past" class="chip" th:classappend="${f == 'past'} ? 'on'">過去 60 天</a>
+    <a href="/m/appointments?f=cancelled" class="chip" th:classappend="${f == 'cancelled'} ? 'on'">已取消</a>
+  </nav>
+
+  <div class="group-h" th:if="${!q.isEmpty()}">
+    <span th:text="'「' + ${q} + '」的搜尋結果'">搜尋結果</span><span th:text="${total} + ' 筆'"></span>
+  </div>
+
+  <div class="empty" style="margin-top:16px" th:if="${groups.isEmpty()}">
+    <span th:if="${!q.isEmpty()}">找不到符合的預約，換個關鍵字試試。</span>
+    <span th:if="${q.isEmpty()}">這裡沒有預約。</span>
+  </div>
+
+  <section th:each="g : ${groups}">
+    <div class="group-h"><span th:text="${g.key}">今天</span><span th:text="${g.value.size()} + ' 筆'"></span></div>
+    <a th:each="c : ${g.value}" class="card" th:classappend="${c.stage == 'cancelled'} ? 'cancelled'"
+       th:href="@{/m/appointments/{id}(id=${c.id})}">
+      <span class="time" th:text="${c.time}">10:30</span>
+      <span class="av" th:classappend="${c.species}" th:text="${c.petInitial}">可</span>
+      <span class="main">
+        <span class="nm" th:text="${c.petName}">可樂</span>
+        <span class="sb" style="display:block" th:text="${c.ownerName} + ' · ' + ${c.items}">陳小姐</span>
+      </span>
+      <span class="stage" th:classappend="${c.stage}" th:text="${c.stageLabel}">待確認</span>
+    </a>
+  </section>
+</main>
+
+<nav th:replace="~{m/fragments/app :: tabs('appointments')}"></nav>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

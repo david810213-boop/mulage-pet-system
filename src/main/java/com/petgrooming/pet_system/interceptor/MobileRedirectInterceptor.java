@@ -5,7 +5,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.support.RequestContextUtils;
 
 import java.util.Map;
 
@@ -30,8 +32,11 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
     public static final String VIEW_MODE_COOKIE = "VIEW_MODE";
 
     // 網頁版路徑 → 手機版路徑。之後每做完一批手機版頁面，就在這裡補上對照。
+    // 第一批：Dashboard → 今日；第二批：預約列表 → 手機版預約列表
+    // （網頁版核對、結帳完成後會導回 /appointments，手機上就會自動回到手機版列表）
     private static final Map<String, String> DESKTOP_TO_MOBILE = Map.of(
-            "/dashboard", "/m/");
+            "/dashboard", "/m/",
+            "/appointments", "/m/appointments");
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request,
@@ -61,6 +66,14 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
         }
 
         if (goMobile) {
+            // 網頁版操作完成後常會帶提示訊息（successMsg / errorMsg）導回網頁版列表，
+            // 這裡要再轉手一次給手機版頁面，不然訊息會在這次導向中被吃掉
+            Map<String, ?> inputFlash = RequestContextUtils.getInputFlashMap(request);
+            if (inputFlash != null && !inputFlash.isEmpty()) {
+                FlashMap outputFlash = RequestContextUtils.getOutputFlashMap(request);
+                outputFlash.putAll(inputFlash);
+                RequestContextUtils.saveOutputFlashMap(target, request, response);
+            }
             response.sendRedirect(target);
             return false;
         }

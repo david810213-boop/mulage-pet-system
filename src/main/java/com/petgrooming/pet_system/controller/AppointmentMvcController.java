@@ -42,6 +42,7 @@ public class AppointmentMvcController {
     private final com.petgrooming.pet_system.service.PaymentService paymentService;
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
     private final com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
+    private final com.petgrooming.pet_system.service.GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
 
     /**
      * JWT 版獲取當前登入使用者
@@ -217,10 +218,8 @@ public class AppointmentMvcController {
     // 這個 controller 裡好幾個 GET handler 都要用，抽成一個小方法避免重複寫。
     private List<com.petgrooming.pet_system.dto.GroomingItemResponse> filterItemsFor(
             List<com.petgrooming.pet_system.dto.GroomingItemResponse> items, boolean isExisting, String petType) {
-        return items.stream()
-                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
-                .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
-                .toList();
+        // 需求（2026-09-24）：邏輯搬到 GroomingMenuFilter 共用，內容不變
+        return groomingMenuFilter.filterFor(items, isExisting, petType);
     }
 
     // 需求（追加，2026-08-28）：在 filterItemsFor() 的基礎上，再依這隻寵物的體型
@@ -229,47 +228,8 @@ public class AppointmentMvcController {
     private List<com.petgrooming.pet_system.dto.GroomingItemResponse> filterItemsForPetShape(
             List<com.petgrooming.pet_system.dto.GroomingItemResponse> items, boolean isExisting,
             String petType, com.petgrooming.pet_system.dto.PetResponse pet) {
-        var base = filterItemsFor(items, isExisting, petType);
-        if (pet == null) return base;
-
-        Long lockedItemId = pet.getLockedGroomingItemId();
-        boolean isDog = "DOG".equalsIgnoreCase(petType);
-        boolean isCat = "CAT".equalsIgnoreCase(petType);
-
-        final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
-                isDog && lockedItemId == null && pet.getWeight() != null
-                        ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
-                        : null;
-        // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分，邏輯跟預約結帳頁
-        // （PaymentMvcController）同一套，見該處註解說明。
-        final com.petgrooming.pet_system.enums.CoatType petCoatType = pet.getCoatType();
-        final boolean coatDefined = isDog
-                && (petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                        || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
-                        || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM);
-        final String catCoatCategory =
-                isCat && pet.getCatCoatCategory() != null ? pet.getCatCoatCategory().name() : null;
-
-        return base.stream()
-                .filter(i -> {
-                    // 狗狗：已鎖定固定套餐的話，只顯示那個固定項目；沒鎖定則依體重級距＋毛長篩選
-                    if (i.getDogWeightTier() != null) {
-                        if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                        if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
-                        if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
-                            return i.getDogCoatLength().equals(petCoatType.name());
-                        }
-                        return true; // 量不到體重（例如體重欄位還沒填）時保守顯示全部，避免誤擋
-                    }
-                    // 貓咪：依毛髮分類篩選；品種不在對照表裡（分類是 null）時不篩選，顯示全部讓店家人工判斷
-                    if (i.getCatCoatCategory() != null) {
-                        if (catCoatCategory != null) return i.getCatCoatCategory().equals(catCoatCategory);
-                        return true;
-                    }
-                    // 跟體型/毛髮分類無關的項目（例如指甲修剪、加購項目），不受這層篩選影響
-                    return true;
-                })
-                .toList();
+        // 需求（2026-09-24）：邏輯搬到 GroomingMenuFilter 共用，內容不變
+        return groomingMenuFilter.filterForPetShape(items, isExisting, petType, pet);
     }
 
     // ── POST /appointments/{id}/checkin-order ───────────────────────────────

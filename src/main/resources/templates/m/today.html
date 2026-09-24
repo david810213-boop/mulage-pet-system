@@ -4,8 +4,7 @@
 <body>
 <svg th:replace="~{m/fragments/app :: icons}"></svg>
 
-<div class="toast" th:if="${toast}" role="status"><svg class="i"><use href="#i-check"/></svg><span th:text="${toast}"></span></div>
-<div class="toast err" th:if="${toastError}" role="alert"><span th:text="${toastError}"></span></div>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
 
 <header class="hero">
   <div class="hero-top">
@@ -101,8 +100,9 @@
   <div class="kv"><span class="k">預估金額</span><span class="v num" id="sheetAmount"></span></div>
   <div class="memo" id="sheetNote" hidden></div>
   <div class="btn-row">
-    <a class="btn sec" id="sheetWeb" href="/appointments">在網頁版處理</a>
+    <a class="btn sec" id="sheetWeb" href="/m/appointments">查看詳情</a>
     <form method="post" id="sheetConfirmForm" class="grow">
+      <input type="hidden" name="back" value="/m/" />
       <button type="submit" class="btn pri"><svg class="i"><use href="#i-check"/></svg>確認預約</button>
     </form>
   </div>
@@ -134,7 +134,7 @@
       var isPending = d.pending === "true";
       form.style.display = isPending ? "flex" : "none";
       form.action = "/m/appointments/" + encodeURIComponent(d.id) + "/confirm";
-      document.getElementById("sheetWeb").href = "/appointments?keyword=" + encodeURIComponent(d.id);
+      document.getElementById("sheetWeb").href = "/m/appointments/" + encodeURIComponent(d.id);
       body.classList.add("sheet-open");
     }
     function closeSheet() { body.classList.remove("sheet-open"); }

@@ -2,6 +2,9 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
+import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
+import com.petgrooming.pet_system.dto.GroomingItemResponse;
+import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.MobileAppointmentCard;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -9,15 +12,19 @@ import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
+import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import com.petgrooming.pet_system.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,13 +39,19 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * 員工手機版（需求，2026-09-24）。
  * 網頁版後台完全保留不動，手機版是另一組獨立頁面，路徑統一在 /m 底下，
  * 後端 service 跟網頁版共用。
+ *
+ * 第一批：今日、更多、切換網頁版/手機版
+ * 第二批：預約列表、預約詳情（確認／開始服務／結束服務／取消／確認匯款／退款）、到店開單
  */
 @Controller
 @RequestMapping("/m")
@@ -54,6 +67,9 @@ public class MobileMvcController {
     private final TopUpService topUpService;
     private final RetailProductService retailProductService;
     private final OperationLogService operationLogService;
+    private final GroomingService groomingItemService;
+    private final GroomingMenuFilter groomingMenuFilter;
+    private final PaymentService paymentService;
 
     @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
@@ -130,22 +146,239 @@ public class MobileMvcController {
         return "m/today";
     }
 
-    // ── 確認預約 ────────────────────────────────────────────────────────
-    @PostMapping("/appointments/{id}/confirm")
-    public String confirm(@PathVariable Long id, HttpServletRequest request,
-            RedirectAttributes redirectAttributes) {
+    // ── 預約列表 ────────────────────────────────────────────────────────
+    // f：upcoming 近期（預設）/ pending 待確認 / serving 服務中 / past 過去 / cancelled 已取消
+    // date：只看某一天（優先於 f）
+    // q：關鍵字（預約編號、飼主、毛孩名字，優先於 date 跟 f，搜尋全部預約）
+    @GetMapping("/appointments")
+    public String appointments(HttpServletRequest request, Model model,
+            @RequestParam(defaultValue = "upcoming") String f,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String q) {
         User user = getLoginUser(request);
         if (user == null) {
             return "redirect:/auth/login";
         }
-        try {
-            appointmentService.confirm(id, null, user.getUsername());
-            operationLogService.log(user, "APPOINTMENT", "CONFIRM", "預約 #" + id, "手機版");
-            redirectAttributes.addFlashAttribute("toast", "已確認預約");
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            redirectAttributes.addFlashAttribute("toastError", "確認失敗：" + e.getMessage());
+
+        LocalDate today = LocalDate.now();
+        List<AppointmentAdminResponse> all = appointmentService.getAllForAdmin();
+        Comparator<AppointmentAdminResponse> asc = Comparator.comparing(AppointmentAdminResponse::getDate)
+                .thenComparing(AppointmentAdminResponse::getStartTime);
+
+        String keyword = q == null ? "" : q.trim().toLowerCase();
+        List<AppointmentAdminResponse> picked;
+        if (!keyword.isEmpty()) {
+            picked = all.stream()
+                    .filter(a -> matchesKeyword(a, keyword))
+                    .sorted(asc.reversed())
+                    .limit(100)
+                    .toList();
+        } else if (date != null) {
+            picked = all.stream()
+                    .filter(a -> a.getDate().isEqual(date))
+                    .sorted(asc)
+                    .toList();
+        } else {
+            picked = switch (f) {
+                case "pending" -> all.stream()
+                        .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
+                        .filter(a -> !a.getDate().isBefore(today))
+                        .sorted(asc).toList();
+                case "serving" -> all.stream()
+                        .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.IN_PROGRESS)
+                        .sorted(asc).toList();
+                case "past" -> all.stream()
+                        .filter(a -> !a.isCancelled() && a.getDate().isBefore(today)
+                                && !a.getDate().isBefore(today.minusDays(60)))
+                        .sorted(asc.reversed()).limit(150).toList();
+                case "cancelled" -> all.stream()
+                        .filter(AppointmentAdminResponse::isCancelled)
+                        .sorted(asc.reversed()).limit(50).toList();
+                default -> all.stream()
+                        .filter(a -> !a.isCancelled() && !a.getDate().isBefore(today))
+                        .sorted(asc).limit(150).toList();
+            };
         }
-        return "redirect:/m/";
+
+        // 依日期分組，保留排序
+        Map<String, List<MobileAppointmentCard>> groups = new LinkedHashMap<>();
+        for (AppointmentAdminResponse a : picked) {
+            String key = a.getDate().isEqual(today) ? "今天 " + dateLabel(a.getDate())
+                    : a.getDate().isEqual(today.plusDays(1)) ? "明天 " + dateLabel(a.getDate())
+                    : dateLabel(a.getDate());
+            groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(toCard(a, today));
+        }
+
+        // 日期列：今天起 7 天，每天的預約數
+        List<Map<String, Object>> days = new java.util.ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            LocalDate d = today.plusDays(i);
+            long count = all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(d)).count();
+            Map<String, Object> day = new LinkedHashMap<>();
+            day.put("iso", d.toString());
+            day.put("week", i == 0 ? "今天" : weekdayLabel(d.getDayOfWeek()).substring(1));
+            day.put("day", d.getDayOfMonth());
+            day.put("count", count);
+            day.put("on", d.equals(date));
+            days.add(day);
+        }
+
+        model.addAttribute("user", user);
+        model.addAttribute("groups", groups);
+        model.addAttribute("total", picked.size());
+        model.addAttribute("days", days);
+        model.addAttribute("f", date != null || !keyword.isEmpty() ? "" : f);
+        model.addAttribute("q", q == null ? "" : q.trim());
+        model.addAttribute("selectedDate", date);
+        model.addAttribute("pendingCount", all.stream()
+                .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
+                .filter(a -> !a.getDate().isBefore(today)).count());
+        model.addAttribute("servingCount", all.stream()
+                .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.IN_PROGRESS).count());
+        model.addAttribute("activeTab", "appointments");
+        return "m/appointments";
+    }
+
+    // ── 預約詳情 ────────────────────────────────────────────────────────
+    @GetMapping("/appointments/{id}")
+    public String appointmentDetail(@PathVariable Long id, HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        AppointmentAdminResponse a = findAppointment(id);
+        if (a == null) {
+            return "redirect:/m/appointments";
+        }
+        PetResponse pet = null;
+        try {
+            pet = appointmentService.getPetForAppointment(id);
+        } catch (IllegalArgumentException e) {
+            // 找不到寵物檔案（例如寵物已刪除）不影響顯示預約本身
+        }
+        MobileAppointmentCard card = toCard(a, LocalDate.now());
+
+        model.addAttribute("user", user);
+        model.addAttribute("a", a);
+        model.addAttribute("card", card);
+        model.addAttribute("pet", pet);
+        model.addAttribute("step", stepIndex(card.getStage()));
+        model.addAttribute("canCheckout", !a.isCancelled() && !a.isPaid() && !a.isPendingWireTransfer()
+                && (a.getStatus() != AppointmentStatus.IN_PROGRESS || a.isFinalCheckDone()));
+        model.addAttribute("canCancel", !a.isCancelled() && !a.isPaid());
+        model.addAttribute("activeTab", "appointments");
+        return "m/appointment-detail";
+    }
+
+    // ── 確認預約 ────────────────────────────────────────────────────────
+    @PostMapping("/appointments/{id}/confirm")
+    public String confirm(@PathVariable Long id, @RequestParam(required = false) String back,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return runAction(id, back, request, redirectAttributes, "CONFIRM", "已確認預約",
+                user -> appointmentService.confirm(id, null, user.getUsername()));
+    }
+
+    // ── 開始服務：已確認且已開單 → 進行中 ─────────────────────────────────
+    @PostMapping("/appointments/{id}/start")
+    public String start(@PathVariable Long id, @RequestParam(required = false) String back,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return runAction(id, back, request, redirectAttributes, "START", "已開始服務",
+                user -> appointmentService.startProgress(id, user.getUsername()));
+    }
+
+    // ── 結束服務：通知家長來店接寵物 ─────────────────────────────────────
+    @PostMapping("/appointments/{id}/end-service")
+    public String endService(@PathVariable Long id, @RequestParam(required = false) String back,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return runAction(id, back, request, redirectAttributes, "END_SERVICE", "已結束服務，已通知家長來接",
+                user -> appointmentService.endService(id, user.getUsername()));
+    }
+
+    // ── 取消預約 ────────────────────────────────────────────────────────
+    @PostMapping("/appointments/{id}/cancel")
+    public String cancel(@PathVariable Long id, @RequestParam(required = false) String reason,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        String finalReason = (reason == null || reason.isBlank()) ? "店家手機版取消" : reason.trim();
+        return runAction(id, null, request, redirectAttributes, "CANCEL", "預約已取消",
+                user -> {
+                    CancelAppointmentRequest req = new CancelAppointmentRequest();
+                    req.setReason(finalReason);
+                    appointmentService.cancel(id, req, user.getUsername());
+                });
+    }
+
+    // ── 確認匯款收款（待對帳 → 已完成）────────────────────────────────────
+    @PostMapping("/appointments/{id}/confirm-wire")
+    public String confirmWire(@PathVariable Long id, HttpServletRequest request,
+            RedirectAttributes redirectAttributes) {
+        return runAction(id, null, request, redirectAttributes, "CONFIRM_WIRE_TRANSFER", "已確認收款",
+                user -> paymentService.confirmWireTransferPayment(id, user.getUsername()));
+    }
+
+    // ── 退款：回到已確認狀態，清空開單／服務／核對進度 ──────────────────
+    @PostMapping("/appointments/{id}/refund")
+    public String refund(@PathVariable Long id, HttpServletRequest request,
+            RedirectAttributes redirectAttributes) {
+        return runAction(id, null, request, redirectAttributes, "REFUND", "已退款，預約回到已確認狀態",
+                user -> paymentService.refund(id, user.getUsername()));
+    }
+
+    // ── 到店開單：依現場情況勾選本次實際服務項目 ─────────────────────────
+    @GetMapping("/appointments/{id}/checkin")
+    public String checkinForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        AppointmentAdminResponse a = findAppointment(id);
+        if (a == null || a.isCancelled()) {
+            return "redirect:/m/appointments";
+        }
+        boolean isExisting = appointmentService.isExistingCustomerPet(id);
+        PetResponse pet = appointmentService.getPetForAppointment(id);
+        List<GroomingItemResponse> items = groomingMenuFilter.filterForPetShape(
+                groomingItemService.getAllItems(), isExisting, a.getPetType(), pet);
+
+        // 顧客預約時選的項目，開單頁預設幫忙勾好，店員只要改有變動的部分
+        Set<String> preselected = a.getSelectedItems() == null ? Set.of()
+                : a.getSelectedItems().stream().map(GroomingItem::getItemCode)
+                        .collect(Collectors.toSet());
+
+        model.addAttribute("user", user);
+        model.addAttribute("a", a);
+        model.addAttribute("card", toCard(a, LocalDate.now()));
+        model.addAttribute("pet", pet);
+        model.addAttribute("mainItems", items.stream()
+                .filter(i -> !"OTHER".equals(i.getPerformanceCategory())).toList());
+        model.addAttribute("otherItems", items.stream()
+                .filter(i -> "OTHER".equals(i.getPerformanceCategory())).toList());
+        model.addAttribute("preselected", preselected);
+        model.addAttribute("activeTab", "appointments");
+        return "m/checkin";
+    }
+
+    @PostMapping("/appointments/{id}/checkin")
+    public String checkinSubmit(@PathVariable Long id,
+            @RequestParam(required = false) List<String> itemCodes,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        if (itemCodes == null || itemCodes.isEmpty()) {
+            redirectAttributes.addFlashAttribute("toastError", "請至少勾選一個服務項目");
+            return "redirect:/m/appointments/" + id + "/checkin";
+        }
+        try {
+            appointmentService.confirmCheckinOrder(id, itemCodes, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
+                    String.join("、", itemCodes) + "（手機版）");
+            redirectAttributes.addFlashAttribute("toast", "已開單，可以開始服務了");
+            return "redirect:/m/appointments/" + id;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("toastError", "開單失敗：" + e.getMessage());
+            return "redirect:/m/appointments/" + id + "/checkin";
+        }
     }
 
     // ── 更多（全部功能入口）──────────────────────────────────────────────
@@ -172,6 +405,97 @@ public class MobileMvcController {
 
     // ────────────────────────────────────────────────────────────────────
 
+    @FunctionalInterface
+    private interface StaffAction {
+        void run(User user);
+    }
+
+    // 狀態變更類操作共用：執行、寫操作紀錄、帶提示訊息回到指定頁面
+    private String runAction(Long id, String back, HttpServletRequest request,
+            RedirectAttributes redirectAttributes, String logAction, String okMsg, StaffAction action) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        try {
+            action.run(user);
+            operationLogService.log(user, "APPOINTMENT", logAction, "預約 #" + id, "手機版");
+            redirectAttributes.addFlashAttribute("toast", okMsg);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("toastError", "操作失敗：" + e.getMessage());
+        }
+        return "redirect:" + safeBack(back, "/m/appointments/" + id);
+    }
+
+    // 只接受站內 /m/ 開頭的路徑，避免被帶去外部網站
+    private String safeBack(String back, String fallback) {
+        if (back != null && back.startsWith("/m/") && !back.contains("//") && !back.contains("\\")) {
+            return back;
+        }
+        return fallback;
+    }
+
+    private AppointmentAdminResponse findAppointment(Long id) {
+        return appointmentService.getAllForAdmin().stream()
+                .filter(x -> x.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean matchesKeyword(AppointmentAdminResponse a, String kw) {
+        return (a.getAppointmentCode() != null && a.getAppointmentCode().toLowerCase().contains(kw))
+                || String.valueOf(a.getId()).equals(kw)
+                || (a.getOwnerName() != null && a.getOwnerName().toLowerCase().contains(kw))
+                || (a.getPetName() != null && a.getPetName().toLowerCase().contains(kw));
+    }
+
+    // 流程階段，判斷順序跟網頁版預約列表的按鈕顯示條件一致
+    private String stageKey(AppointmentAdminResponse a) {
+        if (a.isCancelled()) return "cancelled";
+        if (a.isPaid()) return "done";
+        if (a.isPendingWireTransfer()) return "wire";
+        if (a.getStatus() == AppointmentStatus.PENDING_CONFIRM) return "confirm";
+        if (a.getStatus() == AppointmentStatus.CONFIRMED) {
+            return a.isCheckinOrderConfirmed() ? "start" : "checkin";
+        }
+        if (a.getStatus() == AppointmentStatus.IN_PROGRESS) {
+            if (!a.isServiceEndedDone()) return "serving";
+            if (!a.isFinalCheckDone()) return "check";
+        }
+        return "pay";
+    }
+
+    private String stageLabel(String stage) {
+        return switch (stage) {
+            case "cancelled" -> "已取消";
+            case "done" -> "已結帳";
+            case "wire" -> "待對帳";
+            case "confirm" -> "待確認";
+            case "checkin" -> "待開單";
+            case "start" -> "待開始";
+            case "serving" -> "服務中";
+            case "check" -> "待核對";
+            default -> "待結帳";
+        };
+    }
+
+    // 詳情頁流程條：0 確認、1 開單、2 服務、3 核對、4 結帳、5 全部完成
+    private int stepIndex(String stage) {
+        return switch (stage) {
+            case "confirm" -> 0;
+            case "checkin" -> 1;
+            case "start", "serving" -> 2;
+            case "check" -> 3;
+            case "pay", "wire" -> 4;
+            case "done" -> 5;
+            default -> -1;
+        };
+    }
+
+    private String dateLabel(LocalDate d) {
+        return d.getMonthValue() + "/" + d.getDayOfMonth() + " " + weekdayLabel(d.getDayOfWeek());
+    }
+
     private MobileAppointmentCard toCard(AppointmentAdminResponse a, LocalDate today) {
         String species = speciesKey(a.getPetType());
         String items;
@@ -183,10 +507,10 @@ public class MobileMvcController {
             items = "";
         }
         String petName = a.getPetName() == null ? "" : a.getPetName();
+        String stage = stageKey(a);
         return MobileAppointmentCard.builder()
                 .id(a.getId())
-                .dateLabel(a.getDate().getMonthValue() + "/" + a.getDate().getDayOfMonth() + " "
-                        + weekdayLabel(a.getDate().getDayOfWeek()))
+                .dateLabel(dateLabel(a.getDate()))
                 .time(a.getStartTime().format(TIME_FMT))
                 .petName(petName)
                 .petInitial(petName.isEmpty() ? "?" : petName.substring(0, petName.offsetByCodePoints(0, 1)))
@@ -199,6 +523,8 @@ public class MobileMvcController {
                 .note(a.getInternalNote())
                 .totalAmount(a.getTotalAmount())
                 .pending(a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
+                .stage(stage)
+                .stageLabel(stageLabel(stage))
                 .build();
     }
 
