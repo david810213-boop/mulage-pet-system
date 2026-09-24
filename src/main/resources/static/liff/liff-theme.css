@@ -5,8 +5,13 @@
    使用方式：
    <link rel="preconnect" href="https://fonts.googleapis.com" />
    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
-   <link rel="stylesheet" href="/liff/liff-theme.css" />
+   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&display=swap" rel="stylesheet" />
+   <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
+
+   字體（2026-09-24 更新）：中文一律 Huninn 粉圓體，跟員工手機版一致；
+   原本 Jost 的位置（數字、英文、小標）改用 Bricolage Grotesque，中文字會自動退回 Huninn。
+   原本的 Noto Serif TC（襯線體）看起來像標楷體，不符合寵物美容的風格，已全部移除。
+   Huninn 只有一種字重，font-weight 600 以上由瀏覽器自動加粗。
 
    涵蓋：色彩／字體 tokens、頁首（首頁版 hero／子頁版 page-head）、
    會員票券卡、CTA 邀請卡、焦點數據卡（bento）、輕量捷徑（quick-tile）、
@@ -59,7 +64,7 @@ body {
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: "Noto Sans TC", system-ui, sans-serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   padding-bottom: 28px;
@@ -80,7 +85,7 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 16px 22px 0;
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10px;
   letter-spacing: 2.5px;
   color: var(--ink-faint);
@@ -143,7 +148,7 @@ img {
 }
 .hero .rule em {
   font-style: normal;
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10.5px;
   color: var(--ink-soft);
   letter-spacing: 2px;
@@ -192,14 +197,14 @@ img {
   min-width: 0;
 }
 .page-head .cn {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 17px;
   font-weight: 600;
   color: #fff;
   letter-spacing: 1px;
 }
 .page-head .en {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 9.5px;
   color: #a9bcae;
   letter-spacing: 2px;
@@ -224,7 +229,7 @@ img {
   margin: 22px 2px 12px;
 }
 .section-label .cn {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--primary-deep);
@@ -237,7 +242,7 @@ img {
   color: var(--line);
 }
 .section-label .en {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10px;
   color: var(--ink-faint);
   letter-spacing: 2px;
@@ -304,10 +309,10 @@ img {
   color: #fff;
   font-size: 10.5px;
   font-weight: 600;
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 .ticket-tier .label {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10.5px;
   font-weight: 500;
   color: var(--wood-deep);
@@ -347,7 +352,7 @@ img {
   padding: 15px 18px 17px;
 }
 .ticket-balance-label {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 9px;
   color: var(--ink-faint);
   letter-spacing: 2px;
@@ -355,13 +360,13 @@ img {
   text-transform: lowercase;
 }
 .ticket-balance {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 25px;
   font-weight: 600;
   color: var(--ink);
 }
 .ticket-cta {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10px;
   color: var(--forest);
   font-weight: 500;
@@ -402,7 +407,7 @@ img {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 8.5px;
   letter-spacing: 2px;
   color: var(--gold-light);
@@ -418,7 +423,7 @@ img {
   display: inline-block;
 }
 .cta-title {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 15px;
   font-weight: 600;
   color: #fff;
@@ -443,14 +448,14 @@ img {
   gap: 2px;
 }
 .cta-next .k {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 8px;
   color: #8ea192;
   letter-spacing: 1.2px;
   text-transform: lowercase;
 }
 .cta-next .v {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 11.5px;
   color: var(--gold-light);
   font-weight: 500;
@@ -481,14 +486,14 @@ img {
   margin-bottom: 14px;
 }
 .bento .blabel {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10px;
   color: var(--ink-soft);
   letter-spacing: 1px;
   text-transform: lowercase;
 }
 .bento .bnum {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 28px;
   font-weight: 600;
   color: var(--ink);
@@ -496,14 +501,14 @@ img {
   margin-top: 2px;
 }
 .bento .bnum span {
-  font-family: "Noto Sans TC", sans-serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 12px;
   font-weight: 500;
   color: var(--ink-soft);
   margin-left: 3px;
 }
 .bento .btitle {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: var(--primary-deep);
@@ -543,13 +548,13 @@ img {
   color: var(--forest);
 }
 .quick-tile .qtitle {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 12px;
   font-weight: 500;
   color: var(--ink);
 }
 .quick-tile .qcap {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 8.5px;
   color: var(--ink-faint);
   letter-spacing: 0.5px;
@@ -593,14 +598,14 @@ img {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   letter-spacing: 0.3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .list-row .body .d {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10.5px;
   color: var(--ink-soft);
   margin-top: 3px;
@@ -611,7 +616,7 @@ img {
   flex-shrink: 0;
 }
 .list-row .meta .amt {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--primary-deep);
@@ -632,7 +637,7 @@ img {
   padding: 4px 11px;
   border-radius: 999px;
   white-space: nowrap;
-  font-family: "Noto Sans TC", sans-serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 .status-badge.pending {
   background: var(--pending-bg);
@@ -662,7 +667,7 @@ img {
 }
 .tab-pill {
   flex-shrink: 0;
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -687,7 +692,7 @@ img {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 12.5px;
   font-weight: 500;
   letter-spacing: 0.3px;
@@ -730,7 +735,7 @@ img {
 }
 .field label {
   display: block;
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10.5px;
   font-weight: 500;
   letter-spacing: 1px;
@@ -746,7 +751,7 @@ img {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
   background: #fff;
-  font-family: "Noto Sans TC", sans-serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 14px;
   color: var(--ink);
   outline: none;
@@ -777,12 +782,12 @@ img {
   opacity: 0.6;
 }
 .empty-state .t {
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 13.5px;
   color: var(--ink-soft);
 }
 .empty-state .d {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 10.5px;
   margin-top: 5px;
   letter-spacing: 0.3px;
@@ -805,7 +810,7 @@ img {
   margin: 0 auto;
 }
 .footer-mark .txt {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -830,12 +835,12 @@ img {
 }
 .sticky-bar .sum b {
   display: block;
-  font-family: "Noto Serif TC", serif;
+  font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 17px;
   color: var(--primary-deep);
 }
 .sticky-bar .sum span {
-  font-family: "Jost", sans-serif;
+  font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 9.5px;
   color: var(--ink-soft);
   letter-spacing: 0.5px;
