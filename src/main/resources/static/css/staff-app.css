@@ -2121,6 +2121,148 @@ details.more-items[open] summary svg.i {
   padding: 12px 0 4px;
 }
 
+/* ==========================================================================
+   第六批（2026-09-24）：待補經手人、儲值審核
+   ========================================================================== */
+
+.op-group {
+  background: var(--paper);
+  border-radius: 22px;
+  padding: 6px 14px 8px;
+}
+
+.op-group + .op-group {
+  margin-top: 10px;
+}
+
+.op-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.op-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.op-title .nm {
+  font-size: 16px;
+  display: block;
+}
+
+.op-title small {
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.op-head select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--forest);
+  background: var(--sage);
+  border: 0;
+  border-radius: 11px;
+  padding: 7px 8px;
+  max-width: 45%;
+}
+
+.op-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.op-line:last-child {
+  border-bottom: 0;
+}
+
+.op-info {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+}
+
+.op-info small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.op-line select {
+  width: 42%;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.op-line.picked select {
+  border-color: var(--forest);
+  background: var(--paper);
+}
+
+.topup {
+  background: var(--paper);
+  border-radius: 22px;
+  padding: 14px;
+}
+
+.topup + .topup {
+  margin-top: 10px;
+}
+
+.tp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tp-head .t {
+  flex: 1;
+  min-width: 0;
+}
+
+.tp-head .t a {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.tp-head small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.tp-head b {
+  font: 700 20px var(--num);
+}
+
+.tp-body {
+  background: var(--ground);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--mute);
+}
+
+.tp-body b {
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 /* 在電腦上預覽手機版時，內容維持手機寬度置中，不要被拉得太寬 */
 @media (min-width: 560px) {
   body {

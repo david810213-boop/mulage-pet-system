@@ -20,6 +20,7 @@ import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
+import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
@@ -83,6 +84,7 @@ public class MobileMvcController {
     private final WalletService walletService;
     private final MobileViewHelper view;
     private final WalkInOrderService walkInOrderService;
+    private final PendingOperatorMatrixService pendingOperatorMatrixService;
 
     @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
@@ -166,6 +168,9 @@ public class MobileMvcController {
 
         model.addAttribute("user", user);
         model.addAttribute("openWalkIns", openWalkIns);
+        // 第六批：待補經手人的項目數，今日頁提醒
+        model.addAttribute("pendingOperatorCount", pendingOperatorMatrixService.buildMobileGroups().stream()
+                .mapToInt(g -> g.getLines().size()).sum());
         model.addAttribute("greeting", greeting(now));
         model.addAttribute("todayLabel", today.getMonthValue() + " 月 " + today.getDayOfMonth() + " 日 "
                 + weekdayLabel(today.getDayOfWeek()));

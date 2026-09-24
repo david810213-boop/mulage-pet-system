@@ -1,0 +1,86 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('儲值審核 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">儲值審核</div>
+    <div class="sub" th:text="${requests.isEmpty()} ? '沒有待審核的申請' : ${requests.size()} + ' 筆，共 NT$ ' + ${#numbers.formatInteger(totalAmount, 1, 'COMMA')}">2 筆，共 NT$ 8,000</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="empty" th:if="${requests.isEmpty()}">顧客在 LINE 送出的轉帳儲值申請會出現在這裡。</div>
+
+  <section class="topup" th:each="r : ${requests}">
+    <div class="tp-head">
+      <span class="av" th:text="${r.name != null and !r.name.isEmpty()} ? ${#strings.substring(r.name, 0, 1)} : '客'">陳</span>
+      <div class="t">
+        <a th:href="@{/m/members/{u}(u=${r.username})}" th:text="${r.name}">陳小姐</a>
+        <small th:text="${r.createdAt != null} ? ${r.createdAt.format(dateTimeFmt)} + ' 送出' : ''">9/24 10:12 送出</small>
+      </div>
+      <b class="num" th:text="'NT$ ' + ${#numbers.formatInteger(r.amount, 1, 'COMMA')}">NT$ 5,000</b>
+    </div>
+    <div class="tp-body">
+      <div>匯款帳號後五碼 <b class="num" th:text="${r.lastFiveDigits}">12345</b></div>
+      <div th:if="${r.remitNote != null and !r.remitNote.isEmpty()}" th:text="'備注：' + ${r.remitNote}">備注：9/24 轉帳</div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-open-sheet="sheetReject"
+              th:attr="data-id=${r.id},data-name=${r.name},data-amount=${r.amount}">駁回</button>
+      <form method="post" th:action="@{/m/topups/{id}/confirm(id=${r.id})}" class="grow js-once"
+            th:attr="data-confirm='確認已收到 ' + ${r.name} + ' 的 NT$ ' + ${r.amount} + ' 轉帳，並入帳到儲值金嗎？'">
+        <button type="submit" class="btn pri"><svg class="i"><use href="#i-check"/></svg>確認入帳</button>
+      </form>
+    </div>
+  </section>
+
+  <a href="/admin/wallets" class="link-more">店家手動加值（網頁版）</a>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetReject" role="dialog" aria-modal="true" aria-labelledby="hReject">
+  <div class="grab"></div>
+  <h3 id="hReject">駁回儲值申請</h3>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)" id="rejectWho"></p>
+  <form method="post" id="rejectForm" class="js-once">
+    <div class="field">
+      <label for="rReason">駁回原因（顧客看得到）</label>
+      <textarea name="reason" id="rReason" maxlength="200" placeholder="例如：查無這筆轉帳，請確認後五碼"></textarea>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri" style="background:var(--coral-ink)">駁回</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    document.querySelectorAll("form.js-once").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        if (f.dataset.confirm && !window.confirm(f.dataset.confirm)) { e.preventDefault(); return; }
+        var b = f.querySelector("button[type=submit]");
+        if (b) b.disabled = true;
+      });
+    });
+    // 駁回抽屜：開啟時帶入是哪一筆申請
+    document.querySelectorAll("[data-open-sheet=sheetReject]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.getElementById("rejectForm").action = "/m/topups/" + encodeURIComponent(btn.dataset.id) + "/reject";
+        document.getElementById("rejectWho").textContent =
+          btn.dataset.name + "，NT$ " + Number(btn.dataset.amount || 0).toLocaleString();
+        document.getElementById("rReason").value = "";
+      });
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

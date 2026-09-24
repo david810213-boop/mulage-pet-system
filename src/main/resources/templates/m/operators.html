@@ -1,0 +1,94 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('待補經手人 · 慕沐村')}"></head>
+<body th:classappend="${!groups.isEmpty()} ? 'has-actionbar'">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">待補經手人</div>
+    <div class="sub" th:text="${groups.isEmpty()} ? '全部都填好了' : ${groups.size()} + ' 張單，' + ${lineCount} + ' 個項目'">3 張單，7 個項目</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="empty" th:if="${groups.isEmpty()}">目前沒有待補經手人的項目，積分都已經入帳。</div>
+
+  <form method="post" action="/m/operators" id="opForm" th:unless="${groups.isEmpty()}">
+    <p style="font-size:13px;color:var(--mute);margin:4px 4px 12px">
+      一張單可以由不同人分攤，每個項目各選一位。沒選的項目會繼續留在這裡，之後再補。
+    </p>
+
+    <section class="op-group" th:each="g : ${groups}">
+      <div class="op-head">
+        <a th:href="${g.kind == 'A'} ? @{/m/appointments/{id}(id=${g.orderId})} : @{/m/walk-in/{id}(id=${g.orderId})}" class="op-title">
+          <span class="nm" th:text="${g.petName != null and !g.petName.isEmpty()} ? ${g.petName} : '（未填毛孩）'">豆豆</span>
+          <small th:text="${g.code} + (${g.date != null} ? '，' + ${g.date.format(dateFmt)} : '')">AP017，9/24</small>
+        </a>
+        <select class="js-group-all" aria-label="這張單全部設為">
+          <option value="" selected>全部設為…</option>
+          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+        </select>
+      </div>
+      <div class="op-line" th:each="ln : ${g.lines}">
+        <input type="hidden" name="kinds" th:value="${g.kind}" />
+        <input type="hidden" name="itemIds" th:value="${ln.itemId}" />
+        <div class="op-info">
+          <span th:text="${ln.categoryLabel}">洗（小型）</span>
+          <small th:text="${ln.itemName} + '，' + ${#numbers.formatDecimal(ln.points, 1, 1)} + ' 分'">中型犬-短毛-精緻洗，10.0 分</small>
+        </div>
+        <select name="staffIds" aria-label="經手人">
+          <option value="">未選</option>
+          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+        </select>
+      </div>
+    </section>
+  </form>
+</main>
+
+<div class="actionbar" th:unless="${groups.isEmpty()}">
+  <div class="total-row">
+    <div class="sum"><small>已選經手人</small><b class="num" id="pickedLabel">0 / 0</b></div>
+    <button type="submit" form="opForm" class="btn pri" id="opSave" disabled>儲存</button>
+  </div>
+</div>
+
+<th:block th:if="${groups.isEmpty()}"><nav th:replace="~{m/fragments/app :: tabs('more')}"></nav></th:block>
+<script>
+  (function () {
+    var form = document.getElementById("opForm");
+    if (!form) return;
+    var selects = form.querySelectorAll("select[name=staffIds]");
+    function refresh() {
+      var n = 0;
+      selects.forEach(function (s) {
+        var on = s.value !== "";
+        if (on) n++;
+        s.closest(".op-line").classList.toggle("picked", on);
+      });
+      document.getElementById("pickedLabel").textContent = n + " / " + selects.length;
+      document.getElementById("opSave").disabled = n === 0;
+    }
+    selects.forEach(function (s) { s.addEventListener("change", refresh); });
+    form.querySelectorAll(".js-group-all").forEach(function (all) {
+      all.addEventListener("change", function () {
+        var v = all.value;
+        if (!v) return;
+        all.closest(".op-group").querySelectorAll("select[name=staffIds]").forEach(function (s) { s.value = v; });
+        all.selectedIndex = 0;
+        refresh();
+      });
+    });
+    form.addEventListener("submit", function () {
+      var b = document.getElementById("opSave");
+      b.disabled = true;
+      b.textContent = "儲存中…";
+    });
+    refresh();
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

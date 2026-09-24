@@ -12,7 +12,7 @@
       <div class="hero-date" th:text="${todayLabel}">9 月 25 日 週五</div>
       <h1 th:text="${greeting + '，' + (#strings.isEmpty(user.name) ? user.username : user.name)}">早安</h1>
     </div>
-    <a href="/admin/wallets" class="hero-icon" aria-label="儲值審核">
+    <a href="/m/topups" class="hero-icon" aria-label="儲值審核">
       <svg class="i"><use href="#i-wallet"/></svg>
       <span class="dot" th:if="${pendingTopupCount > 0}"></span>
     </a>
@@ -26,7 +26,7 @@
       <div class="n num" th:text="${pendingConfirmCount}">0</div>
       <div class="l">待確認</div>
     </a>
-    <a href="/admin/wallets" class="stat" th:classappend="${pendingTopupCount > 0} ? 'alert'">
+    <a href="/m/topups" class="stat" th:classappend="${pendingTopupCount > 0} ? 'alert'">
       <div class="n num" th:text="${pendingTopupCount}">0</div>
       <div class="l">儲值待審</div>
     </a>
@@ -35,6 +35,11 @@
 
 <main class="wrap">
 
+  <a href="/m/operators" class="notice warn" th:if="${pendingOperatorCount > 0}" style="background:var(--amber-soft);color:var(--amber-ink)">
+    <svg class="i"><use href="#i-users"/></svg>
+    <span th:text="${pendingOperatorCount + ' 個項目還沒填經手人'}">待補經手人</span>
+    <svg class="i go"><use href="#i-chev"/></svg>
+  </a>
   <a href="/admin/retail-products" class="notice warn" th:if="${lowStockCount > 0}">
     <svg class="i"><use href="#i-alert"/></svg>
     <span th:text="${lowStockCount + ' 項零售商品低庫存'}">低庫存</span>

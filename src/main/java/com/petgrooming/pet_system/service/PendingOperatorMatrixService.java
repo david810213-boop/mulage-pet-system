@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
 import com.petgrooming.pet_system.dto.PendingOperatorMatrixResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.model.AppointmentItem;
@@ -80,6 +81,70 @@ public class PendingOperatorMatrixService {
                     .cells(buildCellsForAppointment(entry.getValue()))
                     .build());
         }
+        return result;
+    }
+
+    // ── 需求（2026-09-24）：員工手機版「待補經手人」────────────────────────
+    // 跟上面兩支矩陣方法同一份資料來源（未填經手人、且有積分的項目），
+    // 改成「一張單一組、一個項目一列」的格式，預約單跟現場單合在一起、新的排前面。
+    @Transactional(readOnly = true)
+    public List<MobilePendingOperatorGroup> buildMobileGroups() {
+        List<MobilePendingOperatorGroup> result = new ArrayList<>();
+
+        Map<Long, List<AppointmentItem>> byAppointment = appointmentItemRepository.findByOperatorStaffIsNull()
+                .stream()
+                .filter(i -> i.getPoints() > 0)
+                .collect(Collectors.groupingBy(i -> i.getAppointment().getId()));
+        for (var entry : byAppointment.entrySet()) {
+            var appointment = appointmentRepository.findById(entry.getKey()).orElse(null);
+            if (appointment == null || appointment.isCancelled())
+                continue;
+            result.add(MobilePendingOperatorGroup.builder()
+                    .kind("A")
+                    .orderId(appointment.getId())
+                    .code(String.format("AP%03d", appointment.getId()))
+                    .petName(appointment.getPetName())
+                    .date(appointment.getDate())
+                    .lines(entry.getValue().stream()
+                            .map(i -> MobilePendingOperatorGroup.Line.builder()
+                                    .itemId(i.getId())
+                                    .itemName(i.getItemName())
+                                    .categoryLabel(i.getPerformanceCategory() != null ? i.getPerformanceCategory().getLabel() : "")
+                                    .price(i.getPrice())
+                                    .points(i.getPoints())
+                                    .build())
+                            .toList())
+                    .build());
+        }
+
+        Map<Long, List<WalkInOrderItem>> byOrder = walkInOrderItemRepository.findByOperatorStaffIsNull()
+                .stream()
+                .filter(i -> i.getPoints() > 0)
+                .collect(Collectors.groupingBy(i -> i.getOrder().getId()));
+        for (var entry : byOrder.entrySet()) {
+            var order = walkInOrderRepository.findById(entry.getKey()).orElse(null);
+            if (order == null)
+                continue;
+            result.add(MobilePendingOperatorGroup.builder()
+                    .kind("W")
+                    .orderId(order.getId())
+                    .code("現場單#" + order.getId())
+                    .petName(order.getPetName())
+                    .date(order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : null)
+                    .lines(entry.getValue().stream()
+                            .map(i -> MobilePendingOperatorGroup.Line.builder()
+                                    .itemId(i.getId())
+                                    .itemName(i.getItemName())
+                                    .categoryLabel(i.getPerformanceCategory() != null ? i.getPerformanceCategory().getLabel() : "")
+                                    .price(i.getPrice())
+                                    .points(i.getPoints())
+                                    .build())
+                            .toList())
+                    .build());
+        }
+
+        result.sort(Comparator.comparing(MobilePendingOperatorGroup::getDate,
+                Comparator.nullsLast(Comparator.reverseOrder())));
         return result;
     }
 
