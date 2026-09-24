@@ -1,0 +1,50 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('毛孩 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <h1>毛孩</h1>
+  <span class="sub" th:text="${total} + ' 隻'">128 隻</span>
+</header>
+
+<main class="wrap">
+  <form method="get" action="/m/pets" class="search" role="search">
+    <svg class="i"><use href="#i-search"/></svg>
+    <input type="search" name="q" th:value="${q}" placeholder="毛孩名字、品種或飼主" enterkeyhint="search" autocomplete="off" />
+    <input type="hidden" name="f" th:value="${f}" />
+    <a th:if="${!q.isEmpty()}" th:href="@{/m/pets(f=${f})}" class="clear" aria-label="清除搜尋"><svg class="i"><use href="#i-x"/></svg></a>
+  </form>
+
+  <nav class="chips" aria-label="篩選">
+    <a th:href="@{/m/pets(q=${q})}" class="chip" th:classappend="${f == 'all'} ? 'on'">全部</a>
+    <a th:href="@{/m/pets(q=${q},f='dog')}" class="chip" th:classappend="${f == 'dog'} ? 'on'">狗狗</a>
+    <a th:href="@{/m/pets(q=${q},f='cat')}" class="chip" th:classappend="${f == 'cat'} ? 'on'">貓咪</a>
+    <a th:href="@{/m/pets(q=${q},f='locked')}" class="chip" th:classappend="${f == 'locked'} ? 'on'">已鎖定套餐</a>
+  </nav>
+
+  <div class="empty" style="margin-top:16px" th:if="${rows.isEmpty()}">找不到符合的毛孩。</div>
+  <div class="group-h" th:unless="${rows.isEmpty()}">
+    <span th:text="${q.isEmpty()} ? '依名字排序' : '搜尋結果'">依名字排序</span>
+    <span th:text="${rows.size()} + ' 隻' + (${rows.size() >= 120} ? '（只顯示前 120 隻，請用搜尋）' : '')">24 隻</span>
+  </div>
+
+  <a th:each="p : ${rows}" class="card" th:href="@{/m/pets/{id}(id=${p.id})}">
+    <span class="av" th:classappend="${p.species}">
+      <img th:if="${p.photoUrl != null}" th:src="${p.photoUrl}" alt="" loading="lazy" />
+      <th:block th:if="${p.photoUrl == null}" th:text="${p.initial}">豆</th:block>
+    </span>
+    <span class="main">
+      <span class="nm" th:text="${p.name}">豆豆</span>
+      <span class="sb" style="display:block" th:text="${p.owner} + (${p.meta.isEmpty()} ? '' : '，' + ${p.meta})">陳小姐，柴犬，13 kg</span>
+    </span>
+    <span class="lock-mini" th:if="${p.locked}">固定套餐</span>
+  </a>
+</main>
+
+<nav th:replace="~{m/fragments/app :: tabs('pets')}"></nav>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

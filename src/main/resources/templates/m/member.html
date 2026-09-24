@@ -1,0 +1,128 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head(${name} + ' · 會員')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="profile member">
+  <div class="bar">
+    <a href="/m/members" class="icon-btn" aria-label="回會員列表"><svg class="i"><use href="#i-back"/></svg></a>
+    <a class="icon-btn" th:if="${c.phone != null and !c.phone.isEmpty()}" th:href="'tel:' + ${c.phone}" aria-label="打電話"><svg class="i"><use href="#i-phone"/></svg></a>
+  </div>
+  <div class="who-line">
+    <div class="nm" th:text="${name}">陳小姐</div>
+    <span class="sub num" th:text="${c.phone != null and !c.phone.isEmpty()} ? ${c.phone} : '沒有電話'">0912-345-678</span>
+  </div>
+  <div class="big-av" th:text="${initial}">陳</div>
+</header>
+
+<main class="wrap after-profile">
+  <div class="note-box" style="margin-top:4px;background:var(--amber-soft);color:var(--amber-ink)" th:if="${imported}">
+    <svg class="i"><use href="#i-alert"/></svg>
+    <span class="t">這是匯入資料建立的暫時帳號，顧客還沒用 LINE 認領。需要手動綁定的話請到網頁版操作。</span>
+  </div>
+
+  <div class="stat-row">
+    <div><b class="num" th:text="${#numbers.formatInteger(walletBalance, 1, 'COMMA')}">3,000</b><small th:text="${walletTier != null} ? '儲值金，' + ${walletTier} : '儲值金'">儲值金</small></div>
+    <div><b class="num" th:text="${#numbers.formatInteger(totalSpent, 1, 'COMMA')}">12,400</b><small>累積消費</small></div>
+    <div><b class="num" th:text="${orderCount}">14</b><small>消費次數</small></div>
+  </div>
+
+  <div class="quick">
+    <a th:href="@{/m/walk-in/new(member=${c.username})}"><svg class="i"><use href="#i-plus"/></svg>現場開單</a>
+    <a th:href="@{/appointments/new(forUsername=${c.username})}"><svg class="i"><use href="#i-cal"/></svg>代客預約</a>
+    <a th:href="@{/admin/customers/{u}(u=${c.username},desktop=1)}"><svg class="i"><use href="#i-monitor"/></svg>網頁版</a>
+  </div>
+
+  <div class="section-h"><h2>店家備注</h2><button type="button" data-open-sheet="sheetNote" style="color:var(--forest);font-size:13px">編輯</button></div>
+  <div class="note-box" id="noteView" th:classappend="${adminNote.isEmpty()} ? 'empty-note'">
+    <span class="t" id="noteText" th:text="${adminNote.isEmpty()} ? '還沒有備注，例如：偏好週末、習慣現金付款' : ${adminNote}">偏好週末</span>
+  </div>
+
+  <div class="section-h"><h2>毛孩</h2><small th:text="${pets.size()} + ' 隻'">2 隻</small></div>
+  <div class="empty" th:if="${pets.isEmpty()}">還沒有毛孩資料。</div>
+  <a th:each="p : ${pets}" class="card" th:href="@{/m/pets/{id}(id=${p.id})}">
+    <span class="av" th:classappend="${p.species}">
+      <img th:if="${p.photoUrl != null}" th:src="${p.photoUrl}" alt="" loading="lazy" />
+      <th:block th:if="${p.photoUrl == null}" th:text="${p.initial}">豆</th:block>
+    </span>
+    <span class="main">
+      <span class="nm" th:text="${p.name}">豆豆</span>
+      <span class="sb" style="display:block" th:text="${p.meta}">柴犬，13 kg，中長毛</span>
+    </span>
+    <span class="lock-mini" th:if="${p.locked}">固定套餐</span>
+  </a>
+
+  <section th:unless="${upcoming.isEmpty()}">
+    <div class="section-h"><h2>接下來的預約</h2></div>
+    <a th:each="a : ${upcoming}" class="card" th:href="@{/m/appointments/{id}(id=${a.id})}">
+      <span class="time wide" th:text="${a.when}">9/28 13:30</span>
+      <span class="main"><span class="nm" th:text="${a.petName}">豆豆</span></span>
+      <span class="pill ok" th:text="${a.status}">已確認</span>
+    </a>
+  </section>
+
+  <div class="section-h"><h2>消費紀錄</h2><small>最近 10 筆</small></div>
+  <section class="panel">
+    <div class="rec" th:if="${records.isEmpty()}"><p style="color:var(--mute)">還沒有消費紀錄</p></div>
+    <div class="rec" th:each="r : ${records}">
+      <div class="h"><b th:text="${r.date} + '，' + ${r.petName}">2026/9/12，豆豆</b><span class="num" th:text="'NT$ ' + ${#numbers.formatInteger(r.amount, 1, 'COMMA')}">NT$ 900</span></div>
+      <p th:text="${r.items}">精緻洗（小芸）</p>
+    </div>
+  </section>
+
+  <section class="panel" th:if="${sourceLabel != null}">
+    <div class="kv"><span class="k">得知本店的管道</span><span class="v" th:text="${sourceLabel}">親友介紹</span></div>
+  </section>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetNote" role="dialog" aria-modal="true" aria-labelledby="hNote" th:attr="data-username=${c.username}">
+  <div class="grab"></div>
+  <h3 id="hNote">店家備注</h3>
+  <div class="field">
+    <textarea id="noteInput" maxlength="1000" placeholder="只有店家看得到，顧客看不到" th:text="${adminNote}"></textarea>
+  </div>
+  <div class="form-err" id="noteErr" hidden></div>
+  <div class="btn-row">
+    <button type="button" class="btn sec" data-close-sheet>取消</button>
+    <button type="button" class="btn pri" id="noteSave">儲存</button>
+  </div>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    var sheet = document.getElementById("sheetNote");
+    document.getElementById("noteSave").addEventListener("click", function () {
+      var btn = this, err = document.getElementById("noteErr");
+      var val = document.getElementById("noteInput").value;
+      btn.disabled = true;
+      fetch("/api/admin/members/" + encodeURIComponent(sheet.dataset.username) + "/note", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminNote: val })
+      }).then(function (res) {
+        return res.text().then(function (t) {
+          if (!res.ok) {
+            var m = "儲存失敗，請再試一次";
+            try { m = JSON.parse(t).message || m; } catch (x) {}
+            throw new Error(m);
+          }
+          var saved = "";
+          try { saved = JSON.parse(t).adminNote || ""; } catch (x) { saved = val; }
+          var view = document.getElementById("noteView");
+          document.getElementById("noteText").textContent = saved || "還沒有備注，例如：偏好週末、習慣現金付款";
+          view.classList.toggle("empty-note", !saved);
+          btn.disabled = false;
+          window.mSheet.close();
+        });
+      }).catch(function (e) { btn.disabled = false; err.textContent = e.message; err.hidden = false; });
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

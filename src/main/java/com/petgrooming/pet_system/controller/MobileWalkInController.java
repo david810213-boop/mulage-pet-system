@@ -52,10 +52,10 @@ import java.util.stream.Collectors;
  * 純零售單（沒有美容服務項目）開單後直接結帳。後端全部呼叫既有的
  * WalkInOrderService，沒有另外實作任何業務規則。
  *
- * 跟網頁版的差異（刻意的手機版簡化）：
+ * 跟網頁版的差異（手機版操作調整）：
  * - 選客人改成「搜尋 → 點毛孩」兩步，菜單由伺服器端依毛孩體型篩好再送出
- * - 經手人改成整張單選一位（預設自己），網頁版是每個項目各選一位；
- *   需要分開記的話，可以先選「稍後補填」，再到單子明細逐項補
+ * - 經手人跟網頁版一樣逐項選（店裡一張單常由兩三人分攤），每項預設自己，
+ *   另外提供「全部設為」一鍵套用；也可以選「稍後補填」，開單後在明細補
  */
 @Controller
 @RequestMapping("/m/walk-in")
@@ -195,7 +195,7 @@ public class MobileWalkInController {
             @RequestParam(required = false) String petName,
             @RequestParam(required = false) String note,
             @RequestParam(required = false) List<String> itemCodes,
-            @RequestParam(required = false) String operatorStaffId,
+            @RequestParam(required = false) List<String> operatorStaffIds,
             @RequestParam(required = false) List<String> retailProductIds,
             @RequestParam(required = false) List<String> retailQuantities,
             @RequestParam(required = false) String backQuery) {
@@ -203,22 +203,26 @@ public class MobileWalkInController {
         if (user == null) {
             return "redirect:/auth/login";
         }
-        Long operatorId = (operatorStaffId == null || operatorStaffId.isBlank()) ? null : Long.valueOf(operatorStaffId);
-
         WalkInOrderCreateRequest req = new WalkInOrderCreateRequest();
         req.setMemberUsername(memberUsername != null && !memberUsername.isBlank() ? memberUsername : null);
         req.setPetName(petName != null && !petName.isBlank() ? petName.trim() : null);
         req.setNote(note);
 
         List<WalkInOrderCreateRequest.Item> items = new ArrayList<>();
+        // itemCodes、operatorStaffIds 兩個平行陣列（跟網頁版開單表單同樣格式）：
+        // 畫面上只有勾選的項目，它的經手人下拉選單才會啟用送出，兩邊順序一一對應
         if (itemCodes != null) {
-            for (String code : itemCodes) {
+            for (int i = 0; i < itemCodes.size(); i++) {
+                String code = itemCodes.get(i);
                 if (code == null || code.isBlank()) {
                     continue;
                 }
+                String staffIdStr = operatorStaffIds != null && i < operatorStaffIds.size()
+                        ? operatorStaffIds.get(i) : null;
                 WalkInOrderCreateRequest.Item item = new WalkInOrderCreateRequest.Item();
                 item.setItemCode(code);
-                item.setOperatorStaffId(operatorId); // null → 稍後在明細頁補填
+                item.setOperatorStaffId(staffIdStr != null && !staffIdStr.isBlank()
+                        ? Long.valueOf(staffIdStr) : null); // null → 稍後在明細頁補填
                 items.add(item);
             }
         }

@@ -37,6 +37,7 @@ public class CustomerAnalysisMvcController {
     private final TransactionRepository transactionRepository;
     private final WalkInOrderRepository walkInOrderRepository;
     private final WalkInOrderService walkInOrderService;
+    private final com.petgrooming.pet_system.service.MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -80,85 +81,9 @@ public class CustomerAnalysisMvcController {
         model.addAttribute("wallet", walletService.getWallet(username));
         model.addAttribute("appointments", appointmentService.getMyAppointments(username));
 
-        java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse> records = new java.util.ArrayList<>();
-
-        // 來源 1：預約結帳（Transaction）
-        for (var t : transactionRepository.findByUserUsername(username)) {
-            if (!t.isPaid())
-                continue;
-            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
-            if (t.getAppointment() != null && loginUser != null) {
-                try {
-                    var detail = appointmentService.getAppointmentDetail(t.getAppointment().getId(), loginUser.getUsername());
-                    items = detail.getItems().stream()
-                            .map(di -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
-                                    .name(di.getName())
-                                    .staffName(di.getOperatorName())
-                                    .discountLabel(di.getAppliedDiscountType() != null ? di.getAppliedDiscountType().getLabel() : null)
-                                    .price(di.getPrice())
-                                    .build())
-                            .toList();
-                } catch (Exception ignored) {
-                    // 找不到明細（例如舊資料）就顯示空清單，不影響整頁其他內容
-                }
-            }
-            records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
-                    .sourceLabel("預約結帳")
-                    .sourceType("APPOINTMENT")
-                    .recordId(t.getAppointment() != null ? t.getAppointment().getId() : null)
-                    .code(t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—")
-                    .petName(t.getAppointment() != null ? t.getAppointment().getPetName() : "—")
-                    .time(t.getPaymentTime())
-                    .handledBy(t.getHandledBy())
-                    .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
-                    .amount(t.getFinalAmount())
-                    .paid(true)
-                    .items(items)
-                    .build());
-        }
-
-        // 來源 2：現場開單（WalkInOrder）—— 之前沒有併入會員信息頁，這次補上
-        for (var w : walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(username)) {
-            if (!w.isPaid())
-                continue;
-            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
-            try {
-                var detail = walkInOrderService.getById(w.getId());
-                items = detail.getItems().stream()
-                        .map(il -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
-                                .name(il.getItemName())
-                                .staffName(il.getOperator())
-                                .discountLabel(il.getAppliedDiscountType() != null ? il.getAppliedDiscountType().getLabel() : null)
-                                .price(il.getPrice())
-                                .build())
-                        .toList();
-            } catch (Exception ignored) {
-                // 找不到明細就顯示空清單，不影響整頁其他內容
-            }
-            records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
-                    .sourceLabel("現場開單")
-                    .sourceType("WALKIN")
-                    .recordId(w.getId())
-                    .code("現場單#" + w.getId())
-                    .petName(w.getPetName())
-                    .time(w.getPaymentTime())
-                    .handledBy(w.getCreatedBy())
-                    .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
-                    .amount(w.getTotalAmount())
-                    .paid(true)
-                    .items(items)
-                    .build());
-        }
-
-        records.sort((a, b) -> {
-            if (a.getTime() == null && b.getTime() == null)
-                return 0;
-            if (a.getTime() == null)
-                return 1;
-            if (b.getTime() == null)
-                return -1;
-            return b.getTime().compareTo(a.getTime());
-        });
+        // 需求（2026-09-24）：消費紀錄彙整邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
+        java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse> records =
+                memberConsumptionService.buildPaidRecords(username, loginUser != null ? loginUser.getUsername() : null);
         model.addAttribute("transactions", records);
 
         int totalSpent = records.stream().mapToInt(com.petgrooming.pet_system.dto.ConsumptionRecordResponse::getAmount)

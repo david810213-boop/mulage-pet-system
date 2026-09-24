@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/staff-app.css?v=4" />
+  <link rel="stylesheet" href="/css/staff-app.css?v=6" />
 </head>
 <body>
 
@@ -60,6 +60,8 @@
   <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
   <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/></symbol>
   <symbol id="i-scale" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9a4 4 0 0 1 6 0l-3 3"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h3"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
 </svg>
 
@@ -72,7 +74,7 @@
   <a href="/m/" class="t" th:classappend="${active == 'today'} ? 'on'"><svg class="i"><use href="#i-home"/></svg>今日</a>
   <a href="/m/appointments" class="t" th:classappend="${active == 'appointments'} ? 'on'"><svg class="i"><use href="#i-cal"/></svg>預約</a>
   <a href="/m/walk-in/new" class="fab" aria-label="現場開單"><svg class="i"><use href="#i-plus"/></svg></a>
-  <a href="/admin/pet-database" class="t" th:classappend="${active == 'pets'} ? 'on'"><svg class="i"><use href="#i-paw"/></svg>毛孩</a>
+  <a href="/m/pets" class="t" th:classappend="${active == 'pets'} ? 'on'"><svg class="i"><use href="#i-paw"/></svg>毛孩</a>
   <a href="/m/more" class="t" th:classappend="${active == 'more'} ? 'on'"><svg class="i"><use href="#i-grid"/></svg>更多</a>
 </nav>
 

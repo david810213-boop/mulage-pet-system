@@ -106,36 +106,53 @@
 
       <div class="section-h">
         <h2>服務項目</h2>
-        <small th:if="${suggestedCode != null}">已幫你勾建議套餐</small>
+        <small th:text="${suggestedCode != null} ? '已勾建議套餐，經手人預設自己' : '勾選後可逐項選經手人'">經手人預設自己</small>
       </div>
-      <label class="pick" th:each="item : ${mainItems}">
-        <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
-               th:checked="${item.itemCode == suggestedCode}"
-               th:attr="data-price=${item.price != null ? item.price : 0},data-special=${item.performanceCategory == 'SPECIAL'}" />
-        <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
-        <span class="nm" th:text="${item.name}">精緻洗</span>
-        <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">900</span>
-      </label>
+      <div class="pick-wrap" th:each="item : ${mainItems}">
+        <label class="pick">
+          <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
+                 th:checked="${item.itemCode == suggestedCode}"
+                 th:attr="data-price=${item.price != null ? item.price : 0},data-special=${item.performanceCategory == 'SPECIAL'}" />
+          <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
+          <span class="nm" th:text="${item.name}">精緻洗</span>
+          <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">900</span>
+        </label>
+        <div class="op-row">
+          <span>經手人</span>
+          <select name="operatorStaffIds" aria-label="經手人" disabled>
+            <option value="">稍後補填</option>
+            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}" th:selected="${s.id == meId}">小芸</option>
+          </select>
+        </div>
+      </div>
 
       <details class="more-items" id="otherItems" th:unless="${otherItems.isEmpty()}">
         <summary>其他加購（不計積分）<svg class="i"><use href="#i-chev"/></svg></summary>
-        <label class="pick" th:each="item : ${otherItems}">
-          <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
-                 th:attr="data-price=${item.price != null ? item.price : 0}" />
-          <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
-          <span class="nm" th:text="${item.name}">加購</span>
-          <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">150</span>
-        </label>
+        <div class="pick-wrap" th:each="item : ${otherItems}">
+          <label class="pick">
+            <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
+                   th:attr="data-price=${item.price != null ? item.price : 0}" />
+            <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
+            <span class="nm" th:text="${item.name}">加購</span>
+            <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">150</span>
+          </label>
+          <div class="op-row">
+            <span>經手人</span>
+            <select name="operatorStaffIds" aria-label="經手人" disabled>
+              <option value="">稍後補填</option>
+              <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}" th:selected="${s.id == meId}">小芸</option>
+            </select>
+          </div>
+        </div>
       </details>
 
-      <div class="field" style="margin-top:14px">
-        <label for="opSel">經手人（整張單）</label>
-        <select name="operatorStaffId" id="opSel">
-          <option value="">稍後補填</option>
-          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}"
-                  th:selected="${s.id == meId}">小芸</option>
+      <div class="op-all">
+        <span>勾選的項目經手人全部設為</span>
+        <select id="opAll" aria-label="全部設為">
+          <option value="" selected disabled>選擇…</option>
+          <option value="later">稍後補填</option>
+          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
         </select>
-        <small>不同項目由不同人做的話，選「稍後補填」，開單後在明細逐項補</small>
       </div>
 
       <th:block th:unless="${retailProducts.isEmpty()}">
@@ -193,11 +210,26 @@
         if (n > 0) err.hidden = true;
         return n;
       }
+      // 只有勾選的項目，經手人下拉選單才啟用；沒勾的不送出，
+      // 讓 itemCodes 跟 operatorStaffIds 兩個陣列順序一一對應
+      function syncOperator(b) {
+        var sel = b.closest(".pick-wrap").querySelector("select[name=operatorStaffIds]");
+        sel.disabled = !b.checked;
+      }
       boxes.forEach(function (b) {
+        syncOperator(b);
         b.addEventListener("change", function () {
+          syncOperator(b);
           if (b.checked && b.dataset.special === "true" && other) other.open = true;
           refresh();
         });
+      });
+      document.getElementById("opAll").addEventListener("change", function () {
+        var v = this.value === "later" ? "" : this.value;
+        boxes.forEach(function (b) {
+          if (b.checked) b.closest(".pick-wrap").querySelector("select[name=operatorStaffIds]").value = v;
+        });
+        this.selectedIndex = 0;
       });
       qtys.forEach(function (q) {
         var row = q.closest(".qty-row");

@@ -1,0 +1,178 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head(${pet.name} + ' · 毛孩')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="profile" th:classappend="${species}">
+  <div class="bar">
+    <a href="/m/pets" class="icon-btn" aria-label="回毛孩列表"><svg class="i"><use href="#i-back"/></svg></a>
+    <button type="button" class="icon-btn" data-open-sheet="sheetEdit" aria-label="修改體重、毛長"><svg class="i"><use href="#i-edit"/></svg></button>
+  </div>
+  <div class="who-line">
+    <div class="nm" th:text="${pet.name}">豆豆</div>
+    <a th:href="@{/m/members/{u}(u=${ownerUsername})}" th:text="${ownerName} + ' 的' + (${species == 'cat'} ? '貓咪' : (${species == 'dog'} ? '狗狗' : '毛孩')) + ' ›'">陳小姐的狗狗 ›</a>
+  </div>
+  <div class="big-av">
+    <img th:if="${pet.photoUrl != null}" th:src="${pet.photoUrl}" th:alt="${pet.name}" />
+    <th:block th:if="${pet.photoUrl == null}" th:text="${initial}">豆</th:block>
+  </div>
+</header>
+
+<main class="wrap after-profile">
+  <div class="tags">
+    <span class="tag" th:if="${pet.breed != null and !pet.breed.isEmpty()}" th:text="${pet.breed}">柴犬</span>
+    <span class="tag num" th:if="${pet.weight != null}" th:text="(${pet.weight % 1 == 0} ? ${#numbers.formatInteger(pet.weight, 1)} : ${#numbers.formatDecimal(pet.weight, 1, 1)}) + ' kg'">13 kg</span>
+    <span class="tag" th:if="${pet.coatType != null and pet.coatType.name() != 'UNDEFINED'}" th:text="${pet.coatTypeLabel}">中長毛</span>
+    <span class="tag warn" th:if="${species == 'dog' and (pet.coatType == null or pet.coatType.name() == 'UNDEFINED')}">毛長未定義</span>
+    <span class="tag" th:if="${pet.catCoatCategoryLabel != null}" th:text="${pet.catCoatCategoryLabel}">雙層毛</span>
+    <span class="tag num" th:if="${pet.age != null}" th:text="(${pet.age % 1 == 0} ? ${#numbers.formatInteger(pet.age, 1)} : ${pet.age}) + ' 歲'">5 歲</span>
+    <span class="tag" th:if="${pet.gender != null and !pet.gender.isEmpty()}" th:text="${pet.gender}">公</span>
+    <span class="tag" th:if="${pet.isNeutered != null and pet.isNeutered}">已絕育</span>
+    <span class="tag warn" th:if="${pet.hasSeparationAnxiety != null and pet.hasSeparationAnxiety}">分離焦慮</span>
+    <span class="tag" th:each="t : ${personality}" th:text="${t}">親人</span>
+    <span class="tag warn" th:each="t : ${health}" th:text="${t}">皮膚敏感</span>
+  </div>
+
+  <div class="note-box" style="margin-top:12px" th:if="${pet.notes != null and !pet.notes.isEmpty()}">
+    <svg class="i"><use href="#i-alert"/></svg><span class="t" th:text="${pet.notes}">怕吹風機</span>
+  </div>
+
+  <div class="lock-box" th:if="${pet.lockedGroomingItemId != null}" id="lockBox" th:attr="data-pet-id=${pet.id}">
+    <svg class="i"><use href="#i-lock"/></svg>
+    <div class="t">
+      <small>固定套餐</small>
+      <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
+    </div>
+    <button type="button" id="unlockBtn">解鎖</button>
+  </div>
+
+  <div class="quick">
+    <a th:href="@{/m/walk-in/new(member=${ownerUsername},pet=${pet.name})}"><svg class="i"><use href="#i-plus"/></svg>現場開單</a>
+    <a th:href="@{/appointments/new(forUsername=${ownerUsername})}"><svg class="i"><use href="#i-cal"/></svg>代客預約</a>
+    <a th:href="@{/admin/pets/{id}/edit(id=${pet.id})}"><svg class="i"><use href="#i-edit"/></svg>完整編輯</a>
+  </div>
+
+  <section th:unless="${upcoming.isEmpty()}">
+    <div class="section-h"><h2>接下來的預約</h2></div>
+    <a th:each="a : ${upcoming}" class="card" th:href="@{/m/appointments/{id}(id=${a.id})}">
+      <span class="time wide" th:text="${a.when}">9/28 13:30</span>
+      <span class="main"><span class="nm" th:text="${a.petName}">豆豆</span></span>
+      <span class="pill ok" th:text="${a.status}">已確認</span>
+    </a>
+  </section>
+
+  <section class="panel" th:if="${pet.hasDesignatedVet}">
+    <div class="panel-title">指定獸醫院</div>
+    <p>
+      <span th:text="${pet.designatedVetName}">喵喵動物醫院</span>
+      <th:block th:if="${pet.designatedVetPhone != null and !pet.designatedVetPhone.isEmpty()}">，<a class="num" th:href="'tel:' + ${pet.designatedVetPhone}" th:text="${pet.designatedVetPhone}" style="color:var(--forest)">02-1234</a></th:block>
+    </p>
+  </section>
+
+  <div class="section-h"><h2>美容紀錄</h2><small>核對時填的備注</small></div>
+  <section class="panel">
+    <div class="rec" th:if="${notes.isEmpty()}"><p style="color:var(--mute)">還沒有美容紀錄</p></div>
+    <div class="rec" th:each="n : ${notes}">
+      <div class="h"><b th:text="${n.date}">2026/9/12</b><span th:text="${n.staff}">小芸</span></div>
+      <p th:text="${n.note}">耳朵有點紅，建議觀察</p>
+      <img th:if="${n.photoUrl != null}" th:src="${n.photoUrl}" alt="美容紀錄照片" loading="lazy" />
+    </div>
+  </section>
+
+  <div class="section-h"><h2>消費紀錄</h2><small>最近 10 筆</small></div>
+  <section class="panel">
+    <div class="rec" th:if="${records.isEmpty()}"><p style="color:var(--mute)">還沒有消費紀錄</p></div>
+    <div class="rec" th:each="r : ${records}">
+      <div class="h"><b th:text="${r.date} + '，' + ${r.source}">2026/9/12，預約結帳</b><span class="num" th:text="'NT$ ' + ${#numbers.formatInteger(r.amount, 1, 'COMMA')} + '，' + ${r.method}">NT$ 900，現金</span></div>
+      <p th:text="${r.items}">精緻洗（小芸）</p>
+    </div>
+  </section>
+</main>
+
+<!-- 抽屜：修改體重、毛長（現場最常改的兩個欄位） -->
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetEdit" role="dialog" aria-modal="true" aria-labelledby="hEdit"
+         th:attr="data-pet-id=${pet.id},data-weight=${pet.weight},data-coat=${pet.coatType != null ? pet.coatType.name() : ''}">
+  <div class="grab"></div>
+  <h3 id="hEdit" th:text="'修改' + ${pet.name} + '的資料'">修改豆豆的資料</h3>
+  <div class="field">
+    <label for="eWeight">體重（kg）</label>
+    <input type="number" id="eWeight" step="0.1" min="0.1" inputmode="decimal" th:value="${pet.weight}" />
+    <small>狗狗的體重會決定開單時篩選的套餐級距</small>
+  </div>
+  <div class="field" th:if="${species == 'dog'}">
+    <label for="eCoat">毛長</label>
+    <select id="eCoat">
+      <option value="UNDEFINED" th:selected="${pet.coatType == null or pet.coatType.name() == 'UNDEFINED'}">未定義（顯示全部毛長）</option>
+      <option value="SHORT" th:selected="${pet.coatType != null and pet.coatType.name() == 'SHORT'}">短毛</option>
+      <option value="MEDIUM" th:selected="${pet.coatType != null and pet.coatType.name() == 'MEDIUM'}">中長毛</option>
+      <option value="LONG" th:selected="${pet.coatType != null and pet.coatType.name() == 'LONG'}">長毛</option>
+    </select>
+  </div>
+  <div class="form-err" id="eErr" hidden></div>
+  <div class="btn-row">
+    <button type="button" class="btn sec" data-close-sheet>取消</button>
+    <button type="button" class="btn pri" id="eSave">儲存</button>
+  </div>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('pets')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    function put(url, body) {
+      return fetch(url, {
+        method: "PUT",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function (res) {
+        return res.text().then(function (t) {
+          if (!res.ok) {
+            var m = "儲存失敗，請再試一次";
+            try { m = JSON.parse(t).message || m; } catch (x) {}
+            throw new Error(m);
+          }
+        });
+      });
+    }
+
+    var sheet = document.getElementById("sheetEdit");
+    var petId = encodeURIComponent(sheet.dataset.petId);
+    document.getElementById("eSave").addEventListener("click", function () {
+      var btn = this, err = document.getElementById("eErr");
+      var tasks = [];
+      var wRaw = document.getElementById("eWeight").value;
+      var w = parseFloat(wRaw);
+      if (wRaw !== "" && String(w) !== String(parseFloat(sheet.dataset.weight))) {
+        if (!w || w <= 0) { err.textContent = "請輸入有效的體重"; err.hidden = false; return; }
+        tasks.push(function () { return put("/api/admin/pets/" + petId + "/weight", { weight: w }); });
+      }
+      var coat = document.getElementById("eCoat");
+      if (coat && coat.value !== (sheet.dataset.coat || "UNDEFINED")) {
+        tasks.push(function () { return put("/api/admin/pets/" + petId + "/coat-type", { coatType: coat.value }); });
+      }
+      if (tasks.length === 0) { window.mSheet.close(); return; }
+      btn.disabled = true;
+      err.hidden = true;
+      tasks.reduce(function (p, t) { return p.then(t); }, Promise.resolve())
+        .then(function () { location.reload(); })
+        .catch(function (e) { btn.disabled = false; err.textContent = e.message; err.hidden = false; });
+    });
+
+    var unlock = document.getElementById("unlockBtn");
+    if (unlock) {
+      unlock.addEventListener("click", function () {
+        if (!window.confirm("解鎖後會改回依體重、毛長篩選套餐，確定嗎？")) return;
+        unlock.disabled = true;
+        put("/api/admin/pets/" + petId + "/unlock-grooming-item", null)
+          .then(function () { location.reload(); })
+          .catch(function (e) { unlock.disabled = false; window.alert(e.message); });
+      });
+    }
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

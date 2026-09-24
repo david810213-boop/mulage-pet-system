@@ -1,0 +1,40 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('會員 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <h1>會員</h1>
+  <span class="sub" th:text="${total} + ' 位'">86 位</span>
+</header>
+
+<main class="wrap">
+  <form method="get" action="/m/members" class="search" role="search">
+    <svg class="i"><use href="#i-search"/></svg>
+    <input type="search" name="q" th:value="${q}" placeholder="姓名、帳號或電話" enterkeyhint="search" autocomplete="off" />
+    <a th:if="${!q.isEmpty()}" href="/m/members" class="clear" aria-label="清除搜尋"><svg class="i"><use href="#i-x"/></svg></a>
+  </form>
+
+  <div class="empty" style="margin-top:16px" th:if="${rows.isEmpty()}">找不到符合的會員。</div>
+  <div class="group-h" th:unless="${rows.isEmpty()}">
+    <span th:text="${q.isEmpty()} ? '依姓名排序' : '搜尋結果'">依姓名排序</span>
+    <span th:text="${rows.size()} + ' 位' + (${rows.size() >= 120} ? '（只顯示前 120 位，請用搜尋）' : '')">86 位</span>
+  </div>
+
+  <a th:each="r : ${rows}" class="card" th:href="@{/m/members/{u}(u=${r.username})}">
+    <span class="av" th:text="${r.initial}">陳</span>
+    <span class="main">
+      <span class="nm" th:text="${r.name}">陳小姐</span>
+      <span class="sb num" style="display:block" th:text="${r.phone.isEmpty()} ? '沒有電話' : ${r.phone}">0912-345-678</span>
+    </span>
+    <span class="imported-tag" th:if="${r.imported}">匯入未認領</span>
+  </a>
+</main>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

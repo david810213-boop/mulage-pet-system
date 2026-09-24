@@ -21,7 +21,8 @@ import java.util.regex.Pattern;
  * 1. 只處理 GET、非 /api 的頁面請求，且只對 ADMIN / STAFF 生效（顧客不受影響）
  * 2. 只導向「已經有手機版」的頁面，對照表見 DESKTOP_TO_MOBILE；
  *    還沒做手機版的頁面照常顯示網頁版，不會被擋住
- * 3. Cookie VIEW_MODE=desktop：員工手動選了網頁版，一律不導向
+ * 3. 網址帶 desktop=1：這一次請求不導向（手機版「在網頁版開啟」連結用）
+ * 4. Cookie VIEW_MODE=desktop：員工手動選了網頁版，一律不導向
  *    Cookie VIEW_MODE=mobile：員工手動選了手機版，不管什麼裝置都導向
  *    沒有 Cookie：依 User-Agent 判斷是不是手機
  *
@@ -40,7 +41,9 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
     private static final Map<String, String> DESKTOP_TO_MOBILE = Map.of(
             "/dashboard", "/m/",
             "/appointments", "/m/appointments",
-            "/admin/walk-in-orders", "/m/walk-in"); // 第四批：現場開單
+            "/admin/walk-in-orders", "/m/walk-in", // 第四批：現場開單
+            "/admin/customers", "/m/members", // 第五批：會員、毛孩
+            "/admin/pet-database", "/m/pets");
 
     // 第三批：帶預約編號的流程頁面，用 {1} 代入網址裡的預約 id
     private static final List<Map.Entry<Pattern, String>> PATTERN_TO_MOBILE = List.of(
@@ -49,7 +52,9 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
             Map.entry(Pattern.compile("^/payments/checkout/(\\d+)$"), "/m/appointments/{1}/checkout"),
             // 第四批：現場單
             Map.entry(Pattern.compile("^/admin/walk-in-orders/(\\d+)/final-check$"), "/m/walk-in/{1}/final-check"),
-            Map.entry(Pattern.compile("^/admin/walk-in-orders/(\\d+)/checkout$"), "/m/walk-in/{1}/checkout"));
+            Map.entry(Pattern.compile("^/admin/walk-in-orders/(\\d+)/checkout$"), "/m/walk-in/{1}/checkout"),
+            // 第五批：會員詳情（帳號裡可能有 @、.，只排除斜線）
+            Map.entry(Pattern.compile("^/admin/customers/([^/]+)$"), "/m/members/{1}"));
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request,
@@ -57,6 +62,10 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
             @NonNull Object handler) throws Exception {
 
         if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+        // 手機版上「在網頁版開啟」的連結會帶 desktop=1，這次就不導回手機版
+        if ("1".equals(request.getParameter("desktop"))) {
             return true;
         }
         String target = resolveTarget(request.getRequestURI());
