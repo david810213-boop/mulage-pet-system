@@ -1,17 +1,17 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
-<head th:replace="~{m/fragments/app :: head('核對 · ' + ${card.petName})}"></head>
+<head th:replace="~{m/fragments/app :: head('核對 · 慕沐村')}"></head>
 <body class="has-actionbar">
 <svg th:replace="~{m/fragments/app :: icons}"></svg>
 <th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
 
 <header class="topbar">
-  <a th:href="@{/m/appointments/{id}(id=${a.id})}" class="icon-btn" aria-label="回預約詳情"><svg class="i"><use href="#i-back"/></svg></a>
+  <a th:href="${backUrl}" class="icon-btn" aria-label="回上一頁"><svg class="i"><use href="#i-back"/></svg></a>
   <div style="flex:1">
     <div style="font-size:18px">核對</div>
-    <div class="sub" th:text="${card.petName} + '，' + ${a.ownerName}">豆豆，陳小姐</div>
+    <div class="sub" th:text="${subtitle}">豆豆，陳小姐</div>
   </div>
-  <span class="av" th:classappend="${card.species}" th:text="${card.petInitial}">豆</span>
+  <span class="av" th:classappend="${avSpecies}" th:text="${avInitial}">豆</span>
 </header>
 
 <main class="wrap">
@@ -21,24 +21,24 @@
     <small>請跟家長一起確認</small>
   </div>
   <section class="panel">
-    <div class="line" th:if="${items.isEmpty()}">
+    <div class="line" th:if="${lines.isEmpty()}">
       <span class="nm" style="color:var(--coral-ink)">還沒有開單項目，請先加入項目</span>
     </div>
-    <div class="line" th:each="it : ${items}">
+    <div class="line" th:each="it : ${lines}">
       <span class="nm">
-        <span th:text="${it.itemName}">中型犬-中長毛-精緻洗</span>
-        <small th:if="${it.retailProductId != null}">零售商品</small>
+        <span th:text="${it.name}">中型犬-中長毛-精緻洗</span>
+        <small th:if="${it.note != null}" th:text="${it.note}">零售商品</small>
       </span>
       <span class="pr" th:text="${#numbers.formatInteger(it.price, 1, 'COMMA')}">900</span>
-      <form method="post" th:action="@{/m/appointments/{id}/items/{itemId}/remove(id=${a.id},itemId=${it.id})}"
-            class="js-confirm" th:attr="data-confirm='要移除「' + ${it.itemName} + '」嗎？'">
+      <form th:if="${it.id != null}" method="post" th:action="${base} + '/items/' + ${it.id} + '/remove'"
+            class="js-confirm" th:attr="data-confirm='要移除「' + ${it.name} + '」嗎？'">
         <input type="hidden" name="from" value="check" />
         <button type="submit" class="x-btn" aria-label="移除"><svg class="i"><use href="#i-x"/></svg></button>
       </form>
     </div>
-    <div class="line sum" th:unless="${items.isEmpty()}">
+    <div class="line sum" th:unless="${lines.isEmpty()}">
       <span class="nm">合計（未含優惠）</span>
-      <span class="pr" th:text="'NT$ ' + ${#numbers.formatInteger(itemsTotal, 1, 'COMMA')}">NT$ 1,350</span>
+      <span class="pr" th:text="'NT$ ' + ${#numbers.formatInteger(linesTotal, 1, 'COMMA')}">NT$ 1,350</span>
     </div>
   </section>
 
@@ -48,7 +48,7 @@
     <button type="button" data-open-sheet="sheetRetail" th:disabled="${retailProducts.isEmpty()}"><svg class="i"><use href="#i-bag"/></svg>零售商品</button>
   </div>
 
-  <form method="post" id="checkForm" th:action="@{/m/appointments/{id}/final-check(id=${a.id})}">
+  <form method="post" id="checkForm" th:action="${base} + '/final-check'">
     <div class="section-h"><h2>美容狀況備注</h2></div>
     <div class="field">
       <textarea name="note" id="noteInput" maxlength="1000" required
@@ -83,7 +83,7 @@
 <section class="sheet" id="sheetGrooming" role="dialog" aria-modal="true" aria-labelledby="hGrooming">
   <div class="grab"></div>
   <h3 id="hGrooming">加入服務項目</h3>
-  <form method="post" th:action="@{/m/appointments/{id}/items/grooming(id=${a.id})}" class="js-once">
+  <form method="post" th:action="${base} + '/items/grooming'" class="js-once">
     <input type="hidden" name="from" value="check" />
     <div class="field">
       <label for="gItem">項目</label>
@@ -108,7 +108,7 @@
 <section class="sheet" id="sheetCustom" role="dialog" aria-modal="true" aria-labelledby="hCustom">
   <div class="grab"></div>
   <h3 id="hCustom">自訂金額加購</h3>
-  <form method="post" th:action="@{/m/appointments/{id}/items/custom(id=${a.id})}" class="js-once">
+  <form method="post" th:action="${base} + '/items/custom'" class="js-once">
     <input type="hidden" name="from" value="check" />
     <div class="field">
       <label for="cName">項目名稱</label>
@@ -139,7 +139,7 @@
 <section class="sheet" id="sheetRetail" role="dialog" aria-modal="true" aria-labelledby="hRetail">
   <div class="grab"></div>
   <h3 id="hRetail">加購零售商品</h3>
-  <form method="post" th:action="@{/m/appointments/{id}/items/retail(id=${a.id})}" class="js-once">
+  <form method="post" th:action="${base} + '/items/retail'" class="js-once">
     <input type="hidden" name="from" value="check" />
     <div class="field">
       <label for="rItem">商品</label>

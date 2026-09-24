@@ -31,6 +31,21 @@ public class GroomingMenuFilter {
     }
 
     /**
+     * 現場單用：沒綁會員／查不到寵物時物種是 null，這時不篩物種（避免誤擋），
+     * 只套「僅限既有客戶」規則；有物種時跟 filterFor() 相同。
+     * 跟網頁版現場單核對頁、結帳頁的篩選條件一致。
+     */
+    public List<GroomingItemResponse> filterForOptionalPetType(List<GroomingItemResponse> items,
+            boolean isExisting, String petType) {
+        if (petType == null) {
+            return items.stream()
+                    .filter(i -> isExisting || !i.isRequiresExistingCustomer())
+                    .toList();
+        }
+        return filterFor(items, isExisting, petType);
+    }
+
+    /**
      * 在 filterFor() 的基礎上，再依這隻寵物的體型（狗狗體重級距＋毛長／
      * 已鎖定固定套餐、貓咪毛髮分類）進一步篩選。
      */

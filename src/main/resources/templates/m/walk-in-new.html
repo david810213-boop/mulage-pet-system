@@ -1,0 +1,243 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('現場開單 · 慕沐村')}"></head>
+<body th:classappend="${step == 'form'} ? 'has-actionbar'">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<!-- ── 第一步：選客人 ─────────────────────────────────────────────── -->
+<th:block th:if="${step == 'pick'}">
+  <header class="topbar">
+    <a href="/m/walk-in" class="icon-btn" aria-label="現場單列表"><svg class="i"><use href="#i-back"/></svg></a>
+    <div style="flex:1">
+      <div style="font-size:18px">現場開單</div>
+      <div class="sub">先找客人，再點要服務的毛孩</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <form method="get" action="/m/walk-in/new" class="search" role="search">
+      <svg class="i"><use href="#i-search"/></svg>
+      <input type="search" name="q" th:value="${q}" placeholder="毛孩名字、飼主姓名或電話" enterkeyhint="search" autocomplete="off" autofocus />
+      <a th:if="${!q.isEmpty()}" href="/m/walk-in/new" class="clear" aria-label="清除搜尋"><svg class="i"><use href="#i-x"/></svg></a>
+    </form>
+
+    <a href="/m/walk-in/new?guest=1" class="guest-btn">
+      <span class="av">客</span>
+      <span class="t">非會員／純零售<small>不綁會員直接開單，不能用儲值金</small></span>
+      <svg class="i" style="color:var(--mute)"><use href="#i-chev"/></svg>
+    </a>
+
+    <div class="group-h" th:if="${!q.isEmpty()}">
+      <span th:text="'「' + ${q} + '」'">「豆」</span><span th:text="${results.size()} + ' 位客人'">1 位客人</span>
+    </div>
+    <div class="empty" th:if="${!q.isEmpty() and results.isEmpty()}">找不到符合的客人，換個關鍵字，或用「非會員」開單。</div>
+
+    <div class="who" th:each="r : ${results}">
+      <div class="head">
+        <span class="av" th:text="${r.initial}">陳</span>
+        <div class="t"><span th:text="${r.name}">陳小姐</span><small class="num" th:text="${r.phoneTail}">末四碼 1234</small></div>
+      </div>
+      <div class="pet-chips">
+        <a th:each="p : ${r.pets}" class="pet-chip"
+           th:href="@{/m/walk-in/new(member=${r.username},pet=${p.name})}">
+          <span class="av" th:classappend="${p.species}" th:text="${p.initial}">豆</span>
+          <span th:text="${p.name}">豆豆</span><small th:text="${p.meta}">柴犬</small>
+        </a>
+        <a class="pet-chip plain" th:href="@{/m/walk-in/new(member=${r.username})}"
+           th:text="${r.pets.isEmpty()} ? '開單（沒有毛孩資料）' : '不指定毛孩'">不指定毛孩</a>
+      </div>
+    </div>
+  </main>
+
+  <nav th:replace="~{m/fragments/app :: tabs('walkin')}"></nav>
+</th:block>
+
+<!-- ── 第二步：開單 ───────────────────────────────────────────────── -->
+<th:block th:if="${step == 'form'}">
+  <header class="topbar">
+    <a href="/m/walk-in/new" class="icon-btn" aria-label="重新選客人"><svg class="i"><use href="#i-back"/></svg></a>
+    <div style="flex:1">
+      <div style="font-size:18px">現場開單</div>
+      <div class="sub" th:text="${guest} ? '非會員' : ${memberName}">陳小姐</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <form method="post" action="/m/walk-in/create" id="orderForm">
+      <input type="hidden" name="memberUsername" th:value="${memberUsername}" />
+      <input type="hidden" name="backQuery" th:value="${backQuery}" />
+
+      <section class="pet-hero">
+        <div class="row1">
+          <span class="av lg" th:classappend="${petSpecies}" th:text="${petInitial}">豆</span>
+          <div style="flex:1;min-width:0">
+            <th:block th:if="${pet != null}">
+              <div class="nm" th:text="${pet.name}">豆豆</div>
+              <div class="meta">
+                <span th:if="${pet.breed != null}" th:text="${pet.breed}">柴犬</span>
+                <span class="num" th:if="${pet.weight != null}" th:text="(${pet.weight % 1 == 0} ? ${#numbers.formatInteger(pet.weight, 1)} : ${#numbers.formatDecimal(pet.weight, 1, 1)}) + ' kg'">13 kg</span>
+                <span th:if="${pet.coatType != null and pet.coatType.name() != 'UNDEFINED'}" th:text="${pet.coatTypeLabel}">中長毛</span>
+                <span th:if="${pet.catCoatCategoryLabel != null}" th:text="${pet.catCoatCategoryLabel}">雙層毛</span>
+              </div>
+              <input type="hidden" name="petName" th:value="${pet.name}" />
+            </th:block>
+            <th:block th:if="${pet == null}">
+              <div class="field" style="margin:0">
+                <input type="text" name="petName" maxlength="40" placeholder="毛孩名字（選填）" aria-label="毛孩名字" />
+              </div>
+            </th:block>
+          </div>
+        </div>
+        <div class="tags" th:if="${pet != null and pet.notes != null and !pet.notes.isEmpty()}">
+          <span class="tag warn" th:text="${pet.notes}">怕吹風機</span>
+        </div>
+      </section>
+
+      <div class="lock-box" th:if="${pet != null and pet.lockedGroomingItemId != null}"
+           id="lockBox" th:attr="data-pet-id=${pet.id}">
+        <svg class="i"><use href="#i-lock"/></svg>
+        <div class="t">
+          <small>已鎖定固定套餐，只顯示這一項</small>
+          <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
+        </div>
+        <button type="button" id="unlockBtn">解鎖重新報價</button>
+      </div>
+
+      <div class="section-h">
+        <h2>服務項目</h2>
+        <small th:if="${suggestedCode != null}">已幫你勾建議套餐</small>
+      </div>
+      <label class="pick" th:each="item : ${mainItems}">
+        <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
+               th:checked="${item.itemCode == suggestedCode}"
+               th:attr="data-price=${item.price != null ? item.price : 0},data-special=${item.performanceCategory == 'SPECIAL'}" />
+        <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
+        <span class="nm" th:text="${item.name}">精緻洗</span>
+        <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">900</span>
+      </label>
+
+      <details class="more-items" id="otherItems" th:unless="${otherItems.isEmpty()}">
+        <summary>其他加購（不計積分）<svg class="i"><use href="#i-chev"/></svg></summary>
+        <label class="pick" th:each="item : ${otherItems}">
+          <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"
+                 th:attr="data-price=${item.price != null ? item.price : 0}" />
+          <span class="box"><svg class="i"><use href="#i-check"/></svg></span>
+          <span class="nm" th:text="${item.name}">加購</span>
+          <span class="pr" th:text="${item.price != null ? #numbers.formatDecimal(item.price, 1, 'COMMA', 0, 'POINT') : '0'}">150</span>
+        </label>
+      </details>
+
+      <div class="field" style="margin-top:14px">
+        <label for="opSel">經手人（整張單）</label>
+        <select name="operatorStaffId" id="opSel">
+          <option value="">稍後補填</option>
+          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}"
+                  th:selected="${s.id == meId}">小芸</option>
+        </select>
+        <small>不同項目由不同人做的話，選「稍後補填」，開單後在明細逐項補</small>
+      </div>
+
+      <th:block th:unless="${retailProducts.isEmpty()}">
+        <div class="section-h"><h2>零售商品</h2><small>有庫存的商品</small></div>
+        <div class="qty-row" th:each="p : ${retailProducts}">
+          <input type="hidden" name="retailProductIds" th:value="${p.id}" />
+          <span class="nm"><span th:text="${p.name}">洗毛精</span><small class="num" th:text="${p.price} + ' 元，庫存 ' + ${p.stockQuantity}">450 元，庫存 8</small></span>
+          <span class="stepper">
+            <button type="button" class="js-minus" aria-label="減少">−</button>
+            <input type="number" name="retailQuantities" value="0" min="0" th:attr="max=${p.stockQuantity},data-price=${p.price}" inputmode="numeric" aria-label="數量" />
+            <button type="button" class="js-plus" aria-label="增加">＋</button>
+          </span>
+        </div>
+      </th:block>
+
+      <div class="section-h"><h2>備注</h2></div>
+      <div class="field">
+        <textarea name="note" maxlength="500" placeholder="選填，例如：家長 4 點來接"></textarea>
+      </div>
+    </form>
+  </main>
+
+  <div class="actionbar">
+    <div class="form-err" id="formErr" hidden>請至少選一個服務項目或零售商品</div>
+    <div class="total-row">
+      <div class="sum"><small id="countLabel">已選 0 項</small><b class="num" id="totalLabel">NT$ 0</b></div>
+      <button type="submit" form="orderForm" class="btn pri" id="submitBtn">開單</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById("orderForm");
+      var boxes = form.querySelectorAll("input[name=itemCodes]");
+      var qtys = form.querySelectorAll("input[name=retailQuantities]");
+      var other = document.getElementById("otherItems");
+      var err = document.getElementById("formErr");
+
+      function clampQty(q) {
+        var max = Number(q.getAttribute("max") || 999);
+        var v = Math.max(0, Math.min(max, parseInt(q.value, 10) || 0));
+        q.value = v;
+        var row = q.closest(".qty-row");
+        row.classList.toggle("has", v > 0);
+        row.querySelector(".js-minus").disabled = v <= 0;
+        row.querySelector(".js-plus").disabled = v >= max;
+        return v;
+      }
+      function refresh() {
+        var n = 0, sum = 0;
+        boxes.forEach(function (b) { if (b.checked) { n++; sum += Number(b.dataset.price || 0); } });
+        qtys.forEach(function (q) { var v = clampQty(q); if (v > 0) { n += v; sum += v * Number(q.dataset.price || 0); } });
+        document.getElementById("countLabel").textContent = "已選 " + n + " 項";
+        document.getElementById("totalLabel").textContent = "NT$ " + Math.round(sum).toLocaleString();
+        if (n > 0) err.hidden = true;
+        return n;
+      }
+      boxes.forEach(function (b) {
+        b.addEventListener("change", function () {
+          if (b.checked && b.dataset.special === "true" && other) other.open = true;
+          refresh();
+        });
+      });
+      qtys.forEach(function (q) {
+        var row = q.closest(".qty-row");
+        row.querySelector(".js-minus").addEventListener("click", function () { q.value = (parseInt(q.value, 10) || 0) - 1; refresh(); });
+        row.querySelector(".js-plus").addEventListener("click", function () { q.value = (parseInt(q.value, 10) || 0) + 1; refresh(); });
+        q.addEventListener("input", refresh);
+      });
+      refresh();
+
+      form.addEventListener("submit", function (e) {
+        if (refresh() === 0) { e.preventDefault(); err.hidden = false; return; }
+        var btn = document.getElementById("submitBtn");
+        btn.disabled = true;
+        btn.textContent = "開單中…";
+      });
+
+      var unlock = document.getElementById("unlockBtn");
+      if (unlock) {
+        unlock.addEventListener("click", function () {
+          if (!window.confirm("解鎖後會改回依體重、毛長重新篩選菜單，確定嗎？")) return;
+          unlock.disabled = true;
+          var petId = document.getElementById("lockBox").dataset.petId;
+          fetch("/api/admin/pets/" + encodeURIComponent(petId) + "/unlock-grooming-item", { method: "PUT" })
+            .then(function (res) {
+              return res.text().then(function (t) {
+                if (!res.ok) {
+                  var m = "解鎖失敗";
+                  try { m = JSON.parse(t).message || m; } catch (x) {}
+                  throw new Error(m);
+                }
+              });
+            })
+            .then(function () { location.reload(); })
+            .catch(function (e) { unlock.disabled = false; window.alert(e.message); });
+        });
+      }
+    })();
+  </script>
+</th:block>
+
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

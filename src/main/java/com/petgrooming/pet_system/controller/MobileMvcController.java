@@ -18,11 +18,13 @@ import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
+import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import com.petgrooming.pet_system.utils.CookieUtils;
@@ -59,6 +61,7 @@ import java.util.stream.Collectors;
  * 第一批：今日、更多、切換網頁版/手機版
  * 第二批：預約列表、預約詳情（確認／開始服務／結束服務／取消／確認匯款／退款）、到店開單
  * 第三批：核對（改項目、自訂金額加購、零售加購、備注、家長簽名）、結帳
+ * 第四批：核對、結帳樣板改成預約／現場單共用（現場單另見 MobileWalkInController）
  */
 @Controller
 @RequestMapping("/m")
@@ -78,6 +81,8 @@ public class MobileMvcController {
     private final GroomingMenuFilter groomingMenuFilter;
     private final PaymentService paymentService;
     private final WalletService walletService;
+    private final MobileViewHelper view;
+    private final WalkInOrderService walkInOrderService;
 
     @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
@@ -139,7 +144,28 @@ public class MobileMvcController {
                 .filter(p -> p.getStockQuantity() <= 5)
                 .count();
 
+        // 第四批：進行中（未結帳）的現場單，今日頁一併列出，方便接著做下一步
+        List<Map<String, Object>> openWalkIns = walkInOrderService.listAll().stream()
+                .filter(o -> !o.isPaid())
+                .limit(8)
+                .map(o -> {
+                    String title = o.getPetName() != null && !o.getPetName().isBlank() ? o.getPetName()
+                            : o.getMemberName() != null ? o.getMemberName() : "非會員";
+                    String stage = o.isPendingWireTransfer() ? "待對帳"
+                            : !o.isRequiresServiceFlow() || o.isFinalCheckDone() ? "待結帳"
+                            : !o.isServiceEndedDone() ? "服務中" : "待核對";
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", o.getId());
+                    m.put("title", title);
+                    m.put("initial", view.initial(title, "客"));
+                    m.put("sub", (o.getMemberName() != null ? o.getMemberName() : "非會員") + "，現場單 #" + o.getId());
+                    m.put("stageLabel", stage);
+                    return m;
+                })
+                .toList();
+
         model.addAttribute("user", user);
+        model.addAttribute("openWalkIns", openWalkIns);
         model.addAttribute("greeting", greeting(now));
         model.addAttribute("todayLabel", today.getMonthValue() + " 月 " + today.getDayOfMonth() + " 日 "
                 + weekdayLabel(today.getDayOfWeek()));
@@ -409,12 +435,17 @@ public class MobileMvcController {
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
         List<GroomingItemResponse> addable = groomingMenuFilter.filterFor(
                 groomingItemService.getAllItems(), isExisting, a.getPetType());
+        MobileAppointmentCard card = toCard(a, LocalDate.now());
 
         model.addAttribute("user", user);
-        model.addAttribute("a", a);
-        model.addAttribute("card", toCard(a, LocalDate.now()));
-        model.addAttribute("items", items);
-        model.addAttribute("itemsTotal", items.stream().mapToInt(com.petgrooming.pet_system.model.AppointmentItem::getPrice).sum());
+        // 核對頁樣板預約、現場單共用，網址前綴跟頁首資訊由 controller 決定
+        model.addAttribute("base", "/m/appointments/" + id);
+        model.addAttribute("backUrl", "/m/appointments/" + id);
+        model.addAttribute("subtitle", card.getPetName() + "，" + a.getOwnerName());
+        model.addAttribute("avSpecies", card.getSpecies());
+        model.addAttribute("avInitial", card.getPetInitial());
+        model.addAttribute("lines", view.fromAppointmentItems(items));
+        model.addAttribute("linesTotal", items.stream().mapToInt(com.petgrooming.pet_system.model.AppointmentItem::getPrice).sum());
         model.addAttribute("groomingItems", addable);
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
@@ -504,9 +535,8 @@ public class MobileMvcController {
 
         var detail = appointmentService.getAppointmentDetail(id, user.getUsername());
         var wallet = walletService.getWallet(a.getOwnerEmail());
-        int standardAmount = paymentService.previewStandardAmount(id);
-        int walletAmount = paymentService.previewWalletAmount(id);
         int balance = wallet.getBalance() == null ? 0 : wallet.getBalance();
+        int walletAmount = paymentService.previewWalletAmount(id);
         PetResponse pet = null;
         try {
             pet = appointmentService.getPetForAppointment(id);
@@ -514,27 +544,35 @@ public class MobileMvcController {
             // 找不到寵物檔案不影響結帳
         }
         // 可以鎖定成固定套餐的項目：狗狗、還沒鎖定、單子裡有帶體重級距的套餐項目
-        var lockable = (pet != null && "dog".equals(speciesKey(a.getPetType())) && pet.getLockedGroomingItemId() == null)
+        var lockable = (pet != null && "dog".equals(view.speciesKey(a.getPetType())) && pet.getLockedGroomingItemId() == null)
                 ? detail.getItems().stream()
                         .filter(it -> it.getGroomingItemId() != null && it.getDogWeightTier() != null)
                         .findFirst().orElse(null)
                 : null;
+        MobileAppointmentCard card = toCard(a, LocalDate.now());
 
         model.addAttribute("user", user);
-        model.addAttribute("a", a);
-        model.addAttribute("card", toCard(a, LocalDate.now()));
-        model.addAttribute("pet", pet);
-        model.addAttribute("detailItems", detail.getItems());
+        // 結帳頁樣板預約、現場單共用
+        model.addAttribute("base", "/m/appointments/" + id);
+        model.addAttribute("backUrl", "/m/appointments/" + id);
+        model.addAttribute("subtitle", card.getPetName() + "，" + a.getOwnerName());
+        model.addAttribute("avSpecies", card.getSpecies());
+        model.addAttribute("avInitial", card.getPetInitial());
+        model.addAttribute("lines", view.fromAppointmentDetail(detail.getItems()));
         model.addAttribute("baseAmount", detail.getTotalAmount());
-        model.addAttribute("standardAmount", standardAmount);
+        model.addAttribute("standardAmount", paymentService.previewStandardAmount(id));
         model.addAttribute("walletAmount", walletAmount);
         model.addAttribute("walletBalance", balance);
         model.addAttribute("walletEnough", balance >= walletAmount);
         model.addAttribute("walletDiscountLabel", wallet.isCardActive() && wallet.getDiscount() < 1.0
-                ? wallet.getCardTierLabel() + " " + formatDiscount(wallet.getDiscount()) : null);
+                ? wallet.getCardTierLabel() + " " + view.formatDiscount(wallet.getDiscount()) : null);
         model.addAttribute("bank", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive());
-        model.addAttribute("lockable", lockable);
+        if (lockable != null) {
+            model.addAttribute("lockPetId", pet.getId());
+            model.addAttribute("lockItemId", lockable.getGroomingItemId());
+            model.addAttribute("lockItemName", lockable.getName());
+        }
         model.addAttribute("activeTab", "appointments");
         return "m/checkout";
     }
@@ -645,12 +683,6 @@ public class MobileMvcController {
                 : "redirect:/m/appointments/" + id + "/checkout";
     }
 
-    // 0.9 → 9 折、0.85 → 85 折
-    private String formatDiscount(double d) {
-        int pct = (int) Math.round(d * 100);
-        return (pct % 10 == 0 ? String.valueOf(pct / 10) : String.valueOf(pct)) + " 折";
-    }
-
     // 只接受站內 /m/ 開頭的路徑，避免被帶去外部網站
     private String safeBack(String back, String fallback) {
         if (back != null && back.startsWith("/m/") && !back.contains("//") && !back.contains("\\")) {
@@ -753,13 +785,7 @@ public class MobileMvcController {
     }
 
     private String speciesKey(String petType) {
-        if ("DOG".equalsIgnoreCase(petType)) {
-            return "dog";
-        }
-        if ("CAT".equalsIgnoreCase(petType)) {
-            return "cat";
-        }
-        return "other";
+        return view.speciesKey(petType);
     }
 
     private String stateKey(AppointmentAdminResponse a) {

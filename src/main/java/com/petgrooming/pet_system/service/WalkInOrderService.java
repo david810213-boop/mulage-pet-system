@@ -801,6 +801,30 @@ public class WalkInOrderService {
         return result;
     }
 
+    // ── 需求（2026-09-24）：員工手機版現場單結帳頁的金額預覽 ────────────────
+    // 跟 PaymentService 的同名方法同樣做法：直接呼叫 checkout() 實際扣款用的
+    // 兩支計算方法，確保預覽金額跟實際結帳金額一致。純讀取，不寫入資料。
+
+    /** 現金／LINE Pay／匯款：只套首次體驗、回洗優惠，不套會員折扣 */
+    @Transactional
+    public int previewStandardAmount(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+        return calculateAmountWithRewashDiscount(order);
+    }
+
+    /** 儲值金：逐項目擇優套用首次體驗／回洗優惠／會員折扣；沒綁會員回傳 null（不能用儲值金） */
+    @Transactional
+    public Integer previewWalletAmount(Long orderId) {
+        WalkInOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+        if (order.getMember() == null) {
+            return null;
+        }
+        double discount = walletService.getWallet(order.getMember().getUsername()).getDiscount();
+        return calculateWalletAmountPerItem(order, discount);
+    }
+
     // ── 需求 5：現場單儲值金結帳金額計算，逐項目判斷是否可享折扣 ─────────
     // 用開單當下存的 discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
     // 需求 8 修正：貓咪回洗優惠（若有會員）與會員儲值折扣只能擇一，取較優惠者。

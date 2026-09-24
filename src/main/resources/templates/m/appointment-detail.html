@@ -132,48 +132,7 @@
   </form>
 </div>
 
-<!-- 狗狗結帳後的體重更新提醒（跟網頁版結帳後的彈窗同一套 API） -->
-<th:block th:if="${weightReminderPetId != null}">
-  <div class="sheet-dim" id="sheetDim"></div>
-  <section class="sheet" id="sheetWeight" role="dialog" aria-modal="true" aria-labelledby="hWeight"
-           th:attr="data-pet-id=${weightReminderPetId}">
-    <div class="grab"></div>
-    <h3 id="hWeight">記得更新體重</h3>
-    <p style="margin:0 0 14px;font-size:14px;color:var(--mute)">
-      <span th:text="${weightReminderPetName}">豆豆</span>的體重是下次開單自動篩選套餐的依據，跟家長確認一下最新體重。
-    </p>
-    <div class="field">
-      <label for="wInput">體重（kg）</label>
-      <input type="number" id="wInput" step="0.1" min="0.1" inputmode="decimal" th:value="${weightReminderCurrentWeight}" />
-    </div>
-    <div class="form-err" id="wErr" hidden></div>
-    <div class="btn-row">
-      <button type="button" class="btn sec" data-close-sheet>稍後再說</button>
-      <button type="button" class="btn pri" id="wSave">儲存體重</button>
-    </div>
-  </section>
-  <script th:replace="~{m/fragments/app :: sheets}"></script>
-  <script>
-    (function () {
-      var sheet = document.getElementById("sheetWeight");
-      window.mSheet.open("sheetWeight");
-      document.getElementById("wSave").addEventListener("click", function () {
-        var btn = this, err = document.getElementById("wErr");
-        var w = parseFloat(document.getElementById("wInput").value);
-        if (!w || w <= 0) { err.textContent = "請輸入有效的體重"; err.hidden = false; return; }
-        btn.disabled = true;
-        fetch("/api/admin/pets/" + encodeURIComponent(sheet.dataset.petId) + "/weight", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ weight: w })
-        }).then(function (res) {
-          if (!res.ok) throw new Error("更新失敗，請再試一次");
-          window.mSheet.close();
-        }).catch(function (e) { btn.disabled = false; err.textContent = e.message; err.hidden = false; });
-      });
-    })();
-  </script>
-</th:block>
+<th:block th:replace="~{m/fragments/app :: weightReminder}"></th:block>
 
 <script>
   // 需要二次確認的操作跳確認視窗；送出後按鈕鎖住，避免連點送出兩次

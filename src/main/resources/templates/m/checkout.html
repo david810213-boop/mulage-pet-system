@@ -1,37 +1,31 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
-<head th:replace="~{m/fragments/app :: head('結帳 · ' + ${card.petName})}"></head>
+<head th:replace="~{m/fragments/app :: head('結帳 · 慕沐村')}"></head>
 <body class="has-actionbar">
 <svg th:replace="~{m/fragments/app :: icons}"></svg>
 <th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
 
 <header class="topbar">
-  <a th:href="@{/m/appointments/{id}(id=${a.id})}" class="icon-btn" aria-label="回預約詳情"><svg class="i"><use href="#i-back"/></svg></a>
+  <a th:href="${backUrl}" class="icon-btn" aria-label="回上一頁"><svg class="i"><use href="#i-back"/></svg></a>
   <div style="flex:1">
     <div style="font-size:18px">結帳</div>
-    <div class="sub" th:text="${card.petName} + '，' + ${a.ownerName}">豆豆，陳小姐</div>
+    <div class="sub" th:text="${subtitle}">豆豆，陳小姐</div>
   </div>
-  <span class="av" th:classappend="${card.species}" th:text="${card.petInitial}">豆</span>
+  <span class="av" th:classappend="${avSpecies}" th:text="${avInitial}">豆</span>
 </header>
 
 <main class="wrap">
 
   <div class="section-h"><h2>消費明細</h2></div>
   <section class="panel">
-    <div class="line" th:each="it : ${detailItems}">
+    <div class="line" th:each="it : ${lines}">
       <span class="nm">
         <span th:text="${it.name}">中型犬-中長毛-精緻洗</span>
-        <small th:if="${it.retailItem}">零售商品，不打折</small>
-        <th:block th:unless="${it.retailItem}">
-          <small class="ok" th:if="${it.firstVisitEligible}">首次體驗 9 折</small>
-          <small class="ok" th:if="${!it.firstVisitEligible and it.rewashEligible}">回洗優惠 9 折</small>
-          <small th:if="${!it.firstVisitEligible and !it.rewashEligible and it.discountEligible}">儲值金付款可享會員折扣</small>
-          <small th:if="${!it.firstVisitEligible and !it.rewashEligible and !it.discountEligible}">原價</small>
-        </th:block>
+        <small th:if="${it.note != null}" th:classappend="${it.noteOk} ? 'ok'" th:text="${it.note}">首次體驗 9 折</small>
       </span>
       <span class="pr" th:text="${#numbers.formatInteger(it.price, 1, 'COMMA')}">900</span>
-      <form th:if="${it.itemId != null}" method="post"
-            th:action="@{/m/appointments/{id}/items/{itemId}/remove(id=${a.id},itemId=${it.itemId})}"
+      <form th:if="${it.id != null}" method="post"
+            th:action="${base} + '/items/' + ${it.id} + '/remove'"
             class="js-confirm" th:attr="data-confirm='要移除「' + ${it.name} + '」嗎？'">
         <input type="hidden" name="from" value="pay" />
         <button type="submit" class="x-btn" aria-label="移除"><svg class="i"><use href="#i-x"/></svg></button>
@@ -47,17 +41,17 @@
     <svg class="i"><use href="#i-bag"/></svg>加購零售商品
   </button>
 
-  <div class="lock-box" th:if="${lockable != null}" id="lockBox"
-       th:attr="data-pet-id=${pet.id},data-item-id=${lockable.groomingItemId}">
+  <div class="lock-box" th:if="${lockItemId != null}" id="lockBox"
+       th:attr="data-pet-id=${lockPetId},data-item-id=${lockItemId}">
     <svg class="i"><use href="#i-lock"/></svg>
     <div class="t">
       <small>這隻狗已經定型的話，可以鎖定成固定套餐</small>
-      <span th:text="${lockable.name}">中型犬-中長毛-精緻洗</span>
+      <span th:text="${lockItemName}">中型犬-中長毛-精緻洗</span>
     </div>
     <button type="button" id="lockBtn">鎖定</button>
   </div>
 
-  <form method="post" id="payForm" th:action="@{/m/appointments/{id}/checkout(id=${a.id})}">
+  <form method="post" id="payForm" th:action="${base} + '/checkout'">
     <div class="section-h"><h2>付款方式</h2></div>
 
     <label class="pay">
@@ -84,7 +78,7 @@
       <div>戶名 <b th:text="${bank.accountHolder}">慕沐村</b></div>
       <img th:if="${bank.qrCodeUrl != null}" th:src="${bank.qrCodeUrl}" alt="匯款 QR Code" />
     </div>
-    <label class="pay">
+    <label class="pay" th:if="${walletAmount != null}">
       <input type="radio" name="paymentMethod" value="WALLET" th:attr="data-amount=${walletAmount}" th:disabled="${!walletEnough}" />
       <span class="dot"></span>
       <span class="nm">儲值金
@@ -107,7 +101,7 @@
 <section class="sheet" id="sheetRetail" role="dialog" aria-modal="true" aria-labelledby="hRetail" th:unless="${retailProducts.isEmpty()}">
   <div class="grab"></div>
   <h3 id="hRetail">加購零售商品</h3>
-  <form method="post" th:action="@{/m/appointments/{id}/items/retail(id=${a.id})}" class="js-once">
+  <form method="post" th:action="${base} + '/items/retail'" class="js-once">
     <input type="hidden" name="from" value="pay" />
     <div class="field">
       <label for="rItem">商品</label>

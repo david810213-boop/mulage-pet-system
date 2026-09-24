@@ -35,17 +35,21 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
     public static final String VIEW_MODE_COOKIE = "VIEW_MODE";
 
     // 網頁版路徑 → 手機版路徑。之後每做完一批手機版頁面，就在這裡補上對照。
-    // 第一批：Dashboard → 今日；第二批：預約列表 → 手機版預約列表
+    // 第一批：Dashboard → 今日；第二批：預約列表 → 手機版預約列表；第四批：現場開單
     // （網頁版核對、結帳完成後會導回 /appointments，手機上就會自動回到手機版列表）
     private static final Map<String, String> DESKTOP_TO_MOBILE = Map.of(
             "/dashboard", "/m/",
-            "/appointments", "/m/appointments");
+            "/appointments", "/m/appointments",
+            "/admin/walk-in-orders", "/m/walk-in"); // 第四批：現場開單
 
     // 第三批：帶預約編號的流程頁面，用 {1} 代入網址裡的預約 id
     private static final List<Map.Entry<Pattern, String>> PATTERN_TO_MOBILE = List.of(
             Map.entry(Pattern.compile("^/appointments/(\\d+)/checkin-order$"), "/m/appointments/{1}/checkin"),
             Map.entry(Pattern.compile("^/appointments/(\\d+)/final-check$"), "/m/appointments/{1}/final-check"),
-            Map.entry(Pattern.compile("^/payments/checkout/(\\d+)$"), "/m/appointments/{1}/checkout"));
+            Map.entry(Pattern.compile("^/payments/checkout/(\\d+)$"), "/m/appointments/{1}/checkout"),
+            // 第四批：現場單
+            Map.entry(Pattern.compile("^/admin/walk-in-orders/(\\d+)/final-check$"), "/m/walk-in/{1}/final-check"),
+            Map.entry(Pattern.compile("^/admin/walk-in-orders/(\\d+)/checkout$"), "/m/walk-in/{1}/checkout"));
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request,

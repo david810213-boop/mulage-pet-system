@@ -7,6 +7,7 @@
   toasts：操作結果提示（toast / toastError，以及從網頁版轉過來的 successMsg / errorMsg）
   tabs(active)：底部分頁列，active 傳 today / appointments / pets / more
   sheets：底部抽屜開關（data-open-sheet / data-close-sheet）
+  weightReminder：狗狗結帳後的體重更新提醒抽屜（有 weightReminderPetId 才顯示）
   pwa：註冊 service worker
 -->
 <head th:fragment="head(title)">
@@ -24,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/staff-app.css?v=3" />
+  <link rel="stylesheet" href="/css/staff-app.css?v=4" />
 </head>
 <body>
 
@@ -70,7 +71,7 @@
 <nav th:fragment="tabs(active)" class="tabs" aria-label="主選單">
   <a href="/m/" class="t" th:classappend="${active == 'today'} ? 'on'"><svg class="i"><use href="#i-home"/></svg>今日</a>
   <a href="/m/appointments" class="t" th:classappend="${active == 'appointments'} ? 'on'"><svg class="i"><use href="#i-cal"/></svg>預約</a>
-  <a href="/admin/walk-in-orders" class="fab" aria-label="現場開單"><svg class="i"><use href="#i-plus"/></svg></a>
+  <a href="/m/walk-in/new" class="fab" aria-label="現場開單"><svg class="i"><use href="#i-plus"/></svg></a>
   <a href="/admin/pet-database" class="t" th:classappend="${active == 'pets'} ? 'on'"><svg class="i"><use href="#i-paw"/></svg>毛孩</a>
   <a href="/m/more" class="t" th:classappend="${active == 'more'} ? 'on'"><svg class="i"><use href="#i-grid"/></svg>更多</a>
 </nav>
@@ -104,6 +105,49 @@
     window.mSheet = { open: open, close: closeAll };
   })();
 </script>
+
+<!-- 狗狗結帳後的體重更新提醒（跟網頁版結帳後的彈窗同一套 API） -->
+<th:block th:fragment="weightReminder" th:if="${weightReminderPetId != null}">
+  <div class="sheet-dim" id="sheetDim"></div>
+  <section class="sheet" id="sheetWeight" role="dialog" aria-modal="true" aria-labelledby="hWeight"
+           th:attr="data-pet-id=${weightReminderPetId}">
+    <div class="grab"></div>
+    <h3 id="hWeight">記得更新體重</h3>
+    <p style="margin:0 0 14px;font-size:14px;color:var(--mute)">
+      <span th:text="${weightReminderPetName}">豆豆</span>的體重是下次開單自動篩選套餐的依據，跟家長確認一下最新體重。
+    </p>
+    <div class="field">
+      <label for="wInput">體重（kg）</label>
+      <input type="number" id="wInput" step="0.1" min="0.1" inputmode="decimal" th:value="${weightReminderCurrentWeight}" />
+    </div>
+    <div class="form-err" id="wErr" hidden></div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>稍後再說</button>
+      <button type="button" class="btn pri" id="wSave">儲存體重</button>
+    </div>
+  </section>
+  <script th:replace="~{m/fragments/app :: sheets}"></script>
+  <script>
+    (function () {
+      var sheet = document.getElementById("sheetWeight");
+      window.mSheet.open("sheetWeight");
+      document.getElementById("wSave").addEventListener("click", function () {
+        var btn = this, err = document.getElementById("wErr");
+        var w = parseFloat(document.getElementById("wInput").value);
+        if (!w || w <= 0) { err.textContent = "請輸入有效的體重"; err.hidden = false; return; }
+        btn.disabled = true;
+        fetch("/api/admin/pets/" + encodeURIComponent(sheet.dataset.petId) + "/weight", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ weight: w })
+        }).then(function (res) {
+          if (!res.ok) throw new Error("更新失敗，請再試一次");
+          window.mSheet.close();
+        }).catch(function (e) { btn.disabled = false; err.textContent = e.message; err.hidden = false; });
+      });
+    })();
+  </script>
+</th:block>
 
 <script th:fragment="pwa">
   if ("serviceWorker" in navigator) {

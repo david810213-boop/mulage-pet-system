@@ -68,6 +68,21 @@
     <div class="now" th:if="${nowIndex == todayCards.size()}" aria-label="現在時間"><span class="t" th:text="${nowLabel}">13:10</span><i></i></div>
   </div>
 
+  <div th:unless="${openWalkIns.isEmpty()}">
+    <div class="section-h">
+      <h2>進行中的現場單</h2>
+      <small><a href="/m/walk-in" style="color:var(--forest)">全部</a></small>
+    </div>
+    <a th:each="w : ${openWalkIns}" class="card" th:href="@{/m/walk-in/{id}(id=${w.id})}">
+      <span class="av" th:text="${w.initial}">豆</span>
+      <span class="main">
+        <span class="nm" th:text="${w.title}">豆豆</span>
+        <span class="sb" style="display:block" th:text="${w.sub}">陳小姐，現場單 #12</span>
+      </span>
+      <span class="pill ok" th:text="${w.stageLabel}">服務中</span>
+    </a>
+  </div>
+
   <div id="pending" th:unless="${upcomingPending.isEmpty()}">
     <div class="section-h">
       <h2>之後的待確認</h2>

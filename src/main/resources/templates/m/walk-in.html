@@ -1,0 +1,43 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('現場單 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <h1>現場單</h1>
+  <a href="/m/walk-in/new" class="icon-btn" aria-label="開新單"><svg class="i"><use href="#i-plus"/></svg></a>
+</header>
+
+<main class="wrap">
+  <div class="group-h"><span>未結帳</span><span th:text="${openOrders.size()} + ' 筆'">2 筆</span></div>
+  <div class="empty" th:if="${openOrders.isEmpty()}">目前沒有進行中的現場單。</div>
+  <a th:each="r : ${openOrders}" class="card" th:href="@{/m/walk-in/{id}(id=${r.id})}">
+    <span class="av" th:text="${r.initial}">豆</span>
+    <span class="main">
+      <span class="nm" th:text="${r.title}">豆豆</span>
+      <span class="sb" style="display:block" th:text="${r.createdAt} + '，' + ${r.sub}">9/25 10:12，陳小姐，精緻洗</span>
+    </span>
+    <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <span class="stage" th:classappend="${r.stage}" th:text="${r.stageLabel}">服務中</span>
+      <span class="stage cancelled" th:if="${r.pendingOperator}">待補經手人</span>
+    </span>
+  </a>
+
+  <div class="group-h"><span>今天已結帳</span><span th:text="${doneToday.size()} + ' 筆'">3 筆</span></div>
+  <div class="empty" th:if="${doneToday.isEmpty()}">今天還沒有結帳的現場單。</div>
+  <a th:each="r : ${doneToday}" class="card" th:href="@{/m/walk-in/{id}(id=${r.id})}">
+    <span class="av" th:text="${r.initial}">糖</span>
+    <span class="main">
+      <span class="nm" th:text="${r.title}">糖糖</span>
+      <span class="sb" style="display:block" th:text="${r.time} + '，' + ${r.sub}">11:30，林小姐，精緻洗</span>
+    </span>
+    <span class="num" style="font-size:15px" th:text="${#numbers.formatInteger(r.amount, 1, 'COMMA')}">1,200</span>
+  </a>
+</main>
+
+<nav th:replace="~{m/fragments/app :: tabs('walkin')}"></nav>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>
