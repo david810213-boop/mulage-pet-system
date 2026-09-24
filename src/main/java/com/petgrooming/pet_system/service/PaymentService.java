@@ -530,6 +530,28 @@ public class PaymentService {
         cloudinaryService.deleteQuietly(oldPublicId);
     }
 
+    // ── 需求（2026-09-24）：員工手機版結帳頁的金額預覽 ─────────────────────
+    // 直接呼叫 checkout() 實際扣款用的同兩支計算方法，確保畫面上的預覽金額
+    // 跟實際結帳金額一定一致，不另外在 controller 重算一份。純讀取，不寫入資料。
+
+    /** 現金／LINE Pay／匯款：只套首次體驗、回洗優惠，不套會員折扣 */
+    @Transactional
+    public int previewStandardAmount(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new PaymentException("找不到該預約"));
+        return com.petgrooming.pet_system.enums.PaymentMethod.CASH
+                .calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
+    }
+
+    /** 儲值金：逐項目擇優套用首次體驗／回洗優惠／會員折扣 */
+    @Transactional
+    public int previewWalletAmount(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new PaymentException("找不到該預約"));
+        double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
+        return calculateWalletAmountPerItem(appointment, discount);
+    }
+
     // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────
     // 優先用現場開單（依預約編號）的實際項目；沒有的話退回顧客線上勾選的項目。
     // 需求 8-1 修正：回洗優惠與會員折扣只能擇一（取較優惠者），不再疊加相乘。

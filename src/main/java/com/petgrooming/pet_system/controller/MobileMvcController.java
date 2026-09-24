@@ -3,10 +3,15 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
+import com.petgrooming.pet_system.dto.CheckoutRequest;
+import com.petgrooming.pet_system.dto.FinalCheckRequest;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.MobileAppointmentCard;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
+import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.model.GroomingItem;
@@ -18,6 +23,7 @@ import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import com.petgrooming.pet_system.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,6 +58,7 @@ import java.util.stream.Collectors;
  *
  * 第一批：今日、更多、切換網頁版/手機版
  * 第二批：預約列表、預約詳情（確認／開始服務／結束服務／取消／確認匯款／退款）、到店開單
+ * 第三批：核對（改項目、自訂金額加購、零售加購、備注、家長簽名）、結帳
  */
 @Controller
 @RequestMapping("/m")
@@ -70,6 +77,7 @@ public class MobileMvcController {
     private final GroomingService groomingItemService;
     private final GroomingMenuFilter groomingMenuFilter;
     private final PaymentService paymentService;
+    private final WalletService walletService;
 
     @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
@@ -381,6 +389,198 @@ public class MobileMvcController {
         }
     }
 
+    // ── 核對：跟家長確認本次項目與金額、填美容狀況備注、家長簽名 ─────────
+    @GetMapping("/appointments/{id}/final-check")
+    public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        AppointmentAdminResponse a = findAppointment(id);
+        if (a == null || a.isCancelled()) {
+            return "redirect:/m/appointments";
+        }
+        if (a.isFinalCheckDone() || a.getStatus() != AppointmentStatus.IN_PROGRESS || !a.isServiceEndedDone()) {
+            return "redirect:/m/appointments/" + id;
+        }
+        List<com.petgrooming.pet_system.model.AppointmentItem> items = appointmentService.getCheckinItems(id);
+        // 跟網頁版核對頁同一套：只篩「僅限既有客戶」＋「適用物種」，不篩體型，
+        // 讓店員現場可以補任何尺寸的項目
+        boolean isExisting = appointmentService.isExistingCustomerPet(id);
+        List<GroomingItemResponse> addable = groomingMenuFilter.filterFor(
+                groomingItemService.getAllItems(), isExisting, a.getPetType());
+
+        model.addAttribute("user", user);
+        model.addAttribute("a", a);
+        model.addAttribute("card", toCard(a, LocalDate.now()));
+        model.addAttribute("items", items);
+        model.addAttribute("itemsTotal", items.stream().mapToInt(com.petgrooming.pet_system.model.AppointmentItem::getPrice).sum());
+        model.addAttribute("groomingItems", addable);
+        model.addAttribute("retailProducts", retailProductService.listActive());
+        model.addAttribute("performanceCategories", PerformanceCategory.values());
+        model.addAttribute("activeTab", "appointments");
+        return "m/final-check";
+    }
+
+    @PostMapping("/appointments/{id}/final-check")
+    public String finalCheckSubmit(@PathVariable Long id,
+            @RequestParam(required = false) String note,
+            @RequestParam(required = false) String signatureData,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        try {
+            FinalCheckRequest req = new FinalCheckRequest();
+            req.setNote(note);
+            req.setSignatureData(signatureData);
+            appointmentService.finalCheck(id, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "FINAL_CHECK", "預約 #" + id,
+                    (note == null ? "" : note) + "（手機版）");
+            redirectAttributes.addFlashAttribute("toast", "核對完成，可以結帳了");
+            return "redirect:/m/appointments/" + id + "/checkout";
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("toastError", e.getMessage());
+            redirectAttributes.addFlashAttribute("draftNote", note);
+            return "redirect:/m/appointments/" + id + "/final-check";
+        }
+    }
+
+    // ── 核對／結帳頁共用：改項目 ───────────────────────────────────────
+    // from=check 回核對頁，其他回結帳頁（跟網頁版 redirectAfterEdit 同樣的做法）
+    @PostMapping("/appointments/{id}/items/grooming")
+    public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
+            @RequestParam(required = false) Integer customPrice,
+            @RequestParam(defaultValue = "check") String from,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return editItems(id, from, request, redirectAttributes, "已加入項目",
+                user -> appointmentService.addGroomingItem(id, groomingItemId, customPrice, user.getUsername()));
+    }
+
+    @PostMapping("/appointments/{id}/items/custom")
+    public String addCustomItem(@PathVariable Long id, @RequestParam String itemName,
+            @RequestParam int price,
+            @RequestParam(required = false) PerformanceCategory category,
+            @RequestParam(defaultValue = "check") String from,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return editItems(id, from, request, redirectAttributes, "已加入「" + itemName + "」",
+                user -> appointmentService.addCustomItem(id, itemName, price, category, user.getUsername()));
+    }
+
+    @PostMapping("/appointments/{id}/items/retail")
+    public String addRetailItem(@PathVariable Long id, @RequestParam Long retailProductId,
+            @RequestParam(defaultValue = "1") int quantity,
+            @RequestParam(defaultValue = "check") String from,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return editItems(id, from, request, redirectAttributes, "已加入商品",
+                user -> appointmentService.addRetailItem(id, retailProductId, quantity, user.getUsername()));
+    }
+
+    @PostMapping("/appointments/{id}/items/{itemId}/remove")
+    public String removeItem(@PathVariable Long id, @PathVariable Long itemId,
+            @RequestParam(defaultValue = "check") String from,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return editItems(id, from, request, redirectAttributes, "已移除項目",
+                user -> appointmentService.removeItem(id, itemId, user.getUsername()));
+    }
+
+    // ── 結帳 ────────────────────────────────────────────────────────────
+    @GetMapping("/appointments/{id}/checkout")
+    public String checkoutForm(@PathVariable Long id, HttpServletRequest request, Model model) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        AppointmentAdminResponse a = findAppointment(id);
+        if (a == null || a.isCancelled()) {
+            return "redirect:/m/appointments";
+        }
+        boolean canCheckout = !a.isPaid() && !a.isPendingWireTransfer()
+                && (a.getStatus() != AppointmentStatus.IN_PROGRESS || a.isFinalCheckDone());
+        if (!canCheckout) {
+            return "redirect:/m/appointments/" + id;
+        }
+
+        var detail = appointmentService.getAppointmentDetail(id, user.getUsername());
+        var wallet = walletService.getWallet(a.getOwnerEmail());
+        int standardAmount = paymentService.previewStandardAmount(id);
+        int walletAmount = paymentService.previewWalletAmount(id);
+        int balance = wallet.getBalance() == null ? 0 : wallet.getBalance();
+        PetResponse pet = null;
+        try {
+            pet = appointmentService.getPetForAppointment(id);
+        } catch (IllegalArgumentException e) {
+            // 找不到寵物檔案不影響結帳
+        }
+        // 可以鎖定成固定套餐的項目：狗狗、還沒鎖定、單子裡有帶體重級距的套餐項目
+        var lockable = (pet != null && "dog".equals(speciesKey(a.getPetType())) && pet.getLockedGroomingItemId() == null)
+                ? detail.getItems().stream()
+                        .filter(it -> it.getGroomingItemId() != null && it.getDogWeightTier() != null)
+                        .findFirst().orElse(null)
+                : null;
+
+        model.addAttribute("user", user);
+        model.addAttribute("a", a);
+        model.addAttribute("card", toCard(a, LocalDate.now()));
+        model.addAttribute("pet", pet);
+        model.addAttribute("detailItems", detail.getItems());
+        model.addAttribute("baseAmount", detail.getTotalAmount());
+        model.addAttribute("standardAmount", standardAmount);
+        model.addAttribute("walletAmount", walletAmount);
+        model.addAttribute("walletBalance", balance);
+        model.addAttribute("walletEnough", balance >= walletAmount);
+        model.addAttribute("walletDiscountLabel", wallet.isCardActive() && wallet.getDiscount() < 1.0
+                ? wallet.getCardTierLabel() + " " + formatDiscount(wallet.getDiscount()) : null);
+        model.addAttribute("bank", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("retailProducts", retailProductService.listActive());
+        model.addAttribute("lockable", lockable);
+        model.addAttribute("activeTab", "appointments");
+        return "m/checkout";
+    }
+
+    @PostMapping("/appointments/{id}/checkout")
+    public String checkoutSubmit(@PathVariable Long id,
+            @RequestParam(required = false) PaymentMethod paymentMethod,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        if (paymentMethod == null || paymentMethod == PaymentMethod.CREDIT_CARD) {
+            redirectAttributes.addFlashAttribute("toastError", "請選擇付款方式");
+            return "redirect:/m/appointments/" + id + "/checkout";
+        }
+        try {
+            CheckoutRequest req = new CheckoutRequest();
+            req.setPaymentMethod(paymentMethod);
+            var result = paymentService.checkout(id, req, user.getUsername());
+            operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + id,
+                    paymentMethod.name() + "（手機版）");
+
+            // 跟網頁版一樣：狗狗還沒鎖定固定套餐的話，結帳完提醒更新體重
+            try {
+                PetResponse pet = appointmentService.getPetForAppointment(id);
+                if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
+                        && pet.getLockedGroomingItemId() == null) {
+                    redirectAttributes.addFlashAttribute("weightReminderPetId", pet.getId());
+                    redirectAttributes.addFlashAttribute("weightReminderPetName", pet.getName());
+                    redirectAttributes.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
+                }
+            } catch (IllegalArgumentException ignore) {
+                // 提醒只是輔助功能，找不到寵物就不提醒
+            }
+
+            redirectAttributes.addFlashAttribute("toast", result.isPaid()
+                    ? "結帳完成"
+                    : "已送出，等收到匯款後記得按「確認已收到匯款」");
+            return "redirect:/m/appointments/" + id;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("toastError", "結帳失敗：" + e.getMessage());
+            return "redirect:/m/appointments/" + id + "/checkout";
+        }
+    }
+
     // ── 更多（全部功能入口）──────────────────────────────────────────────
     @GetMapping("/more")
     public String more(HttpServletRequest request, Model model) {
@@ -425,6 +625,30 @@ public class MobileMvcController {
             redirectAttributes.addFlashAttribute("toastError", "操作失敗：" + e.getMessage());
         }
         return "redirect:" + safeBack(back, "/m/appointments/" + id);
+    }
+
+    // 改項目類操作共用：執行後依 from 回到核對頁或結帳頁
+    private String editItems(Long id, String from, HttpServletRequest request,
+            RedirectAttributes redirectAttributes, String okMsg, StaffAction action) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        try {
+            action.run(user);
+            redirectAttributes.addFlashAttribute("toast", okMsg);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("toastError", e.getMessage());
+        }
+        return "check".equals(from)
+                ? "redirect:/m/appointments/" + id + "/final-check"
+                : "redirect:/m/appointments/" + id + "/checkout";
+    }
+
+    // 0.9 → 9 折、0.85 → 85 折
+    private String formatDiscount(double d) {
+        int pct = (int) Math.round(d * 100);
+        return (pct % 10 == 0 ? String.valueOf(pct / 10) : String.valueOf(pct)) + " 折";
     }
 
     // 只接受站內 /m/ 開頭的路徑，避免被帶去外部網站

@@ -1,0 +1,264 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('核對 · ' + ${card.petName})}"></head>
+<body class="has-actionbar">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a th:href="@{/m/appointments/{id}(id=${a.id})}" class="icon-btn" aria-label="回預約詳情"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">核對</div>
+    <div class="sub" th:text="${card.petName} + '，' + ${a.ownerName}">豆豆，陳小姐</div>
+  </div>
+  <span class="av" th:classappend="${card.species}" th:text="${card.petInitial}">豆</span>
+</header>
+
+<main class="wrap">
+
+  <div class="section-h">
+    <h2>本次項目</h2>
+    <small>請跟家長一起確認</small>
+  </div>
+  <section class="panel">
+    <div class="line" th:if="${items.isEmpty()}">
+      <span class="nm" style="color:var(--coral-ink)">還沒有開單項目，請先加入項目</span>
+    </div>
+    <div class="line" th:each="it : ${items}">
+      <span class="nm">
+        <span th:text="${it.itemName}">中型犬-中長毛-精緻洗</span>
+        <small th:if="${it.retailProductId != null}">零售商品</small>
+      </span>
+      <span class="pr" th:text="${#numbers.formatInteger(it.price, 1, 'COMMA')}">900</span>
+      <form method="post" th:action="@{/m/appointments/{id}/items/{itemId}/remove(id=${a.id},itemId=${it.id})}"
+            class="js-confirm" th:attr="data-confirm='要移除「' + ${it.itemName} + '」嗎？'">
+        <input type="hidden" name="from" value="check" />
+        <button type="submit" class="x-btn" aria-label="移除"><svg class="i"><use href="#i-x"/></svg></button>
+      </form>
+    </div>
+    <div class="line sum" th:unless="${items.isEmpty()}">
+      <span class="nm">合計（未含優惠）</span>
+      <span class="pr" th:text="'NT$ ' + ${#numbers.formatInteger(itemsTotal, 1, 'COMMA')}">NT$ 1,350</span>
+    </div>
+  </section>
+
+  <div class="add-row">
+    <button type="button" data-open-sheet="sheetGrooming"><svg class="i"><use href="#i-plus"/></svg>服務項目</button>
+    <button type="button" data-open-sheet="sheetCustom"><svg class="i"><use href="#i-pen"/></svg>自訂金額</button>
+    <button type="button" data-open-sheet="sheetRetail" th:disabled="${retailProducts.isEmpty()}"><svg class="i"><use href="#i-bag"/></svg>零售商品</button>
+  </div>
+
+  <form method="post" id="checkForm" th:action="@{/m/appointments/{id}/final-check(id=${a.id})}">
+    <div class="section-h"><h2>美容狀況備注</h2></div>
+    <div class="field">
+      <textarea name="note" id="noteInput" maxlength="1000" required
+                placeholder="例如：耳朵有點紅，建議觀察；指甲已修短；結毛處理 2 處"
+                th:text="${draftNote}"></textarea>
+      <small>會存進毛孩的美容紀錄，下次服務可以參考</small>
+    </div>
+
+    <div class="section-h"><h2>家長簽名</h2></div>
+    <div class="sign" id="signBox">
+      <div class="base"></div>
+      <div class="ph" id="signPh">請家長在這裡簽名</div>
+      <canvas id="signPad" aria-label="簽名板"></canvas>
+    </div>
+    <div class="sign-tools">
+      <span>簽名代表家長已確認以上項目與金額</span>
+      <button type="button" id="signClear">清除重簽</button>
+    </div>
+    <input type="hidden" name="signatureData" id="signatureData" />
+  </form>
+</main>
+
+<div class="actionbar">
+  <div class="hint" id="checkHint">填寫備注並請家長簽名後即可送出</div>
+  <div class="btn-row">
+    <button type="submit" form="checkForm" class="btn pri" id="checkSubmit" disabled>完成核對，前往結帳</button>
+  </div>
+</div>
+
+<!-- 抽屜：加入服務項目 -->
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetGrooming" role="dialog" aria-modal="true" aria-labelledby="hGrooming">
+  <div class="grab"></div>
+  <h3 id="hGrooming">加入服務項目</h3>
+  <form method="post" th:action="@{/m/appointments/{id}/items/grooming(id=${a.id})}" class="js-once">
+    <input type="hidden" name="from" value="check" />
+    <div class="field">
+      <label for="gItem">項目</label>
+      <select name="groomingItemId" id="gItem" required>
+        <option th:each="g : ${groomingItems}" th:value="${g.id}"
+                th:text="${g.name} + '（' + ${g.price != null ? #numbers.formatDecimal(g.price, 1, 'COMMA', 0, 'POINT') : '0'} + '）'">精緻洗（900）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="gPrice">自訂價格</label>
+      <input type="number" name="customPrice" id="gPrice" min="0" inputmode="numeric" placeholder="留空就用原價" />
+      <small>價格浮動的項目（例如剪毛）才需要填；積分照項目原本設定計算</small>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">加入</button>
+    </div>
+  </form>
+</section>
+
+<!-- 抽屜：自訂金額加購 -->
+<section class="sheet" id="sheetCustom" role="dialog" aria-modal="true" aria-labelledby="hCustom">
+  <div class="grab"></div>
+  <h3 id="hCustom">自訂金額加購</h3>
+  <form method="post" th:action="@{/m/appointments/{id}/items/custom(id=${a.id})}" class="js-once">
+    <input type="hidden" name="from" value="check" />
+    <div class="field">
+      <label for="cName">項目名稱</label>
+      <input type="text" name="itemName" id="cName" required maxlength="60" placeholder="高階定制調理（厚毛加價）" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="cPrice">金額</label>
+        <input type="number" name="price" id="cPrice" required min="0" inputmode="numeric" placeholder="300" />
+      </div>
+      <div class="field">
+        <label for="cCat">積分分類</label>
+        <select name="category" id="cCat">
+          <option value="">不計積分</option>
+          <option th:each="c : ${performanceCategories}" th:if="${c.name() != 'OTHER'}"
+                  th:value="${c.name()}" th:text="${c.label}">剪毛</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">加入</button>
+    </div>
+  </form>
+</section>
+
+<!-- 抽屜：零售商品 -->
+<section class="sheet" id="sheetRetail" role="dialog" aria-modal="true" aria-labelledby="hRetail">
+  <div class="grab"></div>
+  <h3 id="hRetail">加購零售商品</h3>
+  <form method="post" th:action="@{/m/appointments/{id}/items/retail(id=${a.id})}" class="js-once">
+    <input type="hidden" name="from" value="check" />
+    <div class="field">
+      <label for="rItem">商品</label>
+      <select name="retailProductId" id="rItem" required>
+        <option th:each="p : ${retailProducts}" th:value="${p.id}"
+                th:text="${p.name} + '（' + ${p.price} + '，庫存 ' + ${p.stockQuantity} + '）'">洗毛精（450，庫存 8）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="rQty">數量</label>
+      <input type="number" name="quantity" id="rQty" value="1" min="1" inputmode="numeric" required />
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">加入</button>
+    </div>
+  </form>
+</section>
+
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    // 送出前確認／防連點（移除項目、抽屜裡的新增表單）
+    document.querySelectorAll("form.js-confirm, form.js-once").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        if (f.dataset.confirm && !window.confirm(f.dataset.confirm)) { e.preventDefault(); return; }
+        var b = f.querySelector("button[type=submit]");
+        if (b) b.disabled = true;
+      });
+    });
+
+    // ── 家長簽名板 ──
+    var canvas = document.getElementById("signPad");
+    var box = document.getElementById("signBox");
+    var ph = document.getElementById("signPh");
+    var hidden = document.getElementById("signatureData");
+    var note = document.getElementById("noteInput");
+    var submit = document.getElementById("checkSubmit");
+    var hint = document.getElementById("checkHint");
+    var ctx = canvas.getContext("2d");
+    var drawing = false, strokes = 0, lastW = 0;
+
+    function setup() {
+      var r = canvas.getBoundingClientRect();
+      if (!r.width || r.width === lastW) return;
+      // 寬度變了（例如轉橫向）就重設畫布；已經簽的會清掉，請家長重簽
+      lastW = r.width;
+      var ratio = window.devicePixelRatio || 1;
+      canvas.width = r.width * ratio;
+      canvas.height = r.height * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#1b2e26";
+      clearPad();
+    }
+    function pos(e) {
+      var r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+    function clearPad() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokes = 0;
+      hidden.value = "";
+      ph.hidden = false;
+      box.classList.remove("signed");
+      update();
+    }
+    canvas.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      canvas.setPointerCapture(e.pointerId);
+      drawing = true;
+      ph.hidden = true;
+      var p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + 0.1, p.y + 0.1);
+      ctx.stroke();
+    });
+    canvas.addEventListener("pointermove", function (e) {
+      if (!drawing) return;
+      e.preventDefault();
+      var p = pos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    });
+    function end() {
+      if (!drawing) return;
+      drawing = false;
+      strokes++;
+      box.classList.add("signed");
+      hidden.value = canvas.toDataURL("image/png");
+      update();
+    }
+    canvas.addEventListener("pointerup", end);
+    canvas.addEventListener("pointercancel", end);
+    document.getElementById("signClear").addEventListener("click", clearPad);
+
+    function update() {
+      var hasNote = note.value.trim().length > 0;
+      var signed = strokes > 0;
+      submit.disabled = !(hasNote && signed);
+      hint.textContent = !hasNote && !signed ? "填寫備注並請家長簽名後即可送出"
+        : !hasNote ? "還差美容狀況備注"
+        : !signed ? "還差家長簽名"
+        : "確認無誤就可以送出";
+    }
+    note.addEventListener("input", update);
+    window.addEventListener("resize", setup);
+    setup();
+
+    document.getElementById("checkForm").addEventListener("submit", function (e) {
+      if (submit.disabled) { e.preventDefault(); return; }
+      submit.disabled = true;
+      submit.textContent = "送出中…";
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

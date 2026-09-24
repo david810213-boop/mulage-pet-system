@@ -135,9 +135,13 @@
       form.style.display = isPending ? "flex" : "none";
       form.action = "/m/appointments/" + encodeURIComponent(d.id) + "/confirm";
       document.getElementById("sheetWeb").href = "/m/appointments/" + encodeURIComponent(d.id);
+      document.getElementById("sheet").classList.add("open");
       body.classList.add("sheet-open");
     }
-    function closeSheet() { body.classList.remove("sheet-open"); }
+    function closeSheet() {
+      document.getElementById("sheet").classList.remove("open");
+      body.classList.remove("sheet-open");
+    }
 
     document.querySelectorAll(".js-appt").forEach(function (el) {
       el.addEventListener("click", function () { openSheet(el.dataset); });

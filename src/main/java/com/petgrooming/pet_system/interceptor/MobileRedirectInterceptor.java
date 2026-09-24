@@ -9,7 +9,10 @@ import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.support.RequestContextUtils;
 
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 員工手機版自動導向（需求，2026-09-24）。
@@ -38,6 +41,12 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
             "/dashboard", "/m/",
             "/appointments", "/m/appointments");
 
+    // 第三批：帶預約編號的流程頁面，用 {1} 代入網址裡的預約 id
+    private static final List<Map.Entry<Pattern, String>> PATTERN_TO_MOBILE = List.of(
+            Map.entry(Pattern.compile("^/appointments/(\\d+)/checkin-order$"), "/m/appointments/{1}/checkin"),
+            Map.entry(Pattern.compile("^/appointments/(\\d+)/final-check$"), "/m/appointments/{1}/final-check"),
+            Map.entry(Pattern.compile("^/payments/checkout/(\\d+)$"), "/m/appointments/{1}/checkout"));
+
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
@@ -46,7 +55,7 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
         if (!"GET".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        String target = DESKTOP_TO_MOBILE.get(request.getRequestURI());
+        String target = resolveTarget(request.getRequestURI());
         if (target == null) {
             return true;
         }
@@ -78,6 +87,20 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+    }
+
+    private String resolveTarget(String uri) {
+        String exact = DESKTOP_TO_MOBILE.get(uri);
+        if (exact != null) {
+            return exact;
+        }
+        for (Map.Entry<Pattern, String> e : PATTERN_TO_MOBILE) {
+            Matcher m = e.getKey().matcher(uri);
+            if (m.matches()) {
+                return e.getValue().replace("{1}", m.group(1));
+            }
+        }
+        return null;
     }
 
     private String readViewMode(HttpServletRequest request) {

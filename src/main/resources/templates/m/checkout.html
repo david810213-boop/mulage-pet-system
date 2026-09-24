@@ -1,0 +1,204 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('結帳 · ' + ${card.petName})}"></head>
+<body class="has-actionbar">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a th:href="@{/m/appointments/{id}(id=${a.id})}" class="icon-btn" aria-label="回預約詳情"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">結帳</div>
+    <div class="sub" th:text="${card.petName} + '，' + ${a.ownerName}">豆豆，陳小姐</div>
+  </div>
+  <span class="av" th:classappend="${card.species}" th:text="${card.petInitial}">豆</span>
+</header>
+
+<main class="wrap">
+
+  <div class="section-h"><h2>消費明細</h2></div>
+  <section class="panel">
+    <div class="line" th:each="it : ${detailItems}">
+      <span class="nm">
+        <span th:text="${it.name}">中型犬-中長毛-精緻洗</span>
+        <small th:if="${it.retailItem}">零售商品，不打折</small>
+        <th:block th:unless="${it.retailItem}">
+          <small class="ok" th:if="${it.firstVisitEligible}">首次體驗 9 折</small>
+          <small class="ok" th:if="${!it.firstVisitEligible and it.rewashEligible}">回洗優惠 9 折</small>
+          <small th:if="${!it.firstVisitEligible and !it.rewashEligible and it.discountEligible}">儲值金付款可享會員折扣</small>
+          <small th:if="${!it.firstVisitEligible and !it.rewashEligible and !it.discountEligible}">原價</small>
+        </th:block>
+      </span>
+      <span class="pr" th:text="${#numbers.formatInteger(it.price, 1, 'COMMA')}">900</span>
+      <form th:if="${it.itemId != null}" method="post"
+            th:action="@{/m/appointments/{id}/items/{itemId}/remove(id=${a.id},itemId=${it.itemId})}"
+            class="js-confirm" th:attr="data-confirm='要移除「' + ${it.name} + '」嗎？'">
+        <input type="hidden" name="from" value="pay" />
+        <button type="submit" class="x-btn" aria-label="移除"><svg class="i"><use href="#i-x"/></svg></button>
+      </form>
+    </div>
+    <div class="line sum">
+      <span class="nm">原價合計</span>
+      <span class="pr" th:text="'NT$ ' + ${#numbers.formatInteger(baseAmount, 1, 'COMMA')}">NT$ 1,050</span>
+    </div>
+  </section>
+
+  <button type="button" class="soft-btn" data-open-sheet="sheetRetail" th:unless="${retailProducts.isEmpty()}">
+    <svg class="i"><use href="#i-bag"/></svg>加購零售商品
+  </button>
+
+  <div class="lock-box" th:if="${lockable != null}" id="lockBox"
+       th:attr="data-pet-id=${pet.id},data-item-id=${lockable.groomingItemId}">
+    <svg class="i"><use href="#i-lock"/></svg>
+    <div class="t">
+      <small>這隻狗已經定型的話，可以鎖定成固定套餐</small>
+      <span th:text="${lockable.name}">中型犬-中長毛-精緻洗</span>
+    </div>
+    <button type="button" id="lockBtn">鎖定</button>
+  </div>
+
+  <form method="post" id="payForm" th:action="@{/m/appointments/{id}/checkout(id=${a.id})}">
+    <div class="section-h"><h2>付款方式</h2></div>
+
+    <label class="pay">
+      <input type="radio" name="paymentMethod" value="CASH" th:attr="data-amount=${standardAmount}" />
+      <span class="dot"></span>
+      <span class="nm">現金</span>
+      <span class="pr num" th:text="${#numbers.formatInteger(standardAmount, 1, 'COMMA')}">1,050</span>
+    </label>
+    <label class="pay">
+      <input type="radio" name="paymentMethod" value="LINE_PAY" th:attr="data-amount=${standardAmount}" />
+      <span class="dot"></span>
+      <span class="nm">LINE Pay</span>
+      <span class="pr num" th:text="${#numbers.formatInteger(standardAmount, 1, 'COMMA')}">1,050</span>
+    </label>
+    <label class="pay">
+      <input type="radio" name="paymentMethod" value="WIRE_TRANSFER" th:attr="data-amount=${standardAmount}" />
+      <span class="dot"></span>
+      <span class="nm">匯款<small>送出後先進入待對帳，收到款再確認</small></span>
+      <span class="pr num" th:text="${#numbers.formatInteger(standardAmount, 1, 'COMMA')}">1,050</span>
+    </label>
+    <div class="bank" id="bankInfo" hidden>
+      <div>銀行 <b th:text="${bank.bankName}">國泰世華</b></div>
+      <div>帳號 <b class="num" th:text="${bank.accountNumber}">0123-456-789</b></div>
+      <div>戶名 <b th:text="${bank.accountHolder}">慕沐村</b></div>
+      <img th:if="${bank.qrCodeUrl != null}" th:src="${bank.qrCodeUrl}" alt="匯款 QR Code" />
+    </div>
+    <label class="pay">
+      <input type="radio" name="paymentMethod" value="WALLET" th:attr="data-amount=${walletAmount}" th:disabled="${!walletEnough}" />
+      <span class="dot"></span>
+      <span class="nm">儲值金
+        <small th:text="'餘額 NT$ ' + ${#numbers.formatInteger(walletBalance, 1, 'COMMA')} + (${walletDiscountLabel != null} ? '，' + ${walletDiscountLabel} : '') + (${walletEnough} ? '' : '，餘額不足')">餘額 NT$ 3,000，金卡 9 折</small>
+      </span>
+      <span class="pr num" th:text="${#numbers.formatInteger(walletAmount, 1, 'COMMA')}">945</span>
+    </label>
+  </form>
+</main>
+
+<div class="actionbar">
+  <div class="form-err" id="payErr" hidden>請先選擇付款方式</div>
+  <div class="total-row">
+    <div class="sum"><small id="payLabel">應收</small><b class="num" id="payTotal">—</b></div>
+    <button type="submit" form="payForm" class="btn wood" id="paySubmit">確認收款</button>
+  </div>
+</div>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetRetail" role="dialog" aria-modal="true" aria-labelledby="hRetail" th:unless="${retailProducts.isEmpty()}">
+  <div class="grab"></div>
+  <h3 id="hRetail">加購零售商品</h3>
+  <form method="post" th:action="@{/m/appointments/{id}/items/retail(id=${a.id})}" class="js-once">
+    <input type="hidden" name="from" value="pay" />
+    <div class="field">
+      <label for="rItem">商品</label>
+      <select name="retailProductId" id="rItem" required>
+        <option th:each="p : ${retailProducts}" th:value="${p.id}"
+                th:text="${p.name} + '（' + ${p.price} + '，庫存 ' + ${p.stockQuantity} + '）'">洗毛精（450，庫存 8）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="rQty">數量</label>
+      <input type="number" name="quantity" id="rQty" value="1" min="1" inputmode="numeric" required />
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">加入</button>
+    </div>
+  </form>
+</section>
+
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    document.querySelectorAll("form.js-confirm, form.js-once").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        if (f.dataset.confirm && !window.confirm(f.dataset.confirm)) { e.preventDefault(); return; }
+        var b = f.querySelector("button[type=submit]");
+        if (b) b.disabled = true;
+      });
+    });
+
+    var form = document.getElementById("payForm");
+    var radios = form.querySelectorAll("input[name=paymentMethod]");
+    var total = document.getElementById("payTotal");
+    var label = document.getElementById("payLabel");
+    var bank = document.getElementById("bankInfo");
+    var err = document.getElementById("payErr");
+    var names = { CASH: "現金", LINE_PAY: "LINE Pay", WIRE_TRANSFER: "匯款", WALLET: "儲值金" };
+
+    function selected() {
+      for (var i = 0; i < radios.length; i++) if (radios[i].checked) return radios[i];
+      return null;
+    }
+    function refresh() {
+      var r = selected();
+      if (!r) { total.textContent = "—"; label.textContent = "應收"; bank.hidden = true; return; }
+      err.hidden = true;
+      total.textContent = "NT$ " + Number(r.dataset.amount || 0).toLocaleString();
+      label.textContent = names[r.value] + "應收";
+      bank.hidden = r.value !== "WIRE_TRANSFER";
+    }
+    radios.forEach(function (r) { r.addEventListener("change", refresh); });
+    refresh();
+
+    form.addEventListener("submit", function (e) {
+      var r = selected();
+      if (!r) { e.preventDefault(); err.hidden = false; return; }
+      var msg = r.value === "WIRE_TRANSFER"
+        ? "確認送出匯款結帳？訂單會先進入待對帳。"
+        : "確認以" + names[r.value] + "收取 NT$ " + Number(r.dataset.amount || 0).toLocaleString() + "？";
+      if (!window.confirm(msg)) { e.preventDefault(); return; }
+      var b = document.getElementById("paySubmit");
+      b.disabled = true;
+      b.textContent = "結帳中…";
+    });
+
+    var lockBtn = document.getElementById("lockBtn");
+    if (lockBtn) {
+      lockBtn.addEventListener("click", function () {
+        var box = document.getElementById("lockBox");
+        if (!window.confirm("鎖定後，這隻狗下次預約、開單都會直接帶出這個套餐，確定嗎？")) return;
+        lockBtn.disabled = true;
+        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/lock-grooming-item", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groomingItemId: Number(box.dataset.itemId) })
+        }).then(function (res) {
+          return res.text().then(function (t) {
+            if (!res.ok) {
+              var m = "鎖定失敗";
+              try { m = JSON.parse(t).message || m; } catch (x) {}
+              throw new Error(m);
+            }
+          });
+        }).then(function () {
+          box.querySelector("small").textContent = "已鎖定為固定套餐";
+          lockBtn.remove();
+        }).catch(function (e) { lockBtn.disabled = false; window.alert(e.message); });
+      });
+    }
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

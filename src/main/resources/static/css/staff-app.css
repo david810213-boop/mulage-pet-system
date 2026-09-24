@@ -45,6 +45,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 有些元件自己設了 display，會蓋掉 hidden 屬性；統一讓 hidden 一定生效 */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -502,7 +507,7 @@ svg.i {
   pointer-events: auto;
 }
 
-.sheet-open .sheet {
+.sheet.open {
   transform: translateY(0);
 }
 
@@ -1283,6 +1288,328 @@ details.more-items[open] summary svg.i {
   font-size: 13px;
   text-align: center;
   margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   第三批（2026-09-24）：核對、結帳
+   ========================================================================== */
+
+/* ── 項目明細列 ──────────────────────────────────────────────────────── */
+.line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.line:last-child {
+  border-bottom: 0;
+}
+
+.line .nm {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+}
+
+.line .nm small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.line .nm small.ok {
+  color: var(--cat);
+}
+
+.line .pr {
+  font: 500 15px var(--num);
+}
+
+.line form {
+  display: flex;
+}
+
+.x-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--mute);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.x-btn svg.i {
+  width: 14px;
+  height: 14px;
+}
+
+.line.sum {
+  font-size: 14px;
+  color: var(--mute);
+}
+
+.line.sum .pr {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.add-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add-row button {
+  height: 46px;
+  border-radius: 15px;
+  border: 1.5px dashed #b9c9be;
+  color: var(--forest-2);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.add-row button svg.i {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── 表單欄位（抽屜裡的新增項目表單、核對備注）─────────────────────── */
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--mute);
+  margin-bottom: 5px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  padding: 11px 13px;
+  outline: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--mute) 50%),
+    linear-gradient(135deg, var(--mute) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+.field textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--forest);
+  background: var(--paper);
+}
+
+.field small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+  margin-top: 4px;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.field-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet h3 {
+  margin: 0 0 14px;
+  font-weight: 400;
+  font-size: 19px;
+}
+
+/* ── 家長簽名板 ──────────────────────────────────────────────────────── */
+.sign {
+  position: relative;
+  background: var(--paper);
+  border: 1.5px dashed #b9c9be;
+  border-radius: 20px;
+  height: 200px;
+  overflow: hidden;
+}
+
+.sign canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.sign .ph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a3b0a8;
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.sign .base {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 44px;
+  border-bottom: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.sign.signed {
+  border-style: solid;
+  border-color: var(--forest);
+}
+
+.sign-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--mute);
+}
+
+.sign-tools button {
+  color: var(--coral-ink);
+  font-size: 13px;
+  padding: 6px 4px;
+}
+
+/* ── 付款方式 ────────────────────────────────────────────────────────── */
+.pay {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border-radius: 18px;
+  padding: 13px 14px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+}
+
+.pay + .pay {
+  margin-top: 8px;
+}
+
+.pay input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pay .dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #c7d3cb;
+  flex: 0 0 auto;
+}
+
+.pay .nm {
+  flex: 1;
+  min-width: 0;
+}
+
+.pay .nm small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.pay .pr {
+  font: 700 17px var(--num);
+}
+
+.pay:has(input:checked) {
+  border-color: var(--forest);
+}
+
+.pay:has(input:checked) .dot {
+  border: 7px solid var(--forest);
+}
+
+.pay:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pay:has(input:focus-visible) {
+  outline: 2px solid var(--wood);
+  outline-offset: 2px;
+}
+
+.bank {
+  background: var(--wood-soft);
+  color: var(--wood-ink);
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: 13.5px;
+}
+
+.bank b {
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.bank img {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 12px;
+  margin-top: 8px;
+  display: block;
+}
+
+.soft-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--sage);
+  color: var(--forest);
+  font-size: 14px;
+  margin-top: 10px;
 }
 
 /* 在電腦上預覽手機版時，內容維持手機寬度置中，不要被拉得太寬 */
