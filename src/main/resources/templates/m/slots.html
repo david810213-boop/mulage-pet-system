@@ -1,0 +1,146 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('時段管理 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">時段管理</div>
+    <div class="sub" th:text="${dateLabel}">9 月 25 日 週五</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="days days-scroll" aria-label="選擇日期">
+    <a th:each="d : ${days}" class="day" th:classappend="(${d.on} ? 'on ' : '') + (${d.closed} ? 'closed' : '')"
+       th:href="@{/m/slots(date=${d.iso})}">
+      <div class="w" th:text="${d.week}">今天</div>
+      <div class="d num" th:text="${d.day}">25</div>
+      <div class="c" th:text="${d.closed} ? '休' : ''"></div>
+    </a>
+  </nav>
+
+  <!-- 公休狀態 -->
+  <section class="closed-box" th:if="${weeklyClosed}">
+    <svg class="i"><use href="#i-alert"/></svg>
+    <span class="t">這天是固定公休日，顧客預約不到。要改固定公休星期請到網頁版。</span>
+  </section>
+  <section class="closed-box" th:if="${!weeklyClosed and specificClosed}">
+    <svg class="i"><use href="#i-alert"/></svg>
+    <span class="t" th:text="'這天已設為公休' + (${closedReason != null} ? '（' + ${closedReason} + '）' : '') + '，顧客預約不到。'">這天已設為公休</span>
+    <form method="post" action="/m/slots/closed" class="js-once" data-confirm="確定取消這天的公休嗎？">
+      <input type="hidden" name="date" th:value="${date}" />
+      <input type="hidden" name="closed" value="false" />
+      <button type="submit">取消公休</button>
+    </form>
+  </section>
+
+  <div class="stat-row" th:unless="${weeklyClosed or specificClosed}">
+    <div><b class="num" th:text="${totalBooked}">8</b><small>已預約</small></div>
+    <div><b class="num" th:text="${totalCap}">24</b><small>總名額</small></div>
+    <div><b class="num" th:text="${totalCap - totalBooked > 0 ? totalCap - totalBooked : 0}">16</b><small>剩餘</small></div>
+  </div>
+
+  <div class="section-h"><h2>各時段名額</h2><small th:unless="${isPast}">點時段可以調整</small></div>
+  <div class="slot-grid">
+    <button type="button" class="slot-cell" th:each="s : ${slots}"
+            th:classappend="(${s.full} ? 'full ' : '') + (${s.zero} ? 'zero' : '')"
+            th:disabled="${isPast}" data-open-sheet="sheetSlot"
+            th:attr="data-time=${s.iso},data-label=${s.time},data-cap=${s.capacity},data-booked=${s.booked},data-pet=${s.pet}">
+      <span class="tm num" th:text="${s.time}">10:00</span>
+      <span class="ct num" th:text="${s.booked} + ' / ' + ${s.capacity}">1 / 2</span>
+      <span class="pt" th:if="${s.pet == 'DOG'}">僅限狗</span>
+      <span class="pt" th:if="${s.pet == 'CAT'}">僅限貓</span>
+    </button>
+  </div>
+
+  <form method="post" action="/m/slots/closed" th:unless="${weeklyClosed or specificClosed or isPast}"
+        data-confirm="確定把這天設為公休嗎？顧客會預約不到這天，已經有的預約不會被取消。" style="margin-top:14px" class="closed-form js-once">
+    <input type="hidden" name="date" th:value="${date}" />
+    <input type="hidden" name="closed" value="true" />
+    <div class="field" style="margin-bottom:8px">
+      <input type="text" name="reason" maxlength="50" placeholder="公休原因（選填），例如：員工旅遊" aria-label="公休原因" />
+    </div>
+    <button type="submit" class="btn ghost-danger" style="width:100%;height:44px">把這天設為公休</button>
+  </form>
+
+  <a th:href="@{/appointments/slots-manage(date=${date},desktop=1)}" class="link-more">預設容量範本、固定公休星期（網頁版）</a>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetSlot" role="dialog" aria-modal="true" aria-labelledby="hSlot">
+  <div class="grab"></div>
+  <h3 id="hSlot">調整時段</h3>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)" id="slotWhat"></p>
+  <form method="post" action="/m/slots/update" id="slotForm" class="js-once">
+    <input type="hidden" name="date" th:value="${date}" />
+    <input type="hidden" name="time" id="slotTime" />
+    <div class="qty-big">
+      <button type="button" id="cMinus" aria-label="減少">−</button>
+      <input type="number" name="capacity" id="cInput" value="1" min="0" inputmode="numeric" aria-label="名額" />
+      <button type="button" id="cPlus" aria-label="增加">＋</button>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="限定物種">
+      <label><input type="radio" name="allowedPetType" value="" /><span>不限制</span></label>
+      <label><input type="radio" name="allowedPetType" value="DOG" /><span>僅限狗</span></label>
+      <label><input type="radio" name="allowedPetType" value="CAT" /><span>僅限貓</span></label>
+    </div>
+    <div class="form-err" id="cWarn" hidden></div>
+    <div class="btn-row" style="margin-top:14px">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">儲存</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    var input = document.getElementById("cInput");
+    var warn = document.getElementById("cWarn");
+    var booked = 0;
+    function clamp() {
+      var v = Math.max(0, parseInt(input.value, 10) || 0);
+      input.value = v;
+      document.getElementById("cMinus").disabled = v <= 0;
+      if (v < booked) {
+        warn.textContent = "這個時段已經有 " + booked + " 筆預約，名額設比較少不會取消已有的預約，只是不能再約";
+        warn.hidden = false;
+      } else {
+        warn.hidden = true;
+      }
+      return v;
+    }
+    document.getElementById("cMinus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 0) - 1; clamp(); });
+    document.getElementById("cPlus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 0) + 1; clamp(); });
+    input.addEventListener("change", clamp);
+
+    document.querySelectorAll("[data-open-sheet=sheetSlot]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        booked = Number(b.dataset.booked || 0);
+        document.getElementById("slotTime").value = b.dataset.time;
+        document.getElementById("hSlot").textContent = b.dataset.label + " 時段";
+        document.getElementById("slotWhat").textContent = "目前已預約 " + booked + " 筆，名額 " + b.dataset.cap;
+        input.value = b.dataset.cap;
+        var pet = b.dataset.pet || "";
+        document.querySelectorAll("input[name=allowedPetType]").forEach(function (r) { r.checked = r.value === pet; });
+        clamp();
+      });
+    });
+
+    document.querySelectorAll("form.js-once").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        if (f.dataset.confirm && !window.confirm(f.dataset.confirm)) { e.preventDefault(); return; }
+        var btn = f.querySelector("button[type=submit]");
+        if (btn) btn.disabled = true;
+      });
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

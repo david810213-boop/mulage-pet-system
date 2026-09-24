@@ -1,0 +1,53 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('交易紀錄 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">交易紀錄</div>
+    <div class="sub" th:text="${rangeLabel}">9/25</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="chips" aria-label="日期區間" style="margin-top:0">
+    <a href="/m/transactions" class="chip" th:classappend="${r == 'today'} ? 'on'">今天</a>
+    <a href="/m/transactions?r=yesterday" class="chip" th:classappend="${r == 'yesterday'} ? 'on'">昨天</a>
+    <a href="/m/transactions?r=week" class="chip" th:classappend="${r == 'week'} ? 'on'">本週</a>
+    <a href="/m/transactions?r=month" class="chip" th:classappend="${r == 'month'} ? 'on'">本月</a>
+    <a href="/m/transactions?r=last30" class="chip" th:classappend="${r == 'last30'} ? 'on'">近 30 天</a>
+  </nav>
+
+  <section class="tx-sum">
+    <div class="top">
+      <div><small>實收合計</small><b class="num" th:text="'NT$ ' + ${#numbers.formatInteger(total, 1, 'COMMA')}">NT$ 12,400</b></div>
+      <div style="text-align:right"><small>筆數</small><b class="num" th:text="${count}">14</b></div>
+    </div>
+    <div class="methods" th:unless="${byMethod.isEmpty()}">
+      <span th:each="m : ${byMethod}" class="num" th:text="${m.key} + ' ' + ${#numbers.formatInteger(m.value, 1, 'COMMA')}">現金 6,300</span>
+    </div>
+    <small style="display:block;margin-top:8px;color:var(--forest-mute)">只算已結帳的單；儲值是預收款，不算在這裡</small>
+  </section>
+
+  <div class="empty" style="margin-top:12px" th:if="${rows.isEmpty()}">這段期間沒有交易。</div>
+
+  <a th:each="x : ${rows}" class="card tx" th:href="${x.url != null} ? ${x.url} : '#'">
+    <span class="main">
+      <span class="nm" th:text="${x.petName}">豆豆</span>
+      <span class="sb" style="display:block" th:text="${x.time} + '，' + ${x.code} + '，' + ${x.method}">9/25 14:02，AP017，現金</span>
+    </span>
+    <span class="num amt" th:text="${#numbers.formatInteger(x.amount, 1, 'COMMA')}">900</span>
+  </a>
+  <p th:if="${count > 200}" style="text-align:center;font-size:12px;color:var(--mute)">只顯示最近 200 筆，完整紀錄請到網頁版</p>
+
+  <a href="/payments?desktop=1" class="link-more">完整交易紀錄（網頁版）</a>
+</main>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

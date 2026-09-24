@@ -1,0 +1,108 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('店用洗劑 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">店用洗劑</div>
+    <div class="sub" th:text="${lowCount > 0} ? ${lowCount} + ' 項低於安全庫存' : '庫存都正常'">2 項低於安全庫存</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="empty" th:if="${rows.isEmpty()}">還沒有店用洗劑品項，請到網頁版新增。</div>
+
+  <div class="stock-row" th:each="r : ${rows}" th:classappend="${r.out} ? 'out' : (${r.low} ? 'low' : '')">
+    <div class="info">
+      <span class="nm" th:text="${r.name}">低敏洗毛精 4L</span>
+      <small th:text="'安全庫存 ' + ${r.safety}">安全庫存 2</small>
+    </div>
+    <div class="qty num" th:text="${r.out} ? '缺貨' : ${r.stock}">1</div>
+    <div class="acts">
+      <button type="button" class="act" data-open-sheet="sheetQty"
+              th:attr="data-mode='use',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">領用</button>
+      <button type="button" class="act ghost" data-open-sheet="sheetQty"
+              th:attr="data-mode='restock',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">進貨</button>
+    </div>
+  </div>
+
+  <a href="/admin/store-supplies?desktop=1" class="link-more">新增、編輯、下架品項（網頁版）</a>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetQty" role="dialog" aria-modal="true" aria-labelledby="hQty">
+  <div class="grab"></div>
+  <h3 id="hQty">領用</h3>
+  <p style="margin:0 0 14px;font-size:14px;color:var(--mute)" id="qtyWhat"></p>
+  <form method="post" id="qtyForm" class="js-once">
+    <div class="qty-big">
+      <button type="button" id="qMinus" aria-label="減少">−</button>
+      <input type="number" name="quantity" id="qInput" value="1" min="1" inputmode="numeric" aria-label="數量" />
+      <button type="button" id="qPlus" aria-label="增加">＋</button>
+    </div>
+    <div class="field" id="noteField">
+      <label for="qNote">備注（選填）</label>
+      <input type="text" name="note" id="qNote" maxlength="100" placeholder="例如：大型犬用量較多" />
+    </div>
+    <div class="form-err" id="qErr" hidden></div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri" id="qSubmit">確定</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    var form = document.getElementById("qtyForm");
+    var input = document.getElementById("qInput");
+    var err = document.getElementById("qErr");
+    var mode = "use", stock = 0;
+    function clamp() {
+      var v = Math.max(1, parseInt(input.value, 10) || 1);
+      input.value = v;
+      document.getElementById("qMinus").disabled = v <= 1;
+      return v;
+    }
+    document.getElementById("qMinus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 1) - 1; clamp(); });
+    document.getElementById("qPlus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 0) + 1; clamp(); });
+    input.addEventListener("change", clamp);
+
+    document.querySelectorAll("[data-open-sheet=sheetQty]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        mode = b.dataset.mode;
+        stock = Number(b.dataset.stock || 0);
+        var isUse = mode === "use";
+        form.action = "/m/supplies/" + encodeURIComponent(b.dataset.id) + (isUse ? "/use" : "/restock");
+        document.getElementById("hQty").textContent = isUse ? "領用" : "進貨";
+        document.getElementById("qtyWhat").textContent = b.dataset.name + "，目前庫存 " + stock;
+        document.getElementById("noteField").hidden = !isUse;
+        document.getElementById("qNote").value = "";
+        document.getElementById("qSubmit").textContent = isUse ? "確定領用" : "確定進貨";
+        err.hidden = true;
+        input.value = 1;
+        clamp();
+      });
+    });
+
+    form.addEventListener("submit", function (e) {
+      var v = clamp();
+      if (mode === "use" && v > stock) {
+        e.preventDefault();
+        err.textContent = "庫存只剩 " + stock + "，不夠領用";
+        err.hidden = false;
+        return;
+      }
+      document.getElementById("qSubmit").disabled = true;
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('我的績效 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="hero-date" th:text="${monthLabel} + '績效'">9 月績效</div>
+      <h1 th:text="${p.staffName}">小芸</h1>
+    </div>
+    <a href="/m/more" class="hero-icon" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  </div>
+  <div class="perf-main">
+    <div>
+      <div class="big num" th:text="${#numbers.formatDecimal(p.monthMainPoints, 1, 1)}">412.5</div>
+      <div class="lbl">本月主要積分</div>
+    </div>
+    <div style="text-align:right">
+      <div class="bonus num" th:text="'NT$ ' + ${#numbers.formatInteger(p.currentBonus, 1, 'COMMA')}">NT$ 2,000</div>
+      <div class="lbl">目前獎勵金</div>
+    </div>
+  </div>
+  <div class="bar-track" role="progressbar" th:attr="aria-valuenow=${pct}" aria-valuemin="0" aria-valuemax="100">
+    <i th:style="'width:' + ${pct} + '%'"></i>
+  </div>
+  <div class="bar-hint" th:if="${p.nextThreshold != null}"
+       th:text="'再 ' + ${#numbers.formatDecimal(p.pointsToNextThreshold, 1, 1)} + ' 分到下一級（' + ${p.nextThreshold} + ' 分）'">再 87.5 分到下一級（500 分）</div>
+  <div class="bar-hint" th:if="${p.nextThreshold == null}">已達最高級距</div>
+  <div class="stats" style="margin-top:14px">
+    <div class="stat"><div class="n num" th:text="${#numbers.formatDecimal(p.todayPoints, 1, 1)}">35.0</div><div class="l">今日積分</div></div>
+    <div class="stat"><div class="n num" th:text="${#numbers.formatDecimal(p.monthReceptionPoints, 1, 1)}">40.0</div><div class="l">本月接待</div></div>
+    <a href="/m/operators" class="stat"><div class="n" style="font-size:15px;line-height:26px">待補</div><div class="l">經手人 ›</div></a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="empty" style="margin-top:16px" th:if="${byDate.isEmpty()}">這個月還沒有積分紀錄。</div>
+
+  <section th:each="d : ${byDate}">
+    <div class="group-h"><span th:text="${d.key}">今天</span><span class="num" th:text="${#numbers.formatDecimal(dayTotal[d.key], 1, 1)} + ' 分'">35.0 分</span></div>
+    <div class="panel">
+      <div class="perf-line" th:each="r : ${d.value}">
+        <div class="info">
+          <span th:text="${r.category}">洗（大型）</span>
+          <small>
+            <a th:if="${r.sourceUrl != null}" th:href="${r.sourceUrl}" th:text="${r.source}">AP017</a>
+            <span th:if="${r.fromSplit}">同事拆分給你</span>
+            <span th:if="${r.split}">已拆分</span>
+            <span th:if="${r.note != null and !r.note.isEmpty()}" th:text="${r.note}">備注</span>
+          </small>
+        </div>
+        <b class="num" th:text="${#numbers.formatDecimal(r.points, 1, 1)}">20.0</b>
+        <button type="button" class="split-btn" th:if="${r.canSplit}" data-open-sheet="sheetSplit"
+                th:attr="data-id=${r.id},data-label=${r.label}">拆給同事</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetSplit" role="dialog" aria-modal="true" aria-labelledby="hSplit">
+  <div class="grab"></div>
+  <h3 id="hSplit">把積分對半拆給同事</h3>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)" id="splitWhat"></p>
+  <form method="post" action="/m/perf/split" class="js-once">
+    <input type="hidden" name="sourceRecordId" id="splitId" />
+    <div class="field">
+      <label for="splitTo">協助的同事</label>
+      <select name="toStaffId" id="splitTo" required>
+        <option value="">選擇同事</option>
+        <option th:each="s : ${colleagues}" th:value="${s.id}" th:text="${s.name}">阿哲</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="splitNote">備注（選填）</label>
+      <input type="text" name="note" id="splitNote" maxlength="100" placeholder="例如：一起幫忙吹毛" />
+    </div>
+    <p style="font-size:12px;color:var(--mute);margin:0 0 12px">一筆積分只能拆一次，拆了就不能再改，確定再送出。</p>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">確定拆分</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    document.querySelectorAll("[data-open-sheet=sheetSplit]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.getElementById("splitId").value = b.dataset.id;
+        document.getElementById("splitWhat").textContent = b.dataset.label;
+        document.getElementById("splitTo").selectedIndex = 0;
+        document.getElementById("splitNote").value = "";
+      });
+    });
+    document.querySelectorAll("form.js-once").forEach(function (f) {
+      f.addEventListener("submit", function () {
+        var btn = f.querySelector("button[type=submit]");
+        if (btn) btn.disabled = true;
+      });
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

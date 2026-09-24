@@ -36,14 +36,22 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
     public static final String VIEW_MODE_COOKIE = "VIEW_MODE";
 
     // 網頁版路徑 → 手機版路徑。之後每做完一批手機版頁面，就在這裡補上對照。
-    // 第一批：Dashboard → 今日；第二批：預約列表 → 手機版預約列表；第四批：現場開單
+    // 每一列後面標註是哪一批加入的
     // （網頁版核對、結帳完成後會導回 /appointments，手機上就會自動回到手機版列表）
-    private static final Map<String, String> DESKTOP_TO_MOBILE = Map.of(
-            "/dashboard", "/m/",
-            "/appointments", "/m/appointments",
-            "/admin/walk-in-orders", "/m/walk-in", // 第四批：現場開單
-            "/admin/customers", "/m/members", // 第五批：會員、毛孩
-            "/admin/pet-database", "/m/pets");
+    private static final Map<String, String> DESKTOP_TO_MOBILE = Map.ofEntries(
+            Map.entry("/dashboard", "/m/"),  // 第一批
+            Map.entry("/appointments", "/m/appointments"),  // 第二批
+            Map.entry("/admin/walk-in-orders", "/m/walk-in"),  // 第四批
+            Map.entry("/admin/customers", "/m/members"),  // 第五批
+            Map.entry("/admin/pet-database", "/m/pets"),
+            Map.entry("/admin/performance/my", "/m/perf"),  // 第七批
+            Map.entry("/admin/store-supplies", "/m/supplies"),
+            Map.entry("/admin/retail-products", "/m/retail"),
+            Map.entry("/appointments/slots-manage", "/m/slots"),  // 第八批
+            Map.entry("/payments", "/m/transactions"),
+            Map.entry("/account/password", "/m/account"),  // 第九批
+            Map.entry("/account/pin", "/m/account"),
+            Map.entry("/account/bind-line", "/m/account"));
 
     // 第三批：帶預約編號的流程頁面，用 {1} 代入網址裡的預約 id
     private static final List<Map.Entry<Pattern, String>> PATTERN_TO_MOBILE = List.of(
@@ -111,6 +119,39 @@ public class MobileRedirectInterceptor implements HandlerInterceptor {
             Matcher m = e.getKey().matcher(uri);
             if (m.matches()) {
                 return e.getValue().replace("{1}", m.group(1));
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 第九批：登入頁也要判斷要顯示手機版還是網頁版（登入前還沒有角色，
+     * 所以不走上面的導向流程，由 AuthMvcController 直接呼叫這支方法選樣板）。
+     * 規則跟導向相同：網址帶 desktop=1 或 Cookie 選了網頁版就不用手機版；
+     * Cookie 選了手機版一律用手機版；都沒有就看是不是手機。
+     */
+    public static boolean prefersMobile(HttpServletRequest request) {
+        if ("1".equals(request.getParameter("desktop"))) {
+            return false;
+        }
+        String mode = readViewModeStatic(request);
+        if ("desktop".equals(mode)) {
+            return false;
+        }
+        if ("mobile".equals(mode)) {
+            return true;
+        }
+        return isPhone(request);
+    }
+
+    private static String readViewModeStatic(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie c : cookies) {
+            if (VIEW_MODE_COOKIE.equals(c.getName())) {
+                return c.getValue();
             }
         }
         return null;

@@ -1,0 +1,120 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('帳號設定 · 慕沐村')}"></head>
+<body th:attr="data-open-sheet-on-load=${openSheet}">
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <h1>帳號設定</h1>
+</header>
+
+<main class="wrap">
+  <div class="me">
+    <span class="av lg" th:text="${#strings.isEmpty(user.name)} ? '員' : ${#strings.substring(user.name, 0, 1)}">小</span>
+    <div>
+      <div th:text="${#strings.isEmpty(user.name)} ? ${user.username} : ${user.name}">小芸</div>
+      <small th:text="${user.username}">staff@mulage-pet.com</small>
+    </div>
+  </div>
+
+  <div class="section-h"><h2>登入與安全</h2></div>
+  <div class="menu">
+    <button type="button" data-open-sheet="sheetPwd"><span class="ico"><svg class="i"><use href="#i-lock"/></svg></span><span class="lbl">修改密碼</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+    <button type="button" data-open-sheet="sheetPin"><span class="ico"><svg class="i"><use href="#i-swap"/></svg></span><span class="lbl">PIN 碼<small style="display:block;font-size:12px;color:var(--mute)" th:text="${hasPin} ? '已設定，可以重新設定' : '還沒設定，共用平板快速切換身份用'">已設定</small></span><svg class="i chev"><use href="#i-chev"/></svg></button>
+  </div>
+
+  <div class="section-h"><h2>LINE 通知</h2>
+    <span class="pill" th:classappend="${lineBound} ? 'ok' : 'pending'" th:text="${lineBound} ? '已綁定' : '尚未綁定'">已綁定</span>
+  </div>
+  <section class="panel">
+    <p style="margin:12px 0 10px;font-size:14px">綁定後，新預約、低庫存等通知會直接傳到你的 LINE。</p>
+    <form method="post" action="/m/account/bind-line" class="js-once" style="margin-bottom:12px">
+      <button type="submit" class="btn sec" th:text="${lineBound} ? '重新綁定（產生新驗證碼）' : '產生驗證碼'">產生驗證碼</button>
+    </form>
+    <th:block th:if="${bindCode != null}">
+      <div class="bind-code">
+        <small>驗證碼（10 分鐘內有效）</small>
+        <b class="num" th:text="${bindCode}">482913</b>
+      </div>
+      <a class="btn pri" style="margin:10px 0 12px" th:href="${bindUrl}">用 LINE 開啟綁定頁，輸入驗證碼</a>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--mute)">一定要用 LINE 開啟，用一般瀏覽器會綁定失敗。</p>
+    </th:block>
+  </section>
+
+  <div class="section-h"><h2>其他</h2></div>
+  <div class="menu">
+    <a href="/auth/switch-user"><span class="ico"><svg class="i"><use href="#i-swap"/></svg></span><span class="lbl">切換使用者</span><span class="web">網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    <a href="/m/switch?to=desktop"><span class="ico"><svg class="i"><use href="#i-monitor"/></svg></span><span class="lbl">切換到網頁版</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+    <a href="/auth/logout" class="danger"><span class="ico"><svg class="i"><use href="#i-out"/></svg></span><span class="lbl">登出</span><svg class="i chev"><use href="#i-chev"/></svg></a>
+  </div>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetPwd" role="dialog" aria-modal="true" aria-labelledby="hPwd">
+  <div class="grab"></div>
+  <h3 id="hPwd">修改密碼</h3>
+  <form method="post" action="/m/account/password" class="js-once" id="pwdForm">
+    <input type="hidden" name="_csrf" th:value="${csrf}" />
+    <div class="field"><label for="oldPwd">目前密碼</label><input type="password" name="oldPassword" id="oldPwd" required autocomplete="current-password" /></div>
+    <div class="field"><label for="newPwd">新密碼</label><input type="password" name="newPassword" id="newPwd" required minlength="6" autocomplete="new-password" /></div>
+    <div class="field"><label for="cfmPwd">再輸入一次新密碼</label><input type="password" name="confirmPassword" id="cfmPwd" required autocomplete="new-password" /></div>
+    <div class="form-err" id="pwdErr" hidden>兩次輸入的新密碼不一致</div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">儲存</button>
+    </div>
+  </form>
+</section>
+
+<section class="sheet" id="sheetPin" role="dialog" aria-modal="true" aria-labelledby="hPin">
+  <div class="grab"></div>
+  <h3 id="hPin">設定 PIN 碼</h3>
+  <p style="margin:0 0 12px;font-size:13px;color:var(--mute)">在店裡共用的平板上，用 PIN 碼就能快速切換成你的帳號。</p>
+  <form method="post" action="/m/account/pin" class="js-once" id="pinForm">
+    <div class="field"><label for="pinPwd">目前密碼（確認是你本人）</label><input type="password" name="currentPassword" id="pinPwd" required autocomplete="current-password" /></div>
+    <div class="field-row">
+      <div class="field"><label for="pin1">PIN 碼</label><input type="password" name="pin" id="pin1" required inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" /></div>
+      <div class="field"><label for="pin2">再輸入一次</label><input type="password" name="confirmPin" id="pin2" required inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" /></div>
+    </div>
+    <div class="form-err" id="pinErr" hidden>兩次輸入的 PIN 碼不一致</div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">儲存</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    function guard(formId, a, b, errId) {
+      var f = document.getElementById(formId);
+      f.addEventListener("submit", function (e) {
+        if (document.getElementById(a).value !== document.getElementById(b).value) {
+          e.preventDefault();
+          document.getElementById(errId).hidden = false;
+          return;
+        }
+        var btn = f.querySelector("button[type=submit]");
+        if (btn) btn.disabled = true;
+      });
+    }
+    guard("pwdForm", "newPwd", "cfmPwd", "pwdErr");
+    guard("pinForm", "pin1", "pin2", "pinErr");
+    document.querySelectorAll("form.js-once:not(#pwdForm):not(#pinForm)").forEach(function (f) {
+      f.addEventListener("submit", function () {
+        var btn = f.querySelector("button[type=submit]");
+        if (btn) btn.disabled = true;
+      });
+    });
+    // 送出失敗時自動重新打開剛剛的抽屜，方便直接修正
+    var again = document.body.dataset.openSheetOnLoad;
+    if (again && window.mSheet) window.mSheet.open(again);
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

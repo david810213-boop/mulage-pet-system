@@ -2263,6 +2263,530 @@ details.more-items[open] summary svg.i {
   letter-spacing: 0.08em;
 }
 
+/* ==========================================================================
+   第七批（2026-09-24）：我的績效、店用洗劑、零售商品庫存
+   ========================================================================== */
+
+.perf-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.perf-main .big {
+  font: 700 40px/1 var(--num);
+  color: #fff;
+}
+
+.perf-main .bonus {
+  font: 700 20px/1.2 var(--num);
+  color: #f4e6d6;
+}
+
+.perf-main .lbl {
+  font-size: 12px;
+  color: var(--forest-mute);
+  margin-top: 4px;
+}
+
+.bar-track {
+  height: 10px;
+  border-radius: 10px;
+  background: var(--forest-2);
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--live), #c9e7b0);
+}
+
+.bar-hint {
+  font-size: 12.5px;
+  color: var(--forest-mute);
+  margin-top: 6px;
+}
+
+.perf-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.perf-line:last-child {
+  border-bottom: 0;
+}
+
+.perf-line .info {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+}
+
+.perf-line small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.perf-line small a {
+  color: var(--forest);
+}
+
+.perf-line b {
+  font: 700 16px var(--num);
+}
+
+.split-btn {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--sage);
+  color: var(--forest);
+  white-space: nowrap;
+}
+
+.stock-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border-radius: 18px;
+  padding: 12px 14px;
+  border-left: 5px solid transparent;
+}
+
+.stock-row + .stock-row {
+  margin-top: 8px;
+}
+
+.stock-row.low {
+  border-left-color: var(--amber);
+}
+
+.stock-row.out {
+  border-left-color: var(--coral);
+}
+
+.stock-row .info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stock-row .nm {
+  font-size: 15px;
+  display: block;
+}
+
+.stock-row small {
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.stock-row .qty {
+  font: 700 22px var(--num);
+  min-width: 40px;
+  text-align: right;
+}
+
+.stock-row.low .qty {
+  color: var(--amber-ink);
+}
+
+.stock-row.out .qty {
+  color: var(--coral-ink);
+  font-size: 14px;
+}
+
+.stock-row .acts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stock-row .act {
+  font-size: 12.5px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--forest);
+  color: #fff;
+}
+
+.stock-row .act.ghost {
+  background: var(--ground);
+  color: var(--forest);
+}
+
+.stock-row .act:disabled {
+  opacity: 0.4;
+}
+
+.qty-big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 6px 0 16px;
+}
+
+.qty-big button {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--ground);
+  color: var(--forest);
+  font-size: 26px;
+}
+
+.qty-big button:disabled {
+  color: #c2ccc6;
+}
+
+.qty-big input {
+  width: 90px;
+  text-align: center;
+  font: 700 34px var(--num);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  -moz-appearance: textfield;
+}
+
+.qty-big input::-webkit-outer-spin-button,
+.qty-big input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ==========================================================================
+   第八批（2026-09-24）：時段管理、交易紀錄
+   ========================================================================== */
+
+.days.days-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+  scrollbar-width: none;
+}
+
+.days.days-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.days.days-scroll .day {
+  flex: 0 0 48px;
+}
+
+.day.closed .d {
+  color: var(--coral-ink);
+}
+
+.day.closed .c {
+  color: var(--coral-ink);
+}
+
+.day.on.closed .d,
+.day.on.closed .c {
+  color: #ffb4a6;
+}
+
+.closed-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--coral-soft);
+  color: var(--coral-ink);
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.closed-box .t {
+  flex: 1;
+}
+
+.closed-box button {
+  font-size: 13px;
+  padding: 7px 11px;
+  border-radius: 11px;
+  background: var(--paper);
+  color: var(--coral-ink);
+  white-space: nowrap;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.slot-cell {
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1.5px solid transparent;
+}
+
+.slot-cell .tm {
+  font: 700 16px var(--num);
+}
+
+.slot-cell .ct {
+  font-size: 12.5px;
+  color: var(--mute);
+}
+
+.slot-cell .pt {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 7px;
+  background: var(--wood-soft);
+  color: var(--wood-ink);
+}
+
+.slot-cell.full {
+  border-color: var(--amber);
+}
+
+.slot-cell.full .ct {
+  color: var(--amber-ink);
+}
+
+.slot-cell.zero {
+  background: var(--line);
+}
+
+.slot-cell.zero .tm {
+  color: var(--mute);
+}
+
+.slot-cell:disabled {
+  opacity: 0.6;
+}
+
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--ground);
+  border-radius: 14px;
+  padding: 4px;
+}
+
+.seg label {
+  cursor: pointer;
+}
+
+.seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seg span {
+  display: block;
+  text-align: center;
+  padding: 9px 0;
+  border-radius: 11px;
+  font-size: 14px;
+  color: var(--mute);
+}
+
+.seg input:checked + span {
+  background: var(--paper);
+  color: var(--forest);
+  box-shadow: 0 1px 4px rgba(20, 40, 30, 0.12);
+}
+
+.seg input:focus-visible + span {
+  outline: 2px solid var(--wood);
+}
+
+.tx-sum {
+  background: var(--forest);
+  color: #eaf2ec;
+  border-radius: 22px;
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+
+.tx-sum .top {
+  display: flex;
+  justify-content: space-between;
+}
+
+.tx-sum small {
+  display: block;
+  font-size: 12px;
+  color: var(--forest-mute);
+}
+
+.tx-sum b {
+  font: 700 24px/1.2 var(--num);
+  color: #fff;
+}
+
+.tx-sum .methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tx-sum .methods span {
+  font-size: 12.5px;
+  background: var(--forest-2);
+  border-radius: 10px;
+  padding: 3px 9px;
+}
+
+.card.tx {
+  margin-top: 8px;
+}
+
+.closed-form {
+  background: var(--paper);
+  border-radius: 18px;
+  padding: 12px 12px 4px;
+}
+
+.card.tx .amt {
+  font: 700 17px var(--num);
+}
+
+/* ==========================================================================
+   第九批（2026-09-24）：帳號設定、登入頁
+   ========================================================================== */
+
+.bind-code {
+  background: var(--ground);
+  border-radius: 16px;
+  padding: 12px;
+  text-align: center;
+}
+
+.bind-code small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.bind-code b {
+  font: 700 34px/1.3 var(--num);
+  letter-spacing: 0.2em;
+  color: var(--forest);
+}
+
+.menu .lbl small {
+  font-weight: 400;
+}
+
+/* 登入頁：沒有底部分頁列 */
+body.login-page {
+  padding-bottom: 0;
+  background: var(--forest);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.login-wrap {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(var(--safe-top) + 24px) 20px calc(var(--safe-bottom) + 24px);
+}
+
+.login-brand {
+  text-align: center;
+  color: #eaf2ec;
+  margin-bottom: 22px;
+}
+
+.login-brand img {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+}
+
+.login-brand h1 {
+  font-weight: 400;
+  font-size: 28px;
+  margin: 12px 0 2px;
+  letter-spacing: 0.1em;
+}
+
+.login-brand p {
+  margin: 0;
+  color: var(--forest-mute);
+  font-size: 14px;
+}
+
+.login-card {
+  background: var(--paper);
+  border-radius: 28px;
+  padding: 22px 18px 18px;
+}
+
+.login-msg {
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.login-msg.ok {
+  background: var(--sage);
+  color: var(--forest);
+}
+
+.login-msg.err {
+  background: var(--coral-soft);
+  color: var(--coral-ink);
+}
+
+.pwd-wrap {
+  position: relative;
+}
+
+.pwd-wrap input {
+  padding-right: 64px;
+}
+
+.pwd-wrap button {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--forest);
+  padding: 8px 10px;
+}
+
+.login-alt {
+  display: block;
+  text-align: center;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--forest-mute);
+}
+
 /* 在電腦上預覽手機版時，內容維持手機寬度置中，不要被拉得太寬 */
 @media (min-width: 560px) {
   body {

@@ -37,25 +37,35 @@ public class AuthMvcController {
     @GetMapping("/login")
     public String loginPage(@RequestParam(required = false) String redirect,
             @RequestParam(required = false) String error,
+            HttpServletRequest request,
             Model model) {
         model.addAttribute("loginRequest", new LoginRequest());
         model.addAttribute("redirect", redirect);
         if (error != null) {
             model.addAttribute("errorMsg", "帳號或密碼錯誤，請重新輸入");
         }
-        return "auth/login";
+        return loginView(request);
+    }
+
+    // 需求（2026-09-24 第九批）：手機開登入頁時顯示員工手機版的登入畫面，
+    // 表單欄位、送出位置（/auth/login/submit）完全相同，只是換樣板；
+    // 判斷規則跟員工手機版自動導向一致（見 MobileRedirectInterceptor.prefersMobile）
+    private String loginView(HttpServletRequest request) {
+        return com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor.prefersMobile(request)
+                ? "m/login" : "auth/login";
     }
 
     @PostMapping("/login/submit")
     public String loginSubmit(@Valid @ModelAttribute LoginRequest req,
             BindingResult bindingResult,
             @RequestParam(required = false) String redirect,
+            HttpServletRequest request,
             HttpServletResponse response, // 3. 換成 HttpServletResponse 來塞 Cookie
             Model model) {
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("redirect", redirect);
-            return "auth/login";
+            return loginView(request);
         }
 
         Optional<User> userOpt;
@@ -67,7 +77,7 @@ public class AuthMvcController {
             // 顯示，不要混在一起變成同一句「帳號或密碼錯誤」。
             model.addAttribute("redirect", redirect);
             model.addAttribute("errorMsg", e.getMessage());
-            return "auth/login";
+            return loginView(request);
         }
 
         if (userOpt.isPresent()) {

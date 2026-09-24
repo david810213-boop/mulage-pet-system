@@ -1,0 +1,108 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('零售商品 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">零售商品庫存</div>
+    <div class="sub" th:text="${lowCount > 0} ? ${lowCount} + ' 項缺貨或低庫存' : '庫存都正常'">3 項缺貨或低庫存</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="empty" th:if="${rows.isEmpty()}">還沒有零售商品，請到網頁版新增。</div>
+
+  <div class="stock-row" th:each="r : ${rows}" th:classappend="${r.out} ? 'out' : (${r.low} ? 'low' : '')">
+    <div class="info">
+      <span class="nm" th:text="${r.name}">天然洗毛精</span>
+      <small class="num" th:text="'售價 ' + ${#numbers.formatInteger(r.price, 1, 'COMMA')}">售價 450</small>
+    </div>
+    <div class="qty num" th:text="${r.out} ? '缺貨' : ${r.stock}">3</div>
+    <div class="acts">
+      <button type="button" class="act" data-open-sheet="sheetAdj"
+              th:attr="data-mode='in',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">進貨</button>
+      <button type="button" class="act ghost" data-open-sheet="sheetAdj" th:disabled="${r.out}"
+              th:attr="data-mode='out',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">報損</button>
+    </div>
+  </div>
+
+  <a href="/admin/retail-products?desktop=1" class="link-more">新增、編輯商品、成本回填（網頁版）</a>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetAdj" role="dialog" aria-modal="true" aria-labelledby="hAdj">
+  <div class="grab"></div>
+  <h3 id="hAdj">進貨</h3>
+  <p style="margin:0 0 14px;font-size:14px;color:var(--mute)" id="adjWhat"></p>
+  <form method="post" id="adjForm" class="js-once">
+    <input type="hidden" name="delta" id="adjDelta" />
+    <div class="qty-big">
+      <button type="button" id="aMinus" aria-label="減少">−</button>
+      <input type="number" id="aInput" value="1" min="1" inputmode="numeric" aria-label="數量" />
+      <button type="button" id="aPlus" aria-label="增加">＋</button>
+    </div>
+    <p style="font-size:12px;color:var(--mute);margin:0 0 12px" id="adjHint"></p>
+    <div class="form-err" id="aErr" hidden></div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri" id="aSubmit">確定</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    var form = document.getElementById("adjForm");
+    var input = document.getElementById("aInput");
+    var err = document.getElementById("aErr");
+    var mode = "in", stock = 0;
+    function clamp() {
+      var v = Math.max(1, parseInt(input.value, 10) || 1);
+      input.value = v;
+      document.getElementById("aMinus").disabled = v <= 1;
+      return v;
+    }
+    document.getElementById("aMinus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 1) - 1; clamp(); });
+    document.getElementById("aPlus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 0) + 1; clamp(); });
+    input.addEventListener("change", clamp);
+
+    document.querySelectorAll("[data-open-sheet=sheetAdj]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        mode = b.dataset.mode;
+        stock = Number(b.dataset.stock || 0);
+        var isIn = mode === "in";
+        form.action = "/m/retail/" + encodeURIComponent(b.dataset.id) + "/adjust";
+        document.getElementById("hAdj").textContent = isIn ? "進貨" : "報損／盤點扣減";
+        document.getElementById("adjWhat").textContent = b.dataset.name + "，目前庫存 " + stock;
+        document.getElementById("adjHint").textContent = isIn
+          ? "結帳賣出會自動扣庫存，這裡只登記進貨"
+          : "商品損壞、過期、盤點少了才用這個，賣出不用在這裡扣";
+        document.getElementById("aSubmit").textContent = isIn ? "確定進貨" : "確定扣減";
+        err.hidden = true;
+        input.value = 1;
+        clamp();
+      });
+    });
+
+    form.addEventListener("submit", function (e) {
+      var v = clamp();
+      if (mode === "out" && v > stock) {
+        e.preventDefault();
+        err.textContent = "庫存只有 " + stock + "，不能扣這麼多";
+        err.hidden = false;
+        return;
+      }
+      document.getElementById("adjDelta").value = mode === "in" ? v : -v;
+      document.getElementById("aSubmit").disabled = true;
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>

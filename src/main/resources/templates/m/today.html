@@ -40,7 +40,7 @@
     <span th:text="${pendingOperatorCount + ' 個項目還沒填經手人'}">待補經手人</span>
     <svg class="i go"><use href="#i-chev"/></svg>
   </a>
-  <a href="/admin/retail-products" class="notice warn" th:if="${lowStockCount > 0}">
+  <a href="/m/retail" class="notice warn" th:if="${lowStockCount > 0}">
     <svg class="i"><use href="#i-alert"/></svg>
     <span th:text="${lowStockCount + ' 項零售商品低庫存'}">低庫存</span>
     <svg class="i go"><use href="#i-chev"/></svg>

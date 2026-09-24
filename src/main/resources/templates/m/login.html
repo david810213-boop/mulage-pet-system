@@ -1,0 +1,53 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('登入 · 慕沐村')}"></head>
+<body class="login-page">
+<main class="login-wrap">
+  <div class="login-brand">
+    <img src="/pwa/icon-192.png" alt="" />
+    <h1>慕沐村</h1>
+    <p>員工登入</p>
+  </div>
+
+  <div class="login-card">
+    <div class="login-msg ok" th:if="${successMsg}" th:text="${successMsg}" role="status">註冊成功</div>
+    <div class="login-msg err" th:if="${errorMsg}" th:text="${errorMsg}" role="alert">帳號或密碼錯誤</div>
+
+    <form method="post" action="/auth/login/submit" id="loginForm">
+      <input type="hidden" name="redirect" th:value="${redirect}" />
+      <div class="field">
+        <label for="username">Email</label>
+        <input type="email" id="username" name="username" required autocomplete="username" inputmode="email" placeholder="name@example.com" />
+      </div>
+      <div class="field">
+        <label for="password">密碼</label>
+        <div class="pwd-wrap">
+          <input type="password" id="password" name="password" required autocomplete="current-password" />
+          <button type="button" id="pwdToggle" aria-label="顯示密碼">顯示</button>
+        </div>
+      </div>
+      <button type="submit" class="btn pri" id="loginBtn" style="margin-top:6px">登入</button>
+    </form>
+  </div>
+
+  <a href="/auth/login?desktop=1" class="login-alt">改用網頁版登入</a>
+</main>
+<script>
+  (function () {
+    var pwd = document.getElementById("password");
+    var t = document.getElementById("pwdToggle");
+    t.addEventListener("click", function () {
+      var show = pwd.type === "password";
+      pwd.type = show ? "text" : "password";
+      t.textContent = show ? "隱藏" : "顯示";
+      t.setAttribute("aria-label", show ? "隱藏密碼" : "顯示密碼");
+    });
+    document.getElementById("loginForm").addEventListener("submit", function () {
+      var b = document.getElementById("loginBtn");
+      b.disabled = true;
+      b.textContent = "登入中…";
+    });
+  })();
+</script>
+</body>
+</html>

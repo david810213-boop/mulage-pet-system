@@ -39,6 +39,7 @@ public class PaymentMvcController {
     private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
     private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
+    private final com.petgrooming.pet_system.service.MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
     /**
      * JWT 版獲取當前登入使用者
@@ -58,51 +59,11 @@ public class PaymentMvcController {
     // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
     // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
     // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
+    // 需求（2026-09-24）：合併交易紀錄的邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
     private java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
             java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
             java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
-
-        java.util.List<ConsumptionRecordResponse> records = new java.util.ArrayList<>();
-
-        for (var t : transactions) {
-            if (!t.isPaid()) continue;
-            records.add(ConsumptionRecordResponse.builder()
-                    .sourceLabel("預約結帳")
-                    .sourceType("APPOINTMENT")
-                    .recordId(t.getAppointmentId())
-                    .code(t.getAppointmentCode())
-                    .petName(t.getPetName())
-                    .time(t.getPaymentTime())
-                    .handledBy(t.getHandledBy())
-                    .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
-                    .amount(t.getFinalAmount())
-                    .paid(true)
-                    .build());
-        }
-
-        for (var w : walkInOrders) {
-            if (!w.isPaid()) continue;
-            records.add(ConsumptionRecordResponse.builder()
-                    .sourceLabel("現場開單")
-                    .sourceType("WALKIN")
-                    .recordId(w.getId())
-                    .code("現場單#" + w.getId())
-                    .petName(w.getPetName())
-                    .time(w.getPaymentTime())
-                    .handledBy(w.getCreatedBy())
-                    .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
-                    .amount(w.getTotalAmount())
-                    .paid(true)
-                    .build());
-        }
-
-        records.sort((a, b) -> {
-            if (a.getTime() == null && b.getTime() == null) return 0;
-            if (a.getTime() == null) return 1;
-            if (b.getTime() == null) return -1;
-            return b.getTime().compareTo(a.getTime());
-        });
-        return records;
+        return memberConsumptionService.buildCombinedRecords(transactions, walkInOrders);
     }
 
     // 列出付款紀錄（員工/管理員看全部，顧客只看自己的）

@@ -113,4 +113,56 @@ public class MemberConsumptionService {
         });
         return records;
     }
+
+    /**
+     * 交易紀錄列表用（需求，2026-09-24 第八批）：把「預約交易」跟「現場單」合成同一份清單，
+     * 只取已付款，依付款時間新到舊排序。原本是 PaymentMvcController 的 private 方法，
+     * 員工手機版交易紀錄頁也要用，原封不動搬到這裡共用，內容沒有任何行為變更。
+     */
+    public java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
+            java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
+            java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
+
+        java.util.List<ConsumptionRecordResponse> records = new java.util.ArrayList<>();
+
+        for (var t : transactions) {
+            if (!t.isPaid()) continue;
+            records.add(ConsumptionRecordResponse.builder()
+                    .sourceLabel("預約結帳")
+                    .sourceType("APPOINTMENT")
+                    .recordId(t.getAppointmentId())
+                    .code(t.getAppointmentCode())
+                    .petName(t.getPetName())
+                    .time(t.getPaymentTime())
+                    .handledBy(t.getHandledBy())
+                    .paymentMethodLabel(t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—")
+                    .amount(t.getFinalAmount())
+                    .paid(true)
+                    .build());
+        }
+
+        for (var w : walkInOrders) {
+            if (!w.isPaid()) continue;
+            records.add(ConsumptionRecordResponse.builder()
+                    .sourceLabel("現場開單")
+                    .sourceType("WALKIN")
+                    .recordId(w.getId())
+                    .code("現場單#" + w.getId())
+                    .petName(w.getPetName())
+                    .time(w.getPaymentTime())
+                    .handledBy(w.getCreatedBy())
+                    .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
+                    .amount(w.getTotalAmount())
+                    .paid(true)
+                    .build());
+        }
+
+        records.sort((a, b) -> {
+            if (a.getTime() == null && b.getTime() == null) return 0;
+            if (a.getTime() == null) return 1;
+            if (b.getTime() == null) return -1;
+            return b.getTime().compareTo(a.getTime());
+        });
+        return records;
+    }
 }
