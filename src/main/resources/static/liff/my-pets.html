@@ -14,6 +14,7 @@
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <script src="/liff/liff-config.js?v=1"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
     <style>
       /* ---- 這頁專屬的補充樣式（元件本身在 liff-theme.css）---- */
@@ -221,7 +222,7 @@
     </div>
 
     <script>
-      const LIFF_ID = "2010567973-W8pQ5ZqI";
+      const LIFF_ID = window.MULAGE_LIFF.myPets; // LIFF ID 集中在 /liff/liff-config.js
       let jwtToken = null;
 
       // 資安修正：寵物名稱/品種/注意事項是顧客自己填的，直接塞進 innerHTML

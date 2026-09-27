@@ -14,6 +14,7 @@
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <script src="/liff/liff-config.js?v=1"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
     <style>
       body {
@@ -471,7 +472,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-      const LIFF_ID = "2010567973-Sgmd1A5a";
+      const LIFF_ID = window.MULAGE_LIFF.addPet; // LIFF ID 集中在 /liff/liff-config.js
       let jwtToken = null;
       let myPhone = ""; // 需求（追加）：從個人資料帶入，不用在這頁重複填
       // 需求（追加）：編輯模式——LIFF「我的毛孩」點編輯會帶 ?editPetId=123 連過來，

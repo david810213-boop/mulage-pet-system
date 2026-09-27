@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,10 @@ public class AccountMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.LineBindService lineBindService;
+
+    /** 店員綁定 LINE 用的 LIFF 網址（application.yml 的 line.liff.bind-url） */
+    @Value("${line.liff.bind-url}")
+    private String bindLiffUrl;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -118,6 +123,7 @@ public class AccountMvcController {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
         model.addAttribute("user", user);
         model.addAttribute("alreadyBound", user.getLineUserId() != null && !user.getLineUserId().isBlank());
+        model.addAttribute("bindUrl", bindLiffUrl);
         return "account/bind-line";
     }
 
@@ -129,6 +135,7 @@ public class AccountMvcController {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
         model.addAttribute("user", user);
         model.addAttribute("alreadyBound", user.getLineUserId() != null && !user.getLineUserId().isBlank());
+        model.addAttribute("bindUrl", bindLiffUrl);
 
         String code = lineBindService.generateCode(user.getUsername());
         model.addAttribute("bindCode", code);

@@ -51,7 +51,12 @@ server:
 
 # LINE Login 設定（在 LINE Developers Console 建立 LINE Login Channel 後取得）
 line:
-  channel-id: ${LINE_CHANNEL_ID:2010567973}
+  # 2026-09-27 改用店家 Provider「慕沐村 Mulage Pet」底下的 LINE Login 頻道
+  channel-id: ${LINE_CHANNEL_ID:2011761209}
+  # 店員綁定 LINE 用的 LIFF 網址（網頁版、手機版帳號設定頁的 QR Code 與連結都讀這個）
+  # 必須跟 static/liff/liff-config.js 裡的 bindLine 是同一個 LIFF ID
+  liff:
+    bind-url: ${LINE_LIFF_BIND_URL:https://liff.line.me/2011761209-LIdswF56}
   # LINE 官方帳號推播用（跟上面的 Login channel 不同，需要另外在 Messaging API 分頁簽發）
   # 還沒申請好之前留空即可，LineMessagingService 會自動跳過發送、只記 log，不會讓系統出錯。
   messaging:

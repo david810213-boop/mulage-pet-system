@@ -14,6 +14,7 @@
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <script src="/liff/liff-config.js?v=1"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
     <style>
       body {
@@ -152,7 +153,7 @@
     </div>
 
     <script>
-      const LIFF_ID = "2010567973-bNNfTiV9"; // 綁定用 LIFF App，Endpoint URL 指到本頁
+      const LIFF_ID = window.MULAGE_LIFF.bindLine; // LIFF ID 集中在 /liff/liff-config.js
 
       async function init() {
         try {

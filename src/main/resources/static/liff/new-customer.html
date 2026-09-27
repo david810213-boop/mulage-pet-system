@@ -14,6 +14,7 @@
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <script src="/liff/liff-config.js?v=1"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
     <style>
       body {
@@ -261,7 +262,7 @@
     </div>
 
     <script>
-      const LIFF_ID = "2010567973-YeLZTDKn"; // 需求：新客報到用獨立的 LIFF App（Endpoint URL 直接指到本頁，不靠路徑轉發）
+      const LIFF_ID = window.MULAGE_LIFF.newCustomer; // LIFF ID 集中在 /liff/liff-config.js
       let jwtToken = null;
 
       async function init() {

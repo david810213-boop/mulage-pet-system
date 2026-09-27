@@ -14,6 +14,7 @@
       charset="utf-8"
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
+    <script src="/liff/liff-config.js?v=1"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
     <style>
       body {
@@ -618,7 +619,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-      const LIFF_ID = "2010567973-N5UZCJyk";
+      const LIFF_ID = window.MULAGE_LIFF.myAppointments; // LIFF ID 集中在 /liff/liff-config.js
       let jwtToken = null;
       let allAppointments = [];
       let currentTab = "upcoming";
