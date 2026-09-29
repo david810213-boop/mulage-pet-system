@@ -159,11 +159,23 @@ public class AppointmentService {
 
         // ⚡ 3. 核心校正：將前端傳來的 List<String> 服務代碼，轉換為資料庫中的真實實體物件清單
 
-        List<GroomingItem> actualItems = req.getSelectedItems().stream()
-                .map((String itemCode) -> groomingItemRepository.findByItemCode(itemCode)
-                        .orElseThrow(() -> new AppointmentException("找不到有效的服務項目代碼：" + itemCode)))
-                .filter(item -> !item.isDeleted())
-                .toList();
+        // 需求（修正，2026-09-29）：9/9 起正式站的新預約全部變成 $0、沒有項目
+        // （log 顯示項目代碼有查到，但預約寫入時項目清單是空的）。改成：
+        // ① 下架判斷交給資料庫（findByItemCodeAndIsDeletedFalse），不在 Java 端過濾；
+        // ② 清單用可變的 ArrayList，不用 Stream.toList() 的唯讀清單交給 Hibernate；
+        // ③ 最後項目清單是空的就直接擋下，絕不再建立 $0、沒有項目的預約；
+        // ④ 記一行 log（收到的代碼 → 實際項目與金額），之後出問題可以直接對照。
+        List<GroomingItem> actualItems = new ArrayList<>();
+        for (String itemCode : req.getSelectedItems()) {
+            GroomingItem item = groomingItemRepository.findByItemCodeAndIsDeletedFalse(itemCode)
+                    .orElseThrow(() -> new AppointmentException("服務項目已下架或不存在：" + itemCode));
+            actualItems.add(item);
+        }
+        log.info("[預約建立] 收到項目代碼 {} → 實際項目 {}", req.getSelectedItems(),
+                actualItems.stream().map(i -> i.getItemCode() + "=$" + i.getPrice()).toList());
+        if (actualItems.isEmpty()) {
+            throw new AppointmentException("請至少選擇一項有效的美容服務項目！");
+        }
 
         // 需求（追加）：僅限既有客戶的項目（例如貓咪基礎保養），這隻寵物完全沒有
         // 消費紀錄的話不能線上預約這個項目。
@@ -208,6 +220,8 @@ public class AppointmentService {
         }
 
         Appointment saved = appointmentRepository.save(appointment);
+        log.info("[預約建立] #{} 寫入完成：金額 {}，項目 {} 項", saved.getId(), saved.getTotalAmount(),
+                saved.getSelectedItems() == null ? 0 : saved.getSelectedItems().size());
 
         // 需求（追加，2026-08-26）：新預約送出時（不管當天臨時預約還是待確認），
         // 通知所有已綁定 LINE 的店家/員工帳號，讓店家第一時間知道有新單進來，

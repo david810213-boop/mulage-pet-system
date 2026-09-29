@@ -54,8 +54,14 @@ public class GoogleCalendarService {
             return false;
         }
 
+        // 需求（2026-09-29）：Railway 貼上環境變數時，值的結尾可能夾帶換行或空白，
+        // 日曆 ID 帶到換行會讓 Google API 回 404（網址變成 ...gmail.com%0A），
+        // 所以兩個值一律先去掉前後空白；Base64 改用 MIME 解碼器，中間夾到換行也能解。
+        calendarId = calendarId.trim();
+        serviceAccountJsonBase64 = serviceAccountJsonBase64.trim();
+
         try {
-            byte[] jsonBytes = Base64.getDecoder().decode(serviceAccountJsonBase64);
+            byte[] jsonBytes = Base64.getMimeDecoder().decode(serviceAccountJsonBase64);
             GoogleCredentials credentials = GoogleCredentials
                     .fromStream(new ByteArrayInputStream(jsonBytes))
                     .createScoped(Collections.singleton(CalendarScopes.CALENDAR));
