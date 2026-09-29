@@ -26,6 +26,7 @@ public class PetService {
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
     private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
+    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：美容紀錄照片
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -309,5 +310,22 @@ public class PetService {
         petGroomingNoteRepository.save(note);
 
         cloudinaryService.deleteQuietly(oldPublicId);
+    }
+
+    // ── 6. 顧客查看自己毛孩的美容紀錄（需求，2026-09-29：LIFF「我的毛孩」）──────
+    // 備註內容與照片全部開放給顧客看（2026-09-29 店家決定）。呼叫端要先做擁有者檢查。
+    public java.util.List<java.util.Map<String, Object>> getGroomingHistory(Long petId) {
+        var notes = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(petId);
+        var photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(notes);
+        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+        for (var n : notes) {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", n.getId());
+            m.put("serviceDate", n.getServiceDate() != null ? n.getServiceDate().toString() : null);
+            m.put("note", n.getNote());
+            m.put("photos", photosByNote.getOrDefault(n.getId(), java.util.List.of()));
+            result.add(m);
+        }
+        return result;
     }
 }

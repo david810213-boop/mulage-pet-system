@@ -1013,8 +1013,30 @@
             </div>
           </div>
 
+          ${groomingHtml(d)}
+
           ${paymentHtml}
         `;
+      }
+
+      // 需求（2026-09-29）：核對時店家留下的美容狀況備註與照片，點照片可以看原圖
+      function groomingHtml(d) {
+        const photos = d.groomingPhotos || [];
+        if (!d.groomingNote && !photos.length) return "";
+        const photosHtml = photos.length
+          ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">${photos
+              .map(
+                (u) =>
+                  `<a href="${escapeHtml(u)}" target="_blank" rel="noopener"><img src="${escapeHtml(u)}" loading="lazy" alt="美容照片" style="width:84px; height:84px; object-fit:cover; border-radius:10px; display:block;" /></a>`,
+              )
+              .join("")}</div>`
+          : "";
+        return `
+          <div class="detail-section">
+            <div class="label">本次美容紀錄</div>
+            ${d.groomingNote ? `<div style="font-size:14px; line-height:1.7; white-space:pre-wrap;">${escapeHtml(d.groomingNote)}</div>` : ""}
+            ${photosHtml}
+          </div>`;
       }
 
       function closeDetail() {

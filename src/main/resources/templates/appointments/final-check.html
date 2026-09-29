@@ -248,6 +248,15 @@
               ></textarea>
             </div>
 
+            <!-- 需求（2026-09-29）：核對時可拍照／上傳美容狀況照片（選填，最多 5 張），
+                 照片跟備注一起存進毛孩美容紀錄，家長在 LINE 看得到 -->
+            <div class="card" style="margin-bottom: 1rem">
+              <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 4px">
+                美容狀況照片（選填）
+              </h3>
+              <div id="groomingPhotos" data-form="finalCheckForm" data-max="5"></div>
+            </div>
+
             <div class="card" style="margin-bottom: 1rem">
               <h3
                 style="
@@ -351,6 +360,10 @@
       </div>
     </div>
 
+    <script src="/js/grooming-photos.js?v=1"></script>
+    <script>
+      GroomingPhotos.init(document.getElementById("groomingPhotos"));
+    </script>
     <script>
       const canvas = document.getElementById("signaturePad");
       const ctx = canvas.getContext("2d");

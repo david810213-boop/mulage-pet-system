@@ -32,6 +32,9 @@ public class AppointmentDetailResponse {
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
     private String handledBy;
+    // 需求（2026-09-29）：核對時留下的美容狀況備註與照片，顧客在 LIFF 明細看得到
+    private String groomingNote;
+    private List<String> groomingPhotos;
 
     @Data
     @Builder

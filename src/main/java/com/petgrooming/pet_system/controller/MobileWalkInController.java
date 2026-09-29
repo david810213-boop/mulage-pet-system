@@ -371,6 +371,8 @@ public class MobileWalkInController {
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
         model.addAttribute("activeTab", "walkin");
+        // 需求（2026-09-29）：非會員單沒有毛孩檔案，不開放核對照片
+        model.addAttribute("photoEnabled", o.getMemberUsername() != null && !o.getMemberUsername().isBlank());
         return "m/final-check";
     }
 
@@ -378,13 +380,15 @@ public class MobileWalkInController {
     public String finalCheckSubmit(@PathVariable Long id,
             @RequestParam(required = false) String note,
             @RequestParam(required = false) String signatureData,
+            @RequestParam(required = false) List<String> photoUrls,
+            @RequestParam(required = false) List<String> photoPublicIds,
             HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         if (user == null) {
             return "redirect:/auth/login";
         }
         try {
-            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername());
+            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername(), photoUrls, photoPublicIds);
             operationLogService.log(user, "WALKIN", "FINAL_CHECK", "現場單 #" + id,
                     (note == null ? "" : note) + "（手機版）");
             ra.addFlashAttribute("toast", "核對完成，可以結帳了");
@@ -392,6 +396,8 @@ public class MobileWalkInController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             ra.addFlashAttribute("toastError", e.getMessage());
             ra.addFlashAttribute("draftNote", note);
+            ra.addFlashAttribute("draftPhotoUrls", photoUrls == null ? "" : String.join("|", photoUrls));
+            ra.addFlashAttribute("draftPhotoIds", photoPublicIds == null ? "" : String.join("|", photoPublicIds));
             return "redirect:/m/walk-in/" + id + "/final-check";
         }
     }

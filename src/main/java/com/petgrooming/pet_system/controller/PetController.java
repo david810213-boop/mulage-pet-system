@@ -126,6 +126,14 @@ public class PetController {
     // 三種折扣互斥擇優：首次體驗優惠／90天回洗優惠（兩者本身也互斥，貓咪
     // 才可能兩者都適用，狗狗只有首次體驗）跟會員儲值折扣分開回傳，前端渲染
     // 時自己取較優惠者，邏輯跟後端 resolvePreferredDiscount() 一致。
+    // ── GET /api/pets/{petId}/grooming-history ────────────────────────────
+    // 需求（2026-09-29）：LIFF「我的毛孩」查看每次美容的狀況備註與照片
+    @GetMapping("/{petId}/grooming-history")
+    public ResponseEntity<?> getGroomingHistory(HttpServletRequest request, @PathVariable Long petId) {
+        petService.assertOwnership(petId, currentUsername(request));
+        return ResponseEntity.ok(petService.getGroomingHistory(petId));
+    }
+
     @GetMapping("/{petId}/discount-status")
     public ResponseEntity<?> getDiscountStatus(
             HttpServletRequest request,

@@ -49,6 +49,7 @@ public class AppointmentService {
     private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
     private final ClosedDateService closedDateService; // 需求 16：公休日設定
     private final PetGroomingNoteRepository petGroomingNoteRepository; // 進行中核對：毛孩美容狀況歷史
+    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：核對照片
     private final PerformanceService performanceService; // 進行中核對：接待送出積分
     private final com.petgrooming.pet_system.repository.AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
@@ -1062,6 +1063,9 @@ public class AppointmentService {
             throw new AppointmentException("請請家長於簽名板完成簽名確認");
         }
 
+        // 需求（2026-09-29）：核對照片（選填，最多 5 張），先驗證再開始寫資料
+        List<String[]> photos = groomingNotePhotoService.normalize(req.getPhotoUrls(), req.getPhotoPublicIds());
+
         LocalDateTime now = LocalDateTime.now();
 
         // 1. 寫入本次核對紀錄到預約本身
@@ -1083,7 +1087,10 @@ public class AppointmentService {
                     .note(note)
                     .serviceDate(appointment.getDate())
                     .build();
-            petGroomingNoteRepository.save(historyNote);
+            historyNote = petGroomingNoteRepository.save(historyNote);
+            groomingNotePhotoService.attach(historyNote, photos);
+        } else if (!photos.isEmpty()) {
+            throw new AppointmentException("找不到這隻毛孩的檔案，照片無法保存，請先移除照片再送出");
         }
 
         // 3. 該店員記入「接待送出」積分（沿用既有 CHECKOUT 積分類別）
@@ -1216,6 +1223,16 @@ public class AppointmentService {
                 .items(items)
                 .totalAmount(appointment.getTotalAmount())
                 .paid(appointment.isPaid());
+
+        // 需求（2026-09-29）：核對時留下的美容狀況備註與照片（顧客在 LIFF 明細看得到）
+        if (appointment.isFinalCheckDone()) {
+            detailBuilder.groomingNote(appointment.getFinalCheckNote());
+            List<String> photoList = new ArrayList<>();
+            for (PetGroomingNote n : petGroomingNoteRepository.findByAppointmentId(appointmentId)) {
+                photoList.addAll(groomingNotePhotoService.photoUrls(n));
+            }
+            detailBuilder.groomingPhotos(photoList);
+        }
 
         transactionOpt.ifPresent(tx -> {
             detailBuilder

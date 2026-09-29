@@ -31,8 +31,14 @@ public class PetGroomingNote {
     private Pet pet;
 
     // 對應的預約（供追溯是哪一次服務留下的備註）
-    @Column(name = "appointment_id", nullable = false)
+    // 需求（2026-09-29）：現場單核對也會留紀錄，那種紀錄沒有預約 id，改成可為 null
+    // （資料庫既有欄位的 NOT NULL 由 Flyway V17 放寬）
+    @Column(name = "appointment_id")
     private Long appointmentId;
+
+    // 需求（2026-09-29）：現場單核對留下的紀錄，對應哪一張現場單
+    @Column(name = "walk_in_order_id")
+    private Long walkInOrderId;
 
     // 留下這筆備註的員工
     @ManyToOne(fetch = FetchType.LAZY)

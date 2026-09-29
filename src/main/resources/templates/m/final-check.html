@@ -57,6 +57,18 @@
       <small>會存進毛孩的美容紀錄，下次服務可以參考</small>
     </div>
 
+    <!-- 需求（2026-09-29）：核對時拍照／上傳美容狀況照片（選填，最多 5 張） -->
+    <th:block th:if="${photoEnabled}">
+      <div class="section-h"><h2>美容狀況照片</h2><small>選填</small></div>
+      <div class="field">
+        <div id="groomingPhotos" data-form="checkForm" data-max="5"
+             th:attr="data-initial-urls=${draftPhotoUrls},data-initial-ids=${draftPhotoIds}"></div>
+      </div>
+    </th:block>
+    <div class="field" th:if="${photoEnabled != null and !photoEnabled}">
+      <small>非會員單沒有毛孩檔案，無法附上美容狀況照片</small>
+    </div>
+
     <div class="section-h"><h2>家長簽名</h2></div>
     <div class="sign" id="signBox">
       <div class="base"></div>
@@ -258,6 +270,12 @@
       submit.textContent = "送出中…";
     });
   })();
+</script>
+<script src="/js/grooming-photos.js?v=1"></script>
+<script>
+  if (document.getElementById("groomingPhotos")) {
+    GroomingPhotos.init(document.getElementById("groomingPhotos"));
+  }
 </script>
 <script th:replace="~{m/fragments/app :: pwa}"></script>
 </body>

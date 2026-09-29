@@ -77,7 +77,12 @@
     <div class="rec" th:each="n : ${notes}">
       <div class="h"><b th:text="${n.date}">2026/9/12</b><span th:text="${n.staff}">小芸</span></div>
       <p th:text="${n.note}">耳朵有點紅，建議觀察</p>
-      <img th:if="${n.photoUrl != null}" th:src="${n.photoUrl}" alt="美容紀錄照片" loading="lazy" />
+      <!-- 需求（2026-09-29）：核對時拍的照片＋事後補的照片，最多並排顯示，點開看原圖 -->
+      <div class="rec-photos" th:if="${!n.photos.isEmpty()}">
+        <a th:each="url : ${n.photos}" th:href="${url}" target="_blank" rel="noopener">
+          <img th:src="${url}" alt="美容紀錄照片" loading="lazy" />
+        </a>
+      </div>
     </div>
   </section>
 

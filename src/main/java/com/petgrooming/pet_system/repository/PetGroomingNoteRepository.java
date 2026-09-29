@@ -13,4 +13,6 @@ public interface PetGroomingNoteRepository extends JpaRepository<PetGroomingNote
     List<PetGroomingNote> findByPetIdOrderByServiceDateDescCreatedAtDesc(Long petId);
 
     List<PetGroomingNote> findByAppointmentId(Long appointmentId);
+
+    List<PetGroomingNote> findByAppointmentIdIn(java.util.Collection<Long> appointmentIds);
 }

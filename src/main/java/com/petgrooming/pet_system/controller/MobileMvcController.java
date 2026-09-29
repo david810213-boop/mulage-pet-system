@@ -455,6 +455,7 @@ public class MobileMvcController {
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
         model.addAttribute("activeTab", "appointments");
+        model.addAttribute("photoEnabled", true); // 需求（2026-09-29）：核對照片
         return "m/final-check";
     }
 
@@ -462,6 +463,8 @@ public class MobileMvcController {
     public String finalCheckSubmit(@PathVariable Long id,
             @RequestParam(required = false) String note,
             @RequestParam(required = false) String signatureData,
+            @RequestParam(required = false) List<String> photoUrls,
+            @RequestParam(required = false) List<String> photoPublicIds,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         if (user == null) {
@@ -471,6 +474,8 @@ public class MobileMvcController {
             FinalCheckRequest req = new FinalCheckRequest();
             req.setNote(note);
             req.setSignatureData(signatureData);
+            req.setPhotoUrls(photoUrls);
+            req.setPhotoPublicIds(photoPublicIds);
             appointmentService.finalCheck(id, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "FINAL_CHECK", "預約 #" + id,
                     (note == null ? "" : note) + "（手機版）");
@@ -479,6 +484,9 @@ public class MobileMvcController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             redirectAttributes.addFlashAttribute("toastError", e.getMessage());
             redirectAttributes.addFlashAttribute("draftNote", note);
+            // 已經上傳的照片帶回核對頁，不用重拍
+            redirectAttributes.addFlashAttribute("draftPhotoUrls", joinPhotos(photoUrls));
+            redirectAttributes.addFlashAttribute("draftPhotoIds", joinPhotos(photoPublicIds));
             return "redirect:/m/appointments/" + id + "/final-check";
         }
     }
@@ -686,6 +694,11 @@ public class MobileMvcController {
         return "check".equals(from)
                 ? "redirect:/m/appointments/" + id + "/final-check"
                 : "redirect:/m/appointments/" + id + "/checkout";
+    }
+
+    // 核對失敗時把已上傳的照片清單帶回頁面（用 | 串起來放在 data 屬性）
+    private static String joinPhotos(List<String> list) {
+        return list == null ? "" : String.join("|", list);
     }
 
     // 只接受站內 /m/ 開頭的路徑，避免被帶去外部網站

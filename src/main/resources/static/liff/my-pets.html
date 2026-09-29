@@ -288,6 +288,8 @@
 
           if (!res.ok) throw new Error("HTTP " + res.status);
           const pets = await res.json();
+          petNameById = {};
+          (pets || []).forEach((p) => (petNameById[p.id] = p.name));
 
           if (!pets || !pets.length) {
             document.getElementById("app").innerHTML =
@@ -323,6 +325,11 @@
             體重：<b>${p.weight} kg</b>　年齡：<b>${p.age} 歲</b>
             ${p.notes ? "<br>注意事項：<b>" + escapeHtml(p.notes) + "</b>" : ""}
           </div>
+          <!-- 需求（2026-09-29）：每次美容的狀況備註與照片 -->
+          <button type="button" class="history-btn" onclick="openHistory(${p.id})"
+                  style="margin-top:10px; width:100%; padding:10px; border-radius:12px; border:1px solid #DBD3C4; background:#fff; color:#26332B; font-size:14px; font-family:inherit; cursor:pointer;">
+            📖 美容紀錄
+          </button>
           <div class="photo-upload">
             <input type="file" accept="image/*" id="photoInput-${p.id}" />
             <button type="button" onclick="uploadPhoto(${p.id})">
@@ -384,6 +391,70 @@
       // 需求（追加，2026-08-26）：顧客自己刪除毛孩。有預約或消費紀錄的話，
       // 後端 PetService.deletePet() 會擋下並回傳明確的錯誤訊息，這裡直接
       // 顯示後端給的訊息，不用自己重複判斷。
+      // 需求（2026-09-29）：查看毛孩每次美容的狀況備註與照片（店家核對時留下的）
+      let petNameById = {};
+      async function openHistory(petId) {
+        const petName = escapeHtml(petNameById[petId] || "毛孩");
+        let panel = document.getElementById("historyPanel");
+        if (!panel) {
+          panel = document.createElement("div");
+          panel.id = "historyPanel";
+          panel.style.cssText =
+            "position:fixed; inset:0; background:rgba(20,28,24,.45); z-index:1000; display:flex; align-items:flex-end; justify-content:center;";
+          panel.addEventListener("click", (e) => {
+            if (e.target === panel) panel.remove();
+          });
+          document.body.appendChild(panel);
+        }
+        panel.innerHTML = `
+          <div style="background:#faf8f3; width:100%; max-width:560px; max-height:85vh; overflow:auto; border-radius:20px 20px 0 0; padding:20px 18px 32px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div style="font-size:17px; font-weight:700; color:#26332B;">${petName} 的美容紀錄</div>
+              <button type="button" onclick="document.getElementById('historyPanel').remove()" style="border:0; background:none; font-size:22px; color:#8a8474; cursor:pointer;">×</button>
+            </div>
+            <div id="historyBody" style="font-size:14px; color:#6b6656;">載入中…</div>
+          </div>`;
+        const body = document.getElementById("historyBody");
+        try {
+          const res = await fetch("/api/pets/" + petId + "/grooming-history", {
+            headers: { Authorization: "Bearer " + jwtToken },
+          });
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            data = { message: text };
+          }
+          if (!res.ok) throw new Error(data.message || "HTTP " + res.status);
+          if (!data.length) {
+            body.innerHTML = '<div style="padding:24px 0; text-align:center;">還沒有美容紀錄，下次美容完成後就會出現在這裡 ♡</div>';
+            return;
+          }
+          body.innerHTML = data
+            .map(
+              (n) => `
+            <div style="padding:14px 0; border-top:1px solid #e6e0d4;">
+              <div style="font-size:13px; color:#a29a8c;">${escapeHtml(n.serviceDate || "")}</div>
+              <div style="margin-top:4px; line-height:1.7; color:#26332B; white-space:pre-wrap;">${escapeHtml(n.note || "")}</div>
+              ${
+                (n.photos || []).length
+                  ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">${n.photos
+                      .map(
+                        (u) =>
+                          `<a href="${escapeHtml(u)}" target="_blank" rel="noopener"><img src="${escapeHtml(u)}" loading="lazy" alt="美容照片" style="width:84px; height:84px; object-fit:cover; border-radius:10px; display:block;" /></a>`,
+                      )
+                      .join("")}</div>`
+                  : ""
+              }
+            </div>`,
+            )
+            .join("");
+        } catch (e) {
+          body.innerHTML = '<div style="color:#8B0000;">載入失敗：' + escapeHtml(e.message) + "</div>";
+        }
+      }
+
       async function deletePet(petId, petName) {
         if (!confirm(`確定要刪除「${petName}」嗎？刪除後不會再顯示在毛孩清單裡，但過往的預約/消費紀錄不會受影響。`)) return;
         try {

@@ -2068,6 +2068,18 @@ details.more-items[open] summary svg.i {
   display: block;
 }
 
+/* 需求（2026-09-29）：美容紀錄多張照片並排 */
+.rec-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rec-photos img {
+  margin-top: 0;
+}
+
 /* ── 會員數字 ────────────────────────────────────────────────────────── */
 .stat-row {
   display: grid;

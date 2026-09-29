@@ -56,6 +56,7 @@ public class MobileMemberController {
     private final UserRepository userRepository;
     private final PetService petService;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
+    private final com.petgrooming.pet_system.service.GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final AppointmentService appointmentService;
     private final MemberConsumptionService memberConsumptionService;
     private final WalletService walletService;
@@ -133,8 +134,15 @@ public class MobileMemberController {
             return "redirect:/m/pets";
         }
 
-        List<Map<String, Object>> notes = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(id)
-                .stream().limit(10).map(this::noteRow).toList();
+        List<PetGroomingNote> noteEntities = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(id)
+                .stream().limit(10).toList();
+        // 需求（2026-09-29）：每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
+        Map<Long, List<String>> photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(noteEntities);
+        List<Map<String, Object>> notes = noteEntities.stream().<Map<String, Object>>map(n -> {
+            Map<String, Object> m = noteRow(n);
+            m.put("photos", photosByNote.getOrDefault(n.getId(), List.of()));
+            return m;
+        }).toList();
         List<Map<String, Object>> records = memberConsumptionService.buildPaidRecords(owner, user.getUsername())
                 .stream().filter(r -> pet.getName().equals(r.getPetName()))
                 .limit(10).map(this::recordRow).toList();

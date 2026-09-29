@@ -51,6 +51,8 @@ public class WalkInOrderService {
     private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（追加）：查現場單寵物物種
     private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
+    private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求（2026-09-29）：現場單核對也寫入美容紀錄
+    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：核對照片
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
     // 需求 7-1 修正：支援純零售商品訂單（items 可以是空的，只要 retailItems 有東西即可）
@@ -241,6 +243,15 @@ public class WalkInOrderService {
     // 須先完成結束服務才能核對；核對完成才能結帳。
     @Transactional
     public WalkInOrderResponse finalCheck(Long orderId, String note, String signatureData, String username) {
+        return finalCheck(orderId, note, signatureData, username, null, null);
+    }
+
+    // 需求（2026-09-29）：核對時可附上美容狀況照片（最多 5 張）。會員單會把備註＋照片
+    // 寫進毛孩的美容紀錄（跟預約單一樣），顧客在 LIFF「我的毛孩」看得到；
+    // 非會員單沒有毛孩檔案，不能附照片。
+    @Transactional
+    public WalkInOrderResponse finalCheck(Long orderId, String note, String signatureData, String username,
+            List<String> photoUrls, List<String> photoPublicIds) {
         User staff = userRepository.findByUsername(username)
                 .orElseThrow(() -> new PaymentException("找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
@@ -266,12 +277,33 @@ public class WalkInOrderService {
             throw new PaymentException("請請家長於簽名板完成簽名確認");
         }
 
+        List<String[]> photos = groomingNotePhotoService.normalize(photoUrls, photoPublicIds);
+        com.petgrooming.pet_system.model.Pet pet = order.getMember() == null ? null
+                : petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
+                        .orElse(null);
+        if (pet == null && !photos.isEmpty()) {
+            throw new PaymentException("非會員單或找不到毛孩檔案，照片無法保存，請先移除照片再送出");
+        }
+
         order.setFinalCheckDone(true);
         order.setFinalCheckStaff(staff);
         order.setFinalCheckNote(noteTrim);
         order.setFinalCheckSignatureImage(sigTrim);
         order.setFinalCheckAt(LocalDateTime.now());
         WalkInOrder saved = orderRepository.save(order);
+
+        // 需求（2026-09-29）：會員單的核對備註＋照片也寫進毛孩美容紀錄
+        if (pet != null) {
+            com.petgrooming.pet_system.model.PetGroomingNote historyNote = petGroomingNoteRepository.save(
+                    com.petgrooming.pet_system.model.PetGroomingNote.builder()
+                            .pet(pet)
+                            .walkInOrderId(order.getId())
+                            .staff(staff)
+                            .note(noteTrim)
+                            .serviceDate(LocalDate.now())
+                            .build());
+            groomingNotePhotoService.attach(historyNote, photos);
+        }
 
         performanceService.addWalkInRecord(
                 staff.getId(),

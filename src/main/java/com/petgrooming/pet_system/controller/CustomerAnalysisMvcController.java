@@ -34,6 +34,7 @@ public class CustomerAnalysisMvcController {
     private final WalletService walletService;
     private final AppointmentService appointmentService;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
+    private final com.petgrooming.pet_system.service.GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final TransactionRepository transactionRepository;
     private final WalkInOrderRepository walkInOrderRepository;
     private final WalkInOrderService walkInOrderService;
@@ -117,6 +118,9 @@ public class CustomerAnalysisMvcController {
                             .toList());
         }
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
+        // 需求（2026-09-29）：核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
+        model.addAttribute("notePhotosByNoteId", groomingNotePhotoService.photoUrlsByNoteId(
+                groomingNotesByPetId.values().stream().flatMap(java.util.List::stream).toList()));
         model.addAttribute("consumptionByPetId", consumptionByPetId);
 
         return "admin/customer-detail";

@@ -441,7 +441,11 @@ public class WalkInOrderMvcController {
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
         try {
-            model.addAttribute("order", walkInOrderService.getById(id));
+            var orderForCheck = walkInOrderService.getById(id);
+            model.addAttribute("order", orderForCheck);
+            // 需求（2026-09-29）：非會員單沒有毛孩檔案，不開放核對照片
+            model.addAttribute("photoEnabled", orderForCheck.getMemberUsername() != null
+                    && !orderForCheck.getMemberUsername().isBlank());
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMsg", e.getMessage());
         }
@@ -469,10 +473,12 @@ public class WalkInOrderMvcController {
     public String finalCheck(@PathVariable Long id,
                              @RequestParam String note,
                              @RequestParam(name = "signatureData") String signatureData,
+                             @RequestParam(required = false) java.util.List<String> photoUrls,
+                             @RequestParam(required = false) java.util.List<String> photoPublicIds,
                              HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername());
+            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername(), photoUrls, photoPublicIds);
             operationLogService.log(user, "WALKIN", "FINAL_CHECK", "現場單 #" + id, note);
             ra.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
         } catch (IllegalArgumentException e) {

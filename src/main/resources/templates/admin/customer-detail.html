@@ -957,6 +957,15 @@
                         <span th:text="${n.staff.name}"></span>
                       </div>
                       <div th:text="${n.note}"></div>
+                      <!-- 需求（2026-09-29）：核對時拍的照片（最多 5 張），點照片開原圖 -->
+                      <th:block th:if="${notePhotosByNoteId != null and notePhotosByNoteId.get(n.id) != null}">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
+                          <a th:each="url : ${notePhotosByNoteId.get(n.id)}" th:href="${url}" target="_blank" rel="noopener">
+                            <img th:src="${url}" loading="lazy" alt="美容狀況照片"
+                                 style="width:84px; height:84px; object-fit:cover; border-radius:8px; display:block;" />
+                          </a>
+                        </div>
+                      </th:block>
                       <!-- 需求 18：美容狀況歷史相簿 -->
                       <img
                         th:if="${n.photoUrl != null}"

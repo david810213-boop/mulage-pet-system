@@ -29,6 +29,7 @@ public class WalletMvcController {
     private final PetService petService;
     private final TopUpService topUpService;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
+    private final com.petgrooming.pet_system.service.GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
@@ -106,6 +107,9 @@ public class WalletMvcController {
                     petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(p.getId()));
         }
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
+        // 需求（2026-09-29）：核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
+        model.addAttribute("notePhotosByNoteId", groomingNotePhotoService.photoUrlsByNoteId(
+                groomingNotesByPetId.values().stream().flatMap(java.util.List::stream).toList()));
         // 需求 8：會員特殊備注（僅後台可見）
         model.addAttribute("adminNote", userService.getAdminNote(username));
         return "admin/wallet-detail";
