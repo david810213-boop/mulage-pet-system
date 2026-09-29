@@ -788,7 +788,10 @@
             ":" +
             String(now.getMinutes()).padStart(2, "0") +
             ":00";
+          // 修正（2026-09-29）：已取消的預約不算「即將到來」，跟「我的預約」頁
+          // 的分頁規則一致（已取消一律歸入歷史預約）。
           const upcoming = list.filter((a) => {
+            if (a.cancelled || a.status === "CANCELLED") return false;
             if (a.date > today) return true;
             if (a.date < today) return false;
             return a.endTime > nowStr;
