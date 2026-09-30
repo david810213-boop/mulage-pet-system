@@ -4,7 +4,8 @@ import lombok.Getter;
 
 /**
  * 慕沐村會員卡等級
- * 依單筆儲值金額自動升級，有效期限為開卡後 365 天
+ * 依單筆儲值金額決定等級，每次單筆儲值達到門檻，有效期限重新計算 365 天
+ * （詳細規則見 WalletService#applyTierRule）
  */
 @Getter
 public enum MemberCardTier {
@@ -40,5 +41,28 @@ public enum MemberCardTier {
             }
         }
         return NONE;
+    }
+
+    /**
+     * 需求（追加，2026-09-30）：既有會員匯入時，把店家紙本記錄的等級文字轉成列舉。
+     * 接受中文名稱（村民／村民優惠方案、普卡、金卡、鑽石卡、VIP／慕沐村VIP）
+     * 或英文代碼（VILLAGE、NORMAL、GOLD、DIAMOND、VIP）；空白或「無」回傳 NONE。
+     * 認不得的文字回傳 null，由呼叫端當成格式錯誤處理。
+     */
+    public static MemberCardTier fromLabel(String raw) {
+        if (raw == null) return NONE;
+        String s = raw.trim().replace(" ", "").toUpperCase();
+        if (s.isEmpty() || s.equals("無")) return NONE;
+        for (MemberCardTier t : values()) {
+            if (s.equals(t.name())) return t;
+        }
+        return switch (s) {
+            case "村民", "村民優惠方案", "村民方案" -> VILLAGE;
+            case "普卡" -> NORMAL;
+            case "金卡" -> GOLD;
+            case "鑽石卡", "鑽卡" -> DIAMOND;
+            case "慕沐村VIP" -> VIP;
+            default -> null;
+        };
     }
 }

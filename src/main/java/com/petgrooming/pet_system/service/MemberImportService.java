@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.MemberImportResult;
 import com.petgrooming.pet_system.dto.MemberImportRow;
 import com.petgrooming.pet_system.dto.SimpleImportResult;
 import com.petgrooming.pet_system.dto.WalletImportRow;
+import com.petgrooming.pet_system.enums.MemberCardTier;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
@@ -152,8 +153,10 @@ public class MemberImportService {
     }
 
     // ── 需求（追加）：既有儲值餘額批次匯入 ─────────────────────────────
-    // CSV 欄位：電話,儲值餘額
+    // CSV 欄位：電話,儲值餘額,會員等級,到期日（後兩欄選填）
     // 這支電話必須是已經匯入過（或本來就存在）的會員，找不到就整列報錯。
+    // 需求（追加，2026-09-30）：既有會員的等級與到期日照店家紙本記錄帶入，
+    // 等級與到期日是「覆蓋」（不是加總）；只想補等級不想動餘額時，餘額填 0。
     // ⚠️ 用「加總」不是「覆蓋」——避免萬一這支電話的顧客已經自己儲值過（不管是
     // 認領帳號之後自己儲值、或這批匯入分好幾次跑），覆蓋會把顧客已經存進去的
     // 真實金額洗掉。如果要重新匯入同一份餘額資料，請先確認這支電話目前餘額，
@@ -175,6 +178,26 @@ public class MemberImportService {
                 continue;
             }
 
+            // 會員等級＋到期日：兩欄都空白 = 不處理等級；有填等級就一定要有到期日
+            MemberCardTier tier = MemberCardTier.fromLabel(row.getTierRaw());
+            if (tier == null) {
+                errors.add("第 " + row.getRowNumber() + " 列：會員等級看不懂：" + row.getTierRaw()
+                        + "（可填：村民優惠方案、普卡、金卡、鑽石卡、慕沐村VIP，沒有等級留空白）");
+                continue;
+            }
+            LocalDate expiresAt = null;
+            if (tier != MemberCardTier.NONE) {
+                expiresAt = parseLenientDate(row.getExpiresRaw());
+                if (expiresAt == null) {
+                    errors.add("第 " + row.getRowNumber() + " 列：有填會員等級但到期日空白或格式錯誤（要 2026-09-30 或 2026/9/30）："
+                            + row.getExpiresRaw());
+                    continue;
+                }
+            } else if (!row.getExpiresRaw().isBlank()) {
+                errors.add("第 " + row.getRowNumber() + " 列：有填到期日但沒填會員等級");
+                continue;
+            }
+
             Optional<User> userOpt = userRepository.findByPhone(phone);
             if (userOpt.isEmpty()) {
                 errors.add("第 " + row.getRowNumber() + " 列：查無電話 " + phone + " 對應的會員，請先匯入會員資料");
@@ -185,6 +208,12 @@ public class MemberImportService {
             Wallet wallet = walletRepository.findByUserId(user.getId())
                     .orElseGet(() -> walletRepository.save(Wallet.builder().user(user).balance(0).build()));
             wallet.setBalance(wallet.getBalance() + balance);
+            if (tier != MemberCardTier.NONE) {
+                // 紙本只有到期日，開卡日用「到期日往前推一年」回推（規則：每次儲值效期一年）
+                wallet.setCardTier(tier);
+                wallet.setCardExpiresAt(expiresAt);
+                wallet.setCardActivatedAt(expiresAt.minusYears(1));
+            }
             walletRepository.save(wallet);
             succeeded++;
         }
@@ -430,13 +459,25 @@ public class MemberImportService {
         topUpRequestRepository.saveAll(topUps);
 
         // 儲值餘額加總到目標會員的錢包，不是覆蓋；沒有餘額也要把來源帳號的
-        // 空錢包刪掉，不然會卡外鍵讓下面刪除來源帳號失敗
+        // 空錢包刪掉，不然會卡外鍵讓下面刪除來源帳號失敗。
+        // 需求（追加，2026-09-30）：會員卡等級／開卡日／到期日也要一起帶過去，
+        // 不然匯入時帶入的等級在顧客認領後就消失了。兩邊都有卡時保留「比較好的那張」。
         walletRepository.findByUserId(imported.getId()).ifPresent(importedWallet -> {
-            if (importedWallet.getBalance() != null && importedWallet.getBalance() > 0) {
+            boolean hasBalance = importedWallet.getBalance() != null && importedWallet.getBalance() > 0;
+            boolean hasCard = importedWallet.getCardTier() != null
+                    && importedWallet.getCardTier() != MemberCardTier.NONE;
+            if (hasBalance || hasCard) {
                 Wallet targetWallet = walletRepository.findByUserId(target.getId())
-                        .orElseThrow(() -> new MemberException("目標會員沒有錢包，資料異常，請聯絡工程人員"));
-                int targetBalance = targetWallet.getBalance() != null ? targetWallet.getBalance() : 0;
-                targetWallet.setBalance(targetBalance + importedWallet.getBalance());
+                        .orElseGet(() -> walletRepository.save(Wallet.builder().user(target).balance(0).build()));
+                if (hasBalance) {
+                    int targetBalance = targetWallet.getBalance() != null ? targetWallet.getBalance() : 0;
+                    targetWallet.setBalance(targetBalance + importedWallet.getBalance());
+                }
+                if (hasCard && isBetterCard(importedWallet, targetWallet)) {
+                    targetWallet.setCardTier(importedWallet.getCardTier());
+                    targetWallet.setCardActivatedAt(importedWallet.getCardActivatedAt());
+                    targetWallet.setCardExpiresAt(importedWallet.getCardExpiresAt());
+                }
                 walletRepository.save(targetWallet);
             }
             walletRepository.delete(importedWallet);
@@ -445,6 +486,18 @@ public class MemberImportService {
         userRepository.delete(imported);
 
         return new TransferSummary(pets, orders, appointments, topUps);
+    }
+
+    // 兩張會員卡比較：有效的優先 → 等級高的優先 → 到期日晚的優先
+    private boolean isBetterCard(Wallet candidate, Wallet current) {
+        if (current.getCardTier() == null || current.getCardTier() == MemberCardTier.NONE) return true;
+        boolean candActive = candidate.isCardActive();
+        boolean currActive = current.isCardActive();
+        if (candActive != currActive) return candActive;
+        int byTier = Integer.compare(candidate.getCardTier().ordinal(), current.getCardTier().ordinal());
+        if (byTier != 0) return byTier > 0;
+        if (candidate.getCardExpiresAt() == null) return false;
+        return current.getCardExpiresAt() == null || candidate.getCardExpiresAt().isAfter(current.getCardExpiresAt());
     }
 
     private record TransferSummary(
@@ -576,7 +629,21 @@ public class MemberImportService {
         return idx < cols.length ? cols[idx].trim() : "";
     }
 
-    // 需求（追加）：儲值餘額 CSV 解析。欄位順序：電話,儲值餘額
+    // 需求（追加）：到期日寬鬆解析——Excel 另存 CSV 常變成 2026/9/30，
+    // 所以 yyyy-MM-dd、yyyy/M/d、yyyy-M-d 都接受；看不懂回傳 null。
+    private LocalDate parseLenientDate(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String[] p = raw.trim().split("[/\\-.]");
+        if (p.length != 3) return null;
+        try {
+            return LocalDate.of(Integer.parseInt(p[0].trim()), Integer.parseInt(p[1].trim()),
+                    Integer.parseInt(p[2].trim()));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // 需求（追加）：儲值餘額 CSV 解析。欄位順序：電話,儲值餘額,會員等級,到期日（後兩欄選填）
     // 編碼同 parseCsv，交給 CsvImportFileReader 偵測，不假設一定是 UTF-8。
     private List<WalletImportRow> parseWalletCsv(MultipartFile file) throws IOException {
         List<WalletImportRow> rows = new ArrayList<>();
@@ -594,6 +661,8 @@ public class MemberImportService {
             row.setRowNumber(rowNumber);
             row.setPhone(col(cols, 0));
             row.setBalanceRaw(col(cols, 1));
+            row.setTierRaw(col(cols, 2));
+            row.setExpiresRaw(col(cols, 3));
             rows.add(row);
         }
         return rows;

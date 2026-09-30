@@ -63,8 +63,8 @@ public class WalletService {
             log.info("使用者 {} 首次達到村民方案，贈送 200 元", username);
         }
 
-        // 4. 更新會員卡等級（取歷史最高等級，不會降級）
-        upgradeTierIfNeeded(wallet, newTier);
+        // 4. 依本次單筆儲值金額更新會員卡等級與有效期限
+        applyTierRule(wallet, newTier);
 
         walletRepository.save(wallet);
         return WalletResponse.from(wallet);
@@ -146,24 +146,36 @@ public class WalletService {
                 });
     }
 
-    // ── 私有：判斷是否升級卡等（只升不降）──────────────────────────────
-    private void upgradeTierIfNeeded(Wallet wallet, MemberCardTier newTier) {
-        // 只有當新等級高於現有等級時才升級
-        if (newTier.ordinal() <= wallet.getCardTier().ordinal()) return;
+    // ── 私有：會員卡等級規則（2026-09-30 依店家確認調整）─────────────────
+    // 規則：
+    //   ① 單筆未滿 5,000（NONE）：不影響等級與期限。
+    //   ② 目前沒有卡、或卡已過期：等級直接改成本次單筆金額對應的等級（可能比以前低），
+    //      有效期限從今天重新算一年。
+    //   ③ 卡還有效、本次等級 ≥ 目前等級：升級（或同級續卡），有效期限從今天重新算一年。
+    //   ④ 卡還有效、本次等級 < 目前等級：等級與期限都不變（不會因為小額儲值被降級，
+    //      也不會用小額儲值延長高等級的期限）。
+    // 例：2026-09-30 儲值 15,000 → 金卡 9 折，到 2027-09-30
+    //     2026-10-30 再儲 5,000 → 維持金卡 9 折，期限仍是 2027-09-30（④）
+    //     2026-10-30 改儲 50,000 → 升 VIP 85 折，期限重算到 2027-10-30（③）
+    // 舊版是「只升不降、到期日只在第一次開卡時設定」，會造成過期後再儲值卡還是過期。
+    private void applyTierRule(Wallet wallet, MemberCardTier newTier) {
         if (newTier == MemberCardTier.NONE) return;
 
         MemberCardTier oldTier = wallet.getCardTier();
-        wallet.setCardTier(newTier);
-
-        // 第一次開卡（從 NONE 升上來），設定開卡日期與到期日
-        if (oldTier == MemberCardTier.NONE) {
-            wallet.setCardActivatedAt(LocalDate.now());
-            wallet.setCardExpiresAt(LocalDate.now().plusDays(365));
-            log.info("使用者 {} 開卡：{}，到期日：{}", wallet.getUser().getUsername(),
-                    newTier.getLabel(), wallet.getCardExpiresAt());
+        boolean active = wallet.isCardActive();
+        if (active && newTier.ordinal() < oldTier.ordinal()) {
+            log.info("使用者 {} 本次儲值等級 {} 低於目前有效等級 {}，等級與期限不變",
+                    wallet.getUser().getUsername(), newTier.getLabel(), oldTier.getLabel());
+            return;
         }
 
-        log.info("使用者 {} 升級至：{}", wallet.getUser().getUsername(), newTier.getLabel());
+        LocalDate today = LocalDate.now();
+        wallet.setCardTier(newTier);
+        wallet.setCardActivatedAt(today);
+        wallet.setCardExpiresAt(today.plusYears(1)); // 2026-09-30 → 2027-09-30（閏年也不會差一天）
+        log.info("使用者 {} 會員卡：{} → {}（{}），到期日：{}", wallet.getUser().getUsername(),
+                oldTier.getLabel(), newTier.getLabel(), active ? "有效期內" : "新開卡／過期重辦",
+                wallet.getCardExpiresAt());
     }
 
     // ── 私有：記錄交易（帶餘額快照）────────────────────────────────────
