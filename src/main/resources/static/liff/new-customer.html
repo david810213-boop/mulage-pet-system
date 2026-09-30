@@ -155,6 +155,45 @@
         font-size: 11.5px;
         margin-top: 8px;
       }
+      /* 需求（追加，2026-09-30）：新客報到第一步「輸入電話分流」 */
+      .claim-box .claim-title {
+        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--primary-deep);
+        margin-bottom: 6px;
+      }
+      .claim-box .claim-found {
+        background: #fffefd;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        font-size: 13px;
+        color: var(--ink-soft);
+        margin-bottom: 10px;
+        line-height: 1.7;
+      }
+      .claim-box .claim-found b {
+        color: var(--primary-deep);
+        font-size: 15px;
+      }
+      .claim-box .claim-links {
+        margin-top: 12px;
+        font-size: 11.5px;
+        color: var(--ink-faint);
+        line-height: 1.7;
+      }
+      .claim-box .claim-links a {
+        color: var(--wood-deep);
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .steps-note {
+        margin: 14px 20px 0;
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+      }
 
       .all-done-card {
         margin: 18px 20px 0;
@@ -210,6 +249,10 @@
 
     <div id="loadingBox" class="loading">載入中...</div>
 
+    <div class="steps-note" id="stepsNote" style="display: none;">
+      查無會員資料，歡迎第一次來慕沐村！請完成以下兩個步驟：
+    </div>
+
     <div class="steps" id="stepsBox" style="display: none">
       <a class="step-card" id="stepProfile" href="/liff/my-profile.html">
         <div class="step-top">
@@ -236,24 +279,38 @@
       </a>
     </div>
 
-    <!-- 需求（追加）：店家轉型批次匯入既有會員資料後，老客戶第一次用 LINE 報到時
-         可以用電話號碼直接認領店家先匯入好的資料（姓名、毛孩都會自動帶入），
-         不用重新填一次。只在步驟都還沒完成時顯示，已經完成報到的人不需要看到。 -->
+    <!-- 需求（追加，2026-09-30）：新客報到改成「先輸入電話分流」。
+         還沒填資料、也還沒有毛孩的人，一進來先看到這一塊（下面兩個步驟先藏起來）：
+         查到店家匯入、還沒被認領的既有會員 → 認領畫面（要輸入毛孩名字或姓名確認）；
+         查不到 → 顯示原本兩個步驟，電話先存起來讓「填寫個人資料」頁自動帶入。
+         避免老客人跳過認領自己重填，產生一人兩筆帳號。 -->
     <div class="claim-box" id="claimBox" style="display: none;">
-      <div class="claim-desc">
-        已經是本店老客戶？店家可能已經先幫您把資料建檔好了，輸入電話號碼即可直接帶入，不用重新填寫。
+      <div id="gateStep">
+        <div class="claim-title">請先輸入手機號碼</div>
+        <div class="claim-desc">
+          曾經在慕沐村消費過的老客人，店家已經幫您建好資料，輸入手機號碼就能直接帶入，不用重新填寫。
+        </div>
+        <div class="claim-row">
+          <input type="tel" id="claimPhone" inputmode="numeric" maxlength="12" placeholder="例如：0912345678" />
+          <button onclick="lookupPhone()" id="lookupBtn">下一步</button>
+        </div>
+        <div id="gateMsg" class="claim-msg"></div>
       </div>
-      <div class="claim-row">
-        <input
-          type="tel"
-          id="claimPhone"
-          placeholder="請輸入電話號碼"
-        />
-        <button onclick="claimByPhone()" id="claimBtn">
-          帶入資料
-        </button>
+
+      <div id="verifyStep" style="display: none;">
+        <div class="claim-title">找到您的會員資料了！</div>
+        <div class="claim-found" id="foundBox"></div>
+        <div class="claim-desc" id="verifyLabel"></div>
+        <div class="claim-row">
+          <input type="text" id="claimVerify" />
+          <button onclick="claimByPhone()" id="claimBtn">確認帶入</button>
+        </div>
+        <div id="claimMsg" class="claim-msg"></div>
+        <div class="claim-links">
+          這不是我的資料？請直接傳訊息給店家協助，<b>不要重新註冊</b>。<br />
+          <a onclick="backToGate()">重新輸入手機號碼</a>
+        </div>
       </div>
-      <div id="claimMsg" class="claim-msg"></div>
     </div>
 
     <div class="all-done-card" id="allDoneCard">
@@ -293,23 +350,98 @@
           await Promise.all([checkProfile(), checkPets()]);
 
           document.getElementById("loadingBox").style.display = "none";
-          document.getElementById("stepsBox").style.display = "block";
-          // 兩個步驟都還沒完成才顯示認領入口——已經填過資料的人不太可能還需要認領
+          // 兩個步驟都還沒完成 → 先走「輸入電話分流」，步驟先藏起來；
+          // 已經開始填（任一步完成）的人不需要再分流，直接顯示步驟
           if (!profileDone && !petDone) {
             document.getElementById("claimBox").style.display = "block";
+          } else {
+            document.getElementById("stepsBox").style.display = "block";
           }
         } catch (e) {
           document.getElementById("loadingBox").textContent = "初始化失敗，請重新整理再試一次";
         }
       }
 
-      // 需求（追加）：老客戶用電話號碼認領店家批次匯入的既有資料
+      // ── 需求（追加，2026-09-30）：輸入電話分流 ──────────────────────
+      let lookedUpPhone = null;
+
+      function setMsg(id, text, ok) {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.style.color = ok ? "#2D5A27" : "#8B0000";
+      }
+
+      async function lookupPhone() {
+        const phone = document.getElementById("claimPhone").value.replace(/[\s-]/g, "");
+        if (!/^09\d{8}$/.test(phone)) {
+          setMsg("gateMsg", "請輸入 09 開頭的 10 碼手機號碼");
+          return;
+        }
+        const btn = document.getElementById("lookupBtn");
+        btn.disabled = true;
+        btn.textContent = "查詢中...";
+        setMsg("gateMsg", "");
+        try {
+          const res = await fetch("/api/line/member-lookup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders() },
+            body: JSON.stringify({ phone }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setMsg("gateMsg", data.message || "查詢失敗，請稍後再試");
+            return;
+          }
+          lookedUpPhone = phone;
+          if (data.matched) {
+            showVerify(data);
+          } else {
+            showNewCustomerSteps(phone);
+          }
+        } catch (e) {
+          setMsg("gateMsg", "網路錯誤，請重試");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "下一步";
+        }
+      }
+
+      function showVerify(data) {
+        document.getElementById("gateStep").style.display = "none";
+        document.getElementById("verifyStep").style.display = "block";
+        const found = document.getElementById("foundBox");
+        found.textContent = "";
+        const nameEl = document.createElement("b");
+        nameEl.textContent = data.maskedName;
+        found.append("會員：", nameEl, document.createElement("br"),
+          data.petCount > 0 ? "已登記毛孩：" + data.petCount + " 隻" : "尚未登記毛孩");
+        const byPet = data.verifyBy === "PET";
+        document.getElementById("verifyLabel").textContent = byPet
+          ? "為了保護您的資料，請輸入任一隻已登記毛孩的名字確認："
+          : "為了保護您的資料，請輸入您在店裡登記的姓名確認：";
+        document.getElementById("claimVerify").placeholder = byPet ? "毛孩名字" : "登記的姓名";
+        document.getElementById("claimVerify").value = "";
+        setMsg("claimMsg", "");
+      }
+
+      function backToGate() {
+        document.getElementById("verifyStep").style.display = "none";
+        document.getElementById("gateStep").style.display = "block";
+        setMsg("gateMsg", "");
+      }
+
+      function showNewCustomerSteps(phone) {
+        // 讓「填寫個人資料」頁自動帶入剛剛輸入的電話（同一個 LIFF 網域，sessionStorage 共用）
+        try { sessionStorage.setItem("mulage_new_customer_phone", phone); } catch (e) {}
+        document.getElementById("claimBox").style.display = "none";
+        document.getElementById("stepsNote").style.display = "block";
+        document.getElementById("stepsBox").style.display = "block";
+      }
+
       async function claimByPhone() {
-        const phone = document.getElementById("claimPhone").value.trim();
-        const msgEl = document.getElementById("claimMsg");
-        if (!phone) {
-          msgEl.textContent = "請輸入電話號碼";
-          msgEl.style.color = "#8B0000";
+        const verification = document.getElementById("claimVerify").value.trim();
+        if (!verification) {
+          setMsg("claimMsg", "請輸入確認資料");
           return;
         }
         const btn = document.getElementById("claimBtn");
@@ -319,25 +451,26 @@
           const res = await fetch("/api/line/claim-by-phone", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...authHeaders() },
-            body: JSON.stringify({ phone }),
+            body: JSON.stringify({ phone: lookedUpPhone, verification }),
           });
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            msgEl.textContent = data.message || "找不到符合的資料";
-            msgEl.style.color = "#8B0000";
+            setMsg("claimMsg", data.message || "確認失敗，請再試一次");
             return;
           }
-          msgEl.textContent = "✅ 已帶入「" + data.name + "」的資料！";
-          msgEl.style.color = "#2D5A27";
           document.getElementById("claimBox").style.display = "none";
-          // 重新檢查兩個步驟的完成狀態，資料應該已經齊全，直接顯示完成畫面
+          document.getElementById("stepsBox").style.display = "block";
+          // 重新檢查兩個步驟的完成狀態：匯入資料缺的欄位（例如緊急聯絡人）會顯示「尚未完成」讓客人補
           await Promise.all([checkProfile(), checkPets()]);
+          const note = document.getElementById("stepsNote");
+          note.textContent = "✅ 已帶入「" + (data.name || "") + "」的資料！"
+            + (profileDone && petDone ? "" : "請補齊下方尚未完成的項目。");
+          note.style.display = "block";
         } catch (e) {
-          msgEl.textContent = "網路錯誤，請重試";
-          msgEl.style.color = "#8B0000";
+          setMsg("claimMsg", "網路錯誤，請重試");
         } finally {
           btn.disabled = false;
-          btn.textContent = "帶入資料";
+          btn.textContent = "確認帶入";
         }
       }
 

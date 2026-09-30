@@ -138,6 +138,19 @@ public class UserService {
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
         }
+        // 需求（追加，2026-09-30）：電話改成店家匯入、還沒被認領的既有會員電話時擋下來，
+        // 避免老客人跳過認領自己重填，產生一人兩筆帳號。只在「電話有改」時檢查，
+        // 不然原本就撞號的舊帳號會連其他欄位都改不了。回 409 讓 LIFF 導回新客報到認領。
+        String newPhone = com.petgrooming.pet_system.service.MemberImportService.normalizePhone(req.getPhone());
+        String oldPhone = com.petgrooming.pet_system.service.MemberImportService.normalizePhone(user.getPhone());
+        if (!newPhone.equals(oldPhone)) {
+            userRepository.findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(newPhone, UserRole.CUSTOMER)
+                    .filter(u -> !u.getId().equals(user.getId()))
+                    .ifPresent(u -> {
+                        throw new MemberException("這支電話是本店的既有會員資料，請回到「新客報到」輸入電話直接帶入，"
+                                + "不需要重新填寫（店家代填請改用會員資料頁的手動綁定）", HttpStatus.CONFLICT);
+                    });
+        }
         user.setPhone(req.getPhone().trim()); // 需求（追加）：電話改為必填，不再是「填了才更新」
         if (req.getAge() != null) {
             user.setAge(req.getAge());

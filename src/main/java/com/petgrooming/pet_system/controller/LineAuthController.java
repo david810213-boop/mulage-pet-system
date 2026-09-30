@@ -50,6 +50,7 @@ public class LineAuthController {
     private final OperationLogService operationLogService;
     private final com.petgrooming.pet_system.service.LineBindService lineBindService; // 店員綁定 LINE 用
     private final com.petgrooming.pet_system.service.MemberImportService memberImportService; // 需求（追加）：老客戶認領既有匯入資料
+    private final com.petgrooming.pet_system.service.ClaimAttemptLimiter claimAttemptLimiter; // 需求（追加，2026-09-30）：查詢／認領次數限制
 
     // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
     @Value("${COOKIE_SECURE:false}")
@@ -142,12 +143,36 @@ public class LineAuthController {
         return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
     }
 
+    // ── POST /api/line/member-lookup ────────────────────────────────────
+    // 需求（追加，2026-09-30）：新客報到第一步——輸入電話，判斷是既有會員（走認領）
+    // 還是新客（走填資料）。用 POST 不用 GET，避免電話出現在網址／存取紀錄裡。
+    // 每個 LINE 帳號 10 分鐘最多 5 次（跟認領共用），避免有人拿來一直換號碼試。
+    @PostMapping("/member-lookup")
+    public ResponseEntity<?> memberLookup(HttpServletRequest request, @RequestBody java.util.Map<String, String> body) {
+        String username = (String) request.getAttribute("tokenUsername");
+        if (username == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("請先登入"));
+        }
+        String phone = body.get("phone");
+        if (phone == null || !com.petgrooming.pet_system.service.MemberImportService.normalizePhone(phone).matches("09\\d{8}")) {
+            return ResponseEntity.badRequest().body(ErrorResponse.of("請輸入 09 開頭的 10 碼手機號碼"));
+        }
+        if (!claimAttemptLimiter.tryAcquire(username)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ErrorResponse.of("嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助"));
+        }
+        User current = userService.getUserEntityByUsername(username);
+        return ResponseEntity.ok(memberImportService.lookupForClaim(current, phone));
+    }
+
     // ── POST /api/line/claim-by-phone ───────────────────────────────────
     // 需求（追加）：老客戶用 LINE 登入後（系統會自動幫他建一筆空白新帳號，這是
     // 既有機制，這裡不動），如果他填了電話號碼，比對到店家批次匯入的舊資料，
     // 就把舊資料（姓名、寵物）整批過戶到目前這筆帳號上，並清掉那筆匯入用的
     // 暫時帳號，避免一個人對應兩筆重複的會員資料。
     // 需要先登入（LoginInterceptor 驗證 JWT），從 request 屬性拿目前登入的 username。
+    // 需求（追加，2026-09-30）：多一個 verification（毛孩名字或姓名），規則見
+    // MemberImportService#claimByPhone；確認失敗也算一次嘗試，跟查詢共用次數限制。
     @PostMapping("/claim-by-phone")
     public ResponseEntity<?> claimByPhone(HttpServletRequest request, @RequestBody java.util.Map<String, String> body) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -158,8 +183,13 @@ public class LineAuthController {
         if (phone == null || phone.isBlank()) {
             return ResponseEntity.badRequest().body(ErrorResponse.of("請輸入電話號碼"));
         }
+        if (!claimAttemptLimiter.tryAcquire(username)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ErrorResponse.of("嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助"));
+        }
         User current = userService.getUserEntityByUsername(username);
-        User claimed = memberImportService.claimByPhone(current, phone);
+        User claimed = memberImportService.claimByPhone(current, phone, body.get("verification"));
+        claimAttemptLimiter.reset(username);
         operationLogService.logByUsername(username, "CUSTOMER", "CLAIM_MEMBER_DATA", claimed.getName(), phone);
         return ResponseEntity.ok(UserResponse.from(claimed));
     }

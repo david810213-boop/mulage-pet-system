@@ -329,17 +329,21 @@ public class MemberImportService {
     //
     // 安全限制：只有目前這個 LINE 帳號「還沒填過資料」（profileCompletedAt 為 null）
     // 才能認領，避免已經自己填好資料的人不小心把別人的資料領走蓋掉自己的。
+    //
+    // 需求（追加，2026-09-30）：新客報到改成「先輸入電話分流」，認領時多一道確認——
+    // 匯入帳號有毛孩就要輸入其中一隻毛孩的名字，沒有毛孩就輸入登記的姓名。
+    // 原因：帳號裡可能有儲值金與會員卡，只憑電話就能認領的話，知道別人電話的人
+    // 可以把整個帳號連錢包一起領走。
     @Transactional
-    public User claimByPhone(User currentUser, String phone) {
-        if (currentUser.getProfileCompletedAt() != null) {
-            throw new MemberException("這個帳號已經填過資料了，無法再認領其他會員資料");
+    public User claimByPhone(User currentUser, String phone, String verification) {
+        User imported = findClaimable(currentUser, phone)
+                .orElseThrow(() -> new MemberException("查無符合這支電話的既有會員資料"));
+        if (!verifyClaim(imported, verification)) {
+            throw new MemberException(hasActivePets(imported)
+                    ? "毛孩名字不符，請再確認一次（輸入任一隻登記的毛孩名字即可）"
+                    : "姓名不符，請輸入當初在店裡登記的姓名");
         }
         String normalized = normalizePhone(phone);
-        User imported = userRepository.findByPhoneAndLineUserIdIsNull(normalized)
-                .orElseThrow(() -> new MemberException("查無符合這支電話的既有會員資料"));
-        if (imported.getId().equals(currentUser.getId())) {
-            throw new MemberException("查無符合這支電話的既有會員資料");
-        }
 
         // 過戶基本資料（這裡的 currentUser 一定是還沒填過資料的全新帳號，見上面
         // profileCompletedAt 檢查，所以整批覆蓋沒有蓋掉顧客自己資料的風險）
@@ -354,6 +358,66 @@ public class MemberImportService {
                 currentUser.getUsername(), normalized, summary.pets().size());
 
         return currentUser;
+    }
+
+    // ── 需求（追加，2026-09-30）：新客報到第一步「輸入電話分流」────────────
+    // 查到還沒被認領的既有會員 → 回傳遮罩後的姓名、毛孩數、要用什麼確認；
+    // 查不到 → matched=false，前端改走一般新客流程。不回傳毛孩名字等可直接
+    // 拿來認領的資訊。
+    public java.util.Map<String, Object> lookupForClaim(User currentUser, String phone) {
+        Optional<User> found = findClaimable(currentUser, phone);
+        if (found.isEmpty()) {
+            return java.util.Map.of("matched", false);
+        }
+        User imported = found.get();
+        long petCount = activePets(imported).size();
+        return java.util.Map.of(
+                "matched", true,
+                "maskedName", maskName(imported.getName()),
+                "petCount", petCount,
+                "verifyBy", petCount > 0 ? "PET" : "NAME");
+    }
+
+    private Optional<User> findClaimable(User currentUser, String phone) {
+        if (currentUser.getProfileCompletedAt() != null) {
+            throw new MemberException("這個帳號已經填過資料了，無法再認領其他會員資料");
+        }
+        if (phone == null || phone.isBlank()) return Optional.empty();
+        return userRepository
+                .findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(normalizePhone(phone), UserRole.CUSTOMER)
+                .filter(u -> !u.getId().equals(currentUser.getId()));
+    }
+
+    private List<Pet> activePets(User owner) {
+        return petRepository.findByOwnerId(owner.getId()).stream().filter(p -> !p.isDeleted()).toList();
+    }
+
+    private boolean hasActivePets(User owner) {
+        return !activePets(owner).isEmpty();
+    }
+
+    private boolean verifyClaim(User imported, String verification) {
+        String input = squash(verification);
+        if (input.isEmpty()) return false;
+        List<Pet> pets = activePets(imported);
+        if (!pets.isEmpty()) {
+            return pets.stream().anyMatch(p -> squash(p.getName()).equalsIgnoreCase(input));
+        }
+        return squash(imported.getName()).equalsIgnoreCase(input);
+    }
+
+    // 去掉所有空白（含全形空白）再比對，避免多打一個空格就被判定不符
+    private static String squash(String s) {
+        return s == null ? "" : s.replaceAll("[\\s\u3000]", "");
+    }
+
+    // 王小明 → 王○明、王明 → 王○、歐陽小明 → 歐○○明
+    static String maskName(String name) {
+        String n = squash(name);
+        if (n.isEmpty()) return "（未登記姓名）";
+        if (n.length() == 1) return "○";
+        if (n.length() == 2) return n.charAt(0) + "○";
+        return n.charAt(0) + "○".repeat(n.length() - 2) + n.charAt(n.length() - 1);
     }
 
     // ── 需求（追加，2026-09-08）：店家後台手動綁定既有匯入資料 ──────────────
@@ -571,7 +635,9 @@ public class MemberImportService {
     // 台灣手機號碼長相」（9 碼、以 9 開頭），就自動補回開頭的 0，減少店家因為
     // Excel 存檔習慣而匯入失敗或資料錯誤的機率。只處理這一種明確的情況，避免
     // 誤判其他本來就不到 10 碼的市話號碼或其他格式。
-    private String normalizePhone(String raw) {
+    // 需求（追加，2026-09-30）：改成 public static，UserService 填資料防重複也要用同一套正規化
+    public static String normalizePhone(String raw) {
+        if (raw == null) return "";
         String cleaned = raw.trim().replaceAll("[\\s\\-()]", "");
         if (cleaned.matches("9\\d{8}")) {
             cleaned = "0" + cleaned;

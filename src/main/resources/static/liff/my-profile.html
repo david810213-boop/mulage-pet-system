@@ -294,7 +294,7 @@
 
         <div class="field">
           <label>手機號碼 <span class="req">*</span></label>
-          <input type="tel" id="phone" value="${me.phone ? escapeHtml(me.phone) : ""}" placeholder="例如：0912345678" required />
+          <input type="tel" id="phone" value="${escapeHtml(me.phone || prefillPhone())}" placeholder="例如：0912345678" required />
         </div>
 
         <div class="field">
@@ -346,6 +346,11 @@
 
       <button class="submit-btn" id="submitBtn" onclick="submitForm()">儲存資料</button>
     `;
+      }
+
+      // 需求（追加，2026-09-30）：新客報到頁輸入過、查無會員的電話，這裡自動帶入
+      function prefillPhone() {
+        try { return sessionStorage.getItem("mulage_new_customer_phone") || ""; } catch (e) { return ""; }
       }
 
       function escapeHtml(str) {
@@ -429,6 +434,12 @@
           });
 
           const data = await res.json().catch(() => null);
+          // 需求（追加，2026-09-30）：電話是店家匯入、還沒被認領的既有會員 → 導回新客報到認領
+          if (res.status === 409) {
+            showToast(data?.message || "這支電話是既有會員，請到新客報到帶入資料", "error");
+            setTimeout(() => { window.location.href = "/liff/new-customer.html"; }, 3000);
+            return;
+          }
           if (!res.ok) {
             showToast(
               "儲存失敗：" + (data?.message || data || res.status),
