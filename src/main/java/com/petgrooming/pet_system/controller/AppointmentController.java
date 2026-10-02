@@ -120,6 +120,14 @@ public class AppointmentController {
                         .toList());
     }
 
+    // ── GET /api/appointments/{id}/contract ────────────────────────────────
+    // 需求（追加，2026-10-02）：契約副本——「雙方各執一份契約正本」，顧客在 LIFF「我的預約」
+    // 可以隨時查看這筆預約簽署的契約紀錄（簽名、時間、版本）；店員也可以查。
+    @GetMapping("/{id}/contract")
+    public ResponseEntity<?> getContract(@PathVariable Long id, HttpServletRequest request) {
+        return ResponseEntity.ok(appointmentService.getContractRecord(id, currentUsername(request)));
+    }
+
     // ── GET /api/appointments/{id}/detail ──────────────────────────────────
     // 取得某筆預約的完整消費明細（服務項目、金額、付款方式、經手人等），供 LIFF 點擊查看用
     @GetMapping("/{id}/detail")

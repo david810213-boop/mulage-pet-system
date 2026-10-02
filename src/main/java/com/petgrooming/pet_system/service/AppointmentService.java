@@ -59,6 +59,7 @@ public class AppointmentService {
     private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
+    private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository; // 需求（2026-10-02）：契約副本
 
     // 需求（追加，2026-08-27）：營業時間／時段格線改抽到 BusinessHours 共用常數類別，
     // 因為新增的「預設時段容量範本」（DefaultSlotCapacityTemplateService）也需要同一份格線，
@@ -240,6 +241,8 @@ public class AppointmentService {
                 .confirmedTime(isSameDayBooking ? java.time.LocalDateTime.now() : null)
                 .contractSignatureImage(signatureData)
                 .contractAgreedAt(java.time.LocalDateTime.now())
+                .contractVersion(com.petgrooming.pet_system.utils.ContractInfo.VERSION) // 需求（2026-10-02）
+                .photoShareConsent(Boolean.TRUE.equals(req.getPhotoShareConsent()))
                 .firstVisitAssessment(assessment)
                 .build();
 
@@ -1254,6 +1257,32 @@ public class AppointmentService {
 
     // ── 取得某筆預約的完整消費明細（供 LIFF「我的預約」點擊查看用）──────
     // 權限：本人（該預約的顧客）或店家/員工皆可查看
+    // ── 需求（追加，2026-10-02）：契約副本——顧客（或店員）查看這筆預約簽署的契約紀錄 ──
+    // 契約全文由前端載入 /liff/contract-body.html（同一版本），這裡只回傳簽署證明：
+    // 版本、簽署時間、甲方簽名、乙方簽名檔、影像使用同意，以及雙方基本資料。
+    public java.util.Map<String, Object> getContractRecord(Long appointmentId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+        Appointment a = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+        if (!a.getUser().getId().equals(user.getId()) && !user.isStaffOrAdmin()) {
+            throw new AppointmentException("權限不足：只能查看自己的契約");
+        }
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("appointmentCode", "AP" + String.format("%03d", a.getId()));
+        m.put("customerName", a.getUser().getName());
+        m.put("petName", a.getPetName());
+        m.put("serviceDate", a.getDate() != null ? a.getDate().toString() : null);
+        m.put("contractVersion", a.getContractVersion() != null ? a.getContractVersion() : "2026-10-02 之前版本");
+        m.put("currentVersion", com.petgrooming.pet_system.utils.ContractInfo.VERSION);
+        m.put("agreedAt", a.getContractAgreedAt() != null ? a.getContractAgreedAt().toString() : null);
+        m.put("customerSignature", a.getContractSignatureImage());
+        m.put("photoShareConsent", a.isPhotoShareConsent());
+        m.put("companySignature", companySignatureRepository.findFirstByOrderByIdDesc()
+                .map(com.petgrooming.pet_system.model.CompanySignature::getSignatureImage).orElse(null));
+        return m;
+    }
+
     public com.petgrooming.pet_system.dto.AppointmentDetailResponse getAppointmentDetail(
             Long appointmentId, String username) {
 

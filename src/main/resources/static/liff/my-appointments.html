@@ -15,6 +15,7 @@
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
     <script src="/liff/liff-config.js?v=1"></script>
+    <script src="/liff/contract-loader.js?v=1"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
     <style>
       body {
@@ -862,6 +863,7 @@
           ${footerHtml}
         </div>
         <div class="detail-hint">查看完整明細 →</div>
+        <button class="calendar-add-btn" style="border:0; cursor:pointer;" onclick="event.stopPropagation(); openContract(${a.id})">📄 查看本次簽署的契約</button>
         ${canAddToCalendar ? `<a class="calendar-add-btn" href="${buildGoogleCalendarUrl(a)}" target="_blank" onclick="event.stopPropagation();">📅 加入我的 Google 日曆</a>` : ""}
         ${canCancel ? `<button class="cancel-btn" onclick="event.stopPropagation(); cancelAppointment(${a.id}, '${a.appointmentCode}')">取消預約</button>` : ""}
         ${a.cancelled && a.cancelledBy ? `<div class="cancel-note">取消人：${a.cancelledBy}${a.cancelReason ? "　原因：" + a.cancelReason : ""}</div>` : ""}
@@ -1041,6 +1043,62 @@
             ${d.groomingNote ? `<div style="font-size:14px; line-height:1.7; white-space:pre-wrap;">${escapeHtml(d.groomingNote)}</div>` : ""}
             ${photosHtml}
           </div>`;
+      }
+
+      // ── 需求（追加，2026-10-02）：契約副本——「雙方各執一份契約正本」，顧客隨時可查看 ──
+      async function openContract(id) {
+        const backdrop = document.getElementById("detailBackdrop");
+        const body = document.getElementById("detailBody");
+        body.innerHTML = '<div class="detail-loading">載入中...</div>';
+        backdrop.classList.add("show");
+        try {
+          const res = await fetch(`/api/appointments/${id}/contract`, {
+            headers: { Authorization: "Bearer " + jwtToken, "ngrok-skip-browser-warning": "true" },
+          });
+          const r = await res.json().catch(() => null);
+          if (!res.ok || !r) {
+            body.innerHTML = '<div class="detail-error">載入契約失敗：' + escapeText((r && r.message) || res.status) + "</div>";
+            return;
+          }
+          const agreed = r.agreedAt ? r.agreedAt.replace("T", " ").slice(0, 16) : "（無紀錄）";
+          body.innerHTML = `
+            <div class="detail-section">
+              <div class="label">契約簽署紀錄</div>
+              <div class="detail-row"><span>預約編號</span><span>${escapeText(r.appointmentCode)}</span></div>
+              <div class="detail-row"><span>甲方（消費者）</span><span>${escapeText(r.customerName || "")}</span></div>
+              <div class="detail-row"><span>毛孩</span><span>${escapeText(r.petName || "")}</span></div>
+              <div class="detail-row"><span>簽署時間</span><span>${escapeText(agreed)}</span></div>
+              <div class="detail-row"><span>契約版本</span><span>${escapeText(r.contractVersion)}</span></div>
+              <div class="detail-row"><span>影像使用（第二十一條）</span><span>${r.photoShareConsent ? "同意分享" : "不同意分享"}</span></div>
+            </div>
+            <div class="detail-section" style="font-size:12px; line-height:1.8; max-height:45vh; overflow-y:auto; background:#FBF9F5; border:1px solid #DBD3C4; border-radius:8px; padding:12px;">
+              ${r.contractVersion !== r.currentVersion ? '<p style="color:#B3261E">本預約簽署的是舊版契約，下方為目前版本全文，僅供參考；如需舊版全文請洽店家。</p>' : ""}
+              <div id="contractCopyBody"></div>
+            </div>
+            <div class="detail-section" style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div><div class="label">甲方簽名</div><img id="custSig" style="max-width:180px; max-height:80px; display:none;" /><span id="custSigNone" style="font-size:12px;">（無簽名紀錄）</span></div>
+              <div><div class="label">乙方簽名</div><img id="compSig" style="max-width:180px; max-height:80px; display:none;" /><span id="compSigNone" style="font-size:12px;">（店家尚未設定簽名檔）</span></div>
+            </div>`;
+          if (r.customerSignature) {
+            const img = document.getElementById("custSig");
+            img.src = r.customerSignature; img.style.display = "block";
+            document.getElementById("custSigNone").style.display = "none";
+          }
+          if (r.companySignature) {
+            const img = document.getElementById("compSig");
+            img.src = r.companySignature; img.style.display = "block";
+            document.getElementById("compSigNone").style.display = "none";
+          }
+          MulageContract.load(document.getElementById("contractCopyBody"));
+        } catch (e) {
+          body.innerHTML = '<div class="detail-error">網路錯誤，請重試</div>';
+        }
+      }
+
+      function escapeText(v) {
+        const div = document.createElement("div");
+        div.textContent = v == null ? "" : String(v);
+        return div.innerHTML;
       }
 
       function closeDetail() {

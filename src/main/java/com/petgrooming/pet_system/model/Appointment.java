@@ -102,6 +102,15 @@ public class Appointment {
     @Column(name = "contract_agreed_at")
     private LocalDateTime contractAgreedAt;
 
+    // 需求（追加，2026-10-02）：簽署的契約版本（null＝2026-10-02 之前的舊版）
+    @Column(name = "contract_version", length = 20)
+    private String contractVersion;
+
+    // 需求（追加，2026-10-02）：契約第二十一條影像使用——顧客另外勾選同意才可分享美容照片（預設不同意）
+    @Column(name = "photo_share_consent", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean photoShareConsent = false;
+
     // 需求（追加）：Google 日曆串接——這筆預約同步到店家共用日曆之後，
     // Google 那邊回傳的事件 ID 存在這裡，之後要更新/刪除這個日曆事件時要用。
     // null 代表還沒同步過（可能是日曆功能還沒設定好，或這筆預約還在「待確認」
