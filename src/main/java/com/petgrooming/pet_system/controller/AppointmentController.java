@@ -97,6 +97,18 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAvailableSlots(date, parsedPetType));
     }
 
+    // ── GET /api/appointments/first-visit?petId= ─────────────────────────
+    // 需求（追加，2026-10-02）：LIFF 預約頁選好毛孩後查詢是不是初次預約
+    // （初次只選時段，不選服務項目）。
+    @GetMapping("/first-visit")
+    public ResponseEntity<?> firstVisit(@RequestParam Long petId, HttpServletRequest request) {
+        String username = currentUsername(request);
+        if (username == null) {
+            return ResponseEntity.status(401).body(java.util.Map.of("message", "請先登入"));
+        }
+        return ResponseEntity.ok(appointmentService.firstVisitStatus(username, petId));
+    }
+
     // ── GET /api/appointments/closed-dates ───────────────────────────────
     // 需求 16：查詢今天以後的公休日清單，供 LIFF 預約頁在選日期後即時提示「公休」，
     // 不用等 /slots 回傳空清單才知道，UX 更明確。

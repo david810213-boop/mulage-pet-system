@@ -507,7 +507,7 @@
                   </div>
                 </td>
 
-                <td th:text="${'$' + a.totalAmount}"></td>
+                <td th:text="${a.firstVisitAssessment and !a.checkinOrderConfirmed} ? '現場報價' : ${'$' + a.totalAmount}"></td>
                 <td>
                   <span
                     class="badge"

@@ -109,6 +109,14 @@
       <input type="number" name="customPrice" id="gPrice" min="0" inputmode="numeric" placeholder="留空就用原價" />
       <small>價格浮動的項目（例如剪毛）才需要填；積分照項目原本設定計算</small>
     </div>
+    <div class="field">
+      <label for="gOp">經手人</label>
+      <select name="operatorStaffId" id="gOp">
+        <option value="">稍後補填</option>
+        <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+      </select>
+      <small>選了就當下計入積分，填好後不能修改</small>
+    </div>
     <div class="btn-row">
       <button type="button" class="btn sec" data-close-sheet>取消</button>
       <button type="submit" class="btn pri">加入</button>
@@ -139,6 +147,14 @@
                   th:value="${c.name()}" th:text="${c.label}">剪毛</option>
         </select>
       </div>
+    </div>
+    <div class="field">
+      <label for="cOp">經手人</label>
+      <select name="operatorStaffId" id="cOp">
+        <option value="">稍後補填</option>
+        <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+      </select>
+      <small>選了就當下計入積分，填好後不能修改</small>
     </div>
     <div class="btn-row">
       <button type="button" class="btn sec" data-close-sheet>取消</button>

@@ -151,7 +151,12 @@ public class GoogleCalendarService {
                     .collect(Collectors.joining("、"));
             sb.append("服務項目：").append(items).append("\n");
         }
-        sb.append("金額：$").append(appointment.getTotalAmount()).append("\n");
+        if (appointment.isFirstVisitAssessment() && !appointment.isCheckinOrderConfirmed()) {
+            // 需求（2026-10-02）：初次預約沒有選項目，到店後開單報價
+            sb.append("服務項目：初次・現場評估（到店後開單報價）\n");
+        } else {
+            sb.append("金額：$").append(appointment.getTotalAmount()).append("\n");
+        }
         if (appointment.getUser().getPhone() != null) {
             sb.append("聯絡電話：").append(appointment.getUser().getPhone()).append("\n");
         }

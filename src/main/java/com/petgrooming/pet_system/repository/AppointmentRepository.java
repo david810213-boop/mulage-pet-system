@@ -41,6 +41,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 沿用需求 9 既有的「(會員, 寵物名) 配對識別同一隻寵物」慣例。
     List<Appointment> findByUserIdAndPetNameAndPaidTrue(Long userId, String petName);
 
+    // 需求（追加，2026-10-02）：同一隻毛孩是否已經有一筆還沒完成的「初次・現場評估」預約
+    List<Appointment> findByUserIdAndPetNameAndFirstVisitAssessmentTrueAndPaidFalse(Long userId, String petName);
+
     // 需求（修正，2026-09-13）：N+1 查詢優化。getAllForAdmin()/getAllAppointments()
     // 原本用 findAll() 撈全部預約，DTO 轉換時逐筆存取 a.getUser()（LAZY）跟
     // a.getSelectedItems()（雖然是 EAGER，但預設用逐筆 SELECT 撈，不是 JOIN），

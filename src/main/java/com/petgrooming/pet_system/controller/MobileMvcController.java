@@ -392,6 +392,7 @@ public class MobileMvcController {
         model.addAttribute("otherItems", items.stream()
                 .filter(i -> "OTHER".equals(i.getPerformanceCategory())).toList());
         model.addAttribute("preselected", preselected);
+        model.addAttribute("staffOptions", view.staffOptions()); // 需求（2026-10-02）：開單可選經手人
         model.addAttribute("activeTab", "appointments");
         return "m/checkin";
     }
@@ -399,6 +400,7 @@ public class MobileMvcController {
     @PostMapping("/appointments/{id}/checkin")
     public String checkinSubmit(@PathVariable Long id,
             @RequestParam(required = false) List<String> itemCodes,
+            @RequestParam(required = false) List<String> operatorStaffIds,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         if (user == null) {
@@ -409,7 +411,7 @@ public class MobileMvcController {
             return "redirect:/m/appointments/" + id + "/checkin";
         }
         try {
-            appointmentService.confirmCheckinOrder(id, itemCodes, user.getUsername());
+            appointmentService.confirmCheckinOrder(id, itemCodes, parseStaffIds(operatorStaffIds), user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
                     String.join("、", itemCodes) + "（手機版）");
             redirectAttributes.addFlashAttribute("toast", "已開單，可以開始服務了");
@@ -454,6 +456,7 @@ public class MobileMvcController {
         model.addAttribute("groomingItems", addable);
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
+        model.addAttribute("staffOptions", view.staffOptions()); // 需求（2026-10-02）：核對加項目可選經手人
         model.addAttribute("activeTab", "appointments");
         model.addAttribute("photoEnabled", true); // 需求（2026-09-29）：核對照片
         return "m/final-check";
@@ -496,20 +499,32 @@ public class MobileMvcController {
     @PostMapping("/appointments/{id}/items/grooming")
     public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
             @RequestParam(required = false) Integer customPrice,
+            @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入項目",
-                user -> appointmentService.addGroomingItem(id, groomingItemId, customPrice, user.getUsername()));
+                user -> appointmentService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, user.getUsername()));
     }
 
     @PostMapping("/appointments/{id}/items/custom")
     public String addCustomItem(@PathVariable Long id, @RequestParam String itemName,
             @RequestParam int price,
             @RequestParam(required = false) PerformanceCategory category,
+            @RequestParam(required = false) Long operatorStaffId,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入「" + itemName + "」",
-                user -> appointmentService.addCustomItem(id, itemName, price, category, user.getUsername()));
+                user -> appointmentService.addCustomItem(id, itemName, price, category, operatorStaffId, user.getUsername()));
+    }
+
+    // 經手人下拉選單的值（空字串＝稍後補填）轉成 id 清單，順序跟 itemCodes 一致
+    private static List<Long> parseStaffIds(List<String> raw) {
+        if (raw == null) return null;
+        List<Long> ids = new java.util.ArrayList<>();
+        for (String s : raw) {
+            ids.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
+        }
+        return ids;
     }
 
     @PostMapping("/appointments/{id}/items/retail")
@@ -796,6 +811,7 @@ public class MobileMvcController {
                 .statusLabel(a.getStatusLabel())
                 .note(a.getInternalNote())
                 .totalAmount(a.getTotalAmount())
+                .quotePending(a.isFirstVisitAssessment() && !a.isCheckinOrderConfirmed())
                 .pending(a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
                 .stage(stage)
                 .stageLabel(stageLabel(stage))

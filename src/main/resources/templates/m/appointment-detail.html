@@ -63,7 +63,7 @@
     <div class="kv"><span class="k">項目</span>
       <span class="v" th:text="${card.items.isEmpty()} ? '未選項目' : ${card.items}">精緻洗</span></div>
     <div class="kv"><span class="k" th:text="${a.paid} ? '結帳金額' : '預估金額'">預估金額</span>
-      <span class="v num" th:text="'NT$ ' + ${#numbers.formatInteger(a.totalAmount, 1, 'COMMA')}">NT$ 900</span></div>
+      <span class="v num" th:text="${a.firstVisitAssessment and !a.checkinOrderConfirmed} ? '現場報價（初次・現場評估）' : 'NT$ ' + ${#numbers.formatInteger(a.totalAmount, 1, 'COMMA')}">NT$ 900</span></div>
   </section>
 
   <section class="panel" th:if="${(pet != null and pet.notes != null and !pet.notes.isEmpty()) or (a.internalNote != null and !a.internalNote.isEmpty()) or (a.memberNote != null and !a.memberNote.isEmpty()) or (a.finalCheckNote != null and !a.finalCheckNote.isEmpty())}">

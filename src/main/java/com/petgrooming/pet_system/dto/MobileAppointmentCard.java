@@ -23,6 +23,7 @@ public class MobileAppointmentCard {
     private String statusLabel;
     private String note;        // 店家內部備注
     private int totalAmount;
+    private boolean quotePending; // 需求（2026-10-02）：初次・現場評估、還沒開單＝金額現場報價
     private boolean pending;    // 待確認，才顯示「確認預約」按鈕
     // 需求（2026-09-24 第二批）：流程階段，預約列表/詳情頁用
     // confirm 待確認 / checkin 待開單 / start 待開始 / serving 服務中 / check 待核對 /

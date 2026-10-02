@@ -75,6 +75,13 @@
                   <label style="font-size:12px;">自訂價格</label>
                   <input type="number" name="customPrice" min="0" placeholder="留空＝原價" />
                 </div>
+                <div class="field" style="margin:0; width:130px;">
+                  <label style="font-size:12px;">經手人</label>
+                  <select name="operatorStaffId">
+                    <option value="">稍後補填</option>
+                    <option th:each="s : ${staffList}" th:value="${s.id}" th:text="${s.name}"></option>
+                  </select>
+                </div>
                 <button type="submit" class="btn btn-outline" style="padding:6px 14px; font-size:12px;">加入</button>
               </form>
             </div>
@@ -102,6 +109,13 @@
                   <select name="category">
                     <option value="">不計積分（其他）</option>
                     <option th:each="c : ${performanceCategories}" th:value="${c}" th:text="${c.label}"></option>
+                  </select>
+                </div>
+                <div class="field" style="margin:0; width:130px;">
+                  <label style="font-size:12px;">經手人</label>
+                  <select name="operatorStaffId">
+                    <option value="">稍後補填</option>
+                    <option th:each="s : ${staffList}" th:value="${s.id}" th:text="${s.name}"></option>
                   </select>
                 </div>
                 <button type="submit" class="btn btn-outline" style="padding:6px 14px; font-size:12px;">加入</button>

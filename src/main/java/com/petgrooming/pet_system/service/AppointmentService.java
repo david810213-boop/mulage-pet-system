@@ -159,8 +159,25 @@ public class AppointmentService {
         // 現在直接呼叫即可，例外會自然往外傳到 GlobalApiExceptionHandler。
         slotCapacityService.reserve(req.getDate(), req.getStartTime());
 
-        // ⚡ 2. 防呆安全鎖：萬一前端完全沒傳任何服務項目，直接攔截不往下跑
-        if (req.getSelectedItems() == null || req.getSelectedItems().isEmpty()) {
+        // ⚡ 1g. 需求（追加，2026-10-02 店家確認 6）：初次預約只選時段。
+        //   這隻毛孩沒有已付款紀錄＝初次（以毛孩為單位，老客人帶新毛孩也算）：
+        //   - 顧客在 LIFF 預約：一律不收服務項目，標成「初次・現場評估」，金額現場報價；
+        //   - 店員代客預約：店員可以自己選，沒勾項目就是現場評估，有勾就照一般流程。
+        boolean noItems = req.getSelectedItems() == null || req.getSelectedItems().isEmpty();
+        boolean firstVisit = !petConsumptionHistoryService.hasPriorPaidService(user.getId(), pet.getName(), null);
+        boolean assessment = firstVisit && (!staffAssisted || noItems);
+        if (assessment) {
+            boolean hasOpenAssessment = appointmentRepository
+                    .findByUserIdAndPetNameAndFirstVisitAssessmentTrueAndPaidFalse(user.getId(), pet.getName())
+                    .stream().anyMatch(a -> !a.isCancelled());
+            if (hasOpenAssessment) {
+                throw new AppointmentException("「" + pet.getName() + "」已經有一筆初次預約還沒完成，"
+                        + "完成第一次美容後就能再預約；如需改時間請聯繫官方 LINE");
+            }
+        }
+
+        // ⚡ 2. 防呆安全鎖：萬一前端完全沒傳任何服務項目，直接攔截不往下跑（初次現場評估除外）
+        if (!assessment && noItems) {
             throw new AppointmentException("請至少選擇一項美容服務項目！");
         }
 
@@ -173,14 +190,14 @@ public class AppointmentService {
         // ③ 最後項目清單是空的就直接擋下，絕不再建立 $0、沒有項目的預約；
         // ④ 記一行 log（收到的代碼 → 實際項目與金額），之後出問題可以直接對照。
         List<GroomingItem> actualItems = new ArrayList<>();
-        for (String itemCode : req.getSelectedItems()) {
+        for (String itemCode : assessment ? List.<String>of() : req.getSelectedItems()) {
             GroomingItem item = groomingItemRepository.findByItemCodeAndIsDeletedFalse(itemCode)
                     .orElseThrow(() -> new AppointmentException("服務項目已下架或不存在：" + itemCode));
             actualItems.add(item);
         }
         log.info("[預約建立] 收到項目代碼 {} → 實際項目 {}", req.getSelectedItems(),
                 actualItems.stream().map(i -> i.getItemCode() + "=$" + i.getPrice()).toList());
-        if (actualItems.isEmpty()) {
+        if (actualItems.isEmpty() && !assessment) {
             throw new AppointmentException("請至少選擇一項有效的美容服務項目！");
         }
 
@@ -219,6 +236,7 @@ public class AppointmentService {
                 .confirmedTime(isSameDayBooking ? java.time.LocalDateTime.now() : null)
                 .contractSignatureImage(signatureData)
                 .contractAgreedAt(java.time.LocalDateTime.now())
+                .firstVisitAssessment(assessment)
                 .build();
 
         // 若有指派員工，設入（選填）
@@ -262,12 +280,14 @@ public class AppointmentService {
         String statusText = appointment.getStatus() == AppointmentStatus.CONFIRMED
                 ? "（當天預約，已自動確認）" : "（待確認）";
         String text = String.format(
-                "📅【新預約通知】%s%s\n毛孩：%s（%s）\n時間：%s %s~%s\n顧客：%s\n金額：$%d",
+                "📅【新預約通知】%s%s\n毛孩：%s（%s）\n時間：%s %s~%s\n顧客：%s\n金額：%s",
                 appointment.getPetName(), statusText,
                 appointment.getPetName(), appointment.getPetType(),
                 appointment.getDate(), appointment.getStartTime(), appointment.getEndTime(),
                 appointment.getUser().getName(),
-                appointment.getTotalAmount());
+                appointment.isFirstVisitAssessment() && !appointment.isCheckinOrderConfirmed()
+                        ? "初次・現場評估（到店後開單報價）"
+                        : "$" + appointment.getTotalAmount());
 
         List<User> staffAndAdmin = new java.util.ArrayList<>(userRepository.findByRole(UserRole.STAFF));
         staffAndAdmin.addAll(userRepository.findByRole(UserRole.ADMIN));
@@ -367,9 +387,27 @@ public class AppointmentService {
                     .map(com.petgrooming.pet_system.model.AppointmentItem::getItemName)
                     .toList();
         }
+        if (a.isFirstVisitAssessment() && (a.getSelectedItems() == null || a.getSelectedItems().isEmpty())) {
+            return List.of("初次・現場評估"); // 需求（2026-10-02）：還沒到店開單前的顯示文字
+        }
         return a.getSelectedItems().stream()
                 .map(com.petgrooming.pet_system.model.GroomingItem::getName)
                 .toList();
+    }
+
+    // ── 需求（追加，2026-10-02）：LIFF 預約頁選好毛孩後，判斷是不是初次預約 ──
+    // 初次＝這隻毛孩沒有已付款紀錄；另外回傳是否已經有一筆未完成的初次預約。
+    public java.util.Map<String, Object> firstVisitStatus(String username, Long petId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+        Pet pet = petRepository.findById(petId)
+                .filter(p -> p.getOwner() != null && p.getOwner().getId().equals(user.getId()))
+                .orElseThrow(() -> new AppointmentException("找不到寵物"));
+        boolean firstVisit = !petConsumptionHistoryService.hasPriorPaidService(user.getId(), pet.getName(), null);
+        boolean pending = firstVisit && appointmentRepository
+                .findByUserIdAndPetNameAndFirstVisitAssessmentTrueAndPaidFalse(user.getId(), pet.getName())
+                .stream().anyMatch(a -> !a.isCancelled());
+        return java.util.Map.of("firstVisit", firstVisit, "pendingAssessment", pending);
     }
 
     // ── 店家後台查詢所有預約（含內部備注，需求 7）──────────────────────────
@@ -694,6 +732,14 @@ public class AppointmentService {
     // 確認後才能開始服務；項目可先不指定經手人，之後從待補清單補上。
     @Transactional
     public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes, String username) {
+        return confirmCheckinOrder(appointmentId, itemCodes, null, username);
+    }
+
+    // 需求（追加，2026-10-02 店家確認 3）：到店開單比照現場開單，每個項目可以直接選經手人。
+    // operatorStaffIds 跟 itemCodes 一一對應（null／空字串＝稍後補填），選了的當下就寫入積分。
+    @Transactional
+    public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes,
+            List<Long> operatorStaffIds, String username) {
         User staff = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppointmentException("找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
@@ -717,7 +763,9 @@ public class AppointmentService {
         }
 
         int total = 0;
-        for (String code : itemCodes) {
+        for (int idx = 0; idx < itemCodes.size(); idx++) {
+            String code = itemCodes.get(idx);
+            Long operatorId = operatorStaffIds != null && idx < operatorStaffIds.size() ? operatorStaffIds.get(idx) : null;
             GroomingItem gi = groomingItemRepository.findByItemCode(code)
                     .orElseThrow(() -> new AppointmentException("找不到項目代碼：" + code));
 
@@ -746,7 +794,9 @@ public class AppointmentService {
                     .points(gi.getPoints())
                     .performanceCategory(gi.getPerformanceCategory())
                     .build();
+            item.setOperatorStaff(findOperator(operatorId));
             appointmentItemRepository.save(item);
+            awardItemPoints(item); // 沒選經手人的會直接略過，之後從待補清單補
             expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
             total += item.getPrice();
         }
@@ -835,6 +885,13 @@ public class AppointmentService {
     }
 
     public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice, String username) {
+        addGroomingItem(appointmentId, groomingItemId, customPrice, null, username);
+    }
+
+    // 需求（追加，2026-10-02 店家確認 3-1）：核對時加的項目也可以當場選經手人
+    @Transactional
+    public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice,
+            Long operatorStaffId, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException("找不到該預約"));
         if (appointment.isPaid()) {
@@ -871,7 +928,9 @@ public class AppointmentService {
                 .points(gi.getPoints()) // 積分固定照項目原本設定，不受自訂價格影響
                 .performanceCategory(gi.getPerformanceCategory())
                 .build();
+        item.setOperatorStaff(findOperator(operatorStaffId));
         appointmentItemRepository.save(item);
+        awardItemPoints(item);
         expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
 
         appointment.setTotalAmount(appointment.getTotalAmount() + item.getPrice());
@@ -891,6 +950,12 @@ public class AppointmentService {
     // 客製化報價本來就是店員當下依實際情況談定的金額，不應該再疊加折扣。
     public void addCustomItem(Long appointmentId, String itemName, int price,
             com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
+        addCustomItem(appointmentId, itemName, price, category, null, username);
+    }
+
+    @Transactional
+    public void addCustomItem(Long appointmentId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException("找不到該預約"));
         if (appointment.isPaid()) {
@@ -913,7 +978,9 @@ public class AppointmentService {
                 .points(actualCategory.getDefaultPoints())
                 .performanceCategory(actualCategory)
                 .build();
+        item.setOperatorStaff(findOperator(operatorStaffId));
         appointmentItemRepository.save(item);
+        awardItemPoints(item);
 
         appointment.setTotalAmount(appointment.getTotalAmount() + price);
         appointment.setCheckinOrderConfirmed(true);
@@ -994,6 +1061,17 @@ public class AppointmentService {
         appointmentItemRepository.save(item);
 
         awardItemPoints(item);
+    }
+
+    // 經手人 id → 員工（null＝稍後補填）；只接受店員／管理者帳號
+    private User findOperator(Long staffId) {
+        if (staffId == null) return null;
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new AppointmentException("找不到員工 #" + staffId));
+        if (!staff.isStaffOrAdmin()) {
+            throw new AppointmentException("經手人必須是店內員工");
+        }
+        return staff;
     }
 
     // ── 現場開單項目積分寫入：一筆項目只會被計入一次（pointsAwarded 防重複）──
@@ -1228,6 +1306,7 @@ public class AppointmentService {
                 .memberNote(appointment.getMemberNote())
                 .items(items)
                 .totalAmount(appointment.getTotalAmount())
+                .quotePending(appointment.isFirstVisitAssessment() && !appointment.isCheckinOrderConfirmed())
                 .paid(appointment.isPaid());
 
         // 需求（2026-09-29）：核對時留下的美容狀況備註與照片（顧客在 LIFF 明細看得到）

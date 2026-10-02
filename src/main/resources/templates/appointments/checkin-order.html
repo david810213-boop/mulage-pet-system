@@ -87,6 +87,7 @@
                   th:if="${item.performanceCategory != 'OTHER'}"
                   style="
                     display: flex;
+                    flex-wrap: wrap;
                     align-items: center;
                     justify-content: space-between;
                     padding: 10px 14px;
@@ -107,6 +108,11 @@
                     <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark)"></span>
                   </span>
                   <span th:text="'$' + ${item.price != null ? #numbers.formatDecimal(item.price, 1, 0) : '0'}" style="color: #2e7d32; font-weight: 600"></span>
+                  <select name="operatorStaffIds" class="op-select" disabled
+                          style="flex-basis:100%; margin-top:8px; padding:5px 8px; font-size:12px; border:1px solid var(--cream-300); border-radius:6px;">
+                    <option value="">經手人：稍後補填</option>
+                    <option th:each="s : ${staffList}" th:value="${s.id}" th:text="'經手人：' + ${s.name}"></option>
+                  </select>
                 </label>
               </div>
 
@@ -131,6 +137,7 @@
                     th:if="${item.performanceCategory == 'OTHER'}"
                     style="
                       display: flex;
+                      flex-wrap: wrap;
                       align-items: center;
                       justify-content: space-between;
                       padding: 10px 14px;
@@ -150,6 +157,11 @@
                       <span th:text="${item.name}" style="font-weight: 500; color: var(--brown-dark)"></span>
                     </span>
                     <span th:text="'$' + ${item.price != null ? #numbers.formatDecimal(item.price, 1, 0) : '0'}" style="color: #2e7d32; font-weight: 600"></span>
+                    <select name="operatorStaffIds" class="op-select" disabled
+                            style="flex-basis:100%; margin-top:8px; padding:5px 8px; font-size:12px; border:1px solid var(--cream-300); border-radius:6px;">
+                      <option value="">經手人：稍後補填</option>
+                      <option th:each="s : ${staffList}" th:value="${s.id}" th:text="'經手人：' + ${s.name}"></option>
+                    </select>
                   </label>
                 </div>
               </div>
@@ -181,6 +193,33 @@
                   alert('網路錯誤，請重試');
                 }
               }
+            </script>
+
+            <!-- 需求（2026-10-02）：比照現場開單，勾選的項目可以直接選經手人（預設稍後補填） -->
+            <div class="card" style="margin-bottom: 1rem; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px;">
+              <span>勾選的項目經手人全部設為</span>
+              <select id="opAll" style="padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px;">
+                <option value="" selected disabled>選擇…</option>
+                <option value="later">稍後補填</option>
+                <option th:each="s : ${staffList}" th:value="${s.id}" th:text="${s.name}"></option>
+              </select>
+              <span style="color: var(--brown-light); font-size: 12px;">選了經手人的項目，開單當下就計入積分，填好後不能修改。</span>
+            </div>
+            <script>
+              (function () {
+                // 只有勾選的項目，經手人選單才啟用並送出，讓 itemCodes 跟 operatorStaffIds 順序一一對應
+                var boxes = document.querySelectorAll('input[name=itemCodes]');
+                function sel(cb) { return cb.closest('label').querySelector('select.op-select'); }
+                boxes.forEach(function (cb) {
+                  sel(cb).disabled = !cb.checked;
+                  cb.addEventListener('change', function () { sel(cb).disabled = !cb.checked; });
+                });
+                document.getElementById('opAll').addEventListener('change', function () {
+                  var v = this.value === 'later' ? '' : this.value;
+                  boxes.forEach(function (cb) { if (cb.checked) sel(cb).value = v; });
+                  this.selectedIndex = 0;
+                });
+              })();
             </script>
 
             <div style="display: flex; gap: 12px">

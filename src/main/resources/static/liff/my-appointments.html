@@ -829,7 +829,9 @@
         const isFuture = !isPastOrCancelledForCancelCheck(a);
         const canCancel = !a.cancelled && !a.paid && isFuture;
 
-        let footerHtml = `<div class="appt-total">總金額<span class="amount">$${a.totalAmount}</span></div>`;
+        // 需求（2026-10-02）：初次預約還沒開單時，金額由店家現場報價
+        const quotePending = a.firstVisitAssessment && !a.paid && !a.totalAmount;
+        let footerHtml = `<div class="appt-total">總金額<span class="amount">${quotePending ? "現場報價" : "$" + a.totalAmount}</span></div>`;
 
         // 需求（追加）：Google 日曆串接——已確認、未取消、還沒過去的預約，
         // 給一個「加入我的Google日曆」連結，純前端組網址，不用打任何 API，
@@ -880,7 +882,7 @@
         const end = compact(a.date, a.endTime);
         const itemNames = (a.selectedItems || []).map((it) => it.name).join("、");
         const title = `${a.petName} 美容預約 - 慕沐村 Mulage pet`;
-        const details = `服務項目：${itemNames || "（詳見預約明細）"}\n金額：$${a.totalAmount}\n預約編號：${a.appointmentCode}`;
+        const details = `服務項目：${itemNames || "（詳見預約明細）"}\n金額：${a.firstVisitAssessment && !a.paid && !a.totalAmount ? "現場報價" : "$" + a.totalAmount}\n預約編號：${a.appointmentCode}`;
         const params = new URLSearchParams({
           action: "TEMPLATE",
           text: title,
@@ -1006,10 +1008,12 @@
 
           <div class="detail-section">
             <div class="label">服務項目</div>
-            ${itemsHtml || '<div class="detail-row"><span class="item-name">（無項目資料）</span></div>'}
+            ${itemsHtml || (d.quotePending
+              ? '<div class="detail-row"><span class="item-name">初次・現場評估（到店後由店家依毛孩狀況開立項目）</span></div>'
+              : '<div class="detail-row"><span class="item-name">（無項目資料）</span></div>')}
             <div class="detail-total">
               <span>合計</span>
-              <span>$${d.totalAmount}</span>
+              <span>${d.quotePending ? "現場報價" : "$" + d.totalAmount}</span>
             </div>
           </div>
 

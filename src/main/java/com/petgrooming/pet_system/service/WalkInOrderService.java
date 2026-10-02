@@ -413,6 +413,13 @@ public class WalkInOrderService {
 
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice, String username) {
+        return addGroomingItem(orderId, groomingItemId, customPrice, null, username);
+    }
+
+    // 需求（追加，2026-10-02 店家確認 3-1）：核對時加的項目也可以當場選經手人（null＝稍後補填）
+    @Transactional
+    public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice,
+            Long operatorStaffId, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
@@ -451,6 +458,7 @@ public class WalkInOrderService {
                 .performanceCategory(gi.getPerformanceCategory())
                 .discountEligible(gi.isDiscountEligible())
                 .build();
+        item.setOperatorStaff(findOperator(operatorStaffId));
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + item.getPrice());
 
@@ -467,6 +475,7 @@ public class WalkInOrderService {
             order.addItem(sub);
         }
         WalkInOrder saved = orderRepository.save(order);
+        awardNewlyAssignedItems(saved);
 
         log.info("現場單 #{} 編輯新增服務項目「{}」{}", orderId, gi.getName(),
                 hasCustomPrice ? "（自訂價格 $" + actualPrice + "）" : "");
@@ -485,6 +494,12 @@ public class WalkInOrderService {
     @Transactional
     public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
             com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
+        return addCustomItem(orderId, itemName, price, category, null, username);
+    }
+
+    @Transactional
+    public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
@@ -506,9 +521,11 @@ public class WalkInOrderService {
                 .performanceCategory(actualCategory)
                 .discountEligible(false)
                 .build();
+        item.setOperatorStaff(findOperator(operatorStaffId));
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + price);
         WalkInOrder saved = orderRepository.save(order);
+        awardNewlyAssignedItems(saved);
 
         log.info("現場單 #{} 新增自訂項目「{}」，金額 ${}", orderId, itemName, price);
         WalkInOrderResponse res = WalkInOrderResponse.from(saved);
@@ -792,6 +809,26 @@ public class WalkInOrderService {
 
         awardPoints(item, item.getOrder());
         log.info("項目 #{} 補填經手人：{}", orderItemId, staff.getName());
+    }
+
+    // 需求（追加，2026-10-02）：核對加項目時有選經手人的，存檔後立刻寫入積分
+    // （用存檔後的項目清單逐一檢查，pointsAwarded 會擋掉已經計過的）
+    private void awardNewlyAssignedItems(WalkInOrder saved) {
+        for (WalkInOrderItem it : saved.getItems()) {
+            if (it.getOperatorStaff() != null && !it.isPointsAwarded()) {
+                awardPoints(it, saved);
+            }
+        }
+    }
+
+    private User findOperator(Long staffId) {
+        if (staffId == null) return null;
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new PaymentException("找不到員工 #" + staffId));
+        if (!staff.isStaffOrAdmin()) {
+            throw new PaymentException("經手人必須是店內員工");
+        }
+        return staff;
     }
 
     // ── 積分寫入：一筆項目只會被計入一次（pointsAwarded 防重複）────────────

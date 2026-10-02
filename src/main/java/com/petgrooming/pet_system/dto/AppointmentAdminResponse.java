@@ -31,6 +31,7 @@ public class AppointmentAdminResponse {
     // 要改讀這個欄位，不要直接讀 selectedItems（那是預約當下的原始選擇，
     // 核對時改過項目不會反映在上面）。
     private List<String> displayItemNames;
+    private boolean firstVisitAssessment; // 需求（2026-10-02）：初次・現場評估（金額現場報價）
     private int totalAmount;
     private boolean paid;
     private AppointmentStatus status;
@@ -60,6 +61,7 @@ public class AppointmentAdminResponse {
         res.setStartTime(a.getStartTime());
         res.setEndTime(a.getEndTime());
         res.setSelectedItems(a.getSelectedItems());
+        res.setFirstVisitAssessment(a.isFirstVisitAssessment());
         res.setTotalAmount(a.getTotalAmount());
         res.setPaid(a.isPaid());
         res.setStatus(a.getStatus());

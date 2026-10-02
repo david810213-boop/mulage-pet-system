@@ -211,6 +211,7 @@ public class AppointmentMvcController {
         model.addAttribute("pet", pet); // 需求（追加，2026-08-29）：頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
         model.addAttribute("groomingItems", filterItemsForPetShape(
                 groomingItemService.getAllItems(), isExisting, target.getPetType(), pet));
+        model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：開單可選經手人
         return "appointments/checkin-order";
     }
 
@@ -237,11 +238,17 @@ public class AppointmentMvcController {
     @PostMapping("/{id}/checkin-order")
     public String checkinOrderSubmit(@PathVariable Long id,
                                      @RequestParam(required = false) List<String> itemCodes,
+                                     @RequestParam(required = false) List<String> operatorStaffIds,
                                      HttpServletRequest request,
                                      RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         try {
-            appointmentService.confirmCheckinOrder(id, itemCodes, user.getUsername());
+            List<Long> opIds = null;
+            if (operatorStaffIds != null) {
+                opIds = new java.util.ArrayList<>();
+                for (String s : operatorStaffIds) opIds.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
+            }
+            appointmentService.confirmCheckinOrder(id, itemCodes, opIds, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
                     itemCodes != null ? String.join("、", itemCodes) : null);
             redirectAttributes.addFlashAttribute("successMsg", "已依現場情況開立服務項目，現在可以開始服務");
@@ -358,6 +365,7 @@ public class AppointmentMvcController {
         model.addAttribute("retailProducts", retailProductService.listActive());
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+        model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：核對加項目可選經手人
         return "appointments/final-check";
     }
 
@@ -383,6 +391,7 @@ public class AppointmentMvcController {
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
             model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
+            model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）
             return "appointments/final-check";
         }
 
@@ -402,6 +411,8 @@ public class AppointmentMvcController {
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting2, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", e.getMessage());
+            model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+            model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）
             return "appointments/final-check";
         }
     }

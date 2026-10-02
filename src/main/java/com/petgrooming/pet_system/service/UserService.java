@@ -252,6 +252,15 @@ public class UserService {
         return List.copyOf(found.values());
     }
 
+    // 需求（追加，2026-10-02）：經手人下拉選單（員工＋管理者），只給 id 跟姓名，不把整個 User 丟進頁面
+    public List<java.util.Map<String, Object>> operatorOptions() {
+        List<User> list = new java.util.ArrayList<>(getAllStaffEntities());
+        list.addAll(getAllAdminEntities());
+        return list.stream()
+                .<java.util.Map<String, Object>>map(u -> java.util.Map.of("id", u.getId(), "name", u.getName()))
+                .toList();
+    }
+
     public List<User> getAllStaffEntities() {
         return userRepository.findByRole(UserRole.STAFF);
     }

@@ -168,6 +168,13 @@ public class Appointment {
     @Builder.Default
     private boolean reminderSent = false;
 
+    // ── 需求（追加，2026-10-02 店家確認 6）：初次預約只選時段 ─────────────────
+    // 這隻毛孩第一次來（沒有已付款紀錄）時，顧客不選服務項目，到店後由店員依
+    // 現場狀況在「到店開單」開立項目、現場報價。預約金額先記 0。
+    @Column(name = "first_visit_assessment", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean firstVisitAssessment = false;
+
     public boolean isCancelled() {
         return status == AppointmentStatus.CANCELLED;
     }

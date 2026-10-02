@@ -370,6 +370,7 @@ public class MobileWalkInController {
                 groomingItemService.getAllItems(), isExisting, petType));
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
+        model.addAttribute("staffOptions", view.staffOptions()); // 需求（2026-10-02）：核對加項目可選經手人
         model.addAttribute("activeTab", "walkin");
         // 需求（2026-09-29）：非會員單沒有毛孩檔案，不開放核對照片
         model.addAttribute("photoEnabled", o.getMemberUsername() != null && !o.getMemberUsername().isBlank());
@@ -406,20 +407,22 @@ public class MobileWalkInController {
     @PostMapping("/{id}/items/grooming")
     public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
             @RequestParam(required = false) Integer customPrice,
+            @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes ra) {
         return editItems(id, from, request, ra, "已加入項目",
-                u -> walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, u.getUsername()));
+                u -> walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, u.getUsername()));
     }
 
     @PostMapping("/{id}/items/custom")
     public String addCustomItem(@PathVariable Long id, @RequestParam String itemName,
             @RequestParam int price,
             @RequestParam(required = false) PerformanceCategory category,
+            @RequestParam(required = false) Long operatorStaffId,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes ra) {
         return editItems(id, from, request, ra, "已加入「" + itemName + "」",
-                u -> walkInOrderService.addCustomItem(id, itemName, price, category, u.getUsername()));
+                u -> walkInOrderService.addCustomItem(id, itemName, price, category, operatorStaffId, u.getUsername()));
     }
 
     @PostMapping("/{id}/items/retail")

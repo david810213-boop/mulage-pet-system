@@ -59,7 +59,7 @@
       <div class="slot" th:classappend="${c.state}">
         <div class="tm" th:text="${c.time}">10:00</div>
         <button type="button" class="card js-appt"
-                th:attr="data-id=${c.id},data-pet=${c.petName},data-initial=${c.petInitial},data-species=${c.species},data-species-label=${c.speciesLabel},data-date=${c.dateLabel},data-time=${c.time},data-items=${c.items},data-owner=${c.ownerName},data-status=${c.statusLabel},data-state=${c.state},data-note=${c.note},data-amount=${c.totalAmount},data-pending=${c.pending}">
+                th:attr="data-id=${c.id},data-pet=${c.petName},data-initial=${c.petInitial},data-species=${c.species},data-species-label=${c.speciesLabel},data-date=${c.dateLabel},data-time=${c.time},data-items=${c.items},data-owner=${c.ownerName},data-status=${c.statusLabel},data-state=${c.state},data-note=${c.note},data-amount=${c.quotePending ? '' : c.totalAmount},data-pending=${c.pending}">
           <span class="av" th:classappend="${c.species}" th:text="${c.petInitial}">豆</span>
           <span class="main">
             <span class="nm" th:text="${c.petName}">豆豆</span>
@@ -94,7 +94,7 @@
       <small th:text="${upcomingPending.size() + ' 筆'}"></small>
     </div>
     <button type="button" class="card js-appt" th:each="c : ${upcomingPending}"
-            th:attr="data-id=${c.id},data-pet=${c.petName},data-initial=${c.petInitial},data-species=${c.species},data-species-label=${c.speciesLabel},data-date=${c.dateLabel},data-time=${c.time},data-items=${c.items},data-owner=${c.ownerName},data-status=${c.statusLabel},data-state=${c.state},data-note=${c.note},data-amount=${c.totalAmount},data-pending=${c.pending}">
+            th:attr="data-id=${c.id},data-pet=${c.petName},data-initial=${c.petInitial},data-species=${c.species},data-species-label=${c.speciesLabel},data-date=${c.dateLabel},data-time=${c.time},data-items=${c.items},data-owner=${c.ownerName},data-status=${c.statusLabel},data-state=${c.state},data-note=${c.note},data-amount=${c.quotePending ? '' : c.totalAmount},data-pending=${c.pending}">
       <span class="av" th:classappend="${c.species}" th:text="${c.petInitial}">可</span>
       <span class="main">
         <span class="nm" th:text="${c.petName}">可樂</span>
@@ -145,7 +145,7 @@
       set("sheetWhen", d.date + " " + d.time);
       set("sheetItems", d.items || "未選項目");
       set("sheetOwner", d.owner);
-      set("sheetAmount", "NT$ " + Number(d.amount || 0).toLocaleString());
+      set("sheetAmount", d.amount === "" ? "現場報價" : "NT$ " + Number(d.amount || 0).toLocaleString());
       av.textContent = d.initial;
       av.className = "av lg " + (d.species || "");
       statusPill.textContent = d.status;

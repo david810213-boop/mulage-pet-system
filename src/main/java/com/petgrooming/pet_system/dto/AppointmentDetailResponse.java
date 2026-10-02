@@ -27,6 +27,7 @@ public class AppointmentDetailResponse {
     private String memberNote;
     private List<DetailItem> items;
     private int totalAmount;      // 帳面總額（未打折）
+    private boolean quotePending; // 需求（2026-10-02）：初次・現場評估、還沒開單＝金額現場報價
     private Integer chargedAmount; // 需求 5：實際扣款金額（有打折的話會比 totalAmount 少；null 代表跟 totalAmount 相同或尚未結帳）
     private boolean paid;
     private String paymentMethodLabel;

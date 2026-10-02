@@ -542,6 +542,8 @@
 
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
+        <!-- 需求（2026-10-02）：初次預約只選時段，由店家到店後依毛孩狀況開立項目 -->
+        <div id="firstVisitNote" style="display:none; background:#eef6ec; border:1px solid #a9d1a0; border-radius:8px; padding:12px 14px; font-size:13.5px; line-height:1.7; color:#3d6b34;"></div>
         <div id="dogLockedBanner" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;"></div>
         <div id="itemsContainer">
           ${
@@ -818,9 +820,51 @@
       </div>`;
       }
 
+      // ── 需求（追加，2026-10-02）：初次預約只選時段 ───────────────────
+      let isFirstVisit = false;
+      let pendingFirstVisit = false;
+
+      async function loadFirstVisitStatus(petId) {
+        isFirstVisit = false;
+        pendingFirstVisit = false;
+        if (!petId) return;
+        try {
+          const res = await fetch("/api/appointments/first-visit?petId=" + encodeURIComponent(petId), {
+            headers: authHeaders(),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          isFirstVisit = !!data.firstVisit;
+          pendingFirstVisit = !!data.pendingAssessment;
+        } catch (e) {
+          /* 查詢失敗就照一般流程（後端送出時還會再判斷一次） */
+        }
+      }
+
+      function applyFirstVisitMode() {
+        const note = document.getElementById("firstVisitNote");
+        const items = document.getElementById("itemsContainer");
+        const locked = document.getElementById("dogLockedBanner");
+        if (!note || !items) return;
+        if (isFirstVisit) {
+          note.style.display = "block";
+          note.innerHTML = pendingFirstVisit
+            ? "⚠️ 這隻毛孩已經有一筆初次預約還沒完成，完成第一次美容後就能再預約；如需改時間，請聯繫官方 LINE。"
+            : "🌱 <b>初次預約不用選服務項目</b><br>第一次來的毛孩，將由店家到店後依毛孩狀況開立項目、現場報價。請直接選擇日期與時段。";
+          items.style.display = "none";
+          if (locked) locked.style.display = "none";
+          items.querySelectorAll("input[type=checkbox]").forEach((cb) => (cb.checked = false));
+          selectedItemCodes.clear();
+        } else {
+          note.style.display = "none";
+          items.style.display = "";
+        }
+      }
+
       async function onPetChange() {
         const sel = document.getElementById("petSelect");
         selectedPetId = sel.value || null;
+        await loadFirstVisitStatus(selectedPetId);
 
         // 依所選毛孩自動勾選建議服務項目
         const pet = myPets.find((p) => String(p.id) === String(selectedPetId));
@@ -1033,6 +1077,7 @@
             cb.checked = selectedItemCodes.has(cb.value);
           });
 
+        applyFirstVisitMode();
         renderSummaryBar();
       }
 
@@ -1313,8 +1358,9 @@
           document.body.appendChild(bar);
         }
         const total = currentTotal();
+        const amountText = isFirstVisit ? "現場報價" : "$" + total;
         bar.innerHTML = `
-      <div class="summary-total">總金額<br><span class="amount">$${total}</span></div>
+      <div class="summary-total">總金額<br><span class="amount">${amountText}</span></div>
       <button class="submit-btn" id="submitBtn" onclick="submitBooking()">確認預約</button>
     `;
       }
@@ -1332,8 +1378,12 @@
           showToast("請選擇預約時段", "error");
           return;
         }
-        selectedItemCodes = new Set(checkedItemCodes());
-        if (!selectedItemCodes.size) {
+        if (isFirstVisit && pendingFirstVisit) {
+          showToast("這隻毛孩已經有一筆初次預約還沒完成", "error");
+          return;
+        }
+        selectedItemCodes = isFirstVisit ? new Set() : new Set(checkedItemCodes());
+        if (!isFirstVisit && !selectedItemCodes.size) {
           showToast("請至少選擇一項服務", "error");
           return;
         }

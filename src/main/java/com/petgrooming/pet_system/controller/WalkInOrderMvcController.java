@@ -324,11 +324,12 @@ public class WalkInOrderMvcController {
     public String addGroomingItem(@PathVariable Long id, HttpServletRequest request,
                                   @RequestParam Long groomingItemId,
                                   @RequestParam(required = false) Integer customPrice,
+                                  @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
                                   @RequestParam(defaultValue = "checkout") String from,
                                   RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, user.getUsername());
+            walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, user.getUsername());
             ra.addFlashAttribute("successMsg", "已新增項目");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
@@ -345,11 +346,12 @@ public class WalkInOrderMvcController {
                                 @RequestParam String itemName,
                                 @RequestParam int price,
                                 @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(required = false) Long operatorStaffId,
                                 @RequestParam(defaultValue = "checkout") String from,
                                 RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.addCustomItem(id, itemName, price, category, user.getUsername());
+            walkInOrderService.addCustomItem(id, itemName, price, category, operatorStaffId, user.getUsername());
             ra.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
@@ -449,6 +451,7 @@ public class WalkInOrderMvcController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMsg", e.getMessage());
         }
+        model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：核對加項目可選經手人
         return "admin/walk-in-order-final-check";
     }
 

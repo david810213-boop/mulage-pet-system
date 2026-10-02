@@ -32,6 +32,7 @@ public class AppointmentResponse {
     // 紀錄）就用核對後的實際項目名稱，還沒核對就照舊用 selectedItems 的名稱，
     // 列表頁的畫面改讀這個欄位，不要再直接讀 selectedItems。
     private List<String> displayItemNames;
+    private boolean firstVisitAssessment; // 需求（2026-10-02）：初次・現場評估（金額現場報價）
     private int totalAmount;
     private boolean paid;
     private AppointmentStatus status;
@@ -58,6 +59,7 @@ public class AppointmentResponse {
         res.setStartTime(a.getStartTime());
         res.setEndTime(a.getEndTime());
         res.setSelectedItems(a.getSelectedItems());
+        res.setFirstVisitAssessment(a.isFirstVisitAssessment());
         res.setTotalAmount(a.getTotalAmount());
         res.setPaid(a.isPaid());
         res.setStatus(a.getStatus());
