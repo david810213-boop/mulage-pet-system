@@ -261,7 +261,8 @@ public class WalletMvcController {
     @com.petgrooming.pet_system.annotation.RequireCsrf
     @PostMapping("/{username}/deposit")
     public String deposit(@PathVariable String username,
-                          @Valid @ModelAttribute DepositRequest req,
+                          @ModelAttribute DepositRequest req, // 修正（2026-10-02）：不用 @Valid，金額檢查交給
+                                                              // WalletService，錯誤才會顯示在頁面上而不是一串 JSON
                           HttpServletRequest request,
                           RedirectAttributes ra) {
         User user = getLoginUser(request);

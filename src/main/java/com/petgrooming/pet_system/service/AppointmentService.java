@@ -75,6 +75,10 @@ public class AppointmentService {
     // 改請顧客直接聯繫官方 LINE 或致電店家處理臨時/當天需求；
     // 店員代客預約（AppointmentMvcController）不受此限制，仍可正常幫顧客
     // 建立當天預約（例如接到顧客來電或 LINE 訊息後手動處理）。
+    // 修正（2026-10-02 實測發現）：店員代客預約直接呼叫這個三參數版本，原本沒有 @Transactional，
+    // 時段名額 reserve() 先自己提交了，後面項目檢查（例如沒勾項目、初次預約重複）失敗時名額
+    // 不會退回，時段就被「佔走」一個卻沒有預約。加上交易後，任何一步失敗都會整筆退回。
+    @Transactional
     public AppointmentResponse book(AppointmentRequest req, String username, boolean staffAssisted) {
 
         // 1a-00. 需求（追加，2026-10-02）：任何人都不能預約已經過去的日期（店員代客也一樣）。

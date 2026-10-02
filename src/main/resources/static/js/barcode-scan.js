@@ -16,6 +16,10 @@
   function msg(input, text, ok) {
     var box = input.closest("[data-scan-box]");
     var el = box ? box.querySelector("[data-scan-msg]") : null;
+    // 手機版的訊息列放在掃碼框的下一個元素（修正 2026-10-02：原本找不到，錯誤會跳 alert）
+    if (!el && box && box.nextElementSibling && box.nextElementSibling.hasAttribute("data-scan-msg")) {
+      el = box.nextElementSibling;
+    }
     if (el) {
       el.textContent = text;
       el.style.color = ok ? "#2D5A27" : "#B3261E";
