@@ -77,6 +77,12 @@ public class AppointmentService {
     // 建立當天預約（例如接到顧客來電或 LINE 訊息後手動處理）。
     public AppointmentResponse book(AppointmentRequest req, String username, boolean staffAssisted) {
 
+        // 1a-00. 需求（追加，2026-10-02）：任何人都不能預約已經過去的日期（店員代客也一樣）。
+        //        原本只靠日期選擇器的 min 屬性，部分手機選得到過去日期，後端完全沒擋。
+        if (req.getDate() == null || req.getDate().isBefore(LocalDate.now())) {
+            throw new AppointmentException("不能預約已經過去的日期，請重新選擇");
+        }
+
         // 1a-0. 需求（追加，2026-08-30）：顧客自己（非店員代客）不開放預約「今天」
         if (!staffAssisted && req.getDate().isEqual(LocalDate.now())) {
             throw new AppointmentException(

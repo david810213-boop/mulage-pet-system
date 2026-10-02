@@ -30,6 +30,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（2026-10-02）：會員搜尋支援寵物名
 
     // ── 需求（追加，2026-09-17）：登入暴力破解防護 ─────────────────────────
     // 連續密碼答錯達到這個次數，帳號鎖定一段時間，鎖定期間內即使密碼正確
@@ -209,11 +210,46 @@ public class UserService {
         if (keyword == null || keyword.isBlank())
             return List.of();
         String kw = keyword.trim().toLowerCase();
+        // 需求（追加，2026-10-02）：電話也能搜（輸入 3 碼以上數字，忽略 - 與空白）
+        String digits = kw.replaceAll("[^0-9]", "");
         return getAllCustomers().stream()
-                .filter(u -> u.getName().toLowerCase().contains(kw)
-                        || u.getUsername().toLowerCase().contains(kw))
+                .filter(u -> (u.getName() != null && u.getName().toLowerCase().contains(kw))
+                        || u.getUsername().toLowerCase().contains(kw)
+                        || (digits.length() >= 3 && u.getPhone() != null
+                                && u.getPhone().replaceAll("[^0-9]", "").contains(digits)))
                 .limit(20)
                 .toList();
+    }
+
+    // ── 需求（追加，2026-10-02）：會員搜尋支援寵物名 ──────────────────────
+    // 回傳「會員帳號 → 符合關鍵字的毛孩名字（多隻用、隔開）」，已停用的毛孩不算。
+    // 各個會員列表／搜尋共用這一支，搜尋結果可以標出「毛孩：盆莓」方便分辨同名會員。
+    public java.util.Map<String, String> petNamesMatching(String keyword) {
+        java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+        if (keyword == null || keyword.isBlank()) return result;
+        for (var pet : petRepository.findByNameContainingIgnoreCase(keyword.trim())) {
+            if (pet.isDeleted() || pet.getOwner() == null || pet.getOwner().getRole() != UserRole.CUSTOMER) continue;
+            result.merge(pet.getOwner().getUsername(), pet.getName(), (a, b) -> a + "、" + b);
+        }
+        return result;
+    }
+
+    // 姓名／帳號／電話＋寵物名一起搜，回傳會員與（如果是靠寵物名搜到的）毛孩名字
+    public List<java.util.Map.Entry<User, String>> searchCustomersIncludingPets(String keyword) {
+        if (keyword == null || keyword.isBlank()) return List.of();
+        java.util.Map<String, String> pets = petNamesMatching(keyword);
+        java.util.Map<String, java.util.Map.Entry<User, String>> found = new java.util.LinkedHashMap<>();
+        for (User u : searchCustomers(keyword)) {
+            found.put(u.getUsername(), new java.util.AbstractMap.SimpleEntry<>(u, pets.get(u.getUsername())));
+        }
+        for (var e : pets.entrySet()) {
+            if (found.size() >= 20) break;
+            if (!found.containsKey(e.getKey())) {
+                userRepository.findByUsername(e.getKey()).ifPresent(u ->
+                        found.put(u.getUsername(), new java.util.AbstractMap.SimpleEntry<>(u, e.getValue())));
+            }
+        }
+        return List.copyOf(found.values());
     }
 
     public List<User> getAllStaffEntities() {

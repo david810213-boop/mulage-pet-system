@@ -174,12 +174,15 @@ public class MobileMemberController {
         String kw = q == null ? "" : q.trim().toLowerCase();
         String digits = kw.replaceAll("[^0-9]", "");
         List<User> all = userService.getAllCustomers();
+        // 需求（追加，2026-10-02）：也能用寵物名搜
+        Map<String, String> petMatches = userService.petNamesMatching(kw);
         List<Map<String, Object>> rows = all.stream()
                 .filter(u -> kw.isEmpty()
                         || (u.getName() != null && u.getName().toLowerCase().contains(kw))
                         || (u.getUsername() != null && u.getUsername().toLowerCase().contains(kw))
                         || (digits.length() >= 3 && u.getPhone() != null
-                                && u.getPhone().replaceAll("[^0-9]", "").contains(digits)))
+                                && u.getPhone().replaceAll("[^0-9]", "").contains(digits))
+                        || petMatches.containsKey(u.getUsername()))
                 .sorted(Comparator.comparing(u -> u.getName() == null ? "" : u.getName()))
                 .limit(120)
                 .map(u -> {
@@ -190,6 +193,7 @@ public class MobileMemberController {
                     m.put("phone", u.getPhone() != null ? u.getPhone() : "");
                     // 匯入後還沒被認領的暫時帳號，標出來提醒店家
                     m.put("imported", u.getUsername() != null && u.getUsername().startsWith("imported_"));
+                    m.put("pets", petMatches.getOrDefault(u.getUsername(), ""));
                     return m;
                 })
                 .toList();

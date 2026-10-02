@@ -351,7 +351,13 @@ public class PerformanceService {
         Map<PerformanceCategory, Double> columnTotalsCount = new EnumMap<>(PerformanceCategory.class);
         for (PerformanceCategory c : categories) {
             double unit = c.getDefaultPoints();
-            columnTotalsCount.put(c, unit > 0 ? columnTotalsPoints.get(c) / unit : 0);
+            if (unit > 0) {
+                columnTotalsCount.put(c, columnTotalsPoints.get(c) / unit);
+            } else {
+                // 不計分項目（完成）的合計次數＝每位員工次數相加
+                columnTotalsCount.put(c, rows.stream()
+                        .mapToDouble(r -> r.getCountByCategory().getOrDefault(c, 0.0)).sum());
+            }
         }
 
         com.petgrooming.pet_system.dto.StaffMatrixRow totalsRow = com.petgrooming.pet_system.dto.StaffMatrixRow.builder()
@@ -394,7 +400,11 @@ public class PerformanceService {
                     .filter(r -> r.getCategory() == c)
                     .mapToDouble(PerformanceRecord::getPoints).sum();
             pointsByCategory.put(c, pts);
-            countByCategory.put(c, c.getDefaultPoints() > 0 ? pts / c.getDefaultPoints() : 0);
+            // 有分數的項目：次數＝積分 ÷ 每次分數（拆給同事的算半次，維持原本顯示）；
+            // 不計分的項目（例如「完成」）：直接數筆數，拆分產生的子紀錄不重複計算
+            countByCategory.put(c, c.getDefaultPoints() > 0
+                    ? pts / c.getDefaultPoints()
+                    : records.stream().filter(r -> r.getCategory() == c && r.getSplitFromRecordId() == null).count());
             total += pts;
         }
 

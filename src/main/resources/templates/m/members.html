@@ -14,7 +14,7 @@
 <main class="wrap">
   <form method="get" action="/m/members" class="search" role="search">
     <svg class="i"><use href="#i-search"/></svg>
-    <input type="search" name="q" th:value="${q}" placeholder="姓名、帳號或電話" enterkeyhint="search" autocomplete="off" />
+    <input type="search" name="q" th:value="${q}" placeholder="姓名、電話或毛孩名字" enterkeyhint="search" autocomplete="off" />
     <a th:if="${!q.isEmpty()}" href="/m/members" class="clear" aria-label="清除搜尋"><svg class="i"><use href="#i-x"/></svg></a>
   </form>
 
@@ -29,6 +29,7 @@
     <span class="main">
       <span class="nm" th:text="${r.name}">陳小姐</span>
       <span class="sb num" style="display:block" th:text="${r.phone.isEmpty()} ? '沒有電話' : ${r.phone}">0912-345-678</span>
+      <span class="sb" style="display:block" th:unless="${r.pets.isEmpty()}" th:text="'毛孩：' + ${r.pets}">毛孩：盆莓</span>
     </span>
     <span class="imported-tag" th:if="${r.imported}">匯入未認領</span>
   </a>

@@ -89,6 +89,11 @@ public class AppointmentController {
                 // 不合法的值當作沒帶，不篩選物種
             }
         }
+        // 需求（追加，2026-10-02）：過去的日期一律沒有可預約時段（預約頁專用；
+        // 員工時段管理走 MobileScheduleController，不受影響）
+        if (date.isBefore(java.time.LocalDate.now())) {
+            return ResponseEntity.ok(List.of());
+        }
         return ResponseEntity.ok(appointmentService.getAvailableSlots(date, parsedPetType));
     }
 

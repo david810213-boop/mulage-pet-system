@@ -37,9 +37,20 @@ public class AdminMemberController {
     // 現場開單：依姓名/帳號搜尋會員，解決 LINE 登入會員帳號是 line_xxx 內碼問題
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/search")
-    public ResponseEntity<List<UserResponse>> search(@RequestParam String keyword) {
-        List<UserResponse> results = userService.searchCustomers(keyword).stream()
-                .map(UserResponse::from).toList();
+    // 需求（追加，2026-10-02）：withPets=true 時連寵物名一起搜，結果帶 matchedPetNames。
+    // 現場開單、代客預約另外有 search-by-pet 分區顯示，所以預設不開，避免同一位會員出現兩次。
+    public ResponseEntity<List<UserResponse>> search(@RequestParam String keyword,
+            @RequestParam(defaultValue = "false") boolean withPets) {
+        if (!withPets) {
+            return ResponseEntity.ok(userService.searchCustomers(keyword).stream()
+                    .map(UserResponse::from).toList());
+        }
+        List<UserResponse> results = userService.searchCustomersIncludingPets(keyword).stream()
+                .map(e -> {
+                    UserResponse r = UserResponse.from(e.getKey());
+                    r.setMatchedPetNames(e.getValue());
+                    return r;
+                }).toList();
         return ResponseEntity.ok(results);
     }
 

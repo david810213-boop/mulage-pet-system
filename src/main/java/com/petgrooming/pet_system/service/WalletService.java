@@ -28,6 +28,8 @@ public class WalletService {
     private final WalletTransactionRepository txRepository;
     private final UserService userService;
 
+    public static final int MIN_DEPOSIT = 5000; // 單筆儲值下限（店家規定）
+
     // ── 查詢錢包 ────────────────────────────────────────────────────────────
     public WalletResponse getWallet(String username) {
         Wallet wallet = getOrCreateWallet(username);
@@ -45,8 +47,12 @@ public class WalletService {
     // 由店家後台幫顧客儲值，顧客自己不能直接操作（避免繞過實體金流）
     @Transactional
     public WalletResponse deposit(String username, DepositRequest req) {
+        int amount = req.getAmount() != null ? req.getAmount() : 0;
+        // 需求（追加，2026-10-02 店家確認）：不開放單筆 5,000 以下的儲值
+        if (amount < MIN_DEPOSIT) {
+            throw new WalletException("單筆儲值最低 $5,000");
+        }
         Wallet wallet = getOrCreateWallet(username);
-        int amount = req.getAmount();
 
         // 1. 加入儲值金額
         wallet.setBalance(wallet.getBalance() + amount);
@@ -55,12 +61,13 @@ public class WalletService {
         recordTransaction(wallet, WalletTransactionType.DEPOSIT, amount,
                 req.getNote() != null ? req.getNote() : "儲值 $" + amount);
 
-        // 3. 村民優惠方案：單筆滿 5000 贈 200 元（僅限第一次達到 VILLAGE 等級）
+        // 3. 村民優惠方案：單筆儲值落在村民級距（5,000～7,999）每次都贈 200 元
+        //    （2026-10-02 店家確認：不限第一次）
         MemberCardTier newTier = MemberCardTier.fromAmount(amount);
-        if (newTier == MemberCardTier.VILLAGE && wallet.getCardTier() == MemberCardTier.NONE) {
+        if (newTier == MemberCardTier.VILLAGE) {
             wallet.setBalance(wallet.getBalance() + 200);
             recordTransaction(wallet, WalletTransactionType.DEPOSIT_BONUS, 200, "村民優惠方案贈點 $200");
-            log.info("使用者 {} 首次達到村民方案，贈送 200 元", username);
+            log.info("使用者 {} 單筆儲值村民方案，贈送 200 元", username);
         }
 
         // 4. 依本次單筆儲值金額更新會員卡等級與有效期限
@@ -154,10 +161,12 @@ public class WalletService {
     //   ③ 卡還有效、本次等級 ≥ 目前等級：升級（或同級續卡），有效期限從今天重新算一年。
     //   ④ 卡還有效、本次等級 < 目前等級：等級與期限都不變（不會因為小額儲值被降級，
     //      也不會用小額儲值延長高等級的期限）。
-    // 例：2026-09-30 儲值 15,000 → 金卡 9 折，到 2027-09-30
-    //     2026-10-30 再儲 5,000 → 維持金卡 9 折，期限仍是 2027-09-30（④）
-    //     2026-10-30 改儲 50,000 → 升 VIP 85 折，期限重算到 2027-10-30（③）
+    // 例：2026-09-30 儲值 15,000 → 金卡 9 折，到 2027-09-29
+    //     2026-10-30 再儲 5,000 → 維持金卡 9 折，期限仍是 2027-09-29（④），另贈 200 元
+    //     2026-10-30 改儲 50,000 → 升 VIP 85 折，期限重算到 2027-10-29（③）
     // 舊版是「只升不降、到期日只在第一次開卡時設定」，會造成過期後再儲值卡還是過期。
+    //   ⑤ 2026-10-02 店家確認：村民優惠方案沒有折扣，所以「沒有期限」（到期日留空）；
+    //      到期日是「起算日＋1 年－1 天」（9/30 儲值 → 隔年 9/29）。
     private void applyTierRule(Wallet wallet, MemberCardTier newTier) {
         if (newTier == MemberCardTier.NONE) return;
 
@@ -172,10 +181,15 @@ public class WalletService {
         LocalDate today = LocalDate.now();
         wallet.setCardTier(newTier);
         wallet.setCardActivatedAt(today);
-        wallet.setCardExpiresAt(today.plusYears(1)); // 2026-09-30 → 2027-09-30（閏年也不會差一天）
+        wallet.setCardExpiresAt(newTier == MemberCardTier.VILLAGE ? null : cardExpiryFrom(today));
         log.info("使用者 {} 會員卡：{} → {}（{}），到期日：{}", wallet.getUser().getUsername(),
                 oldTier.getLabel(), newTier.getLabel(), active ? "有效期內" : "新開卡／過期重辦",
                 wallet.getCardExpiresAt());
+    }
+
+    // 2026-09-30 → 2027-09-29（起算日＋1 年－1 天；閏年 2/29 起算會落在隔年 2/27）
+    public static LocalDate cardExpiryFrom(LocalDate start) {
+        return start.plusYears(1).minusDays(1);
     }
 
     // ── 私有：記錄交易（帶餘額快照）────────────────────────────────────

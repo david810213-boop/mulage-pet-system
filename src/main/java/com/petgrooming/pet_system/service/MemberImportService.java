@@ -186,7 +186,9 @@ public class MemberImportService {
                 continue;
             }
             LocalDate expiresAt = null;
-            if (tier != MemberCardTier.NONE) {
+            if (tier == MemberCardTier.VILLAGE) {
+                // 村民優惠方案沒有期限，到期日填了也忽略
+            } else if (tier != MemberCardTier.NONE) {
                 expiresAt = parseLenientDate(row.getExpiresRaw());
                 if (expiresAt == null) {
                     errors.add("第 " + row.getRowNumber() + " 列：有填會員等級但到期日空白或格式錯誤（要 2026-09-30 或 2026/9/30）："
@@ -209,10 +211,11 @@ public class MemberImportService {
                     .orElseGet(() -> walletRepository.save(Wallet.builder().user(user).balance(0).build()));
             wallet.setBalance(wallet.getBalance() + balance);
             if (tier != MemberCardTier.NONE) {
-                // 紙本只有到期日，開卡日用「到期日往前推一年」回推（規則：每次儲值效期一年）
+                // 紙本只有到期日，開卡日用「到期日＋1 天往前推一年」回推（到期日＝起算日＋1 年－1 天）；
+                // 村民優惠方案沒有期限，開卡日記匯入當天
                 wallet.setCardTier(tier);
                 wallet.setCardExpiresAt(expiresAt);
-                wallet.setCardActivatedAt(expiresAt.minusYears(1));
+                wallet.setCardActivatedAt(expiresAt != null ? expiresAt.plusDays(1).minusYears(1) : LocalDate.now());
             }
             walletRepository.save(wallet);
             succeeded++;

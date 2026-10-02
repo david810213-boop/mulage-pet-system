@@ -52,7 +52,7 @@
             <span th:if="${r.note != null and !r.note.isEmpty()}" th:text="${r.note}">備注</span>
           </small>
         </div>
-        <b class="num" th:text="${#numbers.formatDecimal(r.points, 1, 1)}">20.0</b>
+        <b class="num" th:text="${r.points != null and r.points > 0 ? #numbers.formatDecimal(r.points, 1, 1) : '計次'}">20.0</b>
         <button type="button" class="split-btn" th:if="${r.canSplit}" data-open-sheet="sheetSplit"
                 th:attr="data-id=${r.id},data-label=${r.label}">拆給同事</button>
       </div>

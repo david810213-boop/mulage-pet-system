@@ -121,7 +121,7 @@
           <span>經手人</span>
           <select name="operatorStaffIds" aria-label="經手人" disabled>
             <option value="">稍後補填</option>
-            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}" th:selected="${s.id == meId}">小芸</option>
+            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
           </select>
         </div>
       </div>
@@ -140,7 +140,7 @@
             <span>經手人</span>
             <select name="operatorStaffIds" aria-label="經手人" disabled>
               <option value="">稍後補填</option>
-              <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}" th:selected="${s.id == meId}">小芸</option>
+              <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
             </select>
           </div>
         </div>

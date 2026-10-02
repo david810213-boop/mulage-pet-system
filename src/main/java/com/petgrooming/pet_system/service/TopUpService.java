@@ -42,6 +42,9 @@ public class TopUpService {
     public TopUpRequestResponse submit(String username, TopUpRequestCreate req) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new WalletException("找不到使用者"));
+        if (req.getAmount() == null || req.getAmount() < WalletService.MIN_DEPOSIT) {
+            throw new WalletException("單筆儲值最低 $5,000");
+        }
 
         TopUpRequest topUp = TopUpRequest.builder()
                 .user(user)

@@ -59,12 +59,20 @@ public class CustomerAnalysisMvcController {
         model.addAttribute("stats", customerAnalysisService.getOverview());
 
         var all = userService.getAllCustomers();
+        // 需求（追加，2026-10-02）：會員信息列表也能用電話、寵物名搜，並標出搜到的毛孩
+        String kw = keyword == null ? "" : keyword.trim().toLowerCase();
+        String digits = kw.replaceAll("[^0-9]", "");
+        java.util.Map<String, String> petMatches = userService.petNamesMatching(kw);
         var filtered = all.stream()
-                .filter(c -> keyword == null || keyword.isBlank()
-                        || c.getName().contains(keyword)
-                        || c.getUsername().contains(keyword))
+                .filter(c -> kw.isEmpty()
+                        || (c.getName() != null && c.getName().toLowerCase().contains(kw))
+                        || c.getUsername().toLowerCase().contains(kw)
+                        || (digits.length() >= 3 && c.getPhone() != null
+                                && c.getPhone().replaceAll("[^0-9]", "").contains(digits))
+                        || petMatches.containsKey(c.getUsername()))
                 .toList();
         model.addAttribute("customers", filtered);
+        model.addAttribute("petMatches", petMatches);
         model.addAttribute("keyword", keyword);
         return "admin/customer-analysis";
     }

@@ -448,7 +448,9 @@
         ];
         const currentRank = tierOrder.indexOf(wallet.cardTier);
 
-        const expireText = wallet.cardActive
+        const expireText = wallet.cardTier === "VILLAGE"
+          ? "無使用期限"
+          : wallet.cardActive
           ? `有效期限至 ${wallet.cardExpiresAt}`
           : wallet.cardActivatedAt
             ? "會員資格已到期"
@@ -551,7 +553,7 @@
                     <h3>會員等級說明</h3>
                     ${tierHTML}
                     <div style="font-size:12px; color:#888; line-height:1.6; margin-top:10px;">
-                        依「單筆」儲值金額決定等級，單筆達到門檻即從儲值當天起算一年；有效期內儲值較低金額，等級與期限不變。
+                        單筆儲值最低 $5,000，依「單筆」金額決定等級，達到門檻即從儲值當天起算一年；有效期內儲值較低金額，等級與期限不變。村民優惠方案無期限，每次儲值都贈 $200。
                     </div>
                 </div>
 

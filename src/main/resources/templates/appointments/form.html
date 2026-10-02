@@ -694,6 +694,16 @@
         }
 
         slotsField.style.display = "block";
+
+        // 需求（追加，2026-10-02）：不能代客預約過去的日期（後端也會擋）
+        const nowD = new Date();
+        const todayStr = nowD.getFullYear() + "-" + String(nowD.getMonth() + 1).padStart(2, "0") + "-" + String(nowD.getDate()).padStart(2, "0");
+        if (date < todayStr) {
+          container.innerHTML = '<div class="slots-empty">⚠️ 不能預約已經過去的日期；已經到店服務過的，請改用「現場開單」補登</div>';
+          document.getElementById("dateHidden").value = "";
+          return;
+        }
+
         container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
 
         try {

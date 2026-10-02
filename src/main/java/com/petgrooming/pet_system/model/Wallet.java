@@ -64,7 +64,10 @@ public class Wallet {
      * 判斷會員資格是否仍在有效期內
      */
     public boolean isCardActive() {
-        if (cardTier == MemberCardTier.NONE || cardExpiresAt == null) return false;
+        if (cardTier == MemberCardTier.NONE) return false;
+        // 村民優惠方案沒有折扣也沒有期限（2026-10-02 店家確認），一律視為有效
+        if (cardTier == MemberCardTier.VILLAGE) return true;
+        if (cardExpiresAt == null) return false;
         return !LocalDate.now().isAfter(cardExpiresAt);
     }
 

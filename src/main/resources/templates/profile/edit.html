@@ -21,7 +21,7 @@
           <div class="card">
             <div class="field">
               <label>搜尋會員（姓名或帳號）</label>
-              <input type="text" id="memberSearchBox" placeholder="輸入姓名或帳號搜尋" autocomplete="off" />
+              <input type="text" id="memberSearchBox" placeholder="輸入姓名、電話或毛孩名字搜尋" autocomplete="off" />
               <div
                 id="memberSuggestions"
                 style="display:none; border:1px solid var(--cream-300); border-radius:8px; margin-top:6px; max-height:260px; overflow-y:auto; background:white;"
@@ -128,7 +128,7 @@
           return;
         }
         searchDebounce = setTimeout(function () {
-          fetch("/api/admin/members/search?keyword=" + encodeURIComponent(keyword))
+          fetch("/api/admin/members/search?withPets=true&keyword=" + encodeURIComponent(keyword))
             .then(function (res) { return res.ok ? res.json() : []; })
             .then(function (list) { renderSuggestions(list); })
             .catch(function () { suggestions.style.display = "none"; });
@@ -144,7 +144,7 @@
         list.forEach(function (u) {
           const item = document.createElement("div");
           item.style.cssText = "padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc;";
-          item.textContent = u.name + "（" + u.username + "）";
+          item.textContent = u.name + "（" + u.username + "）" + (u.matchedPetNames ? "　毛孩：" + u.matchedPetNames : "");
           item.onmouseenter = function () { item.style.background = "#f8f5f0"; };
           item.onmouseleave = function () { item.style.background = "white"; };
           item.onclick = function () {

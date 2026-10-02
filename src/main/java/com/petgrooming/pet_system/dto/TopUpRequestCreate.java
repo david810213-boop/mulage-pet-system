@@ -11,7 +11,7 @@ import lombok.Data;
 public class TopUpRequestCreate {
 
     @NotNull(message = "儲值金額不能為空")
-    @Min(value = 1, message = "儲值金額至少 1 元")
+    @Min(value = 5000, message = "單筆儲值最低 $5,000")
     private Integer amount;
 
     // 匯款帳號後五碼（核帳比對用，選填但強烈建議填）

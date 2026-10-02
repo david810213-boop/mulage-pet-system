@@ -28,6 +28,9 @@ public class UserResponse {
     private String emergencyContactPhone;
     private String emergencyContactRelation;
 
+    // 需求（追加，2026-10-02）：會員搜尋若是靠寵物名搜到，標出是哪隻毛孩（其他情況為 null）
+    private String matchedPetNames;
+
     public static UserResponse from(User user) {
         UserResponse res = new UserResponse();
         res.setId(user.getId());

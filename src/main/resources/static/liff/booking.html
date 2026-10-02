@@ -1067,6 +1067,12 @@
           const day = String(d.getDate()).padStart(2, "0");
           return `${y}-${m}-${day}`;
         })();
+        // 需求（追加，2026-10-02）：過去的日期也擋（字串 yyyy-MM-dd 可直接比大小）
+        if (selectedDate < todayStrCheck) {
+          container.innerHTML =
+            '<div class="slots-empty">⚠️ 不能預約已經過去的日期，請重新選擇</div>';
+          return;
+        }
         if (selectedDate === todayStrCheck) {
           container.innerHTML =
             '<div class="slots-empty">⚠️ 不開放當天提出預約申請，如需要預約當日，請直接聯繫官方 LINE 或致電 0902-301-820</div>';

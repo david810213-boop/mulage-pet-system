@@ -25,7 +25,7 @@ public enum PerformanceCategory {
     SPECIAL2    ("特殊項目-2",   5.0), // 需求（追加）：矩陣式待補經手人表單，特殊項目有時會重疊，多留一欄
     CHECKIN     ("接進",         5.0),
     CHECKOUT    ("接出",         5.0),
-    COMPLETE    ("完成",         5.0),
+    COMPLETE    ("完成",         0.0), // 2026-10-02 店家確認：不計分，只計次數（歷史紀錄由 V18 歸零）
     OTHER       ("其他",         0.0); // GS001~GS012 等加值項目不計分
 
     private final String label;

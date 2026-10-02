@@ -133,7 +133,7 @@
               type="text"
               name="keyword"
               th:value="${keyword}"
-              placeholder="搜尋會員姓名或帳號..."
+              placeholder="搜尋姓名、電話、帳號或毛孩名字..."
               style="
                 flex: 1;
                 padding: 8px 12px;
@@ -161,7 +161,11 @@
                 <td colspan="6" class="empty">尚無會員資料</td>
               </tr>
               <tr th:each="c : ${customers}">
-                <td th:text="${c.name}">姓名</td>
+                <td>
+                  <span th:text="${c.name}">姓名</span>
+                  <div th:if="${petMatches[c.username] != null}" style="font-size: 12px; color: var(--brown-light)"
+                       th:text="'毛孩：' + ${petMatches[c.username]}">毛孩：盆莓</div>
+                </td>
                 <td th:text="${c.username}">帳號</td>
                 <td>
                   <span th:if="${c.lineUserId != null}" class="badge" style="background: #06c755; color: #fff;">LINE</span>

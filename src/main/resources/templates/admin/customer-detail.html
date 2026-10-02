@@ -287,7 +287,7 @@
                 <input
                   type="text"
                   id="mergeTargetSearch"
-                  placeholder="輸入顧客姓名搜尋 LINE 會員帳號..."
+                  placeholder="輸入顧客姓名、電話或毛孩名字搜尋 LINE 會員帳號..."
                   autocomplete="off"
                   style="
                     width: 100%;
@@ -1485,7 +1485,7 @@
           }
           debounceTimer = setTimeout(function () {
             fetch(
-              "/api/admin/members/search?keyword=" +
+              "/api/admin/members/search?withPets=true&keyword=" +
                 encodeURIComponent(keyword),
             )
               .then(function (res) {
@@ -1513,7 +1513,15 @@
                       u.name +
                       '　<span style="color:var(--brown-light);">' +
                       u.username +
-                      "</span></div>"
+                      "</span>" +
+                      (u.matchedPetNames
+                        ? '<div style="font-size:12px;color:var(--brown-light);">毛孩：' +
+                          String(u.matchedPetNames).replace(/[&<>"']/g, function (ch) {
+                            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+                          }) +
+                          "</div>"
+                        : "") +
+                      "</div>"
                     );
                   })
                   .join("");

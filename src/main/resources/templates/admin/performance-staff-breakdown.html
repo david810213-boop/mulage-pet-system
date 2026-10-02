@@ -136,13 +136,13 @@
                 <tr th:each="r : ${matrix.rows}">
                   <td th:text="${r.staffName}"></td>
                   <td th:each="c : ${matrix.categories}"
-                      th:text="${#numbers.formatDecimal(r.pointsByCategory.get(c), 1, 1)}"></td>
+                      th:text="${c.defaultPoints > 0 ? #numbers.formatDecimal(r.pointsByCategory.get(c), 1, 1) : '—'}"></td>
                   <td class="total-col" th:text="${#numbers.formatDecimal(r.totalPoints, 1, 1)}"></td>
                 </tr>
                 <tr class="totals-row" th:if="${!#lists.isEmpty(matrix.rows)}">
                   <td>合計</td>
                   <td th:each="c : ${matrix.categories}"
-                      th:text="${#numbers.formatDecimal(matrix.totalsRow.pointsByCategory.get(c), 1, 1)}"></td>
+                      th:text="${c.defaultPoints > 0 ? #numbers.formatDecimal(matrix.totalsRow.pointsByCategory.get(c), 1, 1) : '—'}"></td>
                   <td class="total-col" th:text="${#numbers.formatDecimal(matrix.grandTotal, 1, 1)}"></td>
                 </tr>
               </tbody>
