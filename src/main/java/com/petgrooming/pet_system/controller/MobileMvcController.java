@@ -401,6 +401,7 @@ public class MobileMvcController {
     public String checkinSubmit(@PathVariable Long id,
             @RequestParam(required = false) List<String> itemCodes,
             @RequestParam(required = false) List<String> operatorStaffIds,
+            @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）：第二經手人
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         if (user == null) {
@@ -411,7 +412,8 @@ public class MobileMvcController {
             return "redirect:/m/appointments/" + id + "/checkin";
         }
         try {
-            appointmentService.confirmCheckinOrder(id, itemCodes, parseStaffIds(operatorStaffIds), user.getUsername());
+            appointmentService.confirmCheckinOrder(id, itemCodes, parseStaffIds(operatorStaffIds),
+                    parseStaffIds(operatorStaffIds2), user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
                     String.join("、", itemCodes) + "（手機版）");
             redirectAttributes.addFlashAttribute("toast", "已開單，可以開始服務了");
@@ -500,10 +502,11 @@ public class MobileMvcController {
     public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
             @RequestParam(required = false) Integer customPrice,
             @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+            @RequestParam(required = false) Long operatorStaffId2,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入項目",
-                user -> appointmentService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, user.getUsername()));
+                user -> appointmentService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername()));
     }
 
     @PostMapping("/appointments/{id}/items/custom")
@@ -511,10 +514,11 @@ public class MobileMvcController {
             @RequestParam int price,
             @RequestParam(required = false) PerformanceCategory category,
             @RequestParam(required = false) Long operatorStaffId,
+            @RequestParam(required = false) Long operatorStaffId2,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入「" + itemName + "」",
-                user -> appointmentService.addCustomItem(id, itemName, price, category, operatorStaffId, user.getUsername()));
+                user -> appointmentService.addCustomItem(id, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername()));
     }
 
     // 經手人下拉選單的值（空字串＝稍後補填）轉成 id 清單，順序跟 itemCodes 一致

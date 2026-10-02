@@ -51,6 +51,10 @@
           <option value="">選擇經手人</option>
           <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
         </select>
+        <select name="staffId2" aria-label="第二經手人">
+          <option value="">第二位（選填）</option>
+          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+        </select>
         <button type="submit">補填</button>
       </form>
     </div>

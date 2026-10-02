@@ -15,8 +15,16 @@
 
 <main class="wrap">
   <div class="empty" th:if="${rows.isEmpty()}">還沒有零售商品，請到網頁版新增。</div>
+  <!-- 需求（2026-10-02）：掃碼查庫存（掃碼槍） -->
+  <div class="scan-box" data-scan-box>
+    <span>掃碼</span>
+    <input type="text" data-scan="find" placeholder="點這裡後用掃碼槍掃商品條碼" autocomplete="off" />
+  </div>
+  <div class="form-err" data-scan-msg style="margin:-6px 0 10px"></div>
 
-  <div class="stock-row" th:each="r : ${rows}" th:classappend="${r.out} ? 'out' : (${r.low} ? 'low' : '')">
+
+  <div class="stock-row" th:each="r : ${rows}" th:classappend="${r.out} ? 'out' : (${r.low} ? 'low' : '')"
+       th:attr="data-scan-target='RETAIL-' + ${r.id}">
     <div class="info">
       <span class="nm" th:text="${r.name}">天然洗毛精</span>
       <small class="num" th:text="'售價 ' + ${#numbers.formatInteger(r.price, 1, 'COMMA')}">售價 450</small>
@@ -27,6 +35,8 @@
               th:attr="data-mode='in',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">進貨</button>
       <button type="button" class="act ghost" data-open-sheet="sheetAdj" th:disabled="${r.out}"
               th:attr="data-mode='out',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">報損</button>
+      <button type="button" class="act ghost" data-open-sheet="sheetAdj" th:if="${isAdmin}"
+              th:attr="data-mode='count',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">盤點</button>
     </div>
   </div>
 
@@ -40,6 +50,7 @@
   <p style="margin:0 0 14px;font-size:14px;color:var(--mute)" id="adjWhat"></p>
   <form method="post" id="adjForm" class="js-once">
     <input type="hidden" name="delta" id="adjDelta" />
+    <input type="hidden" name="actual" id="adjActual" disabled />
     <div class="qty-big">
       <button type="button" id="aMinus" aria-label="減少">−</button>
       <input type="number" id="aInput" value="1" min="1" inputmode="numeric" aria-label="數量" />
@@ -63,9 +74,11 @@
     var err = document.getElementById("aErr");
     var mode = "in", stock = 0;
     function clamp() {
-      var v = Math.max(1, parseInt(input.value, 10) || 1);
+      var min = mode === "count" ? 0 : 1; // 盤點可以是 0
+      var n = parseInt(input.value, 10);
+      var v = Math.max(min, isNaN(n) ? min : n);
       input.value = v;
-      document.getElementById("aMinus").disabled = v <= 1;
+      document.getElementById("aMinus").disabled = v <= min;
       return v;
     }
     document.getElementById("aMinus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 1) - 1; clamp(); });
@@ -77,15 +90,20 @@
         mode = b.dataset.mode;
         stock = Number(b.dataset.stock || 0);
         var isIn = mode === "in";
-        form.action = "/m/retail/" + encodeURIComponent(b.dataset.id) + "/adjust";
-        document.getElementById("hAdj").textContent = isIn ? "進貨" : "報損／盤點扣減";
+        var isCount = mode === "count";
+        form.action = "/m/retail/" + encodeURIComponent(b.dataset.id) + (isCount ? "/stocktake" : "/adjust");
+        document.getElementById("adjDelta").disabled = isCount;
+        document.getElementById("adjActual").disabled = !isCount;
+        input.min = isCount ? 0 : 1;
+        document.getElementById("hAdj").textContent = isCount ? "盤點" : isIn ? "進貨" : "報損／盤點扣減";
         document.getElementById("adjWhat").textContent = b.dataset.name + "，目前庫存 " + stock;
         document.getElementById("adjHint").textContent = isIn
           ? "結帳賣出會自動扣庫存，這裡只登記進貨"
           : "商品損壞、過期、盤點少了才用這個，賣出不用在這裡扣";
-        document.getElementById("aSubmit").textContent = isIn ? "確定進貨" : "確定扣減";
+        document.getElementById("aSubmit").textContent = isCount ? "確定盤點" : isIn ? "確定進貨" : "確定扣減";
+        if (isCount) document.getElementById("adjHint").textContent = "輸入實際點到的數量，系統會直接改成這個數字並記錄差額";
         err.hidden = true;
-        input.value = 1;
+        input.value = isCount ? stock : 1;
         clamp();
       });
     });
@@ -99,10 +117,12 @@
         return;
       }
       document.getElementById("adjDelta").value = mode === "in" ? v : -v;
+      document.getElementById("adjActual").value = v;
       document.getElementById("aSubmit").disabled = true;
     });
   })();
 </script>
+<script src="/js/barcode-scan.js?v=1"></script>
 <script th:replace="~{m/fragments/app :: pwa}"></script>
 </body>
 </html>

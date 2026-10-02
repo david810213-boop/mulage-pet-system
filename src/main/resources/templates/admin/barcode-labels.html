@@ -1,0 +1,54 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>條碼標籤 · 慕沐村</title>
+  <!-- 需求（2026-10-02 店家確認 7-2-C）：列印條碼貼紙 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+  <style>
+    body { font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; margin: 16px; color: #333; background: #fff; }
+    .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: 14px; }
+    .bar a, .bar button { padding: 6px 14px; border: 1px solid #b7834f; border-radius: 6px; background: #fff; color: #5a3e22; text-decoration: none; cursor: pointer; font-size: 14px; }
+    .bar .on { background: #1f3a30; color: #fff; border-color: #1f3a30; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, 52mm); gap: 4mm; }
+    .label { width: 52mm; height: 30mm; border: 1px dashed #ccc; box-sizing: border-box; padding: 2mm; text-align: center; overflow: hidden; break-inside: avoid; }
+    .label .nm { font-size: 10pt; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .label .sub { font-size: 8pt; color: #666; }
+    .label svg { width: 100%; height: 17mm; }
+    .empty { color: #999; padding: 24px 0; }
+    @media print { .bar { display: none; } body { margin: 0; } .label { border-color: transparent; } }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <b>條碼標籤</b>
+    <a th:href="@{/admin/barcodes/print(type='all',onlyStore=${onlyStore})}" th:classappend="${type == 'all'} ? 'on'">全部</a>
+    <a th:href="@{/admin/barcodes/print(type='retail',onlyStore=${onlyStore})}" th:classappend="${type == 'retail'} ? 'on'">零售商品</a>
+    <a th:href="@{/admin/barcodes/print(type='supply',onlyStore=${onlyStore})}" th:classappend="${type == 'supply'} ? 'on'">店用洗劑</a>
+    <a th:href="@{/admin/barcodes/print(type=${type},onlyStore=${!onlyStore})}" th:classappend="${onlyStore} ? 'on'"
+       th:text="${onlyStore} ? '只印店內條碼（已開啟）' : '只印店內條碼'">只印店內條碼</a>
+    <button type="button" onclick="window.print()">🖨 列印</button>
+    <span style="color:#888; font-size:12px;">每張 52×30mm，建議用標籤紙；原廠商品包裝上已有條碼的，可以勾「只印店內條碼」。</span>
+  </div>
+  <div class="empty" th:if="${labels.isEmpty()}">沒有可以列印的條碼。請先在商品頁按「產生缺少的條碼」。</div>
+  <div class="grid">
+    <div class="label" th:each="l : ${labels}">
+      <div class="nm" th:text="${l.name}">商品名稱</div>
+      <svg class="bc" th:attr="data-code=${l.code},data-ean13=${l.ean13}"></svg>
+      <div class="sub" th:text="${l.sub}">$450</div>
+    </div>
+  </div>
+  <script>
+    document.querySelectorAll("svg.bc").forEach(function (el) {
+      var code = el.getAttribute("data-code");
+      var ean = el.getAttribute("data-ean13") === "true";
+      try {
+        JsBarcode(el, code, { format: ean ? "EAN13" : "CODE128", height: 40, fontSize: 12, margin: 0 });
+      } catch (e) {
+        JsBarcode(el, code, { format: "CODE128", height: 40, fontSize: 12, margin: 0 });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -59,10 +59,16 @@
     </label>
       <div class="op-row">
         <span>經手人</span>
+        <div class="op-sel">
         <select name="operatorStaffIds" aria-label="經手人" disabled>
           <option value="">稍後補填</option>
           <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
         </select>
+        <select name="operatorStaffIds2" aria-label="第二經手人" disabled>
+          <option value="">第二位（選填）</option>
+          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+        </select>
+        </div>
       </div>
     </div>
 
@@ -79,10 +85,16 @@
       </label>
         <div class="op-row">
           <span>經手人</span>
+          <div class="op-sel">
           <select name="operatorStaffIds" aria-label="經手人" disabled>
             <option value="">稍後補填</option>
             <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
           </select>
+          <select name="operatorStaffIds2" aria-label="第二經手人" disabled>
+            <option value="">第二位（選填）</option>
+            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+          </select>
+          </div>
         </div>
       </div>
     </details>
@@ -128,7 +140,9 @@
       return b.closest(".pick-wrap").querySelector("select[name=operatorStaffIds]");
     }
     function syncOperator(b) {
-      opSelect(b).disabled = !b.checked;
+      b.closest(".pick-wrap").querySelectorAll("select[name^=operatorStaffIds]").forEach(function (sel) {
+        sel.disabled = !b.checked;
+      });
     }
     var opAll = document.getElementById("opAll");
     if (opAll) {

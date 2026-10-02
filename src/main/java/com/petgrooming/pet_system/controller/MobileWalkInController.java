@@ -196,6 +196,7 @@ public class MobileWalkInController {
             @RequestParam(required = false) String note,
             @RequestParam(required = false) List<String> itemCodes,
             @RequestParam(required = false) List<String> operatorStaffIds,
+            @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）：第二經手人
             @RequestParam(required = false) List<String> retailProductIds,
             @RequestParam(required = false) List<String> retailQuantities,
             @RequestParam(required = false) String backQuery) {
@@ -223,6 +224,10 @@ public class MobileWalkInController {
                 item.setItemCode(code);
                 item.setOperatorStaffId(staffIdStr != null && !staffIdStr.isBlank()
                         ? Long.valueOf(staffIdStr) : null); // null → 稍後在明細頁補填
+                String staffIdStr2 = operatorStaffIds2 != null && i < operatorStaffIds2.size()
+                        ? operatorStaffIds2.get(i) : null;
+                item.setOperatorStaffId2(staffIdStr2 != null && !staffIdStr2.isBlank()
+                        ? Long.valueOf(staffIdStr2) : null);
                 items.add(item);
             }
         }
@@ -318,6 +323,7 @@ public class MobileWalkInController {
     @PostMapping("/{id}/items/{itemId}/operator")
     public String fillOperator(@PathVariable Long id, @PathVariable Long itemId,
             @RequestParam(required = false) Long staffId,
+            @RequestParam(required = false) Long staffId2, // 需求（2026-10-02）：第二經手人
             HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         if (user == null) {
@@ -328,7 +334,7 @@ public class MobileWalkInController {
             return "redirect:/m/walk-in/" + id;
         }
         try {
-            walkInOrderService.fillOperator(itemId, staffId);
+            walkInOrderService.fillOperator(itemId, staffId, staffId2);
             operationLogService.log(user, "WALKIN", "FILL_OPERATOR", "項目 #" + itemId,
                     "指定經手人 #" + staffId + "（手機版）");
             ra.addFlashAttribute("toast", "已補填經手人");
@@ -408,10 +414,11 @@ public class MobileWalkInController {
     public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
             @RequestParam(required = false) Integer customPrice,
             @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+            @RequestParam(required = false) Long operatorStaffId2,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes ra) {
         return editItems(id, from, request, ra, "已加入項目",
-                u -> walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, u.getUsername()));
+                u -> walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, u.getUsername()));
     }
 
     @PostMapping("/{id}/items/custom")
@@ -419,10 +426,11 @@ public class MobileWalkInController {
             @RequestParam int price,
             @RequestParam(required = false) PerformanceCategory category,
             @RequestParam(required = false) Long operatorStaffId,
+            @RequestParam(required = false) Long operatorStaffId2,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes ra) {
         return editItems(id, from, request, ra, "已加入「" + itemName + "」",
-                u -> walkInOrderService.addCustomItem(id, itemName, price, category, operatorStaffId, u.getUsername()));
+                u -> walkInOrderService.addCustomItem(id, itemName, price, category, operatorStaffId, operatorStaffId2, u.getUsername()));
     }
 
     @PostMapping("/{id}/items/retail")

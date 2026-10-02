@@ -732,14 +732,21 @@ public class AppointmentService {
     // 確認後才能開始服務；項目可先不指定經手人，之後從待補清單補上。
     @Transactional
     public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes, String username) {
-        return confirmCheckinOrder(appointmentId, itemCodes, null, username);
+        return confirmCheckinOrder(appointmentId, itemCodes, null, null, username);
+    }
+
+    @Transactional
+    public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes,
+            List<Long> operatorStaffIds, String username) {
+        return confirmCheckinOrder(appointmentId, itemCodes, operatorStaffIds, null, username);
     }
 
     // 需求（追加，2026-10-02 店家確認 3）：到店開單比照現場開單，每個項目可以直接選經手人。
     // operatorStaffIds 跟 itemCodes 一一對應（null／空字串＝稍後補填），選了的當下就寫入積分。
     @Transactional
+    // 需求（2026-10-02 店家確認 5）：operatorStaffIds2 是第二經手人（選填），同樣跟 itemCodes 一一對應
     public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes,
-            List<Long> operatorStaffIds, String username) {
+            List<Long> operatorStaffIds, List<Long> operatorStaffIds2, String username) {
         User staff = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppointmentException("找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
@@ -766,6 +773,7 @@ public class AppointmentService {
         for (int idx = 0; idx < itemCodes.size(); idx++) {
             String code = itemCodes.get(idx);
             Long operatorId = operatorStaffIds != null && idx < operatorStaffIds.size() ? operatorStaffIds.get(idx) : null;
+            Long operatorId2 = operatorStaffIds2 != null && idx < operatorStaffIds2.size() ? operatorStaffIds2.get(idx) : null;
             GroomingItem gi = groomingItemRepository.findByItemCode(code)
                     .orElseThrow(() -> new AppointmentException("找不到項目代碼：" + code));
 
@@ -794,7 +802,7 @@ public class AppointmentService {
                     .points(gi.getPoints())
                     .performanceCategory(gi.getPerformanceCategory())
                     .build();
-            item.setOperatorStaff(findOperator(operatorId));
+            assignOperators(item, operatorId, operatorId2);
             appointmentItemRepository.save(item);
             awardItemPoints(item); // 沒選經手人的會直接略過，之後從待補清單補
             expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
@@ -885,13 +893,19 @@ public class AppointmentService {
     }
 
     public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice, String username) {
-        addGroomingItem(appointmentId, groomingItemId, customPrice, null, username);
+        addGroomingItem(appointmentId, groomingItemId, customPrice, null, null, username);
+    }
+
+    @Transactional
+    public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice,
+            Long operatorStaffId, String username) {
+        addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, null, username);
     }
 
     // 需求（追加，2026-10-02 店家確認 3-1）：核對時加的項目也可以當場選經手人
     @Transactional
     public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice,
-            Long operatorStaffId, String username) {
+            Long operatorStaffId, Long operatorStaffId2, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException("找不到該預約"));
         if (appointment.isPaid()) {
@@ -928,7 +942,7 @@ public class AppointmentService {
                 .points(gi.getPoints()) // 積分固定照項目原本設定，不受自訂價格影響
                 .performanceCategory(gi.getPerformanceCategory())
                 .build();
-        item.setOperatorStaff(findOperator(operatorStaffId));
+        assignOperators(item, operatorStaffId, operatorStaffId2);
         appointmentItemRepository.save(item);
         awardItemPoints(item);
         expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
@@ -950,12 +964,19 @@ public class AppointmentService {
     // 客製化報價本來就是店員當下依實際情況談定的金額，不應該再疊加折扣。
     public void addCustomItem(Long appointmentId, String itemName, int price,
             com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
-        addCustomItem(appointmentId, itemName, price, category, null, username);
+        addCustomItem(appointmentId, itemName, price, category, null, null, username);
     }
 
     @Transactional
     public void addCustomItem(Long appointmentId, String itemName, int price,
             com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId, String username) {
+        addCustomItem(appointmentId, itemName, price, category, operatorStaffId, null, username);
+    }
+
+    @Transactional
+    public void addCustomItem(Long appointmentId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId,
+            Long operatorStaffId2, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException("找不到該預約"));
         if (appointment.isPaid()) {
@@ -978,7 +999,7 @@ public class AppointmentService {
                 .points(actualCategory.getDefaultPoints())
                 .performanceCategory(actualCategory)
                 .build();
-        item.setOperatorStaff(findOperator(operatorStaffId));
+        assignOperators(item, operatorStaffId, operatorStaffId2);
         appointmentItemRepository.save(item);
         awardItemPoints(item);
 
@@ -1047,6 +1068,12 @@ public class AppointmentService {
     // ── 補填某個現場開單項目的經手人（同步寫入績效紀錄）─────────────────────
     @Transactional
     public void fillItemOperator(Long appointmentItemId, Long staffId) {
+        fillItemOperator(appointmentItemId, staffId, null);
+    }
+
+    // 需求（2026-10-02 店家確認 5）：待補經手人也可以一次選兩位
+    @Transactional
+    public void fillItemOperator(Long appointmentItemId, Long staffId, Long staffId2) {
         com.petgrooming.pet_system.model.AppointmentItem item = appointmentItemRepository.findById(appointmentItemId)
                 .orElseThrow(() -> new AppointmentException("找不到項目 #" + appointmentItemId));
 
@@ -1054,13 +1081,23 @@ public class AppointmentService {
             throw new AppointmentException("此項目已填寫經手人，無法重複填寫");
         }
 
-        User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new AppointmentException("找不到員工 #" + staffId));
-
-        item.setOperatorStaff(staff);
+        assignOperators(item, staffId, staffId2);
         appointmentItemRepository.save(item);
 
         awardItemPoints(item);
+    }
+
+    // 需求（2026-10-02 店家確認 5）：設定經手人（＋選填的第二經手人）
+    // 規則：第一位沒選時不能選第二位；兩位不能是同一人。
+    private void assignOperators(com.petgrooming.pet_system.model.AppointmentItem item, Long id1, Long id2) {
+        if (id1 == null && id2 != null) {
+            throw new AppointmentException("請先選第一位經手人，再選第二經手人");
+        }
+        if (id1 != null && id1.equals(id2)) {
+            throw new AppointmentException("兩位經手人不能是同一個人");
+        }
+        item.setOperatorStaff(findOperator(id1));
+        item.setOperatorStaff2(findOperator(id2));
     }
 
     // 經手人 id → 員工（null＝稍後補填）；只接受店員／管理者帳號
@@ -1086,13 +1123,22 @@ public class AppointmentService {
             return;
 
         Appointment appt = item.getAppointment();
-        performanceService.addRecord(
-                item.getOperatorStaff().getId(),
-                appt.getId(),
-                item.getPerformanceCategory(),
-                item.getPoints(),
-                appt.getDate(),
-                "預約 #" + appt.getId() + " - " + item.getItemName());
+        if (item.getOperatorStaff2() != null) {
+            // 需求（2026-10-02）：雙人經手，積分各半
+            performanceService.addDualRecords(
+                    item.getOperatorStaff().getId(), item.getOperatorStaff2().getId(),
+                    appt.getId(), null,
+                    item.getPerformanceCategory(), item.getPoints(), appt.getDate(),
+                    "預約 #" + appt.getId() + " - " + item.getItemName());
+        } else {
+            performanceService.addRecord(
+                    item.getOperatorStaff().getId(),
+                    appt.getId(),
+                    item.getPerformanceCategory(),
+                    item.getPoints(),
+                    appt.getDate(),
+                    "預約 #" + appt.getId() + " - " + item.getItemName());
+        }
 
         item.setPointsAwarded(true);
         appointmentItemRepository.save(item);

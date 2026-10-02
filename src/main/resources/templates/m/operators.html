@@ -39,10 +39,17 @@
           <span th:text="${ln.categoryLabel}">洗（小型）</span>
           <small th:text="${ln.itemName} + '，' + ${#numbers.formatDecimal(ln.points, 1, 1)} + ' 分'">中型犬-短毛-精緻洗，10.0 分</small>
         </div>
-        <select name="staffIds" aria-label="經手人">
-          <option value="">未選</option>
-          <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
-        </select>
+        <div class="op-sel">
+          <select name="staffIds" aria-label="經手人">
+            <option value="">未選</option>
+            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+          </select>
+          <!-- 需求（2026-10-02）：第二經手人（選填），兩位積分各半 -->
+          <select name="staffIds2" aria-label="第二經手人">
+            <option value="">第二位（選填）</option>
+            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+          </select>
+        </div>
       </div>
     </section>
   </form>

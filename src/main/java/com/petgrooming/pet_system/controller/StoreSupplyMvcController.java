@@ -22,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class StoreSupplyMvcController {
 
     private final StoreSupplyService storeSupplyService;
+    private final com.petgrooming.pet_system.service.InventoryImportService inventoryImportService; // 需求（2026-10-02）
     private final UserService userService;
     private final OperationLogService operationLogService;
 
@@ -50,10 +51,11 @@ public class StoreSupplyMvcController {
                          @RequestParam(defaultValue = "0") int stockQuantity,
                          @RequestParam(defaultValue = "0") int safetyStockThreshold,
                          @RequestParam(defaultValue = "0") int unitCost,
+                         @RequestParam(required = false) String barcode, // 需求（2026-10-02）：留空＝系統產生
                          RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            var supply = storeSupplyService.create(name, stockQuantity, safetyStockThreshold, unitCost);
+            var supply = storeSupplyService.create(name, stockQuantity, safetyStockThreshold, unitCost, barcode);
             operationLogService.log(user, "SUPPLY", "CREATE_SUPPLY", "新增店用洗劑：" + supply.getName(), null);
             ra.addFlashAttribute("successMsg", "已新增「" + supply.getName() + "」");
         } catch (IllegalArgumentException e) {
@@ -68,14 +70,55 @@ public class StoreSupplyMvcController {
                          @RequestParam String name,
                          @RequestParam int safetyStockThreshold,
                          @RequestParam int unitCost,
+                         @RequestParam(required = false) String barcode,
                          RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            storeSupplyService.update(id, name, safetyStockThreshold, unitCost);
+            // 表單沒帶條碼欄位＝不改條碼；帶了空白＝改回系統產生的店內條碼
+            if (barcode == null) {
+                storeSupplyService.update(id, name, safetyStockThreshold, unitCost);
+            } else {
+                storeSupplyService.update(id, name, safetyStockThreshold, unitCost, barcode);
+            }
             operationLogService.log(user, "SUPPLY", "UPDATE_SUPPLY", "更新店用洗劑 #" + id, null);
             ra.addFlashAttribute("successMsg", "已更新資訊");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin/store-supplies";
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）──────────
+    @RequireRole({UserRole.ADMIN})
+    @PostMapping("/{id}/stocktake")
+    public String stocktake(@PathVariable Long id, HttpServletRequest request,
+                            @RequestParam int actual, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            int diff = storeSupplyService.stocktake(id, actual);
+            operationLogService.log(user, "SUPPLY", "STOCKTAKE_SUPPLY",
+                    "店用洗劑 #" + id + " 盤點為 " + actual + "（差額 " + (diff >= 0 ? "+" : "") + diff + "）", null);
+            ra.addFlashAttribute("successMsg", "盤點完成，差額 " + (diff >= 0 ? "+" : "") + diff);
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin/store-supplies";
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7）：CSV 批次匯入 ──────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/import")
+    public String importCsv(HttpServletRequest request,
+                            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                            RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            var result = inventoryImportService.importSupplies(file);
+            operationLogService.log(user, "SUPPLY", "IMPORT_SUPPLY",
+                    "店用洗劑匯入：成功 " + result.getSucceeded() + " / " + result.getTotalRows(), null);
+            ra.addFlashAttribute("importResult", result);
+        } catch (Exception e) {
+            ra.addFlashAttribute("errorMsg", "匯入失敗：" + e.getMessage());
         }
         return "redirect:/admin/store-supplies";
     }

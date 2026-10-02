@@ -88,6 +88,7 @@ public class WalkInOrderMvcController {
                          @RequestParam(required = false) String note,
                          @RequestParam(required = false) List<String> itemCodes,
                          @RequestParam(required = false) List<String> operatorStaffIds,
+                         @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）
                          @RequestParam(required = false) List<String> retailProductIds,
                          @RequestParam(required = false) List<String> retailQuantities,
                          HttpServletRequest request, RedirectAttributes ra) {
@@ -109,6 +110,10 @@ public class WalkInOrderMvcController {
                             ? operatorStaffIds.get(i) : null;
                     item.setOperatorStaffId((staffIdStr != null && !staffIdStr.isBlank())
                             ? Long.valueOf(staffIdStr) : null); // null → 未填寫，之後從待補清單補
+                    String staffIdStr2 = (operatorStaffIds2 != null && i < operatorStaffIds2.size())
+                            ? operatorStaffIds2.get(i) : null;
+                    item.setOperatorStaffId2((staffIdStr2 != null && !staffIdStr2.isBlank())
+                            ? Long.valueOf(staffIdStr2) : null);
                     items.add(item);
                 }
             }
@@ -167,6 +172,7 @@ public class WalkInOrderMvcController {
     @PostMapping("/items/operator/batch")
     public String fillOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
                                     @RequestParam("staffIds") List<String> staffIds,
+                                    @RequestParam(value = "staffIds2", required = false) List<String> staffIds2,
                                     HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         int filled = 0;
@@ -175,7 +181,9 @@ public class WalkInOrderMvcController {
             if (staffIdStr == null || staffIdStr.isBlank()) continue; // 這列沒選就跳過，維持待補狀態
             try {
                 Long staffId = Long.valueOf(staffIdStr);
-                walkInOrderService.fillOperator(itemIds.get(i), staffId);
+                String s2 = staffIds2 != null && i < staffIds2.size() ? staffIds2.get(i) : null;
+                walkInOrderService.fillOperator(itemIds.get(i), staffId,
+                        s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null);
                 operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
                         "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
                 filled++;
@@ -325,11 +333,12 @@ public class WalkInOrderMvcController {
                                   @RequestParam Long groomingItemId,
                                   @RequestParam(required = false) Integer customPrice,
                                   @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+                                  @RequestParam(required = false) Long operatorStaffId2,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, user.getUsername());
+            walkInOrderService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
             ra.addFlashAttribute("successMsg", "已新增項目");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());
@@ -347,11 +356,12 @@ public class WalkInOrderMvcController {
                                 @RequestParam int price,
                                 @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
                                 @RequestParam(required = false) Long operatorStaffId,
+                                @RequestParam(required = false) Long operatorStaffId2,
                                 @RequestParam(defaultValue = "checkout") String from,
                                 RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            walkInOrderService.addCustomItem(id, itemName, price, category, operatorStaffId, user.getUsername());
+            walkInOrderService.addCustomItem(id, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
             ra.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", "新增失敗：" + e.getMessage());

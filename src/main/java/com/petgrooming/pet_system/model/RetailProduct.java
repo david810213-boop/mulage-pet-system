@@ -44,6 +44,12 @@ public class RetailProduct {
     @Column(length = 300)
     private String description;
 
+    // 需求（追加，2026-10-02 店家確認 7）：條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
+    // 零售商品與店用洗劑之間也不能重複（BarcodeService 檢查）。
+    @Column(length = 32, unique = true)
+    private String barcode;
+
+
     // 軟刪除：下架的商品不再顯示於加購清單，但保留歷史訂單的關聯資料
     @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default

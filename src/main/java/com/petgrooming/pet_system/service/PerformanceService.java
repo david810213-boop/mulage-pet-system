@@ -77,6 +77,41 @@ public class PerformanceService {
         return recordRepo.save(record);
     }
 
+    // ── 需求（追加，2026-10-02 店家確認 5）：雙人經手 ──────────────────────
+    // 兩位經手人各拿一半（四捨五入到小數點第一位，跟「拆給同事」同一套算法）。
+    // 第二筆掛 splitFromRecordId＝第一筆，沿用拆分的防呆：兩筆都不能再拆、
+    // 次數統計也會各算半次。appointmentId / walkInOrderId 二擇一。
+    @Transactional
+    public void addDualRecords(Long staffId1, Long staffId2, Long appointmentId, Long walkInOrderId,
+                               PerformanceCategory category, Double points,
+                               LocalDate serviceDate, String note) {
+        User s1 = userRepository.findById(staffId1)
+                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId1));
+        User s2 = userRepository.findById(staffId2)
+                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId2));
+        double half = Math.round((points == null ? 0 : points) / 2.0 * 10) / 10.0;
+
+        PerformanceRecord first = recordRepo.save(PerformanceRecord.builder()
+                .staff(s1)
+                .appointmentId(appointmentId)
+                .walkInOrderId(walkInOrderId)
+                .category(category)
+                .points(half)
+                .serviceDate(serviceDate)
+                .note(note + "（雙人經手，與 " + s2.getName() + " 各半）")
+                .build());
+        recordRepo.save(PerformanceRecord.builder()
+                .staff(s2)
+                .appointmentId(appointmentId)
+                .walkInOrderId(walkInOrderId)
+                .category(category)
+                .points(half)
+                .serviceDate(serviceDate)
+                .splitFromRecordId(first.getId())
+                .note(note + "（雙人經手，與 " + s1.getName() + " 各半）")
+                .build());
+    }
+
     // ── 拆分積分：從既有紀錄「對半平分」給另一位員工 ──────────────────────
     // 用於兩位員工共同完成同一項目的情境（例如各洗一半）。
     // 僅支援對半拆分（不接受任意手動輸入的小數），因為「除以 2」在浮點數運算中

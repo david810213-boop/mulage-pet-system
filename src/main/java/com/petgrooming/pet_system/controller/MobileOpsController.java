@@ -88,7 +88,8 @@ public class MobileOpsController {
     public String saveOperators(HttpServletRequest request, RedirectAttributes ra,
             @RequestParam(required = false) List<String> kinds,
             @RequestParam(required = false) List<Long> itemIds,
-            @RequestParam(required = false) List<String> staffIds) {
+            @RequestParam(required = false) List<String> staffIds,
+            @RequestParam(required = false) List<String> staffIds2) { // 需求（2026-10-02）：第二經手人
         User user = getLoginUser(request);
         if (user == null) {
             return "redirect:/auth/login";
@@ -107,13 +108,15 @@ public class MobileOpsController {
             }
             Long itemId = itemIds.get(i);
             Long staffId = Long.valueOf(staffIdStr);
+            String s2 = staffIds2 != null && i < staffIds2.size() ? staffIds2.get(i) : null;
+            Long staffId2 = s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null;
             try {
                 if ("A".equals(kinds.get(i))) {
-                    appointmentService.fillItemOperator(itemId, staffId);
+                    appointmentService.fillItemOperator(itemId, staffId, staffId2);
                     operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
                             "項目 #" + itemId, "指定經手人 #" + staffId + "（手機版）");
                 } else {
-                    walkInOrderService.fillOperator(itemId, staffId);
+                    walkInOrderService.fillOperator(itemId, staffId, staffId2);
                     operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
                             "項目 #" + itemId, "指定經手人 #" + staffId + "（手機版）");
                 }

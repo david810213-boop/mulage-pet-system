@@ -41,6 +41,12 @@ public class StoreSupply {
     @Builder.Default
     private int unitCost = 0;
 
+    // 需求（追加，2026-10-02 店家確認 7）：條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
+    // 零售商品與店用洗劑之間也不能重複（BarcodeService 檢查）。
+    @Column(length = 32, unique = true)
+    private String barcode;
+
+
     @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean isDeleted = false;

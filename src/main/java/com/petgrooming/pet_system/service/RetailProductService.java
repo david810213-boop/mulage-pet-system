@@ -17,6 +17,7 @@ import java.util.List;
 public class RetailProductService {
 
     private final RetailProductRepository retailProductRepository;
+    private final BarcodeService barcodeService; // 需求（2026-10-02）：條碼
 
     public List<RetailProduct> listActive() {
         return retailProductRepository.findByIsDeletedFalseOrderByNameAsc();
@@ -53,6 +54,21 @@ public class RetailProductService {
 
     @Transactional
     public RetailProduct create(String name, int price, int stockQuantity, String description, int unitCost) {
+        return create(name, price, stockQuantity, description, unitCost, null);
+    }
+
+    // 需求（2026-10-02 店家確認 7-2-C）：有原廠條碼就填，沒填由系統產生店內條碼
+    @Transactional
+    public RetailProduct create(String name, int price, int stockQuantity, String description, int unitCost,
+            String barcode) {
+        String code = BarcodeService.normalize(barcode);
+        barcodeService.assertAvailable(code, BarcodeService.TYPE_RETAIL, null);
+        RetailProduct saved = createNoBarcode(name, price, stockQuantity, description, unitCost);
+        saved.setBarcode(code != null ? code : BarcodeService.generate(BarcodeService.TYPE_RETAIL, saved.getId()));
+        return retailProductRepository.save(saved);
+    }
+
+    private RetailProduct createNoBarcode(String name, int price, int stockQuantity, String description, int unitCost) {
         if (name == null || name.isBlank()) throw new InventoryException("商品名稱不可為空");
         if (price < 0) throw new InventoryException("售價不可為負數");
         if (stockQuantity < 0) throw new InventoryException("庫存量不可為負數");
@@ -68,7 +84,17 @@ public class RetailProductService {
 
     @Transactional
     public void update(Long id, String name, int price, String description, int unitCost) {
+        update(id, name, price, description, unitCost, getById(id).getBarcode());
+    }
+
+    // 需求（2026-10-02）：可修改條碼（留空＝改回系統產生的店內條碼）
+    @Transactional
+    public void update(Long id, String name, int price, String description, int unitCost, String barcode) {
         RetailProduct product = getById(id);
+        String code = BarcodeService.normalize(barcode);
+        if (code == null) code = BarcodeService.generate(BarcodeService.TYPE_RETAIL, id);
+        barcodeService.assertAvailable(code, BarcodeService.TYPE_RETAIL, id);
+        product.setBarcode(code);
         if (name == null || name.isBlank()) throw new InventoryException("商品名稱不可為空");
         if (price < 0) throw new InventoryException("售價不可為負數");
         if (unitCost < 0) throw new InventoryException("成本不可為負數");
@@ -90,6 +116,18 @@ public class RetailProductService {
         if (newQuantity < 0) throw new InventoryException("庫存量不可調整為負數（目前庫存 " + product.getStockQuantity() + "）");
         product.setStockQuantity(newQuantity);
         retailProductRepository.save(product);
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點——輸入實際數量，回傳差額 ──
+    @Transactional
+    public int stocktake(Long id, int actual) {
+        if (actual < 0) throw new InventoryException("實際數量不可為負數");
+        RetailProduct product = retailProductRepository.lockById(id)
+                .orElseThrow(() -> new InventoryException("找不到商品 #" + id));
+        int diff = actual - product.getStockQuantity();
+        product.setStockQuantity(actual);
+        retailProductRepository.save(product);
+        return diff;
     }
 
     @Transactional

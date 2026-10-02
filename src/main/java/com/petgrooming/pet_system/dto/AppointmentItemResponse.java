@@ -25,7 +25,10 @@ public class AppointmentItemResponse {
         res.setPrice(item.getPrice());
         res.setPoints(item.getPoints());
         res.setOperatorFilled(item.isOperatorFilled());
-        res.setOperatorName(item.getOperatorStaff() != null ? item.getOperatorStaff().getName() : null);
+        res.setOperatorName(item.getOperatorStaff() != null
+                ? item.getOperatorStaff().getName()
+                        + (item.getOperatorStaff2() != null ? "、" + item.getOperatorStaff2().getName() : "") // 需求（2026-10-02）：雙人經手
+                : null);
         return res;
     }
 }

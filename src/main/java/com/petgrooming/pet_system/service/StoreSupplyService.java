@@ -22,6 +22,7 @@ import java.util.List;
 public class StoreSupplyService {
 
     private final StoreSupplyRepository storeSupplyRepository;
+    private final BarcodeService barcodeService; // 需求（2026-10-02）：條碼
     private final UserService userService;
     private final LineMessagingService lineMessagingService;
     private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
@@ -37,6 +38,20 @@ public class StoreSupplyService {
 
     @Transactional
     public StoreSupply create(String name, int stockQuantity, int safetyStockThreshold, int unitCost) {
+        return create(name, stockQuantity, safetyStockThreshold, unitCost, null);
+    }
+
+    // 需求（2026-10-02 店家確認 7-2-C）：有原廠條碼就填，沒填由系統產生店內條碼
+    @Transactional
+    public StoreSupply create(String name, int stockQuantity, int safetyStockThreshold, int unitCost, String barcode) {
+        String code = BarcodeService.normalize(barcode);
+        barcodeService.assertAvailable(code, BarcodeService.TYPE_SUPPLY, null);
+        StoreSupply saved = createNoBarcode(name, stockQuantity, safetyStockThreshold, unitCost);
+        saved.setBarcode(code != null ? code : BarcodeService.generate(BarcodeService.TYPE_SUPPLY, saved.getId()));
+        return storeSupplyRepository.save(saved);
+    }
+
+    private StoreSupply createNoBarcode(String name, int stockQuantity, int safetyStockThreshold, int unitCost) {
         if (name == null || name.isBlank()) throw new InventoryException("品名不可為空");
         if (stockQuantity < 0 || safetyStockThreshold < 0 || unitCost < 0) {
             throw new InventoryException("數量/成本不可為負數");
@@ -51,7 +66,16 @@ public class StoreSupplyService {
 
     @Transactional
     public void update(Long id, String name, int safetyStockThreshold, int unitCost) {
+        update(id, name, safetyStockThreshold, unitCost, getById(id).getBarcode());
+    }
+
+    @Transactional
+    public void update(Long id, String name, int safetyStockThreshold, int unitCost, String barcode) {
         StoreSupply supply = getById(id);
+        String code = BarcodeService.normalize(barcode);
+        if (code == null) code = BarcodeService.generate(BarcodeService.TYPE_SUPPLY, id);
+        barcodeService.assertAvailable(code, BarcodeService.TYPE_SUPPLY, id);
+        supply.setBarcode(code);
         if (name == null || name.isBlank()) throw new InventoryException("品名不可為空");
         if (safetyStockThreshold < 0 || unitCost < 0) throw new InventoryException("數量/成本不可為負數");
         supply.setName(name.trim());
@@ -123,6 +147,20 @@ public class StoreSupplyService {
             }
         }
         log.info("店用洗劑「{}」低於安全庫存，已通知 {} 位有綁定 LINE 的員工/店家", supply.getName(), notified);
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點——輸入實際數量，回傳差額 ──
+    @Transactional
+    public int stocktake(Long id, int actual) {
+        if (actual < 0) throw new InventoryException("實際數量不可為負數");
+        StoreSupply supply = getById(id);
+        int diff = actual - supply.getStockQuantity();
+        supply.setStockQuantity(actual);
+        storeSupplyRepository.save(supply);
+        if (diff < 0 && actual <= supply.getSafetyStockThreshold()) {
+            notifyLowStock(supply);
+        }
+        return diff;
     }
 
     @Transactional

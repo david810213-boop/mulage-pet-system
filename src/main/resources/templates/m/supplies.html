@@ -15,18 +15,28 @@
 
 <main class="wrap">
   <div class="empty" th:if="${rows.isEmpty()}">還沒有店用洗劑品項，請到網頁版新增。</div>
+  <!-- 需求（2026-10-02 店家確認 7-5-A）：掃碼後預設打開「領用 1」，按確定才扣 -->
+  <div class="scan-box" data-scan-box>
+    <span>掃碼</span>
+    <input type="text" data-scan="find" placeholder="掃洗劑條碼，預設領用 1" autocomplete="off" />
+  </div>
+  <div class="form-err" data-scan-msg style="margin:-6px 0 10px"></div>
 
-  <div class="stock-row" th:each="r : ${rows}" th:classappend="${r.out} ? 'out' : (${r.low} ? 'low' : '')">
+
+  <div class="stock-row" th:each="r : ${rows}" th:classappend="${r.out} ? 'out' : (${r.low} ? 'low' : '')"
+       th:attr="data-scan-target='SUPPLY-' + ${r.id}">
     <div class="info">
       <span class="nm" th:text="${r.name}">低敏洗毛精 4L</span>
       <small th:text="'安全庫存 ' + ${r.safety}">安全庫存 2</small>
     </div>
     <div class="qty num" th:text="${r.out} ? '缺貨' : ${r.stock}">1</div>
     <div class="acts">
-      <button type="button" class="act" data-open-sheet="sheetQty"
+      <button type="button" class="act" data-open-sheet="sheetQty" data-scan-default
               th:attr="data-mode='use',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">領用</button>
       <button type="button" class="act ghost" data-open-sheet="sheetQty"
               th:attr="data-mode='restock',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">進貨</button>
+      <button type="button" class="act ghost" data-open-sheet="sheetQty" th:if="${isAdmin}"
+              th:attr="data-mode='count',data-id=${r.id},data-name=${r.name},data-stock=${r.stock}">盤點</button>
     </div>
   </div>
 
@@ -42,6 +52,7 @@
     <div class="qty-big">
       <button type="button" id="qMinus" aria-label="減少">−</button>
       <input type="number" name="quantity" id="qInput" value="1" min="1" inputmode="numeric" aria-label="數量" />
+      <input type="hidden" name="actual" id="qActual" disabled />
       <button type="button" id="qPlus" aria-label="增加">＋</button>
     </div>
     <div class="field" id="noteField">
@@ -65,9 +76,11 @@
     var err = document.getElementById("qErr");
     var mode = "use", stock = 0;
     function clamp() {
-      var v = Math.max(1, parseInt(input.value, 10) || 1);
+      var min = mode === "count" ? 0 : 1; // 盤點可以是 0
+      var n = parseInt(input.value, 10);
+      var v = Math.max(min, isNaN(n) ? min : n);
       input.value = v;
-      document.getElementById("qMinus").disabled = v <= 1;
+      document.getElementById("qMinus").disabled = v <= min;
       return v;
     }
     document.getElementById("qMinus").addEventListener("click", function () { input.value = (parseInt(input.value, 10) || 1) - 1; clamp(); });
@@ -79,20 +92,24 @@
         mode = b.dataset.mode;
         stock = Number(b.dataset.stock || 0);
         var isUse = mode === "use";
-        form.action = "/m/supplies/" + encodeURIComponent(b.dataset.id) + (isUse ? "/use" : "/restock");
-        document.getElementById("hQty").textContent = isUse ? "領用" : "進貨";
+        var isCount = mode === "count";
+        form.action = "/m/supplies/" + encodeURIComponent(b.dataset.id) + (isCount ? "/stocktake" : isUse ? "/use" : "/restock");
+        document.getElementById("qActual").disabled = !isCount;
+        input.min = isCount ? 0 : 1;
+        document.getElementById("hQty").textContent = isCount ? "盤點（輸入實際數量）" : isUse ? "領用" : "進貨";
         document.getElementById("qtyWhat").textContent = b.dataset.name + "，目前庫存 " + stock;
         document.getElementById("noteField").hidden = !isUse;
         document.getElementById("qNote").value = "";
-        document.getElementById("qSubmit").textContent = isUse ? "確定領用" : "確定進貨";
+        document.getElementById("qSubmit").textContent = isCount ? "確定盤點" : isUse ? "確定領用" : "確定進貨";
         err.hidden = true;
-        input.value = 1;
+        input.value = isCount ? stock : 1;
         clamp();
       });
     });
 
     form.addEventListener("submit", function (e) {
       var v = clamp();
+      document.getElementById("qActual").value = v;
       if (mode === "use" && v > stock) {
         e.preventDefault();
         err.textContent = "庫存只剩 " + stock + "，不夠領用";
@@ -103,6 +120,7 @@
     });
   })();
 </script>
+<script src="/js/barcode-scan.js?v=1"></script>
 <script th:replace="~{m/fragments/app :: pwa}"></script>
 </body>
 </html>

@@ -207,6 +207,7 @@ public class PaymentMvcController {
                                   @RequestParam Long groomingItemId,
                                   @RequestParam(required = false) Integer customPrice,
                                   @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+                                  @RequestParam(required = false) Long operatorStaffId2,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   HttpServletRequest request,
                                   RedirectAttributes redirectAttributes) {
@@ -214,7 +215,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, user.getUsername());
+            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -230,6 +231,7 @@ public class PaymentMvcController {
                                 @RequestParam int price,
                                 @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
                                 @RequestParam(required = false) Long operatorStaffId,
+                                @RequestParam(required = false) Long operatorStaffId2,
                                 @RequestParam(defaultValue = "checkout") String from,
                                 HttpServletRequest request,
                                 RedirectAttributes redirectAttributes) {
@@ -237,7 +239,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, user.getUsername());
+            appointmentService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
             redirectAttributes.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());

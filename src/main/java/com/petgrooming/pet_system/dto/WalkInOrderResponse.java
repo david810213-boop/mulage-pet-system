@@ -66,7 +66,8 @@ public class WalkInOrderResponse {
             l.setPoints(oi.getPoints());
             if (oi.getOperatorStaff() != null) {
                 l.setOperatorStaffId(oi.getOperatorStaff().getId());
-                l.setOperator(oi.getOperatorStaff().getName());
+                l.setOperator(oi.getOperatorStaff().getName()
+                        + (oi.getOperatorStaff2() != null ? "、" + oi.getOperatorStaff2().getName() : "")); // 需求（2026-10-02）：雙人經手
             }
             l.setOperatorFilled(oi.isOperatorFilled());
             l.setDiscountEligible(oi.isDiscountEligible());

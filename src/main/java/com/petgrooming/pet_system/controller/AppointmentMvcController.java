@@ -239,6 +239,7 @@ public class AppointmentMvcController {
     public String checkinOrderSubmit(@PathVariable Long id,
                                      @RequestParam(required = false) List<String> itemCodes,
                                      @RequestParam(required = false) List<String> operatorStaffIds,
+                                     @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）
                                      HttpServletRequest request,
                                      RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
@@ -248,7 +249,12 @@ public class AppointmentMvcController {
                 opIds = new java.util.ArrayList<>();
                 for (String s : operatorStaffIds) opIds.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
             }
-            appointmentService.confirmCheckinOrder(id, itemCodes, opIds, user.getUsername());
+            List<Long> opIds2 = null;
+            if (operatorStaffIds2 != null) {
+                opIds2 = new java.util.ArrayList<>();
+                for (String s : operatorStaffIds2) opIds2.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
+            }
+            appointmentService.confirmCheckinOrder(id, itemCodes, opIds, opIds2, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
                     itemCodes != null ? String.join("、", itemCodes) : null);
             redirectAttributes.addFlashAttribute("successMsg", "已依現場情況開立服務項目，現在可以開始服務");
@@ -285,6 +291,7 @@ public class AppointmentMvcController {
     @PostMapping("/checkin-items/operator/batch")
     public String fillCheckinItemOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
                                                @RequestParam("staffIds") List<String> staffIds,
+                                               @RequestParam(value = "staffIds2", required = false) List<String> staffIds2,
                                                HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         int filled = 0;
@@ -293,7 +300,9 @@ public class AppointmentMvcController {
             if (staffIdStr == null || staffIdStr.isBlank()) continue;
             try {
                 Long staffId = Long.valueOf(staffIdStr);
-                appointmentService.fillItemOperator(itemIds.get(i), staffId);
+                String s2 = staffIds2 != null && i < staffIds2.size() ? staffIds2.get(i) : null;
+                appointmentService.fillItemOperator(itemIds.get(i), staffId,
+                        s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null);
                 operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
                         "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
                 filled++;

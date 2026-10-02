@@ -103,10 +103,13 @@ public class MobileDailyController {
                     : r.getWalkInOrderId() != null ? "現場單#" + r.getWalkInOrderId() : null);
             m.put("sourceUrl", r.getAppointmentId() != null ? "/m/appointments/" + r.getAppointmentId()
                     : r.getWalkInOrderId() != null ? "/m/walk-in/" + r.getWalkInOrderId() : null);
-            m.put("fromSplit", r.getSplitFromRecordId() != null);
+            // 需求（2026-10-02）：雙人經手的紀錄另外標示，不顯示成「同事拆分給你」
+            boolean dual = r.getNote() != null && r.getNote().contains("雙人經手");
+            m.put("dual", dual);
+            m.put("fromSplit", r.getSplitFromRecordId() != null && !dual);
             m.put("canSplit", r.getSplitFromRecordId() == null && !alreadySplit.contains(r.getId())
                     && r.getPoints() != null && r.getPoints() > 0);
-            m.put("split", alreadySplit.contains(r.getId()));
+            m.put("split", alreadySplit.contains(r.getId()) && !dual);
             m.put("label", (r.getCategory() != null ? r.getCategory().getLabel() : "")
                     + "，" + String.format("%.1f", r.getPoints() == null ? 0.0 : r.getPoints()) + " 分");
             byDate.computeIfAbsent(key, k -> new ArrayList<>()).add(m);
@@ -185,6 +188,7 @@ public class MobileDailyController {
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
         model.addAttribute("lowCount", list.stream().filter(this::isLow).count());
+        model.addAttribute("isAdmin", user.isAdmin()); // 需求（2026-10-02）：盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/supplies";
     }
@@ -228,8 +232,54 @@ public class MobileDailyController {
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
         model.addAttribute("lowCount", list.stream().filter(p -> p.getStockQuantity() <= RETAIL_LOW_STOCK).count());
+        model.addAttribute("isAdmin", user.isAdmin()); // 需求（2026-10-02）：盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/retail";
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）───────────
+    @PostMapping("/retail/{id}/stocktake")
+    public String stocktakeRetail(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
+            @RequestParam int actual) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        if (!user.isAdmin()) {
+            ra.addFlashAttribute("toastError", "只有店長可以盤點");
+            return "redirect:/m/retail";
+        }
+        try {
+            int diff = retailProductService.stocktake(id, actual);
+            operationLogService.log(user, "RETAIL", "STOCKTAKE_RETAIL",
+                    "商品 #" + id + " 盤點為 " + actual + "（差額 " + (diff >= 0 ? "+" : "") + diff + "）", "手機版");
+            ra.addFlashAttribute("toast", "盤點完成，差額 " + (diff >= 0 ? "+" : "") + diff);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("toastError", "盤點失敗：" + e.getMessage());
+        }
+        return "redirect:/m/retail";
+    }
+
+    @PostMapping("/supplies/{id}/stocktake")
+    public String stocktakeSupply(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
+            @RequestParam int actual) {
+        User user = getLoginUser(request);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        if (!user.isAdmin()) {
+            ra.addFlashAttribute("toastError", "只有店長可以盤點");
+            return "redirect:/m/supplies";
+        }
+        try {
+            int diff = storeSupplyService.stocktake(id, actual);
+            operationLogService.log(user, "SUPPLY", "STOCKTAKE_SUPPLY",
+                    "店用洗劑 #" + id + " 盤點為 " + actual + "（差額 " + (diff >= 0 ? "+" : "") + diff + "）", "手機版");
+            ra.addFlashAttribute("toast", "盤點完成，差額 " + (diff >= 0 ? "+" : "") + diff);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("toastError", "盤點失敗：" + e.getMessage());
+        }
+        return "redirect:/m/supplies";
     }
 
     // delta 正數＝進貨，負數＝報損／盤點扣減

@@ -22,6 +22,44 @@
           零售商品跟美容服務項目是分開管理的——這裡的商品不計績效積分，現場開單結帳時可以直接加購，結帳成功會自動扣庫存。
         </p>
 
+
+        <!-- 需求（2026-10-02 店家確認 7）：掃碼查庫存、CSV 匯入、條碼標籤 -->
+        <div class="card" style="margin-bottom: 1.25rem; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+          <div data-scan-box style="flex:1; min-width:260px;">
+            <h3 style="font-size: 15px; margin-bottom: 8px;">📷 掃碼查商品</h3>
+            <input type="text" data-scan="find" autocomplete="off" placeholder="點這裡後用掃碼槍掃條碼" style="width:100%;" />
+            <div data-scan-msg style="font-size:12px; margin-top:6px;"></div>
+          </div>
+          <div style="flex:1; min-width:300px;">
+            <h3 style="font-size: 15px; margin-bottom: 8px;">📥 CSV 批次匯入</h3>
+            <pre style="background: var(--cream-50); padding: 8px; border-radius: 6px; font-size: 12px; margin:0 0 6px; overflow-x:auto;">名稱,條碼,售價,成本,庫存,說明
+潔牙骨,4710000000001,150,90,20,小型犬用
+寵物濕紙巾,,120,60,30,</pre>
+            <p style="font-size: 12px; color: var(--brown-light); margin: 0 0 8px; line-height:1.6;">
+              條碼留空會由系統產生店內條碼。已經存在的商品（同條碼，或沒條碼但同名稱）只更新資料，<strong>庫存不動</strong>，庫存請用盤點調整；
+              新商品的庫存就是目前實際數量。Excel 請把條碼欄設成「文字」格式，內容不要有逗號。
+            </p>
+            <form method="post" action="/admin/retail-products/import" enctype="multipart/form-data" style="display:flex; gap:8px; align-items:center;">
+              <input type="file" name="file" accept=".csv" required />
+              <button type="submit" class="btn btn-primary" style="padding: 6px 16px;">開始匯入</button>
+            </form>
+            <div th:if="${importResult != null}" style="margin-top:10px; font-size:13px;">
+              共 <b th:text="${importResult.totalRows}"></b> 列，成功 <b style="color:#2e7d32;" th:text="${importResult.succeeded}"></b> 列
+              <ul th:if="${!#lists.isEmpty(importResult.rowErrors)}" style="color:#c62828; margin:6px 0 0; padding-left:18px;">
+                <li th:each="err : ${importResult.rowErrors}" th:text="${err}"></li>
+              </ul>
+            </div>
+          </div>
+          <div style="min-width:200px;">
+            <h3 style="font-size: 15px; margin-bottom: 8px;">🏷 條碼標籤</h3>
+            <form method="post" action="/admin/barcodes/generate-missing" style="margin-bottom:8px;">
+              <input type="hidden" name="back" value="/admin/retail-products" />
+              <button type="submit" class="btn btn-outline" style="padding: 5px 12px; font-size: 13px;">產生缺少的條碼</button>
+            </form>
+            <a href="/admin/barcodes/print?type=retail&onlyStore=true" target="_blank" class="btn btn-outline" style="padding: 5px 12px; font-size: 13px;">列印條碼標籤</a>
+          </div>
+        </div>
+
         <!-- 新增商品 -->
         <div class="card" style="margin-bottom: 1.25rem">
           <h3 style="font-size: 15px; margin-bottom: 12px;">➕ 新增商品</h3>
@@ -47,6 +85,10 @@
               <label>備註 <span style="color: var(--brown-light); font-size: 12px;">（選填）</span></label>
               <input type="text" name="description" placeholder="例如：規格、品牌" />
             </div>
+            <div class="field" style="margin: 0; width: 160px;">
+              <label>條碼 <span style="color: var(--brown-light); font-size: 12px;">（留空自動產生）</span></label>
+              <input type="text" name="barcode" placeholder="可直接用掃碼槍掃" autocomplete="off" />
+            </div>
             <button type="submit" class="btn btn-primary">新增</button>
           </form>
         </div>
@@ -57,6 +99,7 @@
             <thead>
               <tr>
                 <th>商品名稱</th>
+                <th>條碼</th>
                 <th>售價</th>
                 <th>進貨成本</th>
                 <th>庫存量</th>
@@ -66,10 +109,11 @@
             </thead>
             <tbody>
               <tr th:if="${#lists.isEmpty(products)}">
-                <td colspan="6" class="empty">目前沒有商品，先在上方新增一筆</td>
+                <td colspan="7" class="empty">目前沒有商品，先在上方新增一筆</td>
               </tr>
-              <tr th:each="p : ${products}">
+              <tr th:each="p : ${products}" th:attr="data-scan-target='RETAIL-' + ${p.id}">
                 <td th:text="${p.name}"></td>
+                <td style="font-family: monospace; font-size: 12px;" th:text="${p.barcode} ?: '—'"></td>
                 <td th:text="'$' + ${p.price}"></td>
                 <td th:text="'$' + ${p.unitCost}"></td>
                 <td th:text="${p.stockQuantity}"
@@ -87,6 +131,8 @@
                              style="width: 60px; font-size: 12px;" title="進貨成本" />
                       <input type="text" name="description" th:value="${p.description}"
                              style="width: 90px; font-size: 12px;" placeholder="備註" />
+                      <input type="text" name="barcode" th:value="${p.barcode}" autocomplete="off"
+                             style="width: 110px; font-size: 12px;" placeholder="條碼（空白＝自動）" title="條碼" />
                       <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">儲存</button>
                     </form>
                     <!-- 調整庫存 -->
@@ -94,6 +140,14 @@
                           style="display: flex; gap: 4px; align-items: center;">
                       <input type="number" name="delta" placeholder="±數量" style="width: 65px; font-size: 12px;" required />
                       <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">調庫存</button>
+                    </form>
+                    <!-- 需求（2026-10-02 店家確認 7-6）：盤點，只有店長（管理者）能用 -->
+                    <form th:if="${user != null and user.admin}" method="post"
+                          th:action="@{/admin/retail-products/{id}/stocktake(id=${p.id})}"
+                          style="display: flex; gap: 4px; align-items: center;"
+                          onsubmit="return confirm('確定把庫存改成實際盤點數量嗎？');">
+                      <input type="number" name="actual" min="0" placeholder="實際數量" style="width: 75px; font-size: 12px;" required />
+                      <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">盤點</button>
                     </form>
                     <!-- 下架 -->
                     <form method="post" th:action="@{/admin/retail-products/{id}/delete(id=${p.id})}"
@@ -108,5 +162,6 @@
         </div>
       </div>
     </div>
+    <script src="/js/barcode-scan.js?v=1"></script>
   </body>
 </html>

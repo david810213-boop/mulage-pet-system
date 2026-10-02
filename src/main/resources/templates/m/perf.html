@@ -48,6 +48,7 @@
           <small>
             <a th:if="${r.sourceUrl != null}" th:href="${r.sourceUrl}" th:text="${r.source}">AP017</a>
             <span th:if="${r.fromSplit}">同事拆分給你</span>
+            <span th:if="${r.dual}">雙人經手</span>
             <span th:if="${r.split}">已拆分</span>
             <span th:if="${r.note != null and !r.note.isEmpty()}" th:text="${r.note}">備注</span>
           </small>

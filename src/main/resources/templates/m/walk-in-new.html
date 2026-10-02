@@ -119,10 +119,16 @@
         </label>
         <div class="op-row">
           <span>經手人</span>
+          <div class="op-sel">
           <select name="operatorStaffIds" aria-label="經手人" disabled>
             <option value="">稍後補填</option>
             <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
           </select>
+          <select name="operatorStaffIds2" aria-label="第二經手人" disabled>
+            <option value="">第二位（選填）</option>
+            <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+          </select>
+          </div>
         </div>
       </div>
 
@@ -138,10 +144,16 @@
           </label>
           <div class="op-row">
             <span>經手人</span>
+            <div class="op-sel">
             <select name="operatorStaffIds" aria-label="經手人" disabled>
               <option value="">稍後補填</option>
               <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
             </select>
+            <select name="operatorStaffIds2" aria-label="第二經手人" disabled>
+              <option value="">第二位（選填）</option>
+              <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
+            </select>
+            </div>
           </div>
         </div>
       </details>
@@ -213,8 +225,9 @@
       // 只有勾選的項目，經手人下拉選單才啟用；沒勾的不送出，
       // 讓 itemCodes 跟 operatorStaffIds 兩個陣列順序一一對應
       function syncOperator(b) {
-        var sel = b.closest(".pick-wrap").querySelector("select[name=operatorStaffIds]");
-        sel.disabled = !b.checked;
+        b.closest(".pick-wrap").querySelectorAll("select[name^=operatorStaffIds]").forEach(function (sel) {
+          sel.disabled = !b.checked;
+        });
       }
       boxes.forEach(function (b) {
         syncOperator(b);

@@ -70,6 +70,13 @@ public class WalkInOrderItem {
     @ToString.Exclude
     private User operatorStaff;
 
+    // 需求（追加，2026-10-02 店家確認 5）：第二經手人（選填）。兩位經手人時積分各拿一半，
+    // 第二筆績效紀錄掛成第一筆的拆分紀錄，所以兩筆都不能再「拆給同事」。
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "operator_staff2_id")
+    @ToString.Exclude
+    private User operatorStaff2;
+
     // 是否已經把這筆的積分寫進 PerformanceRecord 了（避免同一筆項目被重複計入積分）
     @Column(name = "points_awarded", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default

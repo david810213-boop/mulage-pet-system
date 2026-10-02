@@ -162,6 +162,12 @@
                             class="pending-staff-select batch-operator-select">
                       <option value="">尚未選擇</option>
                     </select>
+                    <!-- 需求（2026-10-02）：第二經手人（選填，積分各半） -->
+                    <select name="staffIds2"
+                            style="margin-top:4px; padding:3px 6px; border:1px dashed var(--cream-300); border-radius:var(--radius-sm); font-size:11px; width:110px;"
+                            class="pending-staff-select">
+                      <option value="">第二位（選填）</option>
+                    </select>
                   </div>
                 </td>
               </tr>
@@ -208,6 +214,12 @@
                             style="padding:4px 6px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); font-size:12px; width:110px;"
                             class="pending-staff-select batch-operator-select">
                       <option value="">尚未選擇</option>
+                    </select>
+                    <!-- 需求（2026-10-02）：第二經手人（選填，積分各半） -->
+                    <select name="staffIds2"
+                            style="margin-top:4px; padding:3px 6px; border:1px dashed var(--cream-300); border-radius:var(--radius-sm); font-size:11px; width:110px;"
+                            class="pending-staff-select">
+                      <option value="">第二位（選填）</option>
                     </select>
                   </div>
                 </td>
@@ -495,6 +507,9 @@
 
         // 需求：經手人改成從員工清單選，不再自由輸入文字
         const operatorSelect = buildStaffSelect('operatorStaffIds');
+        // 需求（2026-10-02）：第二經手人（選填，積分各半）
+        const operatorSelect2 = buildStaffSelect('operatorStaffIds2');
+        operatorSelect2.options[0].textContent = '第二經手人（選填）';
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
@@ -504,6 +519,7 @@
 
         row.appendChild(select);
         row.appendChild(operatorSelect);
+        row.appendChild(operatorSelect2);
         row.appendChild(removeBtn);
         document.getElementById('itemRows').appendChild(row);
       }

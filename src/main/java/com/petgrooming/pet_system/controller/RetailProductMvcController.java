@@ -22,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class RetailProductMvcController {
 
     private final RetailProductService retailProductService;
+    private final com.petgrooming.pet_system.service.InventoryImportService inventoryImportService; // 需求（2026-10-02）
     private final UserService userService;
     private final OperationLogService operationLogService;
 
@@ -87,10 +88,11 @@ public class RetailProductMvcController {
                          @RequestParam(defaultValue = "0") int stockQuantity,
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
+                         @RequestParam(required = false) String barcode, // 需求（2026-10-02）：留空＝系統產生
                          RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            var product = retailProductService.create(name, price, stockQuantity, description, unitCost);
+            var product = retailProductService.create(name, price, stockQuantity, description, unitCost, barcode);
             operationLogService.log(user, "RETAIL", "CREATE_RETAIL_PRODUCT",
                     "新增商品：" + product.getName(), null);
             ra.addFlashAttribute("successMsg", "已新增商品「" + product.getName() + "」");
@@ -107,14 +109,55 @@ public class RetailProductMvcController {
                          @RequestParam int price,
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
+                         @RequestParam(required = false) String barcode,
                          RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            retailProductService.update(id, name, price, description, unitCost);
+            // 表單沒帶條碼欄位＝不改條碼；帶了空白＝改回系統產生的店內條碼
+            if (barcode == null) {
+                retailProductService.update(id, name, price, description, unitCost);
+            } else {
+                retailProductService.update(id, name, price, description, unitCost, barcode);
+            }
             operationLogService.log(user, "RETAIL", "UPDATE_RETAIL_PRODUCT", "更新商品 #" + id, null);
             ra.addFlashAttribute("successMsg", "已更新商品資訊");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin/retail-products";
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）──────────
+    @RequireRole({UserRole.ADMIN})
+    @PostMapping("/{id}/stocktake")
+    public String stocktake(@PathVariable Long id, HttpServletRequest request,
+                            @RequestParam int actual, RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            int diff = retailProductService.stocktake(id, actual);
+            operationLogService.log(user, "RETAIL", "STOCKTAKE_RETAIL",
+                    "商品 #" + id + " 盤點為 " + actual + "（差額 " + (diff >= 0 ? "+" : "") + diff + "）", null);
+            ra.addFlashAttribute("successMsg", "盤點完成，差額 " + (diff >= 0 ? "+" : "") + diff);
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin/retail-products";
+    }
+
+    // ── 需求（追加，2026-10-02 店家確認 7）：CSV 批次匯入 ──────────────────
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/import")
+    public String importCsv(HttpServletRequest request,
+                            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                            RedirectAttributes ra) {
+        User user = getLoginUser(request);
+        try {
+            var result = inventoryImportService.importRetail(file);
+            operationLogService.log(user, "RETAIL", "IMPORT_RETAIL",
+                    "零售商品匯入：成功 " + result.getSucceeded() + " / " + result.getTotalRows(), null);
+            ra.addFlashAttribute("importResult", result);
+        } catch (Exception e) {
+            ra.addFlashAttribute("errorMsg", "匯入失敗：" + e.getMessage());
         }
         return "redirect:/admin/retail-products";
     }

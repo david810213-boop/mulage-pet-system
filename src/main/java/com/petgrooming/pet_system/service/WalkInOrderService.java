@@ -120,12 +120,8 @@ public class WalkInOrderService {
                         .discountEligible(gi.isDiscountEligible())
                         .build();
 
-                if (line.getOperatorStaffId() != null) {
-                    User staff = userRepository.findById(line.getOperatorStaffId())
-                            .orElseThrow(() -> new PaymentException(
-                                    "找不到員工 #" + line.getOperatorStaffId()));
-                    item.setOperatorStaff(staff);
-                }
+                // 需求（2026-10-02 店家確認 5）：可以同時指定第二經手人，積分各半
+                assignOperators(item, line.getOperatorStaffId(), line.getOperatorStaffId2());
 
                 order.addItem(item);
                 total += item.getPrice();
@@ -413,13 +409,19 @@ public class WalkInOrderService {
 
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice, String username) {
-        return addGroomingItem(orderId, groomingItemId, customPrice, null, username);
+        return addGroomingItem(orderId, groomingItemId, customPrice, null, null, username);
+    }
+
+    @Transactional
+    public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice,
+            Long operatorStaffId, String username) {
+        return addGroomingItem(orderId, groomingItemId, customPrice, operatorStaffId, null, username);
     }
 
     // 需求（追加，2026-10-02 店家確認 3-1）：核對時加的項目也可以當場選經手人（null＝稍後補填）
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice,
-            Long operatorStaffId, String username) {
+            Long operatorStaffId, Long operatorStaffId2, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
@@ -458,7 +460,7 @@ public class WalkInOrderService {
                 .performanceCategory(gi.getPerformanceCategory())
                 .discountEligible(gi.isDiscountEligible())
                 .build();
-        item.setOperatorStaff(findOperator(operatorStaffId));
+        assignOperators(item, operatorStaffId, operatorStaffId2);
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + item.getPrice());
 
@@ -494,12 +496,19 @@ public class WalkInOrderService {
     @Transactional
     public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
             com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
-        return addCustomItem(orderId, itemName, price, category, null, username);
+        return addCustomItem(orderId, itemName, price, category, null, null, username);
     }
 
     @Transactional
     public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
             com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId, String username) {
+        return addCustomItem(orderId, itemName, price, category, operatorStaffId, null, username);
+    }
+
+    @Transactional
+    public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
+            com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId,
+            Long operatorStaffId2, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
         if (order.isPaid()) {
@@ -521,7 +530,7 @@ public class WalkInOrderService {
                 .performanceCategory(actualCategory)
                 .discountEligible(false)
                 .build();
-        item.setOperatorStaff(findOperator(operatorStaffId));
+        assignOperators(item, operatorStaffId, operatorStaffId2);
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + price);
         WalkInOrder saved = orderRepository.save(order);
@@ -794,6 +803,12 @@ public class WalkInOrderService {
     // ── 需求 6：補填某個項目的經手人（同步寫入績效紀錄）─────────────────────
     @Transactional
     public void fillOperator(Long orderItemId, Long staffId) {
+        fillOperator(orderItemId, staffId, null);
+    }
+
+    // 需求（2026-10-02 店家確認 5）：待補經手人也可以一次選兩位
+    @Transactional
+    public void fillOperator(Long orderItemId, Long staffId, Long staffId2) {
         WalkInOrderItem item = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new PaymentException("找不到項目 #" + orderItemId));
 
@@ -801,14 +816,12 @@ public class WalkInOrderService {
             throw new PaymentException("此項目已填寫經手人，無法重複填寫");
         }
 
-        User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new PaymentException("找不到員工 #" + staffId));
-
-        item.setOperatorStaff(staff);
+        assignOperators(item, staffId, staffId2);
         orderItemRepository.save(item);
 
         awardPoints(item, item.getOrder());
-        log.info("項目 #{} 補填經手人：{}", orderItemId, staff.getName());
+        log.info("項目 #{} 補填經手人：{}{}", orderItemId, item.getOperatorStaff().getName(),
+                item.getOperatorStaff2() != null ? "、" + item.getOperatorStaff2().getName() : "");
     }
 
     // 需求（追加，2026-10-02）：核對加項目時有選經手人的，存檔後立刻寫入積分
@@ -819,6 +832,17 @@ public class WalkInOrderService {
                 awardPoints(it, saved);
             }
         }
+    }
+
+    private void assignOperators(WalkInOrderItem item, Long id1, Long id2) {
+        if (id1 == null && id2 != null) {
+            throw new PaymentException("請先選第一位經手人，再選第二經手人");
+        }
+        if (id1 != null && id1.equals(id2)) {
+            throw new PaymentException("兩位經手人不能是同一個人");
+        }
+        item.setOperatorStaff(findOperator(id1));
+        item.setOperatorStaff2(findOperator(id2));
     }
 
     private User findOperator(Long staffId) {
@@ -844,13 +868,21 @@ public class WalkInOrderService {
                 ? order.getCreatedAt().toLocalDate()
                 : LocalDate.now();
 
-        performanceService.addWalkInRecord(
-                item.getOperatorStaff().getId(),
-                order.getId(),
-                item.getPerformanceCategory(),
-                item.getPoints(),
-                serviceDate,
-                "現場單 #" + order.getId() + " - " + item.getItemName());
+        if (item.getOperatorStaff2() != null) {
+            // 需求（2026-10-02）：雙人經手，積分各半
+            performanceService.addDualRecords(
+                    item.getOperatorStaff().getId(), item.getOperatorStaff2().getId(),
+                    null, order.getId(), item.getPerformanceCategory(), item.getPoints(), serviceDate,
+                    "現場單 #" + order.getId() + " - " + item.getItemName());
+        } else {
+            performanceService.addWalkInRecord(
+                    item.getOperatorStaff().getId(),
+                    order.getId(),
+                    item.getPerformanceCategory(),
+                    item.getPoints(),
+                    serviceDate,
+                    "現場單 #" + order.getId() + " - " + item.getItemName());
+        }
 
         item.setPointsAwarded(true);
         orderItemRepository.save(item);
