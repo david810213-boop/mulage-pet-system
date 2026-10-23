@@ -113,6 +113,7 @@ class CheckoutPageTest extends IntegrationTestBase {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void appointmentCheckoutPreviewsMemberWalletDiscount() throws Exception {
         User member = testData.customer();
         walletService.deposit(member.getUsername(), deposit(15000)); // 金卡 9 折
@@ -131,10 +132,11 @@ class CheckoutPageTest extends IntegrationTestBase {
         assertThat(model.get("walletDiscount")).isEqualTo(0.9);
         assertThat(model.get("walletDiscountActive")).isEqualTo(true);
         assertThat(model.get("walletFinalAmount")).isEqualTo(900);
-        assertThat((List<?>) model.get("paymentMethods")).doesNotContain(PaymentMethod.CREDIT_CARD).contains(PaymentMethod.CASH);
+        assertThat((List<Object>) model.get("paymentMethods")).doesNotContain(PaymentMethod.CREDIT_CARD).contains(PaymentMethod.CASH);
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void walkInCheckoutPreviewsMemberWalletDiscount() throws Exception {
         User staff = testData.staff();
         User member = testData.customer();
@@ -157,7 +159,7 @@ class CheckoutPageTest extends IntegrationTestBase {
         assertThat(model.get("walletBalance")).isEqualTo(15000);
         assertThat(model.get("walletDiscountActive")).isEqualTo(true);
         assertThat(model.get("walletFinalAmount")).isEqualTo(900);
-        assertThat((List<?>) model.get("paymentMethods")).doesNotContain(PaymentMethod.CREDIT_CARD);
+        assertThat((List<Object>) model.get("paymentMethods")).doesNotContain(PaymentMethod.CREDIT_CARD);
     }
 
     private GroomingItem groomingItem(int price) {
