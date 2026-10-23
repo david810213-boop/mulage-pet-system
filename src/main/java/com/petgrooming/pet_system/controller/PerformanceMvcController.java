@@ -4,6 +4,8 @@ import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.export.ExcelSupport;
+import com.petgrooming.pet_system.export.StaffBreakdownExcel;
 import com.petgrooming.pet_system.model.MonthlyPerformance;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
@@ -12,9 +14,6 @@ import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Arrays;
@@ -250,90 +248,8 @@ public class PerformanceMvcController {
     public void exportStaffBreakdown(HttpServletRequest request, HttpServletResponse response,
                                      @RequestParam int year, @RequestParam int month) throws IOException {
         var matrix = performanceService.getMonthlyMatrix(year, month);
-        var categories = matrix.getCategories();
-
-        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("積分項目統計");
-
-            CellStyle headerStyle = workbook.createCellStyle();
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-            int rowIdx = 0;
-
-            // 區塊一：總計/隻數
-            Row titleRow1 = sheet.createRow(rowIdx++);
-            titleRow1.createCell(0).setCellValue(year + "年" + month + "月　總計/隻數");
-
-            Row header1 = sheet.createRow(rowIdx++);
-            header1.createCell(0).setCellValue("人");
-            for (int i = 0; i < categories.size(); i++) {
-                Cell c = header1.createCell(i + 1);
-                c.setCellValue(categories.get(i).getLabel());
-                c.setCellStyle(headerStyle);
-            }
-
-            for (var r : matrix.getRows()) {
-                Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(r.getStaffName());
-                for (int i = 0; i < categories.size(); i++) {
-                    row.createCell(i + 1).setCellValue(r.getCountByCategory().get(categories.get(i)));
-                }
-            }
-            Row totalsCountRow = sheet.createRow(rowIdx++);
-            totalsCountRow.createCell(0).setCellValue("合計");
-            for (int i = 0; i < categories.size(); i++) {
-                totalsCountRow.createCell(i + 1).setCellValue(matrix.getTotalsRow().getCountByCategory().get(categories.get(i)));
-            }
-
-            rowIdx++; // 空一行
-
-            // 區塊二：換算積分
-            Row titleRow2 = sheet.createRow(rowIdx++);
-            titleRow2.createCell(0).setCellValue(year + "年" + month + "月　換算積分");
-
-            Row header2 = sheet.createRow(rowIdx++);
-            header2.createCell(0).setCellValue("人");
-            for (int i = 0; i < categories.size(); i++) {
-                Cell c = header2.createCell(i + 1);
-                c.setCellValue(categories.get(i).getLabel());
-                c.setCellStyle(headerStyle);
-            }
-            Cell totalHeaderCell = header2.createCell(categories.size() + 1);
-            totalHeaderCell.setCellValue("總分");
-            totalHeaderCell.setCellStyle(headerStyle);
-
-            for (var r : matrix.getRows()) {
-                Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(r.getStaffName());
-                for (int i = 0; i < categories.size(); i++) {
-                    row.createCell(i + 1).setCellValue(r.getPointsByCategory().get(categories.get(i)));
-                }
-                row.createCell(categories.size() + 1).setCellValue(r.getTotalPoints());
-            }
-            Row totalsPointsRow = sheet.createRow(rowIdx++);
-            totalsPointsRow.createCell(0).setCellValue("合計");
-            for (int i = 0; i < categories.size(); i++) {
-                totalsPointsRow.createCell(i + 1).setCellValue(matrix.getTotalsRow().getPointsByCategory().get(categories.get(i)));
-            }
-            totalsPointsRow.createCell(categories.size() + 1).setCellValue(matrix.getGrandTotal());
-
-            // 需求（追加）：autoSizeColumn() 在 Railway 容器上會因缺少字型函式庫（libfreetype）
-            // 直接噴 UnsatisfiedLinkError 導致匯出失敗，改成固定欄寬。
-            sheet.setColumnWidth(0, 14 * 256); // 第一欄是人名/類別標籤，留寬一點
-            for (int i = 1; i <= categories.size() + 1; i++) {
-                sheet.setColumnWidth(i, 12 * 256);
-            }
-
-            String filename = year + "年" + month + "月積分項目統計.xlsx";
-            String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
-
-            workbook.write(response.getOutputStream());
+        try (var workbook = StaffBreakdownExcel.build(year, month, matrix)) {
+            ExcelSupport.writeXlsx(response, year + "年" + month + "月積分項目統計.xlsx", workbook);
         }
     }
 
