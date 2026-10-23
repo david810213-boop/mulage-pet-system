@@ -16,7 +16,6 @@ import com.petgrooming.pet_system.model.CompanySignature;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.PricingSettings;
-import com.petgrooming.pet_system.model.SupplyUsageRecord;
 import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.User;
@@ -45,9 +44,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -336,160 +338,122 @@ public class PaymentService {
     }
 
     // ── 4. 財務報告（ADMIN）────────────────────────────────────────────────
-    // ── 需求 6：財務報表 ─────────────────────────────────────────────────
-    // 業績定義：只算「結帳完成」（Transaction / WalkInOrder，paid=true），
-    // 儲值本身不算業績（那是預收款，另外用 topupCollected 呈現）。
+    // ── 財務報表 ─────────────────────────────────────────────────────────
+    /**
+     * 當日與當月的業績、儲值、零售營收與成本。
+     * 業績只算已結帳的預約與現場單（匯款待對帳不算）；儲值是預收款，另列不計入業績。
+     */
+    @Transactional(readOnly = true)
     public FinancialReportResponse getFinancialReport() {
         LocalDateTime now = LocalDateTime.now();
-        LocalDate today = now.toLocalDate();
-        LocalDateTime todayStart = today.atStartOfDay();
-        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
-
-        List<Transaction> paidTransactions = transactionRepository.findByPaidTrue();
-        List<WalkInOrder> paidWalkInOrders =
-                walkInOrderRepository.findAll().stream()
-                        .filter(WalkInOrder::isPaid)
-                        .toList();
-
-        List<FinancialReportResponse.RevenueDetailLine> allLines = new ArrayList<>();
-
-        for (Transaction t : paidTransactions) {
-            if (t.getPaymentTime() == null) continue; // 防呆：理論上 paid=true 一定有付款時間
-            allLines.add(new FinancialReportResponse.RevenueDetailLine(
-                    "預約結帳",
-                    t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—",
-                    t.getPaymentTime(),
-                    t.getPaymentMethod() != null ? t.getPaymentMethod().getDisplayName() : "—",
-                    t.getPaymentMethod() == PaymentMethod.WALLET,
-                    t.getFinalAmount(),
-                    t.getHandledBy()));
-        }
-        for (WalkInOrder w : paidWalkInOrders) {
-            if (w.getPaymentTime() == null) continue;
-            int amount = w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount();
-            allLines.add(new FinancialReportResponse.RevenueDetailLine(
-                    "現場開單",
-                    "現場單#" + w.getId(),
-                    w.getPaymentTime(),
-                    w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—",
-                    w.getPaymentMethod() == PaymentMethod.WALLET,
-                    amount,
-                    w.getCreatedBy()));
-        }
-        allLines.sort((a, b) -> b.getPaymentTime().compareTo(a.getPaymentTime()));
-
-        // ── 當日 / 當月彙總 ──────────────────────────────────────────────
-        int todayTotal = 0, todayWallet = 0, todayNonWallet = 0, todayCount = 0;
-        int monthTotal = 0, monthWallet = 0, monthNonWallet = 0, monthCount = 0;
-
-        for (FinancialReportResponse.RevenueDetailLine line : allLines) {
-            boolean inMonth = !line.getPaymentTime().isBefore(monthStart);
-            boolean inToday = !line.getPaymentTime().isBefore(todayStart);
-
-            if (inMonth) {
-                monthTotal += line.getAmount();
-                monthCount++;
-                if (line.isWalletPayment()) monthWallet += line.getAmount();
-                else monthNonWallet += line.getAmount();
-            }
-            if (inToday) {
-                todayTotal += line.getAmount();
-                todayCount++;
-                if (line.isWalletPayment()) todayWallet += line.getAmount();
-                else todayNonWallet += line.getAmount();
-            }
-        }
-
-        // ── 儲值總額（預收款，不計入業績，僅供參考）──────────────────────────
-        List<TopUpRequest> confirmedTopups =
-                topUpRequestRepository.findByStatusOrderByCreatedAtAsc(
-                        TopUpStatus.CONFIRMED);
-        int todayTopup = 0, monthTopup = 0;
-        for (var tu : confirmedTopups) {
-            if (tu.getReviewedAt() == null) continue;
-            if (!tu.getReviewedAt().isBefore(monthStart)) monthTopup += tu.getAmount();
-            if (!tu.getReviewedAt().isBefore(todayStart)) todayTopup += tu.getAmount();
-        }
-
-        // ── 需求（追加）：零售商品營收——已含在上面的業績總額裡，這裡單獨拆出來看，
-        // 方便店家知道業績裡「賣商品」跟「做服務」各佔多少。用售價（item.getPrice()）
-        // 加總，來源涵蓋現場開單（WalkInOrderItem）跟預約結帳頁加購（AppointmentItem）。
-        int todayRetailRevenue = 0, monthRetailRevenue = 0;
-        for (WalkInOrder w : paidWalkInOrders) {
-            if (w.getPaymentTime() == null) continue;
-            int retailSum = w.getItems().stream()
-                    .filter(i -> i.getRetailProductId() != null)
-                    .mapToInt(WalkInOrderItem::getPrice)
-                    .sum();
-            if (retailSum == 0) continue;
-            if (!w.getPaymentTime().isBefore(monthStart)) monthRetailRevenue += retailSum;
-            if (!w.getPaymentTime().isBefore(todayStart)) todayRetailRevenue += retailSum;
-        }
-        for (Transaction t : paidTransactions) {
-            if (t.getPaymentTime() == null || t.getAppointment() == null) continue;
-            int retailSum = appointmentItemRepository.findByAppointmentId(t.getAppointment().getId()).stream()
-                    .filter(i -> i.getRetailProductId() != null)
-                    .mapToInt(AppointmentItem::getPrice)
-                    .sum();
-            if (retailSum == 0) continue;
-            if (!t.getPaymentTime().isBefore(monthStart)) monthRetailRevenue += retailSum;
-            if (!t.getPaymentTime().isBefore(todayStart)) todayRetailRevenue += retailSum;
-        }
-
-        // ── 成本（需求 7 庫存資料帶入，當月）─────────────────────────────────
-        // 零售商品成本：用「目前」進貨單價回推本月賣出的數量 × 單價（近似值，
-        // 因為零售項目賣出當下沒有存成本快照，只存了售價）。
-        // 需求（追加）：來源除了現場開單，也要涵蓋預約結帳頁加購（否則加購功能上線後成本會低估）。
-        int monthRetailCost = 0;
-        var retailProducts = retailProductRepository.findAll();
-        Map<Long, Integer> retailUnitCostById = new HashMap<>();
-        for (var p : retailProducts) retailUnitCostById.put(p.getId(), p.getUnitCost());
-        for (WalkInOrder w : paidWalkInOrders) {
-            if (w.getPaymentTime() == null || w.getPaymentTime().isBefore(monthStart)) continue;
-            for (var item : w.getItems()) {
-                if (item.getRetailProductId() == null) continue;
-                Integer unitCost = retailUnitCostById.get(item.getRetailProductId());
-                if (unitCost != null) monthRetailCost += unitCost;
-            }
-        }
-        for (Transaction t : paidTransactions) {
-            if (t.getPaymentTime() == null || t.getPaymentTime().isBefore(monthStart) || t.getAppointment() == null) continue;
-            for (var item : appointmentItemRepository.findByAppointmentId(t.getAppointment().getId())) {
-                if (item.getRetailProductId() == null) continue;
-                Integer unitCost = retailUnitCostById.get(item.getRetailProductId());
-                if (unitCost != null) monthRetailCost += unitCost;
-            }
-        }
-
-        // 店用洗劑成本：有逐筆單價快照，精確加總本月領用紀錄
-        List<SupplyUsageRecord> monthUsages =
-                supplyUsageRecordRepository.findByUsedAtBetween(monthStart, now);
-        int monthSupplyCost = monthUsages.stream()
+        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
+        LocalDateTime monthStart = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
+        List<PaidOrder> orders = paidOrders(retailUnitCosts());
+        List<TopUpRequest> topUps = topUpRequestRepository.findByStatusOrderByCreatedAtAsc(TopUpStatus.CONFIRMED);
+        int monthRetailCost = sumSince(orders, monthStart, PaidOrder::retailCost);
+        int monthSupplyCost = supplyUsageRecordRepository.findByUsedAtBetween(monthStart, now).stream()
                 .mapToInt(u -> u.getUnitCostSnapshot() * u.getQuantity())
                 .sum();
-
-        int monthTotalCost = monthRetailCost + monthSupplyCost;
+        int monthRevenue = sumSince(orders, monthStart, PaidOrder::amount);
 
         FinancialReportResponse report = new FinancialReportResponse();
         report.setGeneratedAt(now);
-        report.setTodayRevenueTotal(todayTotal);
-        report.setTodayRevenueWallet(todayWallet);
-        report.setTodayRevenueNonWallet(todayNonWallet);
-        report.setTodayOrderCount(todayCount);
-        report.setTodayTopupCollected(todayTopup);
-        report.setTodayRetailRevenue(todayRetailRevenue);
-        report.setMonthRevenueTotal(monthTotal);
-        report.setMonthRevenueWallet(monthWallet);
-        report.setMonthRevenueNonWallet(monthNonWallet);
-        report.setMonthOrderCount(monthCount);
-        report.setMonthTopupCollected(monthTopup);
-        report.setMonthRetailRevenue(monthRetailRevenue);
+        report.setTodayRevenueTotal(sumSince(orders, todayStart, PaidOrder::amount));
+        report.setTodayRevenueWallet(sumSince(orders, todayStart, PaidOrder::walletAmount));
+        report.setTodayRevenueNonWallet(sumSince(orders, todayStart, PaidOrder::nonWalletAmount));
+        report.setTodayOrderCount(sumSince(orders, todayStart, o -> 1));
+        report.setTodayTopupCollected(topUpsSince(topUps, todayStart));
+        report.setTodayRetailRevenue(sumSince(orders, todayStart, PaidOrder::retailRevenue));
+        report.setMonthRevenueTotal(monthRevenue);
+        report.setMonthRevenueWallet(sumSince(orders, monthStart, PaidOrder::walletAmount));
+        report.setMonthRevenueNonWallet(sumSince(orders, monthStart, PaidOrder::nonWalletAmount));
+        report.setMonthOrderCount(sumSince(orders, monthStart, o -> 1));
+        report.setMonthTopupCollected(topUpsSince(topUps, monthStart));
+        report.setMonthRetailRevenue(sumSince(orders, monthStart, PaidOrder::retailRevenue));
         report.setMonthRetailCostEstimate(monthRetailCost);
         report.setMonthSupplyCost(monthSupplyCost);
-        report.setMonthTotalCost(monthTotalCost);
-        report.setMonthEstimatedProfit(monthTotal - monthTotalCost);
-        report.setDetails(allLines);
+        report.setMonthTotalCost(monthRetailCost + monthSupplyCost);
+        report.setMonthEstimatedProfit(monthRevenue - monthRetailCost - monthSupplyCost);
+        report.setDetails(orders.stream()
+                .sorted(Comparator.comparing(PaidOrder::paidAt).reversed())
+                .map(PaidOrder::toDetailLine)
+                .toList());
         return report;
+    }
+
+    /**
+     * 一筆已結帳的訂單（預約結帳或現場單）。
+     * 零售營收以售價加總；零售成本以商品「目前」進貨單價估算（賣出當下沒有成本快照，因此是近似值）。
+     */
+    private record PaidOrder(String source, String code, LocalDateTime paidAt, PaymentMethod method,
+                             int amount, String handledBy, int retailRevenue, int retailCost) {
+
+        int walletAmount() {
+            return method == PaymentMethod.WALLET ? amount : 0;
+        }
+
+        int nonWalletAmount() {
+            return method == PaymentMethod.WALLET ? 0 : amount;
+        }
+
+        FinancialReportResponse.RevenueDetailLine toDetailLine() {
+            return new FinancialReportResponse.RevenueDetailLine(source, code, paidAt,
+                    method != null ? method.getDisplayName() : "—", method == PaymentMethod.WALLET, amount, handledBy);
+        }
+    }
+
+    private List<PaidOrder> paidOrders(Map<Long, Integer> retailUnitCosts) {
+        List<Transaction> transactions = transactionRepository.findByPaidTrue().stream()
+                .filter(t -> t.getPaymentTime() != null)
+                .toList();
+        Map<Long, List<AppointmentItem>> itemsByAppointment = appointmentItemRepository.findByAppointmentIdIn(
+                        transactions.stream().filter(t -> t.getAppointment() != null)
+                                .map(t -> t.getAppointment().getId()).toList())
+                .stream()
+                .collect(Collectors.groupingBy(item -> item.getAppointment().getId()));
+
+        List<PaidOrder> orders = new ArrayList<>();
+        for (Transaction t : transactions) {
+            List<AppointmentItem> retailItems = t.getAppointment() == null ? List.of()
+                    : itemsByAppointment.getOrDefault(t.getAppointment().getId(), List.of()).stream()
+                            .filter(i -> i.getRetailProductId() != null).toList();
+            orders.add(new PaidOrder("預約結帳",
+                    t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—",
+                    t.getPaymentTime(), t.getPaymentMethod(), t.getFinalAmount(), t.getHandledBy(),
+                    retailItems.stream().mapToInt(AppointmentItem::getPrice).sum(),
+                    estimatedCost(retailItems.stream().map(AppointmentItem::getRetailProductId).toList(), retailUnitCosts)));
+        }
+        for (WalkInOrder w : walkInOrderRepository.findAll()) {
+            if (!w.isPaid() || w.getPaymentTime() == null) continue;
+            List<WalkInOrderItem> retailItems = w.getItems().stream()
+                    .filter(i -> i.getRetailProductId() != null).toList();
+            orders.add(new PaidOrder("現場開單", "現場單#" + w.getId(), w.getPaymentTime(), w.getPaymentMethod(),
+                    w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount(), w.getCreatedBy(),
+                    retailItems.stream().mapToInt(WalkInOrderItem::getPrice).sum(),
+                    estimatedCost(retailItems.stream().map(WalkInOrderItem::getRetailProductId).toList(), retailUnitCosts)));
+        }
+        return orders;
+    }
+
+    private Map<Long, Integer> retailUnitCosts() {
+        Map<Long, Integer> costs = new HashMap<>();
+        retailProductRepository.findAll().forEach(p -> costs.put(p.getId(), p.getUnitCost()));
+        return costs;
+    }
+
+    private static int estimatedCost(List<Long> retailProductIds, Map<Long, Integer> unitCosts) {
+        return retailProductIds.stream().mapToInt(id -> unitCosts.getOrDefault(id, 0)).sum();
+    }
+
+    private static int sumSince(List<PaidOrder> orders, LocalDateTime from, ToIntFunction<PaidOrder> value) {
+        return orders.stream().filter(o -> !o.paidAt().isBefore(from)).mapToInt(value).sum();
+    }
+
+    private static int topUpsSince(List<TopUpRequest> topUps, LocalDateTime from) {
+        return topUps.stream()
+                .filter(t -> t.getReviewedAt() != null && !t.getReviewedAt().isBefore(from))
+                .mapToInt(TopUpRequest::getAmount)
+                .sum();
     }
 
     // ── 店家匯款帳號資訊（依用途分開：結帳收款 / 儲值金收款大額專用）────
