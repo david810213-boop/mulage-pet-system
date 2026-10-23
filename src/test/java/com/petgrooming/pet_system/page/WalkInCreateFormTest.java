@@ -23,15 +23,20 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 現場開單表單（網頁版、手機版）：平行陣列（項目代碼／經手人／第二經手人、零售商品／數量）解析成開單內容。
+ * 現場開單表單（網頁版、手機版）：平行陣列（項目代碼／經手人／第二經手人、零售商品／數量）解析成開單內容；
+ * 手機版今日頁列出進行中的現場單。
  */
 class WalkInCreateFormTest extends IntegrationTestBase {
 
@@ -112,6 +117,34 @@ class WalkInCreateFormTest extends IntegrationTestBase {
                         .param("backQuery", "guest=1"))
                 .andExpect(redirectedUrl("/m/walk-in/new?guest=1"))
                 .andExpect(flash().attribute("toastError", "請至少選一個服務項目或零售商品"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mobileTodayPageListsTheOpenWalkInOrder() throws Exception {
+        User staff = testData.staff();
+        String note = note();
+        mvc.perform(as(staff, post("/m/walk-in/create"))
+                .param("petName", "今日頁毛孩").param("note", note)
+                .param("itemCodes", groomingItem(500).getItemCode()));
+        Long orderId = orderWithNote(note).getId();
+
+        var model = mvc.perform(as(staff, get("/m/today")))
+                .andExpect(status().isOk())
+                .andReturn().getModelAndView().getModel();
+
+        var todayCards = (List<?>) model.get("todayCards");
+        assertThat((Integer) model.get("nowIndex")).isBetween(0, todayCards.size());
+        assertThat((List<Map<String, Object>>) model.get("openWalkIns")).hasSizeLessThanOrEqualTo(8);
+        if (((List<Map<String, Object>>) model.get("openWalkIns")).stream().anyMatch(m -> orderId.equals(m.get("id")))) {
+            assertThat((List<Map<String, Object>>) model.get("openWalkIns"))
+                    .filteredOn(m -> orderId.equals(m.get("id")))
+                    .singleElement()
+                    .satisfies(m -> {
+                        assertThat(m.get("title")).isEqualTo("今日頁毛孩");
+                        assertThat(m.get("sub")).isEqualTo("非會員，現場單 #" + orderId);
+                    });
+        }
     }
 
     private WalkInOrderResponse orderWithNote(String note) {
