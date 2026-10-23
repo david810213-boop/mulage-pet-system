@@ -29,7 +29,8 @@ public class PetDiscountStatusService {
      * @param referenceDate 計算距上次洗澡天數的基準日（需求，2026-09-06）：應該用顧客實際選的預約日期，
      *                      不是永遠用今天——例如選了好幾個月後的日期，到那天早就超過 90 天，不該顯示符合資格
      */
-    @Transactional(readOnly = true)
+    // 不能用 readOnly：顧客還沒有錢包時，walletService.getWallet() 會順便建立一個
+    @Transactional
     public PetDiscountStatusResponse statusFor(Long petId, String username, LocalDate referenceDate) {
         petService.assertOwnership(petId, username);
         var pet = petService.getPetEntity(petId);
