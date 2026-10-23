@@ -2,7 +2,6 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
-import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
@@ -13,6 +12,7 @@ import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.AppointmentListService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService;
@@ -46,6 +46,7 @@ import java.util.List;
 public class AppointmentMvcController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentListService appointmentListService;
     private final GroomingService groomingItemService;
     private final UserService userService;
     private final PetService petService;
@@ -71,54 +72,18 @@ public class AppointmentMvcController {
 
         model.addAttribute("user", user);
 
+        var filter = new AppointmentListService.Filter(dateFrom, dateTo, status, paidStatus, keyword);
         if (user.isStaffOrAdmin()) {
-            // 需求 3 / 7：店家後台看完整資訊（含內部備注、確認狀態）
-            List<AppointmentAdminResponse> allAdmin =
-                    appointmentService.getAllForAdmin();
-
-            // 頂部統計卡片：一律以「今天」為基準計算，不受篩選條件影響
             LocalDate today = LocalDate.now();
-            long todayCount = allAdmin.stream()
-                    .filter(a -> !a.isCancelled() && a.getDate().isEqual(today))
-                    .count();
-            long completedCount = allAdmin.stream()
-                    .filter(a -> !a.isCancelled() && a.getDate().isEqual(today)
-                            && a.getStatus().name().equals("COMPLETED"))
-                    .count();
-            int todayRevenue = allAdmin.stream()
-                    .filter(a -> !a.isCancelled() && a.getDate().isEqual(today) && a.isPaid())
-                    .mapToInt(AppointmentAdminResponse::getTotalAmount)
-                    .sum();
-            long pendingCount = allAdmin.stream()
-                    .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
-                    .count();
-            model.addAttribute("todayCount", todayCount);
-            model.addAttribute("completedCount", completedCount);
-            model.addAttribute("todayRevenue", todayRevenue);
-            model.addAttribute("pendingCount", pendingCount);
+            var list = appointmentListService.forStaff(filter, today);
+            model.addAttribute("todayCount", list.summary().todayCount());
+            model.addAttribute("completedCount", list.summary().completedCount());
+            model.addAttribute("todayRevenue", list.summary().todayRevenue());
+            model.addAttribute("pendingCount", list.summary().pendingCount());
             model.addAttribute("today", today);
-
-            List<AppointmentAdminResponse> filteredAdmin = allAdmin.stream()
-                    .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
-                    .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
-                    .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
-                    .filter(a -> paidStatus == null || paidStatus.isBlank()
-                            || (paidStatus.equals("PAID") == a.isPaid()))
-                    .filter(a -> keyword == null || keyword.isBlank() || matchesKeywordAdmin(a, keyword))
-                    .toList();
-            model.addAttribute("appointments", filteredAdmin);
+            model.addAttribute("appointments", list.appointments());
         } else {
-            List<AppointmentResponse> all =
-                    appointmentService.getMyAppointments(user.getUsername());
-            List<AppointmentResponse> filtered = all.stream()
-                    .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
-                    .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
-                    .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
-                    .filter(a -> paidStatus == null || paidStatus.isBlank()
-                            || (paidStatus.equals("PAID") == a.isPaid()))
-                    .filter(a -> keyword == null || keyword.isBlank() || matchesKeyword(a, keyword))
-                    .toList();
-            model.addAttribute("appointments", filtered);
+            model.addAttribute("appointments", appointmentListService.forCustomer(user.getUsername(), filter));
         }
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
@@ -129,22 +94,6 @@ public class AppointmentMvcController {
     }
 
     // 關鍵字比對：預約編號（AP001 或純數字）、飼主姓名、寵物名稱
-    private boolean matchesKeyword(AppointmentResponse a, String keyword) {
-        String kw = keyword.trim().toLowerCase();
-        return a.getAppointmentCode().toLowerCase().contains(kw)
-                || String.valueOf(a.getId()).equals(kw)
-                || a.getOwnerName().toLowerCase().contains(kw)
-                || a.getPetName().toLowerCase().contains(kw);
-    }
-
-    private boolean matchesKeywordAdmin(AppointmentAdminResponse a, String keyword) {
-        String kw = keyword.trim().toLowerCase();
-        return a.getAppointmentCode().toLowerCase().contains(kw)
-                || String.valueOf(a.getId()).equals(kw)
-                || a.getOwnerName().toLowerCase().contains(kw)
-                || a.getPetName().toLowerCase().contains(kw);
-    }
-
     // ── POST /appointments/{id}/confirm ────────────────────────────────────
     // 需求 3：店家確認預約並敲定最後時間
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

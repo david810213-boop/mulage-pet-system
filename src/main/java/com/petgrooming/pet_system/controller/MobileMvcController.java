@@ -18,6 +18,7 @@ import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.model.AppointmentItem;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.AppointmentListService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileViewHelper;
@@ -77,6 +78,7 @@ public class MobileMvcController {
     private static final long VIEW_MODE_MAX_AGE = 60L * 60 * 24 * 365;
 
     private final AppointmentService appointmentService;
+    private final AppointmentListService appointmentListService;
     private final UserService userService;
     private final TopUpService topUpService;
     private final RetailProductService retailProductService;
@@ -207,46 +209,24 @@ public class MobileMvcController {
         }
 
         LocalDate today = LocalDate.now();
-        List<AppointmentAdminResponse> all = appointmentService.getAllForAdmin();
-        Comparator<AppointmentAdminResponse> asc = Comparator.comparing(AppointmentAdminResponse::getDate)
-                .thenComparing(AppointmentAdminResponse::getStartTime);
+        String keyword = q == null ? "" : q.trim();
+        var list = appointmentListService.forMobile(f, date, keyword, today);
 
-        String keyword = q == null ? "" : q.trim().toLowerCase();
-        List<AppointmentAdminResponse> picked;
-        if (!keyword.isEmpty()) {
-            picked = all.stream()
-                    .filter(a -> matchesKeyword(a, keyword))
-                    .sorted(asc.reversed())
-                    .limit(100)
-                    .toList();
-        } else if (date != null) {
-            picked = all.stream()
-                    .filter(a -> a.getDate().isEqual(date))
-                    .sorted(asc)
-                    .toList();
-        } else {
-            picked = switch (f) {
-                case "pending" -> all.stream()
-                        .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
-                        .filter(a -> !a.getDate().isBefore(today))
-                        .sorted(asc).toList();
-                case "serving" -> all.stream()
-                        .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.IN_PROGRESS)
-                        .sorted(asc).toList();
-                case "past" -> all.stream()
-                        .filter(a -> !a.isCancelled() && a.getDate().isBefore(today)
-                                && !a.getDate().isBefore(today.minusDays(60)))
-                        .sorted(asc.reversed()).limit(150).toList();
-                case "cancelled" -> all.stream()
-                        .filter(AppointmentAdminResponse::isCancelled)
-                        .sorted(asc.reversed()).limit(50).toList();
-                default -> all.stream()
-                        .filter(a -> !a.isCancelled() && !a.getDate().isBefore(today))
-                        .sorted(asc).limit(150).toList();
-            };
-        }
+        model.addAttribute("user", user);
+        model.addAttribute("groups", groupByDate(list.picked(), today));
+        model.addAttribute("total", list.picked().size());
+        model.addAttribute("days", dayStrip(list.dayCounts(), today, date));
+        model.addAttribute("f", date != null || !keyword.isEmpty() ? "" : f);
+        model.addAttribute("q", keyword);
+        model.addAttribute("selectedDate", date);
+        model.addAttribute("pendingCount", list.pendingCount());
+        model.addAttribute("servingCount", list.servingCount());
+        model.addAttribute("activeTab", "appointments");
+        return "m/appointments";
+    }
 
-        // 依日期分組，保留排序
+    /** 依日期分組（保留排序），今天、明天另外標註。 */
+    private Map<String, List<MobileAppointmentCard>> groupByDate(List<AppointmentAdminResponse> picked, LocalDate today) {
         Map<String, List<MobileAppointmentCard>> groups = new LinkedHashMap<>();
         for (AppointmentAdminResponse a : picked) {
             String key = a.getDate().isEqual(today) ? "今天 " + dateLabel(a.getDate())
@@ -254,35 +234,22 @@ public class MobileMvcController {
                     : dateLabel(a.getDate());
             groups.computeIfAbsent(key, k -> new ArrayList<>()).add(toCard(a, today));
         }
+        return groups;
+    }
 
-        // 日期列：今天起 7 天，每天的預約數
+    /** 日期列：今天起 7 天，每天的預約數。 */
+    private List<Map<String, Object>> dayStrip(Map<LocalDate, Long> dayCounts, LocalDate today, LocalDate selected) {
         List<Map<String, Object>> days = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
-            LocalDate d = today.plusDays(i);
-            long count = all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(d)).count();
+        dayCounts.forEach((d, count) -> {
             Map<String, Object> day = new LinkedHashMap<>();
             day.put("iso", d.toString());
-            day.put("week", i == 0 ? "今天" : weekdayLabel(d.getDayOfWeek()).substring(1));
+            day.put("week", d.equals(today) ? "今天" : weekdayLabel(d.getDayOfWeek()).substring(1));
             day.put("day", d.getDayOfMonth());
             day.put("count", count);
-            day.put("on", d.equals(date));
+            day.put("on", d.equals(selected));
             days.add(day);
-        }
-
-        model.addAttribute("user", user);
-        model.addAttribute("groups", groups);
-        model.addAttribute("total", picked.size());
-        model.addAttribute("days", days);
-        model.addAttribute("f", date != null || !keyword.isEmpty() ? "" : f);
-        model.addAttribute("q", q == null ? "" : q.trim());
-        model.addAttribute("selectedDate", date);
-        model.addAttribute("pendingCount", all.stream()
-                .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
-                .filter(a -> !a.getDate().isBefore(today)).count());
-        model.addAttribute("servingCount", all.stream()
-                .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.IN_PROGRESS).count());
-        model.addAttribute("activeTab", "appointments");
-        return "m/appointments";
+        });
+        return days;
     }
 
     // ── 預約詳情 ────────────────────────────────────────────────────────
@@ -728,13 +695,6 @@ public class MobileMvcController {
                 .filter(x -> x.getId().equals(id))
                 .findFirst()
                 .orElse(null);
-    }
-
-    private boolean matchesKeyword(AppointmentAdminResponse a, String kw) {
-        return (a.getAppointmentCode() != null && a.getAppointmentCode().toLowerCase().contains(kw))
-                || String.valueOf(a.getId()).equals(kw)
-                || (a.getOwnerName() != null && a.getOwnerName().toLowerCase().contains(kw))
-                || (a.getPetName() != null && a.getPetName().toLowerCase().contains(kw));
     }
 
     // 流程階段，判斷順序跟網頁版預約列表的按鈕顯示條件一致

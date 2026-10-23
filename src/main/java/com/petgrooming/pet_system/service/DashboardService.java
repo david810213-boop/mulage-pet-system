@@ -91,8 +91,9 @@ public class DashboardService {
 
     /**
      * 今日營收：預約結帳與現場單當日已付款的實收金額加總，以付款時間為準（與財務報表一致）。
+     * 首頁與預約列表的「今日營收」都用這個數字。
      */
-    private int todayRevenue(LocalDate today) {
+    public int todayRevenue(LocalDate today) {
         int appointmentRevenue = paymentService.findPaidTransactions().stream()
                 .filter(t -> t.getPaymentTime() != null && t.getPaymentTime().toLocalDate().isEqual(today))
                 .mapToInt(t -> t.getFinalAmount())
