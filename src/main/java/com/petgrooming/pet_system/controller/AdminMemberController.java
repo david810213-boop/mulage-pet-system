@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
+import com.petgrooming.pet_system.dto.MemberMergeRequest;
 import com.petgrooming.pet_system.dto.MemberNoteRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.PetSearchResult;
@@ -11,6 +12,7 @@ import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -127,9 +129,9 @@ public class AdminMemberController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @RequireCsrf
     @PostMapping("/merge")
-    public ResponseEntity<?> merge(@RequestBody Map<String, String> req) {
-        String importedUsername = req.get("importedUsername");
-        String targetUsername = req.get("targetUsername");
+    public ResponseEntity<?> merge(@Valid @RequestBody MemberMergeRequest req) {
+        String importedUsername = req.importedUsername();
+        String targetUsername = req.targetUsername();
         memberImportService.manualMerge(importedUsername, targetUsername);
         return ResponseEntity.ok(Map.of(
                 "message", "已將 " + importedUsername + " 的資料合併到 " + targetUsername));
