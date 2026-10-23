@@ -58,7 +58,7 @@ class PetDiscountStatusApiTest extends IntegrationTestBase {
         User owner = testData.customer();
         PetResponse dog = testData.dog(owner);
 
-        status(owner, dog, null)
+        discountStatus(owner, dog, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.petType").value("DOG"))
                 .andExpect(jsonPath("$.firstVisitEligible").value(true))
@@ -75,7 +75,7 @@ class PetDiscountStatusApiTest extends IntegrationTestBase {
         User owner = testData.customer();
         PetResponse cat = testData.cat(owner);
 
-        status(owner, cat, null)
+        discountStatus(owner, cat, null)
                 .andExpect(jsonPath("$.firstVisitEligible").value(true))
                 .andExpect(jsonPath("$.specialDiscountRate").value(CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE))
                 .andExpect(jsonPath("$.specialDiscountCategories", contains("BATH_CAT_S", "BATH_CAT_L")));
@@ -87,21 +87,21 @@ class PetDiscountStatusApiTest extends IntegrationTestBase {
         PetResponse cat = testData.cat(owner);
         paidCatBath(owner, cat.getName(), LocalDate.now().minusDays(30));
 
-        status(owner, cat, null)
+        discountStatus(owner, cat, null)
                 .andExpect(jsonPath("$.firstVisitEligible").value(false))
                 .andExpect(jsonPath("$.rewashEligible").value(true))
                 .andExpect(jsonPath("$.lastBathDaysAgo").value(30))
                 .andExpect(jsonPath("$.specialDiscountLabel").value("定期養護禮遇"))
                 .andExpect(jsonPath("$.specialDiscountRate").value(CatRewashDiscountService.REWASH_DISCOUNT_RATE));
 
-        status(owner, cat, LocalDate.now().plusDays(100).toString())
+        discountStatus(owner, cat, LocalDate.now().plusDays(100).toString())
                 .andExpect(jsonPath("$.rewashEligible").value(false))
                 .andExpect(jsonPath("$.lastBathDaysAgo").value(130))
                 .andExpect(jsonPath("$.specialDiscountLabel").value(nullValue()))
                 .andExpect(jsonPath("$.specialDiscountRate").value(nullValue()))
                 .andExpect(jsonPath("$.specialDiscountCategories").isEmpty());
 
-        status(owner, cat, "不是日期") // 格式錯誤就退回用今天
+        discountStatus(owner, cat, "不是日期") // 格式錯誤就退回用今天
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lastBathDaysAgo").value(30));
     }
@@ -110,10 +110,10 @@ class PetDiscountStatusApiTest extends IntegrationTestBase {
     void otherCustomersPetIsForbidden() throws Exception {
         PetResponse dog = testData.dog(testData.customer());
 
-        status(testData.customer(), dog, null).andExpect(status().isForbidden());
+        discountStatus(testData.customer(), dog, null).andExpect(status().isForbidden());
     }
 
-    private ResultActions status(User user, PetResponse pet, String asOfDate) throws Exception {
+    private ResultActions discountStatus(User user, PetResponse pet, String asOfDate) throws Exception {
         var request = get("/api/pets/" + pet.getId() + "/discount-status")
                 .header("Authorization", "Bearer " + jwtUtils.generateToken(user.getUsername(), user.getRole().name()));
         if (asOfDate != null) request.param("asOfDate", asOfDate);
