@@ -12,7 +12,6 @@ import com.petgrooming.pet_system.model.WalletTransaction;
 import com.petgrooming.pet_system.repository.WalletRepository;
 import com.petgrooming.pet_system.repository.WalletTransactionRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -131,15 +130,20 @@ public class WalletService {
 
     /**
      * 取得錢包並加悲觀寫鎖，鎖持有到本交易 commit，讓同一錢包的儲值／扣款／退款依序執行。
+     * 錢包可能已在本交易被讀取過（例如結帳時先讀取會員等級計算折扣）。
      *
-     * 必須用 refresh 搭配鎖定模式重新讀取：錢包若已在同一交易內被讀取過，
-     * 一般的鎖定查詢雖然會取得列鎖，Hibernate 卻會回傳快取中的舊餘額；
-     * 而不帶鎖的重新讀取在 MySQL 可重複讀隔離層級下只會讀到交易開始時的快照。
+     * 做法：先 flush 本交易尚未寫入的修改、把快取中的舊實體移除，再以 SELECT ... FOR UPDATE 讀取。
+     * 鎖定讀取永遠讀最新已提交資料（含本交易自己的寫入），也不會拿到快取中的舊值。
+     * 不可改用 refresh：實體已持有鎖時 Hibernate 會改發一般查詢，在 MySQL 可重複讀隔離層級下
+     * 只讀到交易開始時的快照；也不可只用鎖定查詢：實體已在快取中時 Hibernate 會回傳舊值。
      */
     private Wallet lockWallet(String username) {
-        Wallet wallet = getOrCreateWallet(username);
-        entityManager.refresh(wallet, LockModeType.PESSIMISTIC_WRITE);
-        return wallet;
+        Wallet cached = getOrCreateWallet(username);
+        Long userId = cached.getUser().getId();
+        entityManager.flush();
+        entityManager.detach(cached);
+        return walletRepository.lockByUserId(userId)
+                .orElseThrow(() -> new WalletException("找不到錢包"));
     }
 
     // ── 取得或建立錢包（加 @Transactional 防止並發重複建立）──────────────

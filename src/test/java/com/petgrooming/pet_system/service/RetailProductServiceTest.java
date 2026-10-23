@@ -67,6 +67,19 @@ class RetailProductServiceTest extends IntegrationTestBase {
         assertThat(stockOf(product)).isZero();
     }
 
+    /** 同一交易內對同一商品先後扣兩次庫存（同一張單買兩件），兩次都必須計入。 */
+    @Test
+    void twoDeductionsInOneTransactionBothCount() {
+        RetailProduct product = newProduct(5);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            retailProductService.deductStock(product.getId(), 1);
+            retailProductService.deductStock(product.getId(), 2);
+        });
+
+        assertThat(stockOf(product)).isEqualTo(2);
+    }
+
     private RetailProduct newProduct(int stock) {
         return retailProductService.create("測試商品-" + UUID.randomUUID().toString().substring(0, 8),
                 100, stock, null, 50);

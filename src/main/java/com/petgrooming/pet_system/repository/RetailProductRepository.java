@@ -1,7 +1,11 @@
 package com.petgrooming.pet_system.repository;
 
 import com.petgrooming.pet_system.model.RetailProduct;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,4 +27,9 @@ public interface RetailProductRepository extends JpaRepository<RetailProduct, Lo
 
     // 需求 7-2 之後會用來查低庫存商品，先建起來
     List<RetailProduct> findByIsDeletedFalseAndStockQuantityLessThan(int threshold);
+
+    // 加鎖讀取（SELECT ... FOR UPDATE）。呼叫端須先移除快取中的同一實體，見 RetailProductService.lockProduct
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from RetailProduct p where p.id = :id")
+    Optional<RetailProduct> lockById(@Param("id") Long id);
 }

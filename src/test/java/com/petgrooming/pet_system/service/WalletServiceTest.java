@@ -11,6 +11,7 @@ import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,6 +29,9 @@ class WalletServiceTest extends IntegrationTestBase {
 
     @Autowired
     private TestData testData;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     @Test
     void depositBelowMinimumIsRejected() {
@@ -115,6 +119,21 @@ class WalletServiceTest extends IntegrationTestBase {
         assertThat(result.failures()).isEmpty();
         // 5 筆儲值各 5000 ＋ 村民方案贈點 200，5 筆扣款各 1000
         assertThat(balanceOf(customer)).isEqualTo(30000 + 5 * 5200 - 5 * 1000);
+    }
+
+    /** 同一交易內對同一錢包先後加鎖兩次（例如儲值後立刻扣款），兩次的異動都必須保留。 */
+    @Test
+    void depositThenDeductInOneTransactionKeepsBothChanges() {
+        User customer = testData.customer();
+        walletService.deposit(customer.getUsername(), deposit(8000));
+
+        transactionTemplate.executeWithoutResult(status -> {
+            walletService.deposit(customer.getUsername(), deposit(8000));
+            walletService.deduct(customer.getUsername(), 3000, null);
+            walletService.deduct(customer.getUsername(), 1000, null);
+        });
+
+        assertThat(balanceOf(customer)).isEqualTo(8000 + 8000 - 3000 - 1000);
     }
 
     private static DepositRequest deposit(int amount) {

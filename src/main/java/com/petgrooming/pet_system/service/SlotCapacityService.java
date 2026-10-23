@@ -4,7 +4,6 @@ import com.petgrooming.pet_system.exception.AppointmentException;
 import com.petgrooming.pet_system.model.SlotCapacity;
 import com.petgrooming.pet_system.repository.SlotCapacityRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -93,16 +92,17 @@ public class SlotCapacityService {
      */
     /**
      * 取得時段計數列並加悲觀寫鎖，鎖持有到本交易 commit，讓同時段的預約依序扣名額。
+     * 時段列可能是剛在獨立交易（ensureSlot）建立的，也可能已在本交易被讀取過（檢查限定物種）。
      *
-     * 必須用 refresh 搭配鎖定模式重新讀取：預約流程會在同一交易內先讀取時段（檢查限定物種），
-     * 一般的鎖定查詢雖然會取得列鎖，Hibernate 卻會回傳快取中的舊名額；
-     * 而不帶鎖的重新讀取在 MySQL 可重複讀隔離層級下只會讀到交易開始時的快照。
+     * 做法：先 flush 本交易尚未寫入的修改、把快取中的舊實體移除，再以 SELECT ... FOR UPDATE 讀取。
+     * 鎖定讀取永遠讀最新已提交資料（含本交易自己的寫入），也不會拿到快取中的舊值。
+     * 不可改用 refresh：實體已持有鎖時 Hibernate 會改發一般查詢，在 MySQL 可重複讀隔離層級下
+     * 只讀到交易開始時的快照；也不可只用鎖定查詢：實體已在快取中時 Hibernate 會回傳舊值。
      */
     private Optional<SlotCapacity> lockSlot(LocalDate date, LocalTime time) {
-        return slotRepo.findBySlotDateAndSlotTime(date, time).map(slot -> {
-            entityManager.refresh(slot, LockModeType.PESSIMISTIC_WRITE);
-            return slot;
-        });
+        entityManager.flush();
+        slotRepo.findBySlotDateAndSlotTime(date, time).ifPresent(entityManager::detach);
+        return slotRepo.lockSlot(date, time);
     }
 
     public int bookedCount(LocalDate date, LocalTime time) {

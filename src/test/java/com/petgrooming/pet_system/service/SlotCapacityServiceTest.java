@@ -89,4 +89,20 @@ class SlotCapacityServiceTest extends IntegrationTestBase {
         assertThat(result.succeeded()).isEqualTo(capacity);
         assertThat(slotCapacityService.bookedCount(date, TEN_AM)).isEqualTo(capacity);
     }
+
+    /** 同一交易內對同一時段先後扣兩個名額（例如一次預約兩隻毛孩），兩次都必須計入。 */
+    @Test
+    void twoReservationsInOneTransactionBothCount() {
+        LocalDate date = TestData.uniqueFutureDate();
+        slotCapacityService.setCapacity(date, TEN_AM, 2);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            slotCapacityService.reserve(date, TEN_AM);
+            slotCapacityService.reserve(date, TEN_AM);
+        });
+
+        assertThat(slotCapacityService.bookedCount(date, TEN_AM)).isEqualTo(2);
+        assertThatThrownBy(() -> slotCapacityService.reserve(date, TEN_AM))
+                .isInstanceOf(AppointmentException.class);
+    }
 }
