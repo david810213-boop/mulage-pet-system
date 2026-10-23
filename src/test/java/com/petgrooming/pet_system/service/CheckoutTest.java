@@ -14,6 +14,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.WalletRepository;
+import com.petgrooming.pet_system.support.Concurrently;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
 import org.junit.jupiter.api.Test;
@@ -169,6 +170,21 @@ class CheckoutTest extends IntegrationTestBase {
         assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().isPaid()).isTrue();
         assertThatThrownBy(() -> paymentService.confirmWireTransferPayment(appointment.getId(), staff.getUsername()))
                 .isInstanceOf(PaymentException.class);
+    }
+
+    /** 結帳按鈕連點、或兩台裝置同時結帳同一筆預約：只能扣款一次。 */
+    @Test
+    void concurrentWalletCheckoutsChargeOnlyOnce() throws Exception {
+        User staff = testData.staff();
+        User customer = testData.customer();
+        walletService.deposit(customer.getUsername(), deposit(15000));
+        Appointment appointment = readyForCheckout(customer, "CAT", item(1000, PerformanceCategory.OTHER));
+
+        Concurrently.Result result = Concurrently.run(5,
+                () -> paymentService.checkout(appointment.getId(), pay(PaymentMethod.WALLET), staff.getUsername()));
+
+        assertThat(result.succeeded()).isEqualTo(1);
+        assertThat(balanceOf(customer)).isEqualTo(15000 - 900);
     }
 
     private Appointment readyForCheckout(User customer, String petType, GroomingItem item) {
