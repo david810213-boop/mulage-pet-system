@@ -17,6 +17,7 @@ import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.AppointmentException;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.AppointmentItem;
 import com.petgrooming.pet_system.model.CompanySignature;
@@ -118,7 +119,7 @@ public class AppointmentService {
 
         // 1a. 確認使用者存在
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
 
         // 1b. 確認 petId 對應的寵物存在
         Pet pet = petRepository.findById(req.getPetId())
@@ -331,16 +332,16 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse cancel(Long appointmentId, CancelAppointmentRequest req, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
 
         boolean isOwner = appointment.getUser().getId().equals(user.getId());
         boolean isStaffOrAdmin = user.isStaffOrAdmin();
 
         if (!isOwner && !isStaffOrAdmin) {
-            throw new AppointmentException("權限不足：只能取消自己的預約");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：只能取消自己的預約");
         }
 
         if (appointment.isCancelled()) {
@@ -427,10 +428,10 @@ public class AppointmentService {
     // 初次＝這隻毛孩沒有已付款紀錄；另外回傳是否已經有一筆未完成的初次預約。
     public Map<String, Object> firstVisitStatus(String username, Long petId) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         Pet pet = petRepository.findById(petId)
                 .filter(p -> p.getOwner() != null && p.getOwner().getId().equals(user.getId()))
-                .orElseThrow(() -> new AppointmentException("找不到寵物"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到寵物"));
         boolean firstVisit = !petConsumptionHistoryService.hasPriorPaidService(user.getId(), pet.getName(), null);
         boolean pending = firstVisit && appointmentRepository
                 .findByUserIdAndPetNameAndFirstVisitAssessmentTrueAndPaidFalse(user.getId(), pet.getName())
@@ -494,13 +495,13 @@ public class AppointmentService {
             Long appointmentId, String internalNote, String memberNote, String username) {
 
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：僅店家 / 員工可編輯備注");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可編輯備注");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (internalNote != null)
             appointment.setInternalNote(internalNote);
@@ -555,13 +556,13 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse confirm(Long appointmentId, LocalDateTime confirmedTime, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：僅店家 / 員工可確認預約");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可確認預約");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (appointment.isCancelled()) {
             throw new AppointmentException("此預約已取消，無法確認");
@@ -671,13 +672,13 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse startProgress(Long appointmentId, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：僅店家 / 員工可操作");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (appointment.isCancelled()) {
             throw new AppointmentException("此預約已取消，無法開始服務");
@@ -710,13 +711,13 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse endService(Long appointmentId, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：僅店家 / 員工可操作");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (appointment.getStatus() != AppointmentStatus.IN_PROGRESS) {
             throw new AppointmentException("僅「進行中」的預約可結束服務");
@@ -776,13 +777,13 @@ public class AppointmentService {
     public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes,
             List<Long> operatorStaffIds, List<Long> operatorStaffIds2, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：僅店家 / 員工可操作");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (appointment.isCancelled()) {
             throw new AppointmentException("此預約已取消，無法開單");
@@ -803,7 +804,7 @@ public class AppointmentService {
             Long operatorId = operatorStaffIds != null && idx < operatorStaffIds.size() ? operatorStaffIds.get(idx) : null;
             Long operatorId2 = operatorStaffIds2 != null && idx < operatorStaffIds2.size() ? operatorStaffIds2.get(idx) : null;
             GroomingItem gi = groomingItemRepository.findByItemCode(code)
-                    .orElseThrow(() -> new AppointmentException("找不到項目代碼：" + code));
+                    .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到項目代碼：" + code));
 
             // 需求（追加）：僅限既有客戶的項目，這隻寵物完全沒有消費紀錄的話不能選這個項目。
             if (gi.isRequiresExistingCustomer()
@@ -853,7 +854,7 @@ public class AppointmentService {
         if (quantity <= 0) throw new AppointmentException("加購數量必須大於 0");
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         if (appointment.isPaid()) {
             throw new AppointmentException("此預約已結帳，無法再加購商品");
         }
@@ -883,7 +884,7 @@ public class AppointmentService {
     // ── 需求（追加）：這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
     public boolean isExistingCustomerPet(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         return petConsumptionHistoryService.hasPriorPaidService(
                 appointment.getUser().getId(), appointment.getPetName(), appointmentId);
     }
@@ -891,7 +892,7 @@ public class AppointmentService {
     // 需求（追加）：這筆預約的寵物種類（供畫面過濾「適用物種」項目用）
     public String getPetTypeForAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"))
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"))
                 .getPetType();
     }
 
@@ -900,7 +901,7 @@ public class AppointmentService {
     // 查不到對應寵物（理論上不該發生，預約一定綁著某隻已建檔的寵物）就回傳 null。
     public PetResponse getPetForAppointment(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         var pet = petRepository.findByOwnerUsernameAndName(
                 appointment.getUser().getUsername(), appointment.getPetName()).orElse(null);
         if (pet == null) return null;
@@ -935,13 +936,13 @@ public class AppointmentService {
     public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice,
             Long operatorStaffId, Long operatorStaffId2, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         if (appointment.isPaid()) {
             throw new AppointmentException("此預約已結帳，無法再編輯項目，請改用退款重開");
         }
 
         GroomingItem gi = groomingItemRepository.findById(groomingItemId)
-                .orElseThrow(() -> new AppointmentException("找不到服務項目"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到服務項目"));
 
         // 需求（追加）：僅限既有客戶的項目（例如貓咪基礎保養），這隻寵物完全沒有
         // 消費紀錄的話不能加入這個項目。
@@ -1006,7 +1007,7 @@ public class AppointmentService {
             PerformanceCategory category, Long operatorStaffId,
             Long operatorStaffId2, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         if (appointment.isPaid()) {
             throw new AppointmentException("此預約已結帳，無法再編輯項目，請改用退款重開");
         }
@@ -1064,13 +1065,13 @@ public class AppointmentService {
     @Transactional
     public void removeItem(Long appointmentId, Long itemId, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         if (appointment.isPaid()) {
             throw new AppointmentException("此預約已結帳，無法再編輯項目，請改用退款重開");
         }
 
         AppointmentItem item = appointmentItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppointmentException("找不到項目 #" + itemId));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到項目 #" + itemId));
         if (!item.getAppointment().getId().equals(appointmentId)) {
             throw new AppointmentException("項目不屬於這筆預約");
         }
@@ -1103,7 +1104,7 @@ public class AppointmentService {
     @Transactional
     public void fillItemOperator(Long appointmentItemId, Long staffId, Long staffId2) {
         AppointmentItem item = appointmentItemRepository.findById(appointmentItemId)
-                .orElseThrow(() -> new AppointmentException("找不到項目 #" + appointmentItemId));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到項目 #" + appointmentItemId));
 
         if (item.getOperatorStaff() != null) {
             throw new AppointmentException("此項目已填寫經手人，無法重複填寫");
@@ -1132,7 +1133,7 @@ public class AppointmentService {
     private User findOperator(Long staffId) {
         if (staffId == null) return null;
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new AppointmentException("找不到員工 #" + staffId));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到員工 #" + staffId));
         if (!staff.isStaffOrAdmin()) {
             throw new AppointmentException("經手人必須是店內員工");
         }
@@ -1193,13 +1194,13 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse finalCheck(Long appointmentId, FinalCheckRequest req, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：僅店家 / 員工可操作");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (appointment.getStatus() != AppointmentStatus.IN_PROGRESS) {
             throw new AppointmentException("僅「進行中」的預約可進行核對");
@@ -1248,7 +1249,7 @@ public class AppointmentService {
             historyNote = petGroomingNoteRepository.save(historyNote);
             groomingNotePhotoService.attach(historyNote, photos);
         } else if (!photos.isEmpty()) {
-            throw new AppointmentException("找不到這隻毛孩的檔案，照片無法保存，請先移除照片再送出");
+            throw new AppointmentException(ErrorCode.NOT_FOUND, "找不到這隻毛孩的檔案，照片無法保存，請先移除照片再送出");
         }
 
         // 3. 該店員記入「接待送出」積分（沿用既有 CHECKOUT 積分類別）
@@ -1283,11 +1284,11 @@ public class AppointmentService {
     // 版本、簽署時間、甲方簽名、乙方簽名檔、影像使用同意，以及雙方基本資料。
     public Map<String, Object> getContractRecord(Long appointmentId, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         Appointment a = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         if (!a.getUser().getId().equals(user.getId()) && !user.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：只能查看自己的契約");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：只能查看自己的契約");
         }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("appointmentCode", "AP" + String.format("%03d", a.getId()));
@@ -1308,14 +1309,14 @@ public class AppointmentService {
             Long appointmentId, String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppointmentException("找不到使用者"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppointmentException("找不到該預約"));
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         boolean isOwner = appointment.getUser().getId().equals(user.getId());
         if (!isOwner && !user.isStaffOrAdmin()) {
-            throw new AppointmentException("權限不足：只能查看自己的預約明細");
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：只能查看自己的預約明細");
         }
 
         // 需求 8-1 修正：先查出這筆預約是否有交易紀錄、用什麼付款方式，

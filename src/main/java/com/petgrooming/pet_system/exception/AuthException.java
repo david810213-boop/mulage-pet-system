@@ -1,7 +1,5 @@
 package com.petgrooming.pet_system.exception;
 
-import org.springframework.http.HttpStatus;
-
 /**
  * 登入/身分驗證相關業務錯誤：LINE idToken 驗證、店員綁定 LINE、
  * 帳號密碼登入等。用在 LineBindService、AuthMvcController 相關邏輯。
@@ -11,10 +9,10 @@ import org.springframework.http.HttpStatus;
  */
 public class AuthException extends BusinessException {
     public AuthException(String message) {
-        super(message, HttpStatus.UNAUTHORIZED);
+        super(ErrorCode.UNAUTHORIZED, message);
     }
 
-    public AuthException(String message, HttpStatus status) {
-        super(message, status);
+    public AuthException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
     }
 }

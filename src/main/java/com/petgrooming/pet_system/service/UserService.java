@@ -8,13 +8,13 @@ import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.AuthException;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,9 +65,8 @@ public class UserService {
         if (user.getLockedUntil() != null) {
             if (user.getLockedUntil().isAfter(now)) {
                 long minutesLeft = ChronoUnit.MINUTES.between(now, user.getLockedUntil()) + 1;
-                throw new AuthException(
-                        "登入失敗次數過多，帳號已暫時鎖定，請約 " + minutesLeft + " 分鐘後再試",
-                        HttpStatus.TOO_MANY_REQUESTS);
+                throw new AuthException(ErrorCode.TOO_MANY_REQUESTS,
+                        "登入失敗次數過多，帳號已暫時鎖定，請約 " + minutesLeft + " 分鐘後再試");
             }
             // 鎖定時間已過，清空鎖定狀態，允許重新開始嘗試
             user.setLockedUntil(null);
@@ -98,7 +97,7 @@ public class UserService {
     // ── 2. 查 User entity（AuthMvcController 登入後建立 Session 用）
     public User getUserEntityByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
     }
 
     // ── 需求 8：店家後台備注會員特殊資訊（後台專用）─────────────────────────
@@ -133,13 +132,13 @@ public class UserService {
     public UserResponse getMe(String username) {
         return userRepository.findByUsername(username)
                 .map(UserResponse::from)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
     }
 
     // ── 4.5 會員編輯自己的基本資料（年齡／職業／居住區域／來源）──────────
     public UserResponse updateProfile(String username, UpdateProfileRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
 
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
@@ -153,8 +152,8 @@ public class UserService {
             userRepository.findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(newPhone, UserRole.CUSTOMER)
                     .filter(u -> !u.getId().equals(user.getId()))
                     .ifPresent(u -> {
-                        throw new MemberException("這支電話是本店的既有會員資料，請回到「新客報到」輸入電話直接帶入，"
-                                + "不需要重新填寫（店家代填請改用會員資料頁的手動綁定）", HttpStatus.CONFLICT);
+                        throw new MemberException(ErrorCode.CONFLICT, "這支電話是本店的既有會員資料，請回到「新客報到」輸入電話直接帶入，"
+                                + "不需要重新填寫（店家代填請改用會員資料頁的手動綁定）");
                     });
         }
         user.setPhone(req.getPhone().trim()); // 需求（追加）：電話改為必填，不再是「填了才更新」
@@ -276,7 +275,7 @@ public class UserService {
 
     public User getUserEntityById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + id));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + id));
     }
 
     // ── 8. LINE 登入：依 lineUserId 查找會員，找不到就自動建立（CUSTOMER）──
@@ -317,7 +316,7 @@ public class UserService {
     // ── 9. ADMIN 重設員工／管理員密碼（不需驗證舊密碼，僅 ADMIN 可操作）──────
     public void resetPassword(Long userId, ResetPasswordRequest req) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + userId));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + userId));
         if (user.isCustomer()) {
             // 顧客帳號走 LINE 登入，沒有密碼登入需求，不開放重設
             throw new MemberException("顧客帳號不支援密碼重設");
@@ -329,7 +328,7 @@ public class UserService {
     // ── 10. 員工／管理員自行修改密碼（需驗證舊密碼）─────────────────────
     public void changePassword(String username, ChangePasswordRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
 
         if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
             throw new MemberException("目前密碼不正確");
@@ -342,7 +341,7 @@ public class UserService {
     // 員工/管理員自己設定 4 位數 PIN（需先驗證密碼，避免旁人隨便亂設）
     public void setSwitchPin(String username, String currentPassword, String newPin) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new MemberException("目前密碼不正確");

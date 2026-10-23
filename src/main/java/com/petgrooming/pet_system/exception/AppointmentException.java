@@ -1,7 +1,5 @@
 package com.petgrooming.pet_system.exception;
 
-import org.springframework.http.HttpStatus;
-
 /**
  * 預約相關業務錯誤：建立/取消/確認預約、時段容量、營業時間、
  * 限定物種、公休日判斷等。用在 AppointmentService。
@@ -15,7 +13,7 @@ public class AppointmentException extends BusinessException {
         super(message);
     }
 
-    public AppointmentException(String message, HttpStatus status) {
-        super(message, status);
+    public AppointmentException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
     }
 }

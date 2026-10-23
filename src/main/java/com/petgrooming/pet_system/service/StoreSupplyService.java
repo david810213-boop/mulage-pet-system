@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.StoreSupply;
 import com.petgrooming.pet_system.model.SupplyUsageRecord;
@@ -35,7 +36,7 @@ public class StoreSupplyService {
 
     public StoreSupply getById(Long id) {
         return storeSupplyRepository.findById(id)
-                .orElseThrow(() -> new InventoryException("找不到店用洗劑 #" + id));
+                .orElseThrow(() -> new InventoryException(ErrorCode.NOT_FOUND, "找不到店用洗劑 #" + id));
     }
 
     @Transactional

@@ -64,6 +64,8 @@
 - **`str_replace` 編輯時，`old_str` 的範圍要包含完整的舊內容**（含上方緊鄰的 annotation/註解），不要只匹配部分內容——曾經因為範圍沒包含完整的 `@GetMapping` 註解，導致重複標註讓整個專案編譯失敗，且錯誤訊息會出現大量不相關的 `cannot find symbol` 假象（因為 Lombok 註解處理整個失敗），排查心法是先找有沒有一個具體的語法錯誤，優先修那一個
 - 涉及生僻 Unicode 裝飾符號的字串，一律先轉成 `\u` 逃逸序列，連解釋用的註解裡都不能出現「反斜線＋u」相連的文字
 - `fetch()` 呼叫一律預期後端可能回傳純文字錯誤，不要寫死用 `res.json()` 解析，先讀 `res.text()` 能解析成 JSON 才當 JSON 用
+- **API 錯誤一律丟業務例外，不要在 controller 自己組錯誤回應**：`throw new XxxException(ErrorCode.NOT_FOUND, "找不到…")`（不帶 ErrorCode 時預設 `BUSINESS_RULE`／400）。回應格式由 `GlobalApiExceptionHandler` 統一產生：`{ status, detail, code, message, errors? }`，前端讀 `message`、依 `code` 判斷。`BusinessException` 刻意繼承 `IllegalArgumentException`（網頁版 MVC controller 有上百處 `catch (IllegalArgumentException e)` 依賴它），不要改成 `RuntimeException`
+- **請求內容一律用 DTO（新寫的用 `record`）＋ Bean Validation 接收**，不要用 `@RequestBody Map`
 - 合併 Git 分支衝突時，如果雙方版本內容差異很大，一定要問清楚使用者要保留哪一版，不要自己選
 - **系統效能問題排查，先用瀏覽器 Performance API 實測 TTFB，再看 Railway 即時 log 找實際 SQL 執行模式，不要只憑猜測**
 - **文件更新時，新版本要是完全獨立、自我完整的內容，不要寫「詳見前版本」「內容不變」這種依賴舊版才看得懂的引用**

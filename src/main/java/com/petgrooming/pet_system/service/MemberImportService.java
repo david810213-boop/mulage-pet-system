@@ -11,6 +11,7 @@ import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
@@ -341,7 +342,7 @@ public class MemberImportService {
     @Transactional
     public User claimByPhone(User currentUser, String phone, String verification) {
         User imported = findClaimable(currentUser, phone)
-                .orElseThrow(() -> new MemberException("查無符合這支電話的既有會員資料"));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "查無符合這支電話的既有會員資料"));
         if (!verifyClaim(imported, verification)) {
             throw new MemberException(hasActivePets(imported)
                     ? "毛孩名字不符，請再確認一次（輸入任一隻登記的毛孩名字即可）"
@@ -445,12 +446,12 @@ public class MemberImportService {
     @Transactional
     public void manualMerge(String importedUsername, String targetUsername) {
         User imported = userRepository.findByUsername(importedUsername)
-                .orElseThrow(() -> new MemberException("找不到這個匯入帳號：" + importedUsername));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到這個匯入帳號：" + importedUsername));
         if (!imported.getUsername().startsWith("imported_")) {
             throw new MemberException("只能合併「既有會員資料匯入」建立的暫時帳號（帳號以 imported_ 開頭），這筆不是");
         }
         User target = userRepository.findByUsername(targetUsername)
-                .orElseThrow(() -> new MemberException("找不到目標會員帳號：" + targetUsername));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到目標會員帳號：" + targetUsername));
         if (imported.getId().equals(target.getId())) {
             throw new MemberException("來源跟目標是同一個帳號");
         }

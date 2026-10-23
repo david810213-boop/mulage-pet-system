@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.dto.SplitHistoryResponse;
 import com.petgrooming.pet_system.dto.StaffMatrixRow;
 import com.petgrooming.pet_system.dto.StaffProgressResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PerformanceException;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.BonusTier;
@@ -48,7 +49,7 @@ public class PerformanceService {
                                        PerformanceCategory category, Double points,
                                        LocalDate serviceDate, String note) {
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到員工：" + staffId));
 
         PerformanceRecord record = PerformanceRecord.builder()
                 .staff(staff)
@@ -68,7 +69,7 @@ public class PerformanceService {
                                              PerformanceCategory category, Double points,
                                              LocalDate serviceDate, String note) {
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到員工：" + staffId));
 
         PerformanceRecord record = PerformanceRecord.builder()
                 .staff(staff)
@@ -91,9 +92,9 @@ public class PerformanceService {
                                PerformanceCategory category, Double points,
                                LocalDate serviceDate, String note) {
         User s1 = userRepository.findById(staffId1)
-                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId1));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到員工：" + staffId1));
         User s2 = userRepository.findById(staffId2)
-                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId2));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到員工：" + staffId2));
         double half = Math.round((points == null ? 0 : points) / 2.0 * 10) / 10.0;
 
         PerformanceRecord first = recordRepo.save(PerformanceRecord.builder()
@@ -126,7 +127,7 @@ public class PerformanceService {
     @Transactional
     public PerformanceRecord splitRecord(Long sourceRecordId, Long toStaffId, String note) {
         PerformanceRecord source = recordRepo.findById(sourceRecordId)
-                .orElseThrow(() -> new PerformanceException("找不到原始績效紀錄：" + sourceRecordId));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到原始績效紀錄：" + sourceRecordId));
 
         if (source.getPoints() == null || source.getPoints() <= 0) {
             throw new PerformanceException("原始紀錄目前積分為 0，無法拆分");
@@ -139,7 +140,7 @@ public class PerformanceService {
         }
 
         User toStaff = userRepository.findById(toStaffId)
-                .orElseThrow(() -> new PerformanceException("找不到員工：" + toStaffId));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到員工：" + toStaffId));
 
         if (source.getStaff().getId().equals(toStaffId)) {
             throw new PerformanceException("拆分對象不可與原負責員工相同");
@@ -308,7 +309,7 @@ public class PerformanceService {
     // ── 我的績效：員工查詢自己今日/當月累積積分，以及距離下一級距還差幾分 ──
     public StaffProgressResponse getMyProgress(Long staffId, LocalDate today) {
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到員工：" + staffId));
 
         double todayPoints = recordRepo.findByServiceDate(today).stream()
                 .filter(r -> r.getStaff().getId().equals(staffId))
@@ -488,7 +489,7 @@ public class PerformanceService {
             throw new PerformanceException("下限不能大於上限");
         }
         BonusTier tier = bonusTierRepository.findById(id)
-                .orElseThrow(() -> new PerformanceException("找不到級距 #" + id));
+                .orElseThrow(() -> new PerformanceException(ErrorCode.NOT_FOUND, "找不到級距 #" + id));
         tier.setMinPoints(minPoints);
         tier.setMaxPoints(maxPoints);
         tier.setBonusAmount(bonusAmount);

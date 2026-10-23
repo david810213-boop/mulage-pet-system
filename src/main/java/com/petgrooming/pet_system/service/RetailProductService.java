@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.repository.RetailProductRepository;
@@ -52,7 +53,7 @@ public class RetailProductService {
 
     public RetailProduct getById(Long id) {
         return retailProductRepository.findById(id)
-                .orElseThrow(() -> new InventoryException("找不到商品 #" + id));
+                .orElseThrow(() -> new InventoryException(ErrorCode.NOT_FOUND, "找不到商品 #" + id));
     }
 
     @Transactional
@@ -142,7 +143,7 @@ public class RetailProductService {
         entityManager.flush();
         retailProductRepository.findById(id).ifPresent(entityManager::detach);
         return retailProductRepository.lockById(id)
-                .orElseThrow(() -> new InventoryException("找不到商品 #" + id));
+                .orElseThrow(() -> new InventoryException(ErrorCode.NOT_FOUND, "找不到商品 #" + id));
     }
 
     @Transactional

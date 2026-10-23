@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.exception.AuthException;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.OperationLogService;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -107,7 +107,7 @@ public class AppointmentController {
     public ResponseEntity<?> firstVisit(@RequestParam Long petId, HttpServletRequest request) {
         String username = currentUsername(request);
         if (username == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "請先登入"));
+            throw new AuthException("請先登入");
         }
         return ResponseEntity.ok(appointmentService.firstVisitStatus(username, petId));
     }
