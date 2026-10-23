@@ -80,114 +80,89 @@ public class PaymentService {
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
 
     // ── 1. 結帳 ────────────────────────────────────────────────────────────
+    /**
+     * 預約結帳。匯款先進入「待對帳」（交易未付款、預約維持未完成），等店家確認收款後才完成；
+     * 其他付款方式立即完成並發放績效積分。任何一步失敗整筆退回（含零售商品庫存）。
+     */
     @Transactional
-    public TransactionResponse checkout(Long appointmentId,
-                                        CheckoutRequest req,
-                                        String username) {
-        // 1a. 確認預約存在
+    public TransactionResponse checkout(Long appointmentId, CheckoutRequest req, String username) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
-
-        // 1b. 確認使用者與權限
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
+        boolean isOwner = appointment.getUser().getId().equals(user.getId());
+        ensureCheckoutAllowed(appointment, user, isOwner);
 
-        boolean isOwner       = appointment.getUser().getId().equals(user.getId());
-        boolean isStaffOrAdmin = user.isStaffOrAdmin();
+        deductRetailStock(appointmentId);
+        PaymentMethod method = req.getPaymentMethod();
+        int finalAmount = chargeAmount(appointment, method, user.isStaffOrAdmin());
 
-        if (!isOwner && !isStaffOrAdmin) {
+        Transaction transaction = transactionRepository.save(Transaction.builder()
+                .appointment(appointment)
+                .user(appointment.getUser())
+                .paymentMethod(method)
+                .baseAmount(appointment.getTotalAmount())
+                .finalAmount(finalAmount)
+                .paid(method != PaymentMethod.WIRE_TRANSFER)
+                .paymentTime(method == PaymentMethod.WIRE_TRANSFER ? null : LocalDateTime.now())
+                .handledBy(isOwner ? "會員自助（" + user.getName() + "）" : "員工：" + user.getName())
+                .build());
+
+        if (method == PaymentMethod.WIRE_TRANSFER) {
+            log.info("預約 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", appointment.getId());
+            return TransactionResponse.from(transaction);
+        }
+        appointment.setPaid(true);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointmentRepository.save(appointment);
+        autoCreatePerformanceRecords(appointment, user, user.isStaffOrAdmin());
+        return TransactionResponse.from(transaction);
+    }
+
+    /** 只有預約本人或員工能結帳；必須尚未付款、已完成現場核對（美容狀況備註＋家長簽名），且沒有交易紀錄。 */
+    private void ensureCheckoutAllowed(Appointment appointment, User user, boolean isOwner) {
+        if (!isOwner && !user.isStaffOrAdmin()) {
             throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：只能結自己的帳");
         }
-
-        // 1c. 確認尚未付款
         if (appointment.isPaid()) {
             throw new PaymentException("此預約已完成結帳");
         }
-
-        // 1c-2. 必須先完成「進行中核對」（店員與家長現場核對本次美容狀況並簽名），才能結帳
         if (!appointment.isFinalCheckDone()) {
             throw new PaymentException("請先完成進行中預約的核對（美容狀況備註 + 家長簽名）後才能結帳");
         }
-
-        // 1d. 確認沒有重複交易紀錄
-        if (transactionRepository.findByAppointmentId(appointmentId).isPresent()) {
+        if (transactionRepository.findByAppointmentId(appointment.getId()).isPresent()) {
             throw new PaymentException("此預約已有交易紀錄");
         }
+    }
 
-        // 1d-2. 需求（追加）：結帳成功才真的扣加購零售商品的庫存（不管付款方式是不是匯款待對帳，
-        // 因為顧客結完帳當下商品就會實際帶走，不是等匯款核對完成才拿走）。
-        // 故意在真正寫入交易紀錄之前先做，扣庫存失敗（例如庫存被其他單搶先扣完）
-        // 就直接整筆結帳拋例外中止，不會留下「已收款但庫存沒扣成功」的不一致狀態。
-        for (AppointmentItem item
-                : appointmentItemRepository.findByAppointmentId(appointmentId)) {
+    /**
+     * 扣除加購零售商品的庫存。顧客結帳當下就把商品帶走，所以匯款待對帳也要扣；
+     * 在寫入交易前執行，庫存不足時整筆結帳中止，不會留下已收款但庫存沒扣的狀態。
+     */
+    private void deductRetailStock(Long appointmentId) {
+        for (AppointmentItem item : appointmentItemRepository.findByAppointmentId(appointmentId)) {
             if (item.getRetailProductId() != null) {
                 retailProductService.deductStock(item.getRetailProductId(), 1);
             }
         }
+    }
 
-        // 1e. 計算最終金額
-        // baseAmount 維持「帳面合計」（未打任何折扣的原始金額），呼應需求 5 已建立的
-        // 「帳面合計／實際扣款」透明化顯示慣例；實際折扣一律反映在 finalAmount。
-        int baseAmount  = appointment.getTotalAmount();
-        // 需求 8-1：貓咪距上次洗澡未滿 90 天再預約洗澡，洗澡項目結帳自動打 9 折
-        // （不限付款方式；跟需求 5 的儲值金會員折扣是兩套獨立規則，此為服務促銷、非付款方式優惠）
-        int finalAmount = req.getPaymentMethod()
-                .calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
-
-        // 1e-1. 若選擇「儲值金」付款：
-        //   - 僅限店家/員工於後台操作（顧客不可自行使用此付款方式）
-        //   - 套用會員等級折扣（現金/信用卡/LinePay 不套用會員折扣）
-        //   - 折扣後金額才是實際扣款與交易紀錄的最終金額
-        if (req.getPaymentMethod() == PaymentMethod.WALLET) {
-            if (!isStaffOrAdmin) {
-                throw new PaymentException("儲值金結帳僅限店家/員工於後台操作");
-            }
-            double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
-            // 需求 5：改成逐項目判斷是否可享折扣，不再對整筆金額統一打折。
-            // 洗澡/剪毛/調理類項目打折，剪指甲/局部修剪/除廢毛等加購項目維持原價。
-            // 需求 8-1：貓咪回洗優惠與會員儲值折扣疊加計算（兩者是不同性質的折扣，疊加後再扣款）。
-            finalAmount = calculateWalletAmountPerItem(appointment, discount);
-            walletService.deduct(appointment.getUser().getUsername(), finalAmount, appointment.getId());
+    /**
+     * 計算實收金額（帳面合計另存於 baseAmount）。
+     * 服務促銷（首次體驗、貓咪 90 天回洗）不限付款方式；會員等級折扣只有儲值金付款才有，
+     * 且逐項判斷、與服務促銷擇優不疊加。儲值金付款僅限員工操作，並立即從錢包扣款。
+     */
+    private int chargeAmount(Appointment appointment, PaymentMethod method, boolean byStaff) {
+        if (method != PaymentMethod.WALLET) {
+            return method.calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
         }
-
-        // 1f. 決定經手人
-        String handledBy = isOwner
-                ? "會員自助（" + user.getName() + "）"
-                : "員工：" + user.getName();
-
-        // 1g. 建立交易紀錄
-        // 需求 10：選「匯款」時，訂單先進入「待對帳」狀態（paid=false），
-        // 要等店員另外按「確認收款」才算真正完成；其他付款方式維持原本立即完成的邏輯。
-        boolean isWireTransfer = req.getPaymentMethod() == PaymentMethod.WIRE_TRANSFER;
-
-        Transaction transaction = Transaction.builder()
-                .appointment(appointment)
-                .user(appointment.getUser())
-                .paymentMethod(req.getPaymentMethod())
-                .baseAmount(baseAmount)
-                .finalAmount(finalAmount)
-                .paid(!isWireTransfer)
-                .paymentTime(isWireTransfer ? null : LocalDateTime.now())
-                .handledBy(handledBy)
-                .build();
-
-        transactionRepository.save(transaction);
-
-        if (isWireTransfer) {
-            // 匯款：先不動預約的 paid/status，也先不發放績效積分，等確認收款後才處理
-            log.info("預約 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", appointment.getId());
-            return TransactionResponse.from(transaction);
+        if (!byStaff) {
+            throw new PaymentException("儲值金結帳僅限店家/員工於後台操作");
         }
-
-        // 1h. 將預約標記為已付款，並把狀態轉為「已完成」（結帳＝整筆服務結束）
-        appointment.setPaid(true);
-        appointment.setStatus(AppointmentStatus.COMPLETED);
-        appointmentRepository.save(appointment);
-
-        // 1i. 自動建立績效紀錄（依預約選擇的服務項目 + 負責員工）
-        autoCreatePerformanceRecords(appointment, user, isStaffOrAdmin);
-
-        return TransactionResponse.from(transaction);
+        String member = appointment.getUser().getUsername();
+        int amount = calculateWalletAmountPerItem(appointment, walletService.getWallet(member).getDiscount());
+        walletService.deduct(member, amount, appointment.getId());
+        return amount;
     }
 
     // ── 1x-1. 確認匯款收款：店員核對銀行入帳後，訂單才正式轉為已完成 ──────
