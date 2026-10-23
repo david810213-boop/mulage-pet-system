@@ -3,16 +3,11 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
-import com.petgrooming.pet_system.dto.PetDiscountStatusResponse;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PetException;
-import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
-import com.petgrooming.pet_system.service.CatRewashDiscountService;
-import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.PetConsumptionHistoryService;
+import com.petgrooming.pet_system.service.PetDiscountStatusService;
 import com.petgrooming.pet_system.service.PetService;
-import com.petgrooming.pet_system.service.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -33,10 +27,7 @@ public class PetController {
 
     private final PetService petService;
     private final OperationLogService operationLogService;
-    // 需求（追加，2026-09-04）：寵物折扣狀態查詢用
-    private final PetConsumptionHistoryService petConsumptionHistoryService;
-    private final CatRewashDiscountService catRewashDiscountService;
-    private final WalletService walletService;
+    private final PetDiscountStatusService petDiscountStatusService; // 需求（追加，2026-09-04）：寵物折扣狀態查詢
 
     // ── POST /api/pets ─────────────────────────────────────────────────────
     // 新增寵物，以 JWT 解析出的 username 識別飼主
@@ -118,12 +109,6 @@ public class PetController {
         return ResponseEntity.ok(res);
     }
 
-    // ── GET /api/pets/{petId}/discount-status ──────────────────────────────
-    // 需求（追加，2026-09-04）：LIFF 預約頁顯示「距上次洗澡幾天、優惠期內/
-    // 已過期」，以及服務項目要不要顯示「原價劃掉+折扣價」的判斷資料來源。
-    // 三種折扣互斥擇優：首次體驗優惠／90天回洗優惠（兩者本身也互斥，貓咪
-    // 才可能兩者都適用，狗狗只有首次體驗）跟會員儲值折扣分開回傳，前端渲染
-    // 時自己取較優惠者，邏輯跟後端 resolvePreferredDiscount() 一致。
     // ── GET /api/pets/{petId}/grooming-history ────────────────────────────
     // 需求（2026-09-29）：LIFF「我的毛孩」查看每次美容的狀況備註與照片
     @GetMapping("/{petId}/grooming-history")
@@ -132,6 +117,8 @@ public class PetController {
         return ResponseEntity.ok(petService.getGroomingHistory(petId));
     }
 
+    // ── GET /api/pets/{petId}/discount-status ──────────────────────────────
+    // LIFF 預約頁顯示的折扣資格（規則見 PetDiscountStatusService）
     @GetMapping("/{petId}/discount-status")
     public ResponseEntity<?> getDiscountStatus(
             @PathVariable Long petId,
@@ -143,64 +130,17 @@ public class PetController {
             // 當基準日，先讓使用者看到一個大概的狀態。
             @RequestParam(required = false) String asOfDate,
             @CurrentUser String username) {
-        petService.assertOwnership(petId, username);
-        var pet = petService.getPetEntity(petId);
-        var owner = pet.getOwner();
-        String petType = pet.getPetType().name();
-        boolean isCat = "CAT".equals(petType);
-        boolean isDog = "DOG".equals(petType);
+        return ResponseEntity.ok(petDiscountStatusService.statusFor(petId, username, referenceDate(asOfDate)));
+    }
 
-        LocalDate referenceDate = LocalDate.now();
-        if (asOfDate != null && !asOfDate.isBlank()) {
-            try {
-                referenceDate = LocalDate.parse(asOfDate);
-            } catch (DateTimeParseException e) {
-                // 格式錯誤就忽略，退回用今天，不要因為這個附加參數壞掉
-                // 而讓整支 API 掛掉
-            }
+    /** 還沒選日期或格式錯誤時退回用今天，不要因為這個附加參數壞掉而讓整支 API 掛掉。 */
+    private static LocalDate referenceDate(String asOfDate) {
+        if (asOfDate == null || asOfDate.isBlank()) return LocalDate.now();
+        try {
+            return LocalDate.parse(asOfDate);
+        } catch (DateTimeParseException e) {
+            return LocalDate.now();
         }
-
-        boolean firstVisitEligible = !petConsumptionHistoryService.hasPriorPaidService(
-                owner.getId(), pet.getName(), null);
-
-        boolean rewashEligible = false;
-        Long lastBathDaysAgo = null;
-        if (isCat) {
-            var lastBath = catRewashDiscountService.findLastBathDate(owner.getId(), pet.getName());
-            if (lastBath.isPresent()) {
-                lastBathDaysAgo = ChronoUnit.DAYS.between(lastBath.get(), referenceDate);
-                rewashEligible = lastBathDaysAgo >= 0 && lastBathDaysAgo < CatRewashDiscountService.REWASH_WINDOW_DAYS;
-            }
-        }
-
-        double memberDiscountRate = walletService.getWallet(owner.getUsername()).getDiscount();
-
-        String specialLabel = null;
-        Double specialRate = null;
-        List<String> specialCategories = List.of();
-
-        // 首次體驗跟定期養護禮遇互斥，首次體驗優先判斷（邏輯跟結帳時
-        // populateDiscountInfo() 的判斷順序一致：先看是不是首次消費）
-        if (isCat && firstVisitEligible) {
-            specialLabel = "首次體驗優惠";
-            specialRate = CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-            specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
-        } else if (isDog && firstVisitEligible) {
-            specialLabel = "首次體驗優惠";
-            specialRate = DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-            specialCategories = List.of("BATH_SMALL", "BATH_LARGE");
-        } else if (isCat && rewashEligible) {
-            // 需求（追加，2026-09-06）：文案改版，顧客端一律顯示「定期養護禮遇」，
-            // 不用「回洗優惠」這個比較像內部行話的講法。後台（例如「貓咪回洗
-            // 名單」管理頁）維持原本用語不變，這裡只改對顧客顯示的文字。
-            specialLabel = "定期養護禮遇";
-            specialRate = CatRewashDiscountService.REWASH_DISCOUNT_RATE;
-            specialCategories = List.of("BATH_CAT_S", "BATH_CAT_L");
-        }
-
-        return ResponseEntity.ok(new PetDiscountStatusResponse(
-                petType, firstVisitEligible, rewashEligible, lastBathDaysAgo,
-                memberDiscountRate, specialLabel, specialRate, specialCategories));
     }
 }
 

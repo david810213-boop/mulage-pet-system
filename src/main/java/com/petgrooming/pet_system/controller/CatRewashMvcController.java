@@ -5,13 +5,13 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CatRewashCandidateResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.export.CatRewashExcel;
+import com.petgrooming.pet_system.export.ExcelSupport;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
 import com.petgrooming.pet_system.service.PetService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.URLEncoder;
 import java.util.List;
 
 /**
@@ -63,46 +62,8 @@ public class CatRewashMvcController {
                             @RequestParam(required = false) String filter) throws IOException {
         List<CatRewashCandidateResponse> candidates = loadCandidates(filter);
 
-        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("貓咪回洗名單");
-
-            CellStyle headerStyle = workbook.createCellStyle();
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-            String[] headers = {"寵物名", "家長姓名", "家長電話", "上次洗澡日期", "距今天數", "是否仍在優惠期內"};
-            Row headerRow = sheet.createRow(0);
-            for (int i = 0; i < headers.length; i++) {
-                Cell c = headerRow.createCell(i);
-                c.setCellValue(headers[i]);
-                c.setCellStyle(headerStyle);
-            }
-
-            int rowIdx = 1;
-            for (CatRewashCandidateResponse c : candidates) {
-                Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(c.getPetName());
-                row.createCell(1).setCellValue(c.getOwnerName());
-                row.createCell(2).setCellValue(c.getOwnerPhone() != null ? c.getOwnerPhone() : "");
-                row.createCell(3).setCellValue(c.getLastBathDate().toString());
-                row.createCell(4).setCellValue(c.getDaysSinceLastBath());
-                row.createCell(5).setCellValue(c.isWithinDiscountWindow() ? "是" : "否（已超過90天）");
-            }
-            // 需求（追加）：autoSizeColumn() 在 Railway 容器上會因缺少字型函式庫（libfreetype）
-            // 直接噴 UnsatisfiedLinkError 導致匯出失敗，改成固定欄寬。
-            int[] colWidths = {10, 12, 14, 14, 10, 18};
-            for (int i = 0; i < headers.length; i++) {
-                sheet.setColumnWidth(i, colWidths[i] * 256);
-            }
-
-            String filename = "貓咪回洗名單.xlsx";
-            String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
-            workbook.write(response.getOutputStream());
+        try (var workbook = CatRewashExcel.build(candidates)) {
+            ExcelSupport.writeXlsx(response, "貓咪回洗名單.xlsx", workbook);
         }
     }
 
@@ -112,10 +73,7 @@ public class CatRewashMvcController {
                           @RequestParam(required = false) String filter) throws IOException {
         List<CatRewashCandidateResponse> candidates = loadCandidates(filter);
 
-        String filename = "貓咪回洗名單.csv";
-        String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
-        response.setContentType("text/csv; charset=UTF-8");
-        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
+        ExcelSupport.setAttachment(response, "text/csv; charset=UTF-8", "貓咪回洗名單.csv");
 
         // UTF-8 BOM，避免 Excel 開啟 CSV 時中文亂碼
         response.getOutputStream().write(0xEF);
@@ -123,7 +81,7 @@ public class CatRewashMvcController {
         response.getOutputStream().write(0xBF);
 
         try (PrintWriter writer = response.getWriter()) {
-            writer.println("寵物名,家長姓名,家長電話,上次洗澡日期,距今天數,是否仍在優惠期內");
+            writer.println(String.join(",", CatRewashExcel.HEADERS));
             for (CatRewashCandidateResponse c : candidates) {
                 writer.printf("%s,%s,%s,%s,%d,%s%n",
                         csvEscape(c.getPetName()),
@@ -131,7 +89,7 @@ public class CatRewashMvcController {
                         csvEscape(c.getOwnerPhone()),
                         c.getLastBathDate(),
                         c.getDaysSinceLastBath(),
-                        c.isWithinDiscountWindow() ? "是" : "否（已超過90天）");
+                        CatRewashExcel.withinWindowLabel(c));
             }
         }
     }

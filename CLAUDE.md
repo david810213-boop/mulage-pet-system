@@ -10,7 +10,7 @@
 - **模板**：Thymeleaf（伺服器端渲染，`th:` 語法）
 - **資料庫**：MySQL，Spring Data JPA + Hibernate 7.2.12，`ddl-auto: update`，服務項目種子資料另用 Flyway 管理（見第五節）
 - **建置**：Maven（`mvn clean compile`、`mvn spring-boot:run`，本機跑在 **port 8081**）。`pom.xml` 有 `<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>`，這個設定務必保留，不要移除（原因見第四節）
-- **其他函式庫**：Lombok、Apache POI（Excel 匯出）、Cloudinary SDK（圖片雲端儲存）、Google Calendar API
+- **其他函式庫**：Lombok、Apache POI（Excel 匯出，產生活頁簿的程式放在 `export` 套件，共用工具見 `ExcelSupport`）、Cloudinary SDK（圖片雲端儲存）、Google Calendar API
 - **前端**：純 HTML + 原生 JS（LIFF 頁面），無框架
 - **套件名稱**：`com.petgrooming.pet_system`
 
@@ -67,7 +67,7 @@
 - **API 錯誤一律丟業務例外，不要在 controller 自己組錯誤回應**：`throw new XxxException(ErrorCode.NOT_FOUND, "找不到…")`（不帶 ErrorCode 時預設 `BUSINESS_RULE`／400）。回應格式由 `GlobalApiExceptionHandler` 統一產生：`{ status, detail, code, message, errors? }`，前端讀 `message`、依 `code` 判斷。`BusinessException` 刻意繼承 `IllegalArgumentException`（網頁版 MVC controller 有上百處 `catch (IllegalArgumentException e)` 依賴它），不要改成 `RuntimeException`
 - **請求內容一律用 DTO（新寫的用 `record`）＋ Bean Validation 接收**，不要用 `@RequestBody Map`
 - **分層規則（ArchUnit 測試強制）**：Controller 不得注入或呼叫 Repository，查詢一律寫成 Service 方法；Service 不得依賴 Controller。取得登入者用 `@CurrentUser String username` 或 `@CurrentUser User user`，不要讀 `request.getAttribute("tokenUsername")`
-- Service 方法若會讀取實體的延遲載入關聯（例如 `pet.getOwner()`），要加 `@Transactional(readOnly = true)`，不要依賴請求層級的資料庫連線
+- Service 方法若會讀取實體的延遲載入關聯（例如 `pet.getOwner()`），要加 `@Transactional(readOnly = true)`，不要依賴請求層級的資料庫連線；但方法內若會呼叫 `walletService.getWallet()`（顧客還沒有錢包時會順便建立）等會寫入的方法，改用一般的 `@Transactional`，唯讀交易會讓寫入失敗
 - 合併 Git 分支衝突時，如果雙方版本內容差異很大，一定要問清楚使用者要保留哪一版，不要自己選
 - **系統效能問題排查，先用瀏覽器 Performance API 實測 TTFB，再看 Railway 即時 log 找實際 SQL 執行模式，不要只憑猜測**
 - **文件更新時，新版本要是完全獨立、自我完整的內容，不要寫「詳見前版本」「內容不變」這種依賴舊版才看得懂的引用**
