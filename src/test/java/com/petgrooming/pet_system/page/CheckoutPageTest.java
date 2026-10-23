@@ -50,7 +50,7 @@ class CheckoutPageTest extends IntegrationTestBase {
         User customer = testData.customer();
         PetResponse dog = testData.dog(customer);
         Pet saved = petRepository.findById(dog.getId()).orElseThrow();
-        saved.setWeight(null);
+        saved.setWeight(0.0); // 資料庫欄位不可為 null，「未填體重」以 0 表示（例如匯入資料體重填 0）
         petRepository.save(saved);
         Appointment appointment = appointment(customer, dog.getName());
 
