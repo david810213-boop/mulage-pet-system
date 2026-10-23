@@ -21,9 +21,7 @@ public interface SlotCapacityRepository extends JpaRepository<SlotCapacity, Long
 
     List<SlotCapacity> findBySlotDate(LocalDate slotDate);
 
-    // 加鎖讀取（SELECT ... FOR UPDATE）：鎖定讀取永遠讀最新已提交資料，
-    // 看得到預約流程在獨立交易（ensureSlot）裡剛建立的時段列。
-    // 實體若已在本交易快取中仍會回傳舊值，呼叫端須再 refresh（見 SlotCapacityService）。
+    // 加鎖讀取（SELECT ... FOR UPDATE）。呼叫端須先移除快取中的同一實體，見 SlotCapacityService.lockSlot
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from SlotCapacity s where s.slotDate = :d and s.slotTime = :t")
     Optional<SlotCapacity> lockSlot(@Param("d") LocalDate d, @Param("t") LocalTime t);

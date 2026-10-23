@@ -4,7 +4,6 @@ import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.repository.RetailProductRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -131,16 +130,18 @@ public class RetailProductService {
 
     /**
      * 取得商品並加悲觀寫鎖，鎖持有到本交易 commit，讓同一商品的扣庫存／調整／盤點依序執行，
-     * 避免兩筆結帳都讀到「還有 1 件」而多賣。
+     * 避免兩筆結帳都讀到「還有 1 件」而多賣。商品可能已在本交易被讀取過（例如結帳時先顯示品名）。
      *
-     * 必須用 refresh 搭配鎖定模式重新讀取：商品若已在同一交易內被讀取過（例如結帳時先顯示品名），
-     * 一般的鎖定查詢雖然會取得列鎖，Hibernate 卻會回傳快取中的舊庫存；
-     * 而不帶鎖的重新讀取在 MySQL 可重複讀隔離層級下只會讀到交易開始時的快照。
+     * 做法：先 flush 本交易尚未寫入的修改、把快取中的舊實體移除，再以 SELECT ... FOR UPDATE 讀取。
+     * 鎖定讀取永遠讀最新已提交資料（含本交易自己的寫入），也不會拿到快取中的舊值。
+     * 不可改用 refresh：實體已持有鎖時 Hibernate 會改發一般查詢，在 MySQL 可重複讀隔離層級下
+     * 只讀到交易開始時的快照；也不可只用鎖定查詢：實體已在快取中時 Hibernate 會回傳舊值。
      */
     private RetailProduct lockProduct(Long id) {
-        RetailProduct product = getById(id);
-        entityManager.refresh(product, LockModeType.PESSIMISTIC_WRITE);
-        return product;
+        entityManager.flush();
+        retailProductRepository.findById(id).ifPresent(entityManager::detach);
+        return retailProductRepository.lockById(id)
+                .orElseThrow(() -> new InventoryException("找不到商品 #" + id));
     }
 
     @Transactional
