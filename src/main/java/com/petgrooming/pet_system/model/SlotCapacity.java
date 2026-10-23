@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.PetType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -55,5 +56,5 @@ public class SlotCapacity {
     // 之後店家仍可以在「時段管理」頁針對某一天單獨覆寫，只影響那一天，不影響範本本身。
     @Column(name = "allowed_pet_type")
     @Enumerated(EnumType.STRING)
-    private com.petgrooming.pet_system.enums.PetType allowedPetType;
+    private PetType allowedPetType;
 }

@@ -3,6 +3,8 @@ package com.petgrooming.pet_system.service;
 import java.util.List;
 import java.util.stream.Collectors; 
 
+import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.repository.GroomingItemComponentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class GroomingServiceImpl implements GroomingService {
 
     private final GroomingItemRepository groomingItemRepository;
-    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加，2026-08-26）：判斷是不是完整套餐
+    private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加，2026-08-26）：判斷是不是完整套餐
 
     /**
      * 新增美容服務項目
@@ -48,7 +50,7 @@ public class GroomingServiceImpl implements GroomingService {
         // 這個項目會不會被回洗優惠/首次體驗優惠這類「依分類判斷」的邏輯認得到。
         var category = request.getPerformanceCategory() != null
                 ? request.getPerformanceCategory()
-                : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
+                : PerformanceCategory.OTHER;
         item.setPerformanceCategory(category);
         // 需求（追加）：積分分類——店家有指定就用指定值，沒指定才退回分類預設值（維持舊行為）
         item.setPoints(request.getPoints() != null ? request.getPoints() : category.getDefaultPoints());
@@ -78,9 +80,9 @@ public class GroomingServiceImpl implements GroomingService {
     // 排除接待流程用的內部標記項目（CHECKIN / CHECKOUT / COMPLETE）
     private static boolean isCustomerFacingItem(GroomingItem item) {
         var category = item.getPerformanceCategory();
-        return category != com.petgrooming.pet_system.enums.PerformanceCategory.CHECKIN
-                && category != com.petgrooming.pet_system.enums.PerformanceCategory.CHECKOUT
-                && category != com.petgrooming.pet_system.enums.PerformanceCategory.COMPLETE;
+        return category != PerformanceCategory.CHECKIN
+                && category != PerformanceCategory.CHECKOUT
+                && category != PerformanceCategory.COMPLETE;
     }
 
     /**

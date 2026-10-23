@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.config.BusinessHours;
+import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.exception.AppointmentException;
 import com.petgrooming.pet_system.model.DefaultSlotCapacityTemplate;
 import com.petgrooming.pet_system.repository.DefaultSlotCapacityTemplateRepository;
@@ -57,7 +58,7 @@ public class DefaultSlotCapacityTemplateService {
      * 需求（追加，2026-09-08）：查某個時段預設限定的物種（null＝不限制），
      * 資料庫裡還沒有這一列的話回傳 null（保險預設不限制）。
      */
-    public com.petgrooming.pet_system.enums.PetType getAllowedPetType(LocalTime slotTime) {
+    public PetType getAllowedPetType(LocalTime slotTime) {
         return templateRepository.findBySlotTime(slotTime)
                 .map(DefaultSlotCapacityTemplate::getAllowedPetType)
                 .orElse(null);
@@ -92,7 +93,7 @@ public class DefaultSlotCapacityTemplateService {
      */
     @Transactional
     public void setCapacity(LocalTime slotTime, int newCapacity,
-                             com.petgrooming.pet_system.enums.PetType allowedPetType) {
+                             PetType allowedPetType) {
         if (newCapacity < 0) {
             throw new AppointmentException("名額上限不能小於 0");
         }

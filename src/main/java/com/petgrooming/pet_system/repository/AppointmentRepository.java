@@ -1,7 +1,9 @@
 package com.petgrooming.pet_system.repository;
 
+import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.model.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -33,7 +35,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // 需求 13：查某天尚未發送過提醒、且已確認的預約（排程用）
     List<Appointment> findByDateAndReminderSentFalseAndStatus(
-        LocalDate date, com.petgrooming.pet_system.enums.AppointmentStatus status
+        LocalDate date, AppointmentStatus status
     );
 
     // 需求 8：查某會員名下、某寵物名稱的所有已結帳預約（用來回溯上次洗澡日期）
@@ -51,7 +53,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // user、selectedItems 併進同一條查詢一次撈出來，只需要 1 條 SQL（selectedItems
     // 是多對多，JOIN 之後同一筆預約會因為對應多個項目重複出現，用 DISTINCT
     // 讓 Hibernate 在組裝結果時把同一筆預約的重複列合併回一筆）。
-    @org.springframework.data.jpa.repository.Query(
+    @Query(
             "SELECT DISTINCT a FROM Appointment a " +
             "LEFT JOIN FETCH a.user " +
             "LEFT JOIN FETCH a.selectedItems " +

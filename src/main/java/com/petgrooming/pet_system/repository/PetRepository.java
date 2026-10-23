@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.repository;
 
+import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.Pet;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -20,7 +21,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
     List<Pet> findByNameContainingIgnoreCase(String namePart);
 
     // 需求 8-2：查所有貓咪（回洗優惠名單篩選用）
-    List<Pet> findByPetType(com.petgrooming.pet_system.enums.PetType petType);
+    List<Pet> findByPetType(PetType petType);
 
     // 需求（追加，2026-09-06）：寵物信息管理頁面用——列出所有未刪除的寵物，依名字排序
     List<Pet> findByIsDeletedFalseOrderByNameAsc();

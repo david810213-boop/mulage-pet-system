@@ -11,6 +11,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.PetService;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -56,7 +58,7 @@ public class MobileMemberController {
     private final UserRepository userRepository;
     private final PetService petService;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
-    private final com.petgrooming.pet_system.service.GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
+    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final AppointmentService appointmentService;
     private final MemberConsumptionService memberConsumptionService;
     private final WalletService walletService;
@@ -299,7 +301,7 @@ public class MobileMemberController {
                 .filter(a -> !a.isCancelled() && a.getDate() != null && !a.getDate().isBefore(today))
                 .filter(a -> petName == null || petName.equals(a.getPetName()))
                 .sorted(Comparator.comparing(AppointmentResponse::getDate)
-                        .thenComparing(a -> a.getStartTime() == null ? java.time.LocalTime.MIN : a.getStartTime()))
+                        .thenComparing(a -> a.getStartTime() == null ? LocalTime.MIN : a.getStartTime()))
                 .limit(5)
                 .map(a -> {
                     Map<String, Object> m = new LinkedHashMap<>();

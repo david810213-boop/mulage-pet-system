@@ -2,18 +2,29 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
+import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.exception.PetException;
+import com.petgrooming.pet_system.model.CatBreedCoatMapping;
+import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository;
+import com.petgrooming.pet_system.repository.GroomingItemRepository;
+import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,10 +33,10 @@ public class PetService {
     private final PetRepository petRepository;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
-    private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
+    private final PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
-    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
+    private final CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
+    private final GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：美容紀錄照片
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
@@ -41,7 +52,7 @@ public class PetService {
         // 需求（追加）：菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
         // LIFF 預約頁靠這個欄位篩選菜單。狗/其他物種、或品種不在對照表裡的特殊貓種，
         // 一律是 null（LIFF 端遇到 null 顯示全部貓咪套餐項目，不擋顧客預約）。
-        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
+        CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
 
         Pet pet = Pet.builder()
                 .name(req.getName())
@@ -76,19 +87,19 @@ public class PetService {
     }
 
     // 需求（追加）：LIFF 新增毛孩頁面的品種下拉選單資料來源
-    public List<com.petgrooming.pet_system.model.CatBreedCoatMapping> listCatBreedOptions() {
+    public List<CatBreedCoatMapping> listCatBreedOptions() {
         return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
     }
 
     // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
     // 避免多處各自實作導致行為不一致。
-    public com.petgrooming.pet_system.enums.CatCoatCategory resolveCatCoatCategory(
-            com.petgrooming.pet_system.enums.PetType petType, String breed) {
-        if (petType != com.petgrooming.pet_system.enums.PetType.CAT || breed == null) {
+    public CatCoatCategory resolveCatCoatCategory(
+            PetType petType, String breed) {
+        if (petType != PetType.CAT || breed == null) {
             return null;
         }
         return catBreedCoatMappingRepository.findByBreedName(breed.trim())
-                .map(com.petgrooming.pet_system.model.CatBreedCoatMapping::getCoatCategory)
+                .map(CatBreedCoatMapping::getCoatCategory)
                 .orElse(null);
     }
 
@@ -106,7 +117,7 @@ public class PetService {
                 .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
 
         PetSizeCategory sizeCategory = PetSizeCategory.determine(pet.getPetType(), req.getWeight());
-        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory =
+        CatCoatCategory catCoatCategory =
                 resolveCatCoatCategory(pet.getPetType(), req.getBreed());
 
         pet.setName(req.getName());
@@ -169,7 +180,7 @@ public class PetService {
                 .map(pet -> {
                     // 需求（追加）：已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
                     // 前端才不用為了顯示鎖定資訊再多打一次 API。
-                    com.petgrooming.pet_system.model.GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
+                    GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
                             ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
                             : null;
                     PetResponse res = PetResponse.from(pet, lockedItem);
@@ -258,7 +269,7 @@ public class PetService {
     // 只給貓咪用——狗狗沒有這個分類概念，呼叫端（Controller）應先確認物種是貓
     // 再呼叫這個方法，這裡不重複檢查（避免二次查資料庫），只單純防呆 category 不能空。
     @Transactional
-    public PetResponse setCatCoatCategory(Long petId, com.petgrooming.pet_system.enums.CatCoatCategory category) {
+    public PetResponse setCatCoatCategory(Long petId, CatCoatCategory category) {
         if (category == null) {
             throw new PetException("毛髮分類不能為空");
         }
@@ -273,7 +284,7 @@ public class PetService {
     // 這裡只負責「換照片」這件事本身：先上傳新圖，成功後才刪舊圖並更新資料庫，
     // 順序不能反過來——否則上傳失敗時會先把舊照片刪掉，變成沒有照片可以用。
     @Transactional
-    public PetResponse updatePhoto(Long petId, org.springframework.web.multipart.MultipartFile file) {
+    public PetResponse updatePhoto(Long petId, MultipartFile file) {
         Pet pet = petRepository.findById(petId)
                 .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
 
@@ -298,7 +309,7 @@ public class PetService {
     // ── 5. 上傳美容狀況歷史照片（需求 18：美容歷史相簿）─────────────────
     // 僅供店家後台使用（美容狀況備注本身就是店員在核對步驟填寫的，照片同樣由店員事後補上）。
     @Transactional
-    public void uploadGroomingNotePhoto(Long noteId, org.springframework.web.multipart.MultipartFile file) {
+    public void uploadGroomingNotePhoto(Long noteId, MultipartFile file) {
         var note = petGroomingNoteRepository.findById(noteId)
                 .orElseThrow(() -> new PetException("找不到美容狀況紀錄 #" + noteId));
 
@@ -314,16 +325,16 @@ public class PetService {
 
     // ── 6. 顧客查看自己毛孩的美容紀錄（需求，2026-09-29：LIFF「我的毛孩」）──────
     // 備註內容與照片全部開放給顧客看（2026-09-29 店家決定）。呼叫端要先做擁有者檢查。
-    public java.util.List<java.util.Map<String, Object>> getGroomingHistory(Long petId) {
+    public List<Map<String, Object>> getGroomingHistory(Long petId) {
         var notes = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(petId);
         var photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(notes);
-        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (var n : notes) {
-            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", n.getId());
             m.put("serviceDate", n.getServiceDate() != null ? n.getServiceDate().toString() : null);
             m.put("note", n.getNote());
-            m.put("photos", photosByNote.getOrDefault(n.getId(), java.util.List.of()));
+            m.put("photos", photosByNote.getOrDefault(n.getId(), List.of()));
             result.add(m);
         }
         return result;

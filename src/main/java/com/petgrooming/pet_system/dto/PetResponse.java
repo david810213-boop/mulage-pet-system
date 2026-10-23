@@ -1,8 +1,10 @@
 package com.petgrooming.pet_system.dto;
 
+import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
+import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
 import lombok.Data;
 
@@ -27,7 +29,7 @@ public class PetResponse {
     private String coatTypeLabel;                // 毛長中文
     // 需求（追加）：菜單簡化——貓咪毛髮分類（單層毛/雙層毛/長毛），依品種自動判斷，
     // LIFF 預約頁靠這個欄位篩選對應的套餐選單。狗/特殊貓種是 null。
-    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+    private CatCoatCategory catCoatCategory;
     private String catCoatCategoryLabel;
     private Boolean hasSeparationAnxiety;       // 分離焦慮
     private String ownerPhone;                  // 家長手機
@@ -69,7 +71,7 @@ public class PetResponse {
     }
 
     /** @param lockedItem 這隻寵物鎖定的固定套餐項目，還沒鎖定或呼叫端不需要顯示名稱/價格時傳 null。 */
-    public static PetResponse from(Pet pet, com.petgrooming.pet_system.model.GroomingItem lockedItem) {
+    public static PetResponse from(Pet pet, GroomingItem lockedItem) {
         PetResponse res = new PetResponse();
         res.setId(pet.getId());
         res.setName(pet.getName());

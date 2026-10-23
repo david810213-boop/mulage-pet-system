@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URLEncoder;
 import java.util.List;
 
 /**
@@ -69,7 +71,7 @@ public class CatRewashMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/export.xlsx")
     public void exportExcel(HttpServletResponse response,
-                            @RequestParam(required = false) String filter) throws java.io.IOException {
+                            @RequestParam(required = false) String filter) throws IOException {
         List<CatRewashCandidateResponse> candidates = loadCandidates(filter);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -108,7 +110,7 @@ public class CatRewashMvcController {
             }
 
             String filename = "貓咪回洗名單.xlsx";
-            String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
+            String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
             workbook.write(response.getOutputStream());
@@ -118,11 +120,11 @@ public class CatRewashMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/export.csv")
     public void exportCsv(HttpServletResponse response,
-                          @RequestParam(required = false) String filter) throws java.io.IOException {
+                          @RequestParam(required = false) String filter) throws IOException {
         List<CatRewashCandidateResponse> candidates = loadCandidates(filter);
 
         String filename = "貓咪回洗名單.csv";
-        String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
+        String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
 

@@ -10,17 +10,22 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.AuthException;
 import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,7 +35,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（2026-10-02）：會員搜尋支援寵物名
+    private final PetRepository petRepository; // 需求（2026-10-02）：會員搜尋支援寵物名
 
     // ── 需求（追加，2026-09-17）：登入暴力破解防護 ─────────────────────────
     // 連續密碼答錯達到這個次數，帳號鎖定一段時間，鎖定期間內即使密碼正確
@@ -101,7 +106,7 @@ public class UserService {
         return getUserEntityByUsername(username).getAdminNote();
     }
 
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public String setAdminNote(String username, String adminNote) {
         User user = getUserEntityByUsername(username);
         user.setAdminNote(adminNote);
@@ -142,8 +147,8 @@ public class UserService {
         // 需求（追加，2026-09-30）：電話改成店家匯入、還沒被認領的既有會員電話時擋下來，
         // 避免老客人跳過認領自己重填，產生一人兩筆帳號。只在「電話有改」時檢查，
         // 不然原本就撞號的舊帳號會連其他欄位都改不了。回 409 讓 LIFF 導回新客報到認領。
-        String newPhone = com.petgrooming.pet_system.service.MemberImportService.normalizePhone(req.getPhone());
-        String oldPhone = com.petgrooming.pet_system.service.MemberImportService.normalizePhone(user.getPhone());
+        String newPhone = MemberImportService.normalizePhone(req.getPhone());
+        String oldPhone = MemberImportService.normalizePhone(user.getPhone());
         if (!newPhone.equals(oldPhone)) {
             userRepository.findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(newPhone, UserRole.CUSTOMER)
                     .filter(u -> !u.getId().equals(user.getId()))
@@ -224,8 +229,8 @@ public class UserService {
     // ── 需求（追加，2026-10-02）：會員搜尋支援寵物名 ──────────────────────
     // 回傳「會員帳號 → 符合關鍵字的毛孩名字（多隻用、隔開）」，已停用的毛孩不算。
     // 各個會員列表／搜尋共用這一支，搜尋結果可以標出「毛孩：盆莓」方便分辨同名會員。
-    public java.util.Map<String, String> petNamesMatching(String keyword) {
-        java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+    public Map<String, String> petNamesMatching(String keyword) {
+        Map<String, String> result = new LinkedHashMap<>();
         if (keyword == null || keyword.isBlank()) return result;
         for (var pet : petRepository.findByNameContainingIgnoreCase(keyword.trim())) {
             if (pet.isDeleted() || pet.getOwner() == null || pet.getOwner().getRole() != UserRole.CUSTOMER) continue;
@@ -235,29 +240,29 @@ public class UserService {
     }
 
     // 姓名／帳號／電話＋寵物名一起搜，回傳會員與（如果是靠寵物名搜到的）毛孩名字
-    public List<java.util.Map.Entry<User, String>> searchCustomersIncludingPets(String keyword) {
+    public List<Map.Entry<User, String>> searchCustomersIncludingPets(String keyword) {
         if (keyword == null || keyword.isBlank()) return List.of();
-        java.util.Map<String, String> pets = petNamesMatching(keyword);
-        java.util.Map<String, java.util.Map.Entry<User, String>> found = new java.util.LinkedHashMap<>();
+        Map<String, String> pets = petNamesMatching(keyword);
+        Map<String, Map.Entry<User, String>> found = new LinkedHashMap<>();
         for (User u : searchCustomers(keyword)) {
-            found.put(u.getUsername(), new java.util.AbstractMap.SimpleEntry<>(u, pets.get(u.getUsername())));
+            found.put(u.getUsername(), new AbstractMap.SimpleEntry<>(u, pets.get(u.getUsername())));
         }
         for (var e : pets.entrySet()) {
             if (found.size() >= 20) break;
             if (!found.containsKey(e.getKey())) {
                 userRepository.findByUsername(e.getKey()).ifPresent(u ->
-                        found.put(u.getUsername(), new java.util.AbstractMap.SimpleEntry<>(u, e.getValue())));
+                        found.put(u.getUsername(), new AbstractMap.SimpleEntry<>(u, e.getValue())));
             }
         }
         return List.copyOf(found.values());
     }
 
     // 需求（追加，2026-10-02）：經手人下拉選單（員工＋管理者），只給 id 跟姓名，不把整個 User 丟進頁面
-    public List<java.util.Map<String, Object>> operatorOptions() {
-        List<User> list = new java.util.ArrayList<>(getAllStaffEntities());
+    public List<Map<String, Object>> operatorOptions() {
+        List<User> list = new ArrayList<>(getAllStaffEntities());
         list.addAll(getAllAdminEntities());
         return list.stream()
-                .<java.util.Map<String, Object>>map(u -> java.util.Map.of("id", u.getId(), "name", u.getName()))
+                .<Map<String, Object>>map(u -> Map.of("id", u.getId(), "name", u.getName()))
                 .toList();
     }
 

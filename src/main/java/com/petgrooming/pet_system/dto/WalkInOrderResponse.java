@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.dto;
 
+import com.petgrooming.pet_system.enums.DiscountType;
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.model.WalkInOrderItem;
 import lombok.Data;
@@ -46,7 +48,7 @@ public class WalkInOrderResponse {
         // 需求 8 修正：回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
         private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（僅限有綁定會員、且該會員的貓距上次洗澡未滿90天）
         private boolean firstVisitEligible; // 需求（追加）：這個項目是否符合狗狗首次體驗優惠資格
-        private com.petgrooming.pet_system.enums.DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
+        private DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
         private Long retailProductId; // 需求 7-1：非 null 代表這一列是零售商品加購
         private boolean retailItem;   // 方便前端判斷是不是零售商品（不用另外判斷 groomingItemId == null 這種間接方式）
         // 需求（追加，2026-08-24 修正）：這個項目本身的體重級距（SMALL~EXTRA_LARGE/null）。
@@ -94,7 +96,7 @@ public class WalkInOrderResponse {
         res.setPaymentMethodLabel(o.getPaymentMethod() != null ? o.getPaymentMethod().getDisplayName() : null);
         res.setPaymentTime(o.getPaymentTime());
         res.setPendingWireTransfer(
-                o.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER
+                o.getPaymentMethod() == PaymentMethod.WIRE_TRANSFER
                         && !o.isPaid());
         res.setServiceEndedDone(o.isServiceEndedDone());
         res.setFinalCheckDone(o.isFinalCheckDone());

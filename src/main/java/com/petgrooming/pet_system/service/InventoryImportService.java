@@ -84,7 +84,7 @@ public class InventoryImportService {
                 errors.add("第 " + rowNo + " 列：" + e.getMessage());
             }
         }
-        log.info("📦 [零售商品匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
+        log.info("[零售商品匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
         return SimpleImportResult.builder().totalRows(rows.size()).succeeded(ok).rowErrors(errors).build();
     }
 
@@ -126,7 +126,7 @@ public class InventoryImportService {
                 errors.add("第 " + rowNo + " 列：" + e.getMessage());
             }
         }
-        log.info("🧴 [店用洗劑匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
+        log.info("[店用洗劑匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
         return SimpleImportResult.builder().totalRows(rows.size()).succeeded(ok).rowErrors(errors).build();
     }
 

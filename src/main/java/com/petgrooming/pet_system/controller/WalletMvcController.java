@@ -1,10 +1,17 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
+import com.petgrooming.pet_system.dto.PetRequest;
+import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.dto.WalletResponse;
+import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.TopUpService;
@@ -16,8 +23,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin/wallets")
@@ -29,7 +41,7 @@ public class WalletMvcController {
     private final PetService petService;
     private final TopUpService topUpService;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
-    private final com.petgrooming.pet_system.service.GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
+    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final OperationLogService operationLogService;
 
     private User getLoginUser(HttpServletRequest request) {
@@ -51,11 +63,11 @@ public class WalletMvcController {
 
         // 需求（追加）：搜尋範圍擴大到寵物名稱、手機號碼，先把每位顧客的寵物名單準備好
         // （寵物名稱要拿來比對關鍵字，也要顯示在列表上，一次查好兩用）
-        var petsByUsername = new java.util.HashMap<String, java.util.List<String>>();
+        var petsByUsername = new HashMap<String, List<String>>();
         for (var c : allCustomers) {
             petsByUsername.put(c.getUsername(),
                     petService.getMyPets(c.getUsername()).stream()
-                            .map(com.petgrooming.pet_system.dto.PetResponse::getName)
+                            .map(PetResponse::getName)
                             .toList());
         }
 
@@ -71,7 +83,7 @@ public class WalletMvcController {
                     .toList();
         }
         // 帶入每位顧客的錢包資料，讓列表可直接標示低餘額（< $2,000）會員
-        var walletsByUsername = new java.util.HashMap<String, com.petgrooming.pet_system.dto.WalletResponse>();
+        var walletsByUsername = new HashMap<String, WalletResponse>();
         for (var c : customers) {
             walletsByUsername.put(c.getUsername(), walletService.getWallet(c.getUsername()));
         }
@@ -101,7 +113,7 @@ public class WalletMvcController {
         model.addAttribute("pets", pets);
         model.addAttribute("coatTypes", CoatType.values());
         // 進行中核對功能：帶出每隻寵物的美容狀況歷史，供店家查詢客製化美容參考
-        var groomingNotesByPetId = new java.util.HashMap<Long, java.util.List<com.petgrooming.pet_system.model.PetGroomingNote>>();
+        var groomingNotesByPetId = new HashMap<Long, List<PetGroomingNote>>();
         for (var p : pets) {
             groomingNotesByPetId.put(p.getId(),
                     petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(p.getId()));
@@ -109,7 +121,7 @@ public class WalletMvcController {
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
         // 需求（2026-09-29）：核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
         model.addAttribute("notePhotosByNoteId", groomingNotePhotoService.photoUrlsByNoteId(
-                groomingNotesByPetId.values().stream().flatMap(java.util.List::stream).toList()));
+                groomingNotesByPetId.values().stream().flatMap(List::stream).toList()));
         // 需求 8：會員特殊備注（僅後台可見）
         model.addAttribute("adminNote", userService.getAdminNote(username));
         return "admin/wallet-detail";
@@ -122,8 +134,8 @@ public class WalletMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/edit")
     public String editPet(@PathVariable String username, @PathVariable Long petId,
-                          @Valid @ModelAttribute com.petgrooming.pet_system.dto.PetRequest petRequest,
-                          org.springframework.validation.BindingResult bindingResult,
+                          @Valid @ModelAttribute PetRequest petRequest,
+                          BindingResult bindingResult,
                           @RequestParam(required = false) String returnTo,
                           HttpServletRequest request,
                           RedirectAttributes ra) {
@@ -150,7 +162,7 @@ public class WalletMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/cat-coat-category")
     public String setCatCoatCategory(@PathVariable String username, @PathVariable Long petId,
-                              @RequestParam com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory,
+                              @RequestParam CatCoatCategory catCoatCategory,
                               @RequestParam(required = false) String returnTo,
                               HttpServletRequest request,
                               RedirectAttributes ra) {
@@ -194,7 +206,7 @@ public class WalletMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/photo")
     public String uploadPetPhoto(@PathVariable String username, @PathVariable Long petId,
-                                 @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                 @RequestParam("file") MultipartFile file,
                                  @RequestParam(required = false) String returnTo,
                                  HttpServletRequest request,
                                  RedirectAttributes ra) {
@@ -216,7 +228,7 @@ public class WalletMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/grooming-notes/{noteId}/photo")
     public String uploadGroomingNotePhoto(@PathVariable String username, @PathVariable Long noteId,
-                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                          @RequestParam("file") MultipartFile file,
                                           @RequestParam(required = false) String returnTo,
                                           HttpServletRequest request,
                                           RedirectAttributes ra) {
@@ -258,7 +270,7 @@ public class WalletMvcController {
     // ── POST /admin/wallets/{username}/deposit ─────────────────────────────
     // 幫顧客儲值
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @com.petgrooming.pet_system.annotation.RequireCsrf
+    @RequireCsrf
     @PostMapping("/{username}/deposit")
     public String deposit(@PathVariable String username,
                           @ModelAttribute DepositRequest req, // 修正（2026-10-02）：不用 @Valid，金額檢查交給

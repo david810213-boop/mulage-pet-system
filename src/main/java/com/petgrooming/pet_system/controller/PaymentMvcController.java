@@ -3,23 +3,43 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
+import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
+import com.petgrooming.pet_system.enums.CoatType;
+import com.petgrooming.pet_system.enums.DogWeightTier;
 import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
+import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.CatRewashDiscountService;
+import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
+import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/payments")
@@ -33,13 +53,13 @@ public class PaymentMvcController {
     private final AppointmentRepository appointmentRepository;
     private final WalkInOrderRepository walkInOrderRepository;
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
-    private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
-    private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
-    private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
-    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
-    private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
-    private final com.petgrooming.pet_system.service.MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
+    private final AppointmentService appointmentService;
+    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
+    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
+    private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
+    private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
+    private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
     /**
      * JWT 版獲取當前登入使用者
@@ -60,9 +80,9 @@ public class PaymentMvcController {
     // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
     // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
     // 需求（2026-09-24）：合併交易紀錄的邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
-    private java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
-            java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
-            java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
+    private List<ConsumptionRecordResponse> buildCombinedRecords(
+            List<TransactionResponse> transactions,
+            List<WalkInOrder> walkInOrders) {
         return memberConsumptionService.buildCombinedRecords(transactions, walkInOrders);
     }
 
@@ -93,11 +113,11 @@ public class PaymentMvcController {
         model.addAttribute("user", user);
         model.addAttribute("appointmentId", appointmentId);
         // 需求 10：結帳畫面不再提供「信用卡」選項（歷史資料仍保留該列舉值，僅畫面隱藏）
-        model.addAttribute("paymentMethods", java.util.Arrays.stream(PaymentMethod.values())
+        model.addAttribute("paymentMethods", Arrays.stream(PaymentMethod.values())
                 .filter(m -> m != PaymentMethod.CREDIT_CARD).toList());
         model.addAttribute("checkoutRequest", new CheckoutRequest());
         model.addAttribute("bankAccountInfo",
-                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
+                paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
@@ -108,20 +128,20 @@ public class PaymentMvcController {
         var pet = appointmentService.getPetForAppointment(appointmentId);
         model.addAttribute("pet", pet);
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
-        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+        model.addAttribute("performanceCategories", PerformanceCategory.values());
         final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
-        final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
+        final DogWeightTier dogTier =
                 pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
-                        ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
+                        ? DogWeightTier.forWeight(pet.getWeight())
                         : null;
         // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
         // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。中長毛現在
         // 也有自己對應的套餐了（DOG049~072），一併算「已定義」。只有還沒
         // 定義（UNDEFINED）才不篩毛長，維持「這個體重級距的都顯示」。
-        final com.petgrooming.pet_system.enums.CoatType petCoatType = pet != null ? pet.getCoatType() : null;
-        final boolean coatDefined = petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
-                || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM;
+        final CoatType petCoatType = pet != null ? pet.getCoatType() : null;
+        final boolean coatDefined = petCoatType == CoatType.SHORT
+                || petCoatType == CoatType.LONG
+                || petCoatType == CoatType.MEDIUM;
         model.addAttribute("groomingItems", groomingService.getAllItems().stream()
                 .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                 .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
@@ -229,7 +249,7 @@ public class PaymentMvcController {
     public String addCustomItem(@PathVariable Long appointmentId,
                                 @RequestParam String itemName,
                                 @RequestParam int price,
-                                @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(required = false) PerformanceCategory category,
                                 @RequestParam(required = false) Long operatorStaffId,
                                 @RequestParam(required = false) Long operatorStaffId2,
                                 @RequestParam(defaultValue = "checkout") String from,
@@ -422,15 +442,15 @@ public class PaymentMvcController {
     public String bankAccountForm(HttpServletRequest request, Model model) {
         model.addAttribute("user", getLoginUser(request));
         model.addAttribute("checkoutInfo",
-                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
+                paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("topupInfo",
-                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP));
+                paymentService.getBankAccountInfo(BankAccountPurpose.TOPUP));
         return "payments/bank-account";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account")
-    public String updateBankAccount(@RequestParam com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+    public String updateBankAccount(@RequestParam BankAccountPurpose purpose,
                                     @RequestParam String bankName,
                                     @RequestParam String accountNumber,
                                     @RequestParam String accountHolder,
@@ -447,8 +467,8 @@ public class PaymentMvcController {
     // 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立）
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account/qr-code")
-    public String uploadBankAccountQrCode(@RequestParam com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
-                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+    public String uploadBankAccountQrCode(@RequestParam BankAccountPurpose purpose,
+                                          @RequestParam("file") MultipartFile file,
                                           HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
@@ -495,9 +515,9 @@ public class PaymentMvcController {
     // （之前 booking.html 就是因為呼叫錯路徑，一直 404，簽名檔顯示不出來）。
     @GetMapping("/api/company-signature")
     @ResponseBody
-    public java.util.Map<String, String> getCompanySignatureApi() {
+    public Map<String, String> getCompanySignatureApi() {
         String image = paymentService.getCompanySignatureImage();
-        return java.util.Collections.singletonMap("signatureImage", image);
+        return Collections.singletonMap("signatureImage", image);
     }
 
     // ── GET /payments/pricing-settings ──────────────────────────────────
@@ -512,7 +532,7 @@ public class PaymentMvcController {
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/pricing-settings")
-    public String updatePricingSettings(@ModelAttribute com.petgrooming.pet_system.model.PricingSettings settings,
+    public String updatePricingSettings(@ModelAttribute PricingSettings settings,
                                         HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         paymentService.updatePricingSettings(settings);

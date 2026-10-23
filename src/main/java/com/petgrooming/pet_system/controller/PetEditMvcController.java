@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.PetRequest;
+import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.PetRepository;
@@ -13,6 +14,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 需求（追加，2026-08-24）：後台「完整編輯寵物資料」頁面。原本「會員信息」
@@ -50,13 +54,13 @@ public class PetEditMvcController {
             model.addAttribute("errorMsg", "找不到這隻寵物");
             return "admin/pet-edit";
         }
-        var petResponse = com.petgrooming.pet_system.dto.PetResponse.from(pet);
+        var petResponse = PetResponse.from(pet);
         model.addAttribute("pet", petResponse);
         model.addAttribute("catBreeds", petService.listCatBreedOptions());
         // 個性/病史選項，跟 LIFF add-pet.html 用同一份清單，維持兩邊一致
-        model.addAttribute("personalityOptions", java.util.List.of(
+        model.addAttribute("personalityOptions", List.of(
                 "親近人", "親近狗", "會咬人", "不會咬人", "會咬狗貓", "不會咬狗貓", "容易緊張", "有攻擊性"));
-        model.addAttribute("healthOptions", java.util.List.of(
+        model.addAttribute("healthOptions", List.of(
                 "心臟病", "氣喘", "氣管塌陷", "白內障", "癲癇", "心絲蟲", "艾利希體", "腹膜炎",
                 "腹積水", "手術外傷未癒合", "髖關節問題", "骨折", "腸炎", "血便", "血尿", "懷孕", "傳染性疾病"));
         // 需求（2026-08-24 修正）：原本畫面上用 Thymeleaf 的
@@ -97,11 +101,11 @@ public class PetEditMvcController {
 
     // 需求（追加，2026-08-24 修正）：把逗號分隔字串轉成 List<String>，null/空字串
     // 都回傳空 List（不是 null），避免 Thymeleaf 樣板裡還要另外判斷 null。
-    private java.util.List<String> splitToList(String commaSeparated) {
+    private List<String> splitToList(String commaSeparated) {
         if (commaSeparated == null || commaSeparated.isBlank()) {
-            return java.util.List.of();
+            return List.of();
         }
-        return java.util.Arrays.stream(commaSeparated.split(","))
+        return Arrays.stream(commaSeparated.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();

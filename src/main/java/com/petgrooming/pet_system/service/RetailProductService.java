@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 需求 7-1：零售商品管理。
@@ -35,7 +36,7 @@ public class RetailProductService {
     // 跟金額沒填/沒改的（維持 0，不強迫店家一定要填滿整頁才能送出，可以分批補）。
     // 回傳實際更新的筆數，讓畫面能提示店家「這次補了幾筆」。
     @Transactional
-    public int bulkUpdateCost(java.util.Map<Long, Integer> idToCost) {
+    public int bulkUpdateCost(Map<Long, Integer> idToCost) {
         int updated = 0;
         for (var entry : idToCost.entrySet()) {
             Integer cost = entry.getValue();

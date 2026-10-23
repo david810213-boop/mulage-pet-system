@@ -2,9 +2,11 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.StoreSupply;
+import com.petgrooming.pet_system.model.SupplyUsageRecord;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.notification.LineMessagingService;
 import com.petgrooming.pet_system.repository.StoreSupplyRepository;
+import com.petgrooming.pet_system.repository.SupplyUsageRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,7 @@ public class StoreSupplyService {
     private final BarcodeService barcodeService; // 需求（2026-10-02）：條碼
     private final UserService userService;
     private final LineMessagingService lineMessagingService;
-    private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
+    private final SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
 
     public List<StoreSupply> listActive() {
         return storeSupplyRepository.findByIsDeletedFalseOrderByNameAsc();
@@ -113,7 +115,7 @@ public class StoreSupplyService {
 
         // 需求 6：另外存一份結構化紀錄（不是只寫操作紀錄的文字備註），
         // 成本用「領用當下」的單價快照，財務報表算成本才不會受之後調價影響。
-        supplyUsageRecordRepository.save(com.petgrooming.pet_system.model.SupplyUsageRecord.builder()
+        supplyUsageRecordRepository.save(SupplyUsageRecord.builder()
                 .supplyId(supply.getId())
                 .supplyName(supply.getName())
                 .quantity(quantity)
@@ -133,7 +135,7 @@ public class StoreSupplyService {
     // 店員多半用帳號密碼登入、沒有綁 LINE——沒收到通知不代表功能沒動，可能是帳號還沒綁 LINE。
     private void notifyLowStock(StoreSupply supply) {
         String text = String.format(
-                "⚠️【庫存不足提醒】慕沐村店用洗劑「%s」剩餘 %d（安全庫存量 %d），請盡快叫貨補貨。",
+                "\u26A0\uFE0F【庫存不足提醒】慕沐村店用洗劑「%s」剩餘 %d（安全庫存量 %d），請盡快叫貨補貨。",
                 supply.getName(), supply.getStockQuantity(), supply.getSafetyStockThreshold());
 
         List<User> staffAndAdmin = new ArrayList<>(userService.getAllStaffEntities());

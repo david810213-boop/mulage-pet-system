@@ -5,8 +5,10 @@ import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
+import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -24,7 +27,7 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16
+    private final ClosedDateService closedDateService; // 需求 16
 
     // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
     private String currentUsername(HttpServletRequest request) {
@@ -81,17 +84,17 @@ public class AppointmentController {
     public ResponseEntity<List<TimeSlotResponse>> getAvailableSlots(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) String petType) {
-        com.petgrooming.pet_system.enums.PetType parsedPetType = null;
+        PetType parsedPetType = null;
         if (petType != null && !petType.isBlank()) {
             try {
-                parsedPetType = com.petgrooming.pet_system.enums.PetType.valueOf(petType.toUpperCase());
+                parsedPetType = PetType.valueOf(petType.toUpperCase());
             } catch (IllegalArgumentException ignored) {
                 // 不合法的值當作沒帶，不篩選物種
             }
         }
         // 需求（追加，2026-10-02）：過去的日期一律沒有可預約時段（預約頁專用；
         // 員工時段管理走 MobileScheduleController，不受影響）
-        if (date.isBefore(java.time.LocalDate.now())) {
+        if (date.isBefore(LocalDate.now())) {
             return ResponseEntity.ok(List.of());
         }
         return ResponseEntity.ok(appointmentService.getAvailableSlots(date, parsedPetType));
@@ -104,7 +107,7 @@ public class AppointmentController {
     public ResponseEntity<?> firstVisit(@RequestParam Long petId, HttpServletRequest request) {
         String username = currentUsername(request);
         if (username == null) {
-            return ResponseEntity.status(401).body(java.util.Map.of("message", "請先登入"));
+            return ResponseEntity.status(401).body(Map.of("message", "請先登入"));
         }
         return ResponseEntity.ok(appointmentService.firstVisitStatus(username, petId));
     }

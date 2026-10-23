@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.PetType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -48,5 +49,5 @@ public class DefaultSlotCapacityTemplate {
     // 同一套欄位設計（null＝不限制）。新建立一天的計數列時會從這裡帶入初始值。
     @Column(name = "allowed_pet_type")
     @Enumerated(EnumType.STRING)
-    private com.petgrooming.pet_system.enums.PetType allowedPetType;
+    private PetType allowedPetType;
 }

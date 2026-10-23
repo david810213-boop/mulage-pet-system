@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -22,6 +23,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
+import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Arrays;
@@ -176,9 +179,9 @@ public class PerformanceMvcController {
         User user = getLoginUser(request);
         model.addAttribute("user", user);
         model.addAttribute("progress",
-                performanceService.getMyProgress(user.getId(), java.time.LocalDate.now()));
+                performanceService.getMyProgress(user.getId(), LocalDate.now()));
         model.addAttribute("myRecordsToday",
-                performanceService.getDailyRecords(java.time.LocalDate.now()).stream()
+                performanceService.getDailyRecords(LocalDate.now()).stream()
                         .filter(r -> r.getStaff().getId().equals(user.getId()))
                         .toList());
         return "admin/performance-my";
@@ -260,7 +263,7 @@ public class PerformanceMvcController {
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/staff-breakdown/export")
     public void exportStaffBreakdown(HttpServletRequest request, HttpServletResponse response,
-                                     @RequestParam int year, @RequestParam int month) throws java.io.IOException {
+                                     @RequestParam int year, @RequestParam int month) throws IOException {
         var matrix = performanceService.getMonthlyMatrix(year, month);
         var categories = matrix.getCategories();
 
@@ -271,7 +274,7 @@ public class PerformanceMvcController {
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
             int rowIdx = 0;
@@ -341,7 +344,7 @@ public class PerformanceMvcController {
             }
 
             String filename = year + "年" + month + "月積分項目統計.xlsx";
-            String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
+            String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
 

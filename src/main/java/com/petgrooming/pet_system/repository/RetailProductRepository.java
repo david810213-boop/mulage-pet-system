@@ -15,8 +15,8 @@ public interface RetailProductRepository extends JpaRepository<RetailProduct, Lo
     List<RetailProduct> findByIsDeletedFalseOrderByNameAsc();
 
     // 需求（追加，2026-10-02）：條碼查詢／CSV 匯入比對
-    java.util.Optional<RetailProduct> findByBarcode(String barcode);
-    java.util.Optional<RetailProduct> findFirstByNameAndIsDeletedFalse(String name);
+    Optional<RetailProduct> findByBarcode(String barcode);
+    Optional<RetailProduct> findFirstByNameAndIsDeletedFalse(String name);
     List<RetailProduct> findByIsDeletedFalseAndBarcodeIsNull();
 
     // 需求（追加）：成本回填清單——找出還沒設定進貨成本（unitCost=0）的上架商品，

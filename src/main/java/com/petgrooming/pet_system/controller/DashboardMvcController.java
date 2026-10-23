@@ -1,5 +1,8 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
+import com.petgrooming.pet_system.dto.WalletResponse;
+import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
@@ -61,7 +64,7 @@ public class DashboardMvcController {
         model.addAttribute("user", user);
 
         if (user.isStaffOrAdmin()) {
-            List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> allAdmin =
+            List<AppointmentAdminResponse> allAdmin =
                     appointmentService.getAllForAdmin();
             model.addAttribute("appointments", allAdmin);
 
@@ -94,11 +97,11 @@ public class DashboardMvcController {
             // 9/13，但清單還顯示 9/9 的待確認預約）。加上日期不早於今天的條件，
             // 過期的待確認預約不再顯示在這裡（預約本身的狀態、資料都不受影響，
             // 只是不出現在 Dashboard 這個清單，店家仍可在「預約列表」查到）。
-            List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> pendingAppointments = allAdmin.stream()
+            List<AppointmentAdminResponse> pendingAppointments = allAdmin.stream()
                     .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
                     .filter(a -> !a.getDate().isBefore(today))
-                    .sorted(Comparator.comparing(com.petgrooming.pet_system.dto.AppointmentAdminResponse::getDate)
-                            .thenComparing(com.petgrooming.pet_system.dto.AppointmentAdminResponse::getStartTime))
+                    .sorted(Comparator.comparing(AppointmentAdminResponse::getDate)
+                            .thenComparing(AppointmentAdminResponse::getStartTime))
                     .limit(8)
                     .toList();
 
@@ -108,7 +111,7 @@ public class DashboardMvcController {
             // 會員名單（含餘額，最多顯示前 8 筆，並帶出總會員數）
             var allCustomers = userService.getAllCustomers();
             var recentCustomers = allCustomers.stream().limit(8).toList();
-            Map<String, com.petgrooming.pet_system.dto.WalletResponse> walletsByUsername = new HashMap<>();
+            Map<String, WalletResponse> walletsByUsername = new HashMap<>();
             for (var c : recentCustomers) {
                 walletsByUsername.put(c.getUsername(), walletService.getWallet(c.getUsername()));
             }
@@ -119,7 +122,7 @@ public class DashboardMvcController {
             // 每個商品分別設定門檻，需要另外幫 RetailProduct 加欄位。
             // 排序：庫存量低的排前面，最需要店家注意的商品最先看到。
             var activeRetailProducts = retailProductService.listActive().stream()
-                    .sorted(Comparator.comparingInt(com.petgrooming.pet_system.model.RetailProduct::getStockQuantity))
+                    .sorted(Comparator.comparingInt(RetailProduct::getStockQuantity))
                     .toList();
             long lowStockCount = activeRetailProducts.stream()
                     .filter(p -> p.getStockQuantity() <= 5)

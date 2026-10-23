@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Map;
 
 /**
  * 需求（追加，2026-08-23）：店家轉型，既有紙本/舊系統會員資料批次匯入。
@@ -139,7 +140,7 @@ public class MemberImportService {
             }
         }
 
-        log.info("✨ [會員資料匯入] 新建 {} 筆會員、{} 隻寵物，跳過 {} 筆已存在的電話號碼",
+        log.info("[會員資料匯入] 新建 {} 筆會員、{} 隻寵物，跳過 {} 筆已存在的電話號碼",
                 membersCreated, petsCreated, skippedPhones.size());
 
         return MemberImportResult.builder()
@@ -221,7 +222,7 @@ public class MemberImportService {
             succeeded++;
         }
 
-        log.info("✨ [儲值餘額匯入] 成功 {} 筆，錯誤 {} 筆", succeeded, errors.size());
+        log.info("[儲值餘額匯入] 成功 {} 筆，錯誤 {} 筆", succeeded, errors.size());
         return SimpleImportResult.builder()
                 .totalRows(rows.size())
                 .succeeded(succeeded)
@@ -316,7 +317,7 @@ public class MemberImportService {
             succeeded++;
         }
 
-        log.info("✨ [消費紀錄匯入] 成功 {} 筆，錯誤 {} 筆", succeeded, errors.size());
+        log.info("[消費紀錄匯入] 成功 {} 筆，錯誤 {} 筆", succeeded, errors.size());
         return SimpleImportResult.builder()
                 .totalRows(rows.size())
                 .succeeded(succeeded)
@@ -352,12 +353,12 @@ public class MemberImportService {
         // profileCompletedAt 檢查，所以整批覆蓋沒有蓋掉顧客自己資料的風險）
         currentUser.setName(imported.getName());
         currentUser.setPhone(imported.getPhone());
-        currentUser.setProfileCompletedAt(java.time.LocalDateTime.now());
+        currentUser.setProfileCompletedAt(LocalDateTime.now());
         userRepository.save(currentUser);
 
         TransferSummary summary = transferAllDataAndDeleteSource(imported, currentUser);
 
-        log.info("✨ [會員認領] {} 認領了電話 {} 的匯入資料，過戶 {} 隻寵物",
+        log.info("[會員認領] {} 認領了電話 {} 的匯入資料，過戶 {} 隻寵物",
                 currentUser.getUsername(), normalized, summary.pets().size());
 
         return currentUser;
@@ -367,14 +368,14 @@ public class MemberImportService {
     // 查到還沒被認領的既有會員 → 回傳遮罩後的姓名、毛孩數、要用什麼確認；
     // 查不到 → matched=false，前端改走一般新客流程。不回傳毛孩名字等可直接
     // 拿來認領的資訊。
-    public java.util.Map<String, Object> lookupForClaim(User currentUser, String phone) {
+    public Map<String, Object> lookupForClaim(User currentUser, String phone) {
         Optional<User> found = findClaimable(currentUser, phone);
         if (found.isEmpty()) {
-            return java.util.Map.of("matched", false);
+            return Map.of("matched", false);
         }
         User imported = found.get();
         long petCount = activePets(imported).size();
-        return java.util.Map.of(
+        return Map.of(
                 "matched", true,
                 "maskedName", maskName(imported.getName()),
                 "petCount", petCount,
@@ -466,7 +467,7 @@ public class MemberImportService {
 
         TransferSummary summary = transferAllDataAndDeleteSource(imported, target);
 
-        log.info("✨ [手動綁定] 店家手動把匯入帳號 {} 的資料合併到會員 {}，過戶 {} 隻寵物、{} 筆消費紀錄、{} 筆預約、{} 筆儲值申請",
+        log.info("[手動綁定] 店家手動把匯入帳號 {} 的資料合併到會員 {}，過戶 {} 隻寵物、{} 筆消費紀錄、{} 筆預約、{} 筆儲值申請",
                 importedUsername, targetUsername, summary.pets().size(), summary.orders().size(),
                 summary.appointments().size(), summary.topUps().size());
     }
@@ -687,10 +688,10 @@ public class MemberImportService {
     // 讀檔時把偵測到的編碼寫進 log，方便店家上傳出問題時對照排查。
     private void logDetectedCharset(String label, CsvImportFileReader.Parsed parsed) {
         if (parsed.isLenientFallback()) {
-            log.warn("⚠️ [{}匯入] 無法確定 CSV 檔案編碼，已改用 UTF-8 寬鬆模式讀取，內容可能有亂碼，"
+            log.warn("[{}匯入] 無法確定 CSV 檔案編碼，已改用 UTF-8 寬鬆模式讀取，內容可能有亂碼，"
                     + "請確認原始檔另存為 UTF-8 或 Big5", label);
         } else {
-            log.info("📄 [{}匯入] 偵測到 CSV 檔案編碼：{}", label, parsed.getCharset().displayName());
+            log.info("[{}匯入] 偵測到 CSV 檔案編碼：{}", label, parsed.getCharset().displayName());
         }
     }
 

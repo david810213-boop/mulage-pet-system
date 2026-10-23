@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.InventoryImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
@@ -11,7 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 需求 7-1：零售商品後台管理——新增商品、調整售價、補貨/盤點調整庫存、下架。
@@ -22,7 +27,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class RetailProductMvcController {
 
     private final RetailProductService retailProductService;
-    private final com.petgrooming.pet_system.service.InventoryImportService inventoryImportService; // 需求（2026-10-02）
+    private final InventoryImportService inventoryImportService; // 需求（2026-10-02）
     private final UserService userService;
     private final OperationLogService operationLogService;
 
@@ -57,11 +62,11 @@ public class RetailProductMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/cost-backfill/submit")
     public String submitCostBackfill(HttpServletRequest request,
-                                      @RequestParam java.util.Map<String, String> allParams,
+                                      @RequestParam Map<String, String> allParams,
                                       RedirectAttributes ra) {
         User user = getLoginUser(request);
         // 表單欄位命名為 cost_{id}，例如 cost_17=120，逐一解析成 Map<商品id, 成本>
-        java.util.Map<Long, Integer> idToCost = new java.util.HashMap<>();
+        Map<Long, Integer> idToCost = new HashMap<>();
         for (var entry : allParams.entrySet()) {
             if (!entry.getKey().startsWith("cost_")) continue;
             try {
@@ -148,7 +153,7 @@ public class RetailProductMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/import")
     public String importCsv(HttpServletRequest request,
-                            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                            @RequestParam("file") MultipartFile file,
                             RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
