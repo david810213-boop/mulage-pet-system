@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -40,6 +41,7 @@ class WalkInCreateFormTest extends IntegrationTestBase {
     @Autowired private GroomingItemRepository groomingItemRepository;
     @Autowired private RetailProductService retailProductService;
     @Autowired private WalkInOrderService walkInOrderService;
+    @Autowired private TransactionTemplate transactionTemplate;
 
     private MockMvc mvc;
 
@@ -117,7 +119,7 @@ class WalkInCreateFormTest extends IntegrationTestBase {
                 .filter(o -> note.equals(o.getNote()))
                 .map(WalkInOrder::getId)
                 .findFirst().orElseThrow();
-        return walkInOrderService.getById(id);
+        return transactionTemplate.execute(status -> walkInOrderService.getById(id));
     }
 
     private MockHttpServletRequestBuilder as(User user, MockHttpServletRequestBuilder request) {
