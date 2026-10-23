@@ -9,9 +9,7 @@ import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
-import com.petgrooming.pet_system.service.CatRewashDiscountService;
-import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.CheckoutPreviewService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
@@ -19,7 +17,6 @@ import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
-import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -28,7 +25,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,10 +42,7 @@ public class WalkInOrderMvcController {
     private final GroomingService groomingService;
     private final UserService userService;
     private final OperationLogService operationLogService;
-    private final WalletService walletService; // 需求 15
-    private final CatRewashDiscountService catRewashDiscountService; // 需求 15
-    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
-    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
+    private final CheckoutPreviewService checkoutPreviewService; // 需求 15：儲值金折扣預覽
     private final PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
     private final RetailProductService retailProductService; // 需求 7-1
     private final PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
@@ -248,37 +241,12 @@ public class WalkInOrderMvcController {
             model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
             model.addAttribute("bankAccountInfo",
                     paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT)); // 需求 15 修正
-
-            // 需求 10：跟預約結帳一致，不再提供「信用卡」選項
-            // 需求 15 修正：匯款現在有待對帳流程了，重新加回選單
-            model.addAttribute("paymentMethods", Arrays.stream(
-                            PaymentMethod.values())
-                    .filter(m -> m != PaymentMethod.CREDIT_CARD)
-                    .toList());
+            // 需求 10：跟預約結帳一致，不提供「信用卡」選項；需求 15 修正：匯款有待對帳流程，保留在選單
+            model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
 
             if (order.getMemberUsername() != null) {
-                var wallet = walletService.getWallet(order.getMemberUsername());
-                model.addAttribute("walletBalance", wallet.getBalance());
-                model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-                model.addAttribute("walletDiscount", wallet.getDiscount());
-                model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-
-                boolean isDogPet = "DOG".equalsIgnoreCase(petType);
-                double walletPreview = order.getItems().stream()
-                        .mapToDouble(it -> {
-                            if (it.isFirstVisitEligible() && isDogPet) {
-                                return dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                        it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
-                            }
-                            if (it.isFirstVisitEligible()) {
-                                return catFirstVisitDiscountService.resolvePreferredDiscount(
-                                        it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
-                            }
-                            return catRewashDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price();
-                        })
-                        .sum();
-                model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+                CheckoutPageSupport.addWalletPreview(model, checkoutPreviewService.forWalkIn(
+                        order.getMemberUsername(), order.getItems(), petType));
             }
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMsg", e.getMessage());
@@ -385,16 +353,7 @@ public class WalkInOrderMvcController {
             ra.addFlashAttribute("successMsg",
                     "結帳完成！單號 #" + result.getId() + "，付款方式：" + result.getPaymentMethodLabel());
 
-            // 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗
-            // 還沒鎖定固定套餐（幼犬、或成犬還沒被判定定型），跳提醒請店員記得更新
-            // 體重，因為體重是下次開單自動篩選菜單的依據。已鎖定的狗不需要提醒
-            // （不用再管體重了）。
-            var pet = walkInOrderService.getPetForOrder(id);
-            if (pet != null && "DOG".equalsIgnoreCase(pet.getPetType().name()) && pet.getLockedGroomingItemId() == null) {
-                ra.addFlashAttribute("weightReminderPetId", pet.getId());
-                ra.addFlashAttribute("weightReminderPetName", pet.getName());
-                ra.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
-            }
+            CheckoutPageSupport.addWeightUpdateReminder(ra, walkInOrderService.getPetForOrder(id));
 
             return "redirect:/admin/walk-in-orders";
         } catch (IllegalArgumentException e) {

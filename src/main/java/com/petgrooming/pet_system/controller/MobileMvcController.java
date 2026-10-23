@@ -627,13 +627,7 @@ public class MobileMvcController {
 
             // 跟網頁版一樣：狗狗還沒鎖定固定套餐的話，結帳完提醒更新體重
             try {
-                PetResponse pet = appointmentService.getPetForAppointment(id);
-                if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
-                        && pet.getLockedGroomingItemId() == null) {
-                    redirectAttributes.addFlashAttribute("weightReminderPetId", pet.getId());
-                    redirectAttributes.addFlashAttribute("weightReminderPetName", pet.getName());
-                    redirectAttributes.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
-                }
+                CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes, appointmentService.getPetForAppointment(id));
             } catch (IllegalArgumentException ignore) {
                 // 提醒只是輔助功能，找不到寵物就不提醒
             }
