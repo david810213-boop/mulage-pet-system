@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDate;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -95,6 +96,25 @@ class WalletServiceTest extends IntegrationTestBase {
         assertThat(result.succeeded()).isEqualTo(8);
         assertThat(result.failures()).allMatch(WalletException.class::isInstance);
         assertThat(balanceOf(customer)).isZero();
+    }
+
+    @Test
+    void concurrentDepositsAndDeductionsLoseNoUpdate() throws Exception {
+        User customer = testData.customer();
+        walletService.deposit(customer.getUsername(), deposit(30000));
+        AtomicInteger turn = new AtomicInteger();
+
+        Concurrently.Result result = Concurrently.run(10, () -> {
+            if (turn.getAndIncrement() % 2 == 0) {
+                walletService.deposit(customer.getUsername(), deposit(5000));
+            } else {
+                walletService.deduct(customer.getUsername(), 1000, null);
+            }
+        });
+
+        assertThat(result.failures()).isEmpty();
+        // 5 筆儲值各 5000 ＋ 村民方案贈點 200，5 筆扣款各 1000
+        assertThat(balanceOf(customer)).isEqualTo(30000 + 5 * 5200 - 5 * 1000);
     }
 
     private static DepositRequest deposit(int amount) {
