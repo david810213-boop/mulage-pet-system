@@ -48,8 +48,12 @@ class ApiAuthorizationTest extends IntegrationTestBase {
     /** 新增的管理端點若忘了加 @RequireRole，這個測試會失敗。 */
     @Test
     void everyAdminEndpointDeclaresRequiredRoles() {
-        List<String> unprotected = handlerMapping.getHandlerMethods().entrySet().stream()
+        var adminEndpoints = handlerMapping.getHandlerMethods().entrySet().stream()
                 .filter(entry -> paths(entry.getKey()).stream().anyMatch(p -> p.startsWith("/api/admin")))
+                .toList();
+        assertThat(adminEndpoints).as("應能找到管理端點，否則本檢查形同虛設").hasSizeGreaterThan(20);
+
+        List<String> unprotected = adminEndpoints.stream()
                 .filter(entry -> !declaresRole(entry.getValue()))
                 .map(entry -> entry.getKey() + " -> " + entry.getValue().getShortLogMessage())
                 .toList();
