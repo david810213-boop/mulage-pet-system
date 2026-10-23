@@ -357,6 +357,7 @@ public class PetService {
     }
 
     /** 依寵物名稱搜尋（店員用），同名寵物以家長姓名與電話末四碼區分，最多 20 筆。 */
+    @Transactional(readOnly = true)
     public List<PetSearchResult> searchForStaff(String keyword) {
         return searchByName(keyword.trim()).stream()
                 .filter(p -> p.getOwner() != null)
