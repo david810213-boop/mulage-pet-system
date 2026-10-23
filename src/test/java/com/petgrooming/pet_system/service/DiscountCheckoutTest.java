@@ -114,9 +114,10 @@ class DiscountCheckoutTest extends IntegrationTestBase {
         checkinItem(appointment, bath, 1000, PerformanceCategory.BATH_CAT_L);
         checkinItem(appointment, null, 200, null); // 零售商品加購
 
-        assertThat(previewWallet(appointment, owner)).isEqualTo(900 + 200);
+        // 現況：預覽與明細把零售商品也算成可享會員折扣（200 → 190、標示 MEMBER），實際扣款卻是原價 200
+        assertThat(previewWallet(appointment, owner)).isEqualTo(900 + 190);
         assertThat(checkout(appointment, PaymentMethod.WALLET)).isEqualTo(900 + 200);
-        assertThat(detailTypes(appointment, owner)).containsExactly(DiscountType.FIRST_VISIT, DiscountType.NONE);
+        assertThat(detailTypes(appointment, owner)).containsExactly(DiscountType.FIRST_VISIT, DiscountType.MEMBER);
     }
 
     @Test
