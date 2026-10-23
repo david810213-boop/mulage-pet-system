@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        "[hibernate.format_sql]": false
+
+sentry:
+  dsn: ""
+  environment: test
+
+logging:
+  level:
+    "[org.hibernate]": WARN
+    "[org.testcontainers]": INFO

@@ -1,10 +1,9 @@
 package com.petgrooming.pet_system;
 
+import com.petgrooming.pet_system.support.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class PetSystemApplicationTests {
+class PetSystemApplicationTests extends IntegrationTestBase {
 
 	@Test
 	void contextLoads() {
