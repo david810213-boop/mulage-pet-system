@@ -133,19 +133,15 @@ public class MobileWalkInController {
             return "m/walk-in-new";
         }
 
-        PetResponse selectedPet = null;
         String memberName = null;
+        PetResponse selectedPet = null;
         if (hasMember) {
             User m = userService.findByUsername(member).orElse(null);
             if (m == null) {
                 return "redirect:/m/walk-in/new";
             }
             memberName = m.getName();
-            if (pet != null && !pet.isBlank()) {
-                selectedPet = petService.getMyPets(member).stream()
-                        .filter(p -> pet.equals(p.getName()))
-                        .findFirst().orElse(null);
-            }
+            selectedPet = findPet(member, pet);
         }
 
         List<GroomingItemResponse> all = groomingItemService.getAllItems();
@@ -159,17 +155,7 @@ public class MobileWalkInController {
 
         model.addAttribute("step", "form");
         model.addAttribute("guest", isGuest);
-        // 開單失敗時要帶回同一個客人／毛孩，先組好網址參數
-        StringBuilder bq = new StringBuilder();
-        if (isGuest) {
-            bq.append("guest=1");
-        } else {
-            bq.append("member=").append(URLEncoder.encode(member, StandardCharsets.UTF_8));
-            if (pet != null && !pet.isBlank()) {
-                bq.append("&pet=").append(URLEncoder.encode(pet, StandardCharsets.UTF_8));
-            }
-        }
-        model.addAttribute("backQuery", bq.toString());
+        model.addAttribute("backQuery", backQuery(isGuest, member, pet));
         model.addAttribute("memberUsername", hasMember ? member : "");
         model.addAttribute("memberName", memberName);
         model.addAttribute("pet", selectedPet);
@@ -206,49 +192,10 @@ public class MobileWalkInController {
         req.setPetName(petName != null && !petName.isBlank() ? petName.trim() : null);
         req.setNote(note);
 
-        List<WalkInOrderCreateRequest.Item> items = new ArrayList<>();
-        // itemCodes、operatorStaffIds 兩個平行陣列（跟網頁版開單表單同樣格式）：
-        // 畫面上只有勾選的項目，它的經手人下拉選單才會啟用送出，兩邊順序一一對應
-        if (itemCodes != null) {
-            for (int i = 0; i < itemCodes.size(); i++) {
-                String code = itemCodes.get(i);
-                if (code == null || code.isBlank()) {
-                    continue;
-                }
-                String staffIdStr = operatorStaffIds != null && i < operatorStaffIds.size()
-                        ? operatorStaffIds.get(i) : null;
-                WalkInOrderCreateRequest.Item item = new WalkInOrderCreateRequest.Item();
-                item.setItemCode(code);
-                item.setOperatorStaffId(staffIdStr != null && !staffIdStr.isBlank()
-                        ? Long.valueOf(staffIdStr) : null); // null → 稍後在明細頁補填
-                String staffIdStr2 = operatorStaffIds2 != null && i < operatorStaffIds2.size()
-                        ? operatorStaffIds2.get(i) : null;
-                item.setOperatorStaffId2(staffIdStr2 != null && !staffIdStr2.isBlank()
-                        ? Long.valueOf(staffIdStr2) : null);
-                items.add(item);
-            }
-        }
+        List<WalkInOrderCreateRequest.Item> items =
+                WalkInOrderForm.serviceItems(itemCodes, operatorStaffIds, operatorStaffIds2);
         req.setItems(items);
-
-        List<WalkInOrderCreateRequest.RetailItem> retailItems = new ArrayList<>();
-        if (retailProductIds != null) {
-            for (int i = 0; i < retailProductIds.size(); i++) {
-                String qtyStr = retailQuantities != null && i < retailQuantities.size() ? retailQuantities.get(i) : "0";
-                int qty;
-                try {
-                    qty = (qtyStr == null || qtyStr.isBlank()) ? 0 : Integer.parseInt(qtyStr.trim());
-                } catch (NumberFormatException e) {
-                    qty = 0;
-                }
-                if (qty <= 0) {
-                    continue; // 手機版每個商品都有數量欄位，0 代表沒買
-                }
-                WalkInOrderCreateRequest.RetailItem r = new WalkInOrderCreateRequest.RetailItem();
-                r.setRetailProductId(Long.valueOf(retailProductIds.get(i)));
-                r.setQuantity(qty);
-                retailItems.add(r);
-            }
-        }
+        List<WalkInOrderCreateRequest.RetailItem> retailItems = retailItems(retailProductIds, retailQuantities);
         req.setRetailItems(retailItems);
 
         String backToForm = "redirect:/m/walk-in/new" + safeQuery(backQuery);
@@ -699,6 +646,46 @@ public class MobileWalkInController {
     }
 
     // 開單失敗時帶回原本的 member / pet / guest 參數，只允許這三個參數，避免被塞入其他內容
+    /** 會員指定的毛孩（依名字比對）；沒指定或找不到時是 null。 */
+    private PetResponse findPet(String member, String petName) {
+        if (petName == null || petName.isBlank()) return null;
+        return petService.getMyPets(member).stream()
+                .filter(p -> petName.equals(p.getName()))
+                .findFirst().orElse(null);
+    }
+
+    /** 開單失敗時要帶回同一個客人／毛孩的網址參數。 */
+    private static String backQuery(boolean isGuest, String member, String pet) {
+        if (isGuest) return "guest=1";
+        StringBuilder bq = new StringBuilder("member=").append(URLEncoder.encode(member, StandardCharsets.UTF_8));
+        if (pet != null && !pet.isBlank()) {
+            bq.append("&pet=").append(URLEncoder.encode(pet, StandardCharsets.UTF_8));
+        }
+        return bq.toString();
+    }
+
+    /** 手機版每個商品都有數量欄位：數量 0、空白或不是數字都代表沒買，跳過。 */
+    private static List<WalkInOrderCreateRequest.RetailItem> retailItems(List<String> retailProductIds,
+                                                                         List<String> retailQuantities) {
+        List<WalkInOrderCreateRequest.RetailItem> retailItems = new ArrayList<>();
+        if (retailProductIds == null) return retailItems;
+        for (int i = 0; i < retailProductIds.size(); i++) {
+            String qtyStr = retailQuantities != null && i < retailQuantities.size() ? retailQuantities.get(i) : "0";
+            int qty;
+            try {
+                qty = qtyStr == null || qtyStr.isBlank() ? 0 : Integer.parseInt(qtyStr.trim());
+            } catch (NumberFormatException e) {
+                qty = 0;
+            }
+            if (qty <= 0) continue;
+            WalkInOrderCreateRequest.RetailItem r = new WalkInOrderCreateRequest.RetailItem();
+            r.setRetailProductId(Long.valueOf(retailProductIds.get(i)));
+            r.setQuantity(qty);
+            retailItems.add(r);
+        }
+        return retailItems;
+    }
+
     private String safeQuery(String backQuery) {
         if (backQuery == null || backQuery.isBlank()) {
             return "";

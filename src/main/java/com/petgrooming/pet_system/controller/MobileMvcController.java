@@ -121,14 +121,7 @@ public class MobileMvcController {
                 .map(a -> toCard(a, today))
                 .toList();
 
-        // 「現在」紅線要插在第一筆開始時間晚於現在的卡片前面；全部都過了就放最後
-        int nowIndex = todayCards.size();
-        for (int i = 0; i < todayCards.size(); i++) {
-            if (LocalTime.parse(todayCards.get(i).getTime(), TIME_FMT).isAfter(now)) {
-                nowIndex = i;
-                break;
-            }
-        }
+        int nowIndex = nowIndex(todayCards, now);
 
         // 之後日期的待確認預約（今天的已經在時間軸裡，不重複列）
         List<MobileAppointmentCard> upcomingPending = all.stream()
@@ -148,8 +141,38 @@ public class MobileMvcController {
                 .filter(p -> p.getStockQuantity() <= 5)
                 .count();
 
-        // 第四批：進行中（未結帳）的現場單，今日頁一併列出，方便接著做下一步
-        List<Map<String, Object>> openWalkIns = walkInOrderService.listAll().stream()
+        model.addAttribute("user", user);
+        model.addAttribute("openWalkIns", openWalkInCards());
+        // 第六批：待補經手人的項目數，今日頁提醒
+        model.addAttribute("pendingOperatorCount", pendingOperatorMatrixService.buildMobileGroups().stream()
+                .mapToInt(g -> g.getLines().size()).sum());
+        model.addAttribute("greeting", greeting(now));
+        model.addAttribute("todayLabel", today.getMonthValue() + " 月 " + today.getDayOfMonth() + " 日 "
+                + weekdayLabel(today.getDayOfWeek()));
+        model.addAttribute("todayCards", todayCards);
+        model.addAttribute("nowIndex", nowIndex);
+        model.addAttribute("nowLabel", now.format(TIME_FMT));
+        model.addAttribute("upcomingPending", upcomingPending);
+        model.addAttribute("pendingConfirmCount", pendingConfirmCount);
+        model.addAttribute("pendingTopupCount", topUpService.pending().size());
+        model.addAttribute("lowStockCount", lowStockCount);
+        model.addAttribute("activeTab", "today");
+        return "m/today";
+    }
+
+    /** 「現在」紅線要插在第一筆開始時間晚於現在的卡片前面；全部都過了就放最後。 */
+    private static int nowIndex(List<MobileAppointmentCard> todayCards, LocalTime now) {
+        for (int i = 0; i < todayCards.size(); i++) {
+            if (LocalTime.parse(todayCards.get(i).getTime(), TIME_FMT).isAfter(now)) {
+                return i;
+            }
+        }
+        return todayCards.size();
+    }
+
+    /** 第四批：進行中（未結帳）的現場單，今日頁一併列出，方便接著做下一步。 */
+    private List<Map<String, Object>> openWalkInCards() {
+        return walkInOrderService.listAll().stream()
                 .filter(o -> !o.isPaid())
                 .limit(8)
                 .map(o -> {
@@ -167,24 +190,6 @@ public class MobileMvcController {
                     return m;
                 })
                 .toList();
-
-        model.addAttribute("user", user);
-        model.addAttribute("openWalkIns", openWalkIns);
-        // 第六批：待補經手人的項目數，今日頁提醒
-        model.addAttribute("pendingOperatorCount", pendingOperatorMatrixService.buildMobileGroups().stream()
-                .mapToInt(g -> g.getLines().size()).sum());
-        model.addAttribute("greeting", greeting(now));
-        model.addAttribute("todayLabel", today.getMonthValue() + " 月 " + today.getDayOfMonth() + " 日 "
-                + weekdayLabel(today.getDayOfWeek()));
-        model.addAttribute("todayCards", todayCards);
-        model.addAttribute("nowIndex", nowIndex);
-        model.addAttribute("nowLabel", now.format(TIME_FMT));
-        model.addAttribute("upcomingPending", upcomingPending);
-        model.addAttribute("pendingConfirmCount", pendingConfirmCount);
-        model.addAttribute("pendingTopupCount", topUpService.pending().size());
-        model.addAttribute("lowStockCount", lowStockCount);
-        model.addAttribute("activeTab", "today");
-        return "m/today";
     }
 
     // ── 預約列表 ────────────────────────────────────────────────────────
