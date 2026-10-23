@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.model.RetailProduct;
@@ -12,7 +13,6 @@ import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -39,24 +39,8 @@ public class DashboardMvcController {
     private final WalkInOrderRepository walkInOrderRepository;
     private final RetailProductService retailProductService; // 需求（追加，2026-08-31）：Dashboard 庫存管理區塊
 
-    /**
-     * JWT 版獲取當前登入使用者
-     */
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null)
-            return null;
-
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     @GetMapping
-    public String dashboard(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String dashboard(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

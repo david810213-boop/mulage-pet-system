@@ -1,12 +1,12 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,19 +26,12 @@ public class TopUpMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
-
     // ── GET /admin/topup ────────────────────────────────────────────────────
     // 待核帳清單（PENDING）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
-    public String pending(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String pending(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("requests", topUpService.pending());
         return "redirect:/admin/wallets";
     }
@@ -47,9 +40,9 @@ public class TopUpMvcController {
     // 確認入帳：真正呼叫 WalletService.deposit() 加值
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/confirm")
-    public String confirm(@PathVariable Long id, HttpServletRequest request,
-                          RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String confirm(@PathVariable Long id,
+                          RedirectAttributes ra,
+                          @CurrentUser User user) {
         try {
             var result = topUpService.confirm(id, user.getName());
             operationLogService.log(user, "WALLET", "TOPUP_CONFIRM",
@@ -66,9 +59,8 @@ public class TopUpMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/reject")
     public String reject(@PathVariable Long id,
-                         @RequestParam(required = false) String reason,
-                         HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                         @RequestParam(required = false) String reason, RedirectAttributes ra,
+                         @CurrentUser User user) {
         try {
             topUpService.reject(id, user.getName(), reason);
             operationLogService.log(user, "WALLET", "TOPUP_REJECT", "儲值申請 #" + id, reason);

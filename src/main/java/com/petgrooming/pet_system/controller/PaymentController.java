@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
@@ -7,7 +8,6 @@ import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.PaymentService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,11 +21,6 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
-
-    // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
 
     // ── GET /api/payments/bank-account ──────────────────────────────────
     // 需求 21：LIFF「線上儲值」頁面讀取匯款帳號資訊 + 收款 QR Code
@@ -48,16 +43,16 @@ public class PaymentController {
     public ResponseEntity<?> checkout(
             @PathVariable Long appointmentId,
             @RequestBody CheckoutRequest req,
-            HttpServletRequest request) {
-        TransactionResponse res = paymentService.checkout(appointmentId, req, currentUsername(request));
+            @CurrentUser String username) {
+        TransactionResponse res = paymentService.checkout(appointmentId, req, username);
         return ResponseEntity.ok(res);
     }
 
     // ── GET /api/payments/my ───────────────────────────────────────────────
     // 查詢自己的交易紀錄（對應原本 queryTransactions）
     @GetMapping("/my")
-    public ResponseEntity<List<TransactionResponse>> getMyTransactions(HttpServletRequest request) {
-        return ResponseEntity.ok(paymentService.getMyTransactions(currentUsername(request)));
+    public ResponseEntity<List<TransactionResponse>> getMyTransactions(@CurrentUser String username) {
+        return ResponseEntity.ok(paymentService.getMyTransactions(username));
     }
 
     // ── GET /api/payments/transactions ────────────────────────────────────

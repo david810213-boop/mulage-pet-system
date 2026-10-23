@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
@@ -10,7 +11,6 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,10 +31,6 @@ public class CustomerWalletAdminController {
     private final OperationLogService operationLogService;
     private final TopUpService topUpService;
     private final UserService userService;
-
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
 
     // ── GET /api/admin/wallet/{username} ───────────────────────────────────
     // 查詢指定顧客的錢包
@@ -60,9 +56,8 @@ public class CustomerWalletAdminController {
     public ResponseEntity<?> deposit(
             @PathVariable String username,
             @Valid @RequestBody DepositRequest req,
-            HttpServletRequest request) {
+            @CurrentUser String reviewer) {
         WalletResponse res = walletService.deposit(username, req);
-        String reviewer = currentUsername(request);
         try {
             var targetCustomer = userService.getUserEntityByUsername(username);
             String reviewerName = reviewer != null ? userService.getUserEntityByUsername(reviewer).getName() : "系統管理員";

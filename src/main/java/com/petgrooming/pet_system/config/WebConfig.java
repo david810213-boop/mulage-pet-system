@@ -14,9 +14,12 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.List;
 
 /**
  * 攔截順序：
@@ -35,6 +38,12 @@ public class WebConfig implements WebMvcConfigurer {
         private final RoleInterceptor roleInterceptor;
         private final CsrfInterceptor csrfInterceptor;
         private final MobileRedirectInterceptor mobileRedirectInterceptor;
+        private final CurrentUserArgumentResolver currentUserArgumentResolver;
+
+        @Override
+        public void addArgumentResolvers(@NonNull List<HandlerMethodArgumentResolver> resolvers) {
+                resolvers.add(currentUserArgumentResolver);
+        }
 
         // ngrok 免費版會在第一次訪問時顯示安全警告頁面，加上這個 header 讓 ngrok 跳過該頁面
         // 讓 LIFF webview 能直接載入頁面，不被中途攔截

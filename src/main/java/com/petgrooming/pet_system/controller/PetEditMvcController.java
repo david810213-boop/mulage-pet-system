@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
@@ -8,7 +9,6 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -35,20 +35,10 @@ public class PetEditMvcController {
     private final PetRepository petRepository;
     private final UserService userService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{id}/edit")
-    public String editPage(@PathVariable Long id, HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String editPage(@PathVariable Long id, Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         var pet = petRepository.findById(id).orElse(null);
         if (pet == null) {
             model.addAttribute("errorMsg", "找不到這隻寵物");
@@ -79,9 +69,8 @@ public class PetEditMvcController {
     @PostMapping("/{id}/edit")
     public String submit(@PathVariable Long id,
                           @ModelAttribute PetRequest petRequest,
-                          @RequestParam(required = false) String returnTo,
-                          HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                          @RequestParam(required = false) String returnTo, RedirectAttributes ra,
+                          @CurrentUser User user) {
         var existing = petRepository.findById(id).orElse(null);
         if (existing == null) {
             ra.addFlashAttribute("errorMsg", "找不到這隻寵物");

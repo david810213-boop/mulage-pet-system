@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;
 import com.petgrooming.pet_system.dto.ResetPasswordRequest;
@@ -63,10 +64,9 @@ public class AdminMvcController {
      * 1. 首頁：列出使用者、員工，【新增】同時列出所有美容項目與表單對象
      */
     @GetMapping
-    public String adminHome(HttpServletRequest request, Model model) {
+    public String adminHome(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (!isAdmin(request)) return "redirect:/dashboard";
         
-        User user = getLoginUser(request);
         model.addAttribute("user", user);
         model.addAttribute("allUsers", userService.getAllUsers());
         model.addAttribute("allStaff", userService.getAllStaff());
@@ -84,10 +84,10 @@ public class AdminMvcController {
                               BindingResult bindingResult,
                               HttpServletRequest request,
                               RedirectAttributes redirectAttributes,
-                              Model model) {
+                              Model model,
+                              @CurrentUser User user) {
 
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
@@ -141,10 +141,10 @@ public class AdminMvcController {
                              BindingResult bindingResult,
                              HttpServletRequest request,
                               RedirectAttributes redirectAttributes,
-                             Model model) {
+                             Model model,
+                             @CurrentUser User user) {
         
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
 
         // 如果管理員欄位填錯（例如價格填負數）
         if (bindingResult.hasErrors()) {
@@ -192,9 +192,8 @@ public class AdminMvcController {
 
     // 財務報表頁面
     @GetMapping("/report")
-    public String report(HttpServletRequest request, Model model) {
+    public String report(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
         model.addAttribute("user", user);
         model.addAttribute("report", paymentService.getFinancialReport());
         return "admin/report";
@@ -294,10 +293,10 @@ public class AdminMvcController {
                                     BindingResult bindingResult,
                                     HttpServletRequest request,
                                     RedirectAttributes redirectAttributes,
-                                    Model model) {
+                                    Model model,
+                                    @CurrentUser User user) {
         
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
 
         // 欄位校正，萬一管理員沒填名稱或價格寫負數
         if (bindingResult.hasErrors()) {

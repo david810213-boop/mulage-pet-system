@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
@@ -24,7 +25,6 @@ import com.petgrooming.pet_system.service.SlotCapacityService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -57,32 +57,17 @@ public class AppointmentMvcController {
     private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
     private final GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
 
-    /**
-     * JWT 版獲取當前登入使用者
-     * 從 LoginInterceptor 存入的 request attribute 拿取 username，
-     * 再用 UserService 查出完整的 User entity
-     */
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     // ── GET /appointments ──────────────────────────────────────────────────
     // 💡 作用：查看預約清單。不貼貼紙，因為一般會員與員工登入後都能看（各自看不同範圍）
     // 支援篩選：日期區間、狀態（已確認/已取消）、付款狀態、關鍵字（預約編號/飼主姓名/寵物名稱）
     @GetMapping
-    public String list(HttpServletRequest request, Model model,
+    public String list(Model model,
                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
                        @RequestParam(required = false) String status,
                        @RequestParam(required = false) String paidStatus,
-                       @RequestParam(required = false) String keyword) {
-        User user = getLoginUser(request);
+                       @RequestParam(required = false) String keyword,
+                       @CurrentUser User user) {
 
         model.addAttribute("user", user);
 
@@ -167,9 +152,8 @@ public class AppointmentMvcController {
     public String confirm(@PathVariable Long id,
                           @RequestParam(required = false)
                           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-                          LocalDateTime confirmedTime,
-                          HttpServletRequest request, RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                          LocalDateTime confirmedTime, RedirectAttributes redirectAttributes,
+                          @CurrentUser User user) {
         try {
             appointmentService.confirm(id, confirmedTime, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CONFIRM", "預約 #" + id, null);
@@ -186,9 +170,8 @@ public class AppointmentMvcController {
     @PostMapping("/{id}/notes")
     public String setNotes(@PathVariable Long id,
                            @RequestParam(required = false) String internalNote,
-                           @RequestParam(required = false) String memberNote,
-                           HttpServletRequest request, RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                           @RequestParam(required = false) String memberNote, RedirectAttributes redirectAttributes,
+                           @CurrentUser User user) {
         try {
             appointmentService.setNotes(id, internalNote, memberNote, user.getUsername());
             redirectAttributes.addFlashAttribute("successMsg", "備注已更新");
@@ -202,8 +185,7 @@ public class AppointmentMvcController {
     // 現場開單（依預約編號）：家長到店後，店員依現場情況確認/調整服務項目
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{id}/checkin-order")
-    public String checkinOrderForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String checkinOrderForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
 
         var target = appointmentService.getAllForAdmin().stream()
@@ -253,9 +235,9 @@ public class AppointmentMvcController {
                                      @RequestParam(required = false) List<String> itemCodes,
                                      @RequestParam(required = false) List<String> operatorStaffIds,
                                      @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）
-                                     HttpServletRequest request,
-                                     RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                     
+                                     RedirectAttributes redirectAttributes,
+                                     @CurrentUser User user) {
         try {
             List<Long> opIds = null;
             if (operatorStaffIds != null) {
@@ -284,9 +266,8 @@ public class AppointmentMvcController {
     @PostMapping("/checkin-items/{itemId}/operator")
     public String fillCheckinItemOperator(@PathVariable Long itemId,
                                           @RequestParam Long staffId,
-                                          HttpServletRequest request,
-                                          RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                          RedirectAttributes redirectAttributes,
+                                          @CurrentUser User user) {
         try {
             appointmentService.fillItemOperator(itemId, staffId);
             operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
@@ -304,9 +285,8 @@ public class AppointmentMvcController {
     @PostMapping("/checkin-items/operator/batch")
     public String fillCheckinItemOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
                                                @RequestParam("staffIds") List<String> staffIds,
-                                               @RequestParam(value = "staffIds2", required = false) List<String> staffIds2,
-                                               HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                               @RequestParam(value = "staffIds2", required = false) List<String> staffIds2, RedirectAttributes ra,
+                                               @CurrentUser User user) {
         int filled = 0;
         for (int i = 0; i < itemIds.size(); i++) {
             String staffIdStr = i < staffIds.size() ? staffIds.get(i) : null;
@@ -333,9 +313,9 @@ public class AppointmentMvcController {
     // 店員開始服務：已確認 → 進行中（寵物到店開始施作）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/start")
-    public String start(@PathVariable Long id, HttpServletRequest request,
-                        RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+    public String start(@PathVariable Long id,
+                        RedirectAttributes redirectAttributes,
+                        @CurrentUser User user) {
         try {
             appointmentService.startProgress(id, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "START", "預約 #" + id, null);
@@ -350,9 +330,9 @@ public class AppointmentMvcController {
     // 服務項目全部做完，通知家長來店接寵物；狀態維持進行中，之後才能核對
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/end-service")
-    public String endService(@PathVariable Long id, HttpServletRequest request,
-                             RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+    public String endService(@PathVariable Long id,
+                             RedirectAttributes redirectAttributes,
+                             @CurrentUser User user) {
         try {
             appointmentService.endService(id, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "END_SERVICE", "預約 #" + id, null);
@@ -367,8 +347,7 @@ public class AppointmentMvcController {
     // 進行中核對頁面：店員與家長核對本次美容狀況，填備注 + 現場簽名
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{id}/final-check")
-    public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String finalCheckForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
 
         var target = appointmentService.getAllForAdmin().stream()
@@ -396,10 +375,9 @@ public class AppointmentMvcController {
     @PostMapping("/{id}/final-check")
     public String finalCheckSubmit(@PathVariable Long id,
                                    @Valid @ModelAttribute FinalCheckRequest req,
-                                   BindingResult bindingResult,
-                                   HttpServletRequest request, Model model,
-                                   RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                   BindingResult bindingResult, Model model,
+                                   RedirectAttributes redirectAttributes,
+                                   @CurrentUser User user) {
 
         if (bindingResult.hasErrors()) {
             var target = appointmentService.getAllForAdmin().stream()
@@ -444,9 +422,8 @@ public class AppointmentMvcController {
     @PostMapping("/{id}/cancel")
     public String cancel(@PathVariable Long id,
                          @RequestParam(required = false) String reason,
-                         HttpServletRequest request,
-                         RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                         RedirectAttributes redirectAttributes,
+                         @CurrentUser User user) {
         try {
             var req = new CancelAppointmentRequest();
             req.setReason(reason);
@@ -462,9 +439,9 @@ public class AppointmentMvcController {
     // ── GET /appointments/new ──────────────────────────────────────────────
     // 💡 作用：開啟預約表單。同樣只需登入，不限制特定角色。
     @GetMapping("/new")
-    public String newForm(HttpServletRequest request, Model model,
-                          @RequestParam(required = false) String forUsername) {
-        User user = getLoginUser(request);
+    public String newForm(Model model,
+                          @RequestParam(required = false) String forUsername,
+                          @CurrentUser User user) {
 
         // 需求 20：店家/員工可代客建立預約——forUsername 有帶值時，
         // 幫「那個會員」查寵物清單，而不是查登入者自己的寵物。
@@ -498,17 +475,15 @@ public class AppointmentMvcController {
     // 需求 20：店家代客建立預約——先搜尋/選定要幫哪位會員預約
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/select-member")
-    public String selectMemberForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String selectMemberForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         return "appointments/select-member";
     }
 
     // ── GET /appointments/slots ────────────────────────────────────────────
     // 💡 作用：查詢某日期的空檔。
     @GetMapping("/slots")
-    public String slots(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                        HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String slots(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date, Model model, @CurrentUser User user) {
 
         model.addAttribute("user", user);
         model.addAttribute("slots", appointmentService.getAvailableSlots(date));
@@ -522,11 +497,10 @@ public class AppointmentMvcController {
     public String submit(@Valid @ModelAttribute AppointmentRequest req,
                          BindingResult bindingResult,
                          @RequestParam(required = false) String forUsername,
-                         HttpServletRequest request,
                          RedirectAttributes redirectAttributes,
-                         Model model) {
+                         Model model,
+                         @CurrentUser User user) {
 
-        User user = getLoginUser(request);
 
         // 需求 20：代客建立時，實際預約要歸屬到目標會員，不是登入的店家帳號
         String bookingUsername = user.getUsername();
@@ -592,11 +566,12 @@ public class AppointmentMvcController {
     // 可手動調整上限或直接關閉（設為 0），只影響剩餘名額，不影響已預約紀錄。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/slots-manage")
-    public String slotsManage(HttpServletRequest request, Model model,
+    public String slotsManage(Model model,
                               @RequestParam(required = false)
-                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                              @CurrentUser User loginUser) {
         if (date == null) date = LocalDate.now();
-        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
         model.addAttribute("slots", appointmentService.getAvailableSlots(date));
         // 需求 16：公休日設定
@@ -616,15 +591,14 @@ public class AppointmentMvcController {
     // 需求（追加，2026-09-08）：一併調整這個時段預設限定的物種（空字串＝不限制）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/template/update")
-    public String updateDefaultSlotCapacityTemplate(HttpServletRequest request,
-                                     @RequestParam
+    public String updateDefaultSlotCapacityTemplate(@RequestParam
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
                                      @RequestParam int capacity,
                                      @RequestParam(required = false) String allowedPetType,
                                      @RequestParam(required = false)
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                     RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                     RedirectAttributes ra,
+                                     @CurrentUser User user) {
         try {
             PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
             defaultSlotCapacityTemplateService.setCapacity(time, capacity, parsedPetType);
@@ -656,8 +630,7 @@ public class AppointmentMvcController {
     // 固定公休星期：設定每週固定哪幾天公休（跟單一天公休日的 ClosedDate 是兩套機制並存）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/weekly-closure")
-    public String updateWeeklyClosure(HttpServletRequest request,
-                                      @RequestParam(defaultValue = "false") boolean monday,
+    public String updateWeeklyClosure(@RequestParam(defaultValue = "false") boolean monday,
                                       @RequestParam(defaultValue = "false") boolean tuesday,
                                       @RequestParam(defaultValue = "false") boolean wednesday,
                                       @RequestParam(defaultValue = "false") boolean thursday,
@@ -666,8 +639,8 @@ public class AppointmentMvcController {
                                       @RequestParam(defaultValue = "false") boolean sunday,
                                       @RequestParam(required = false)
                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                      RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                      RedirectAttributes ra,
+                                      @CurrentUser User user) {
         closedDateService.updateWeeklyClosureSetting(monday, tuesday, wednesday, thursday, friday, saturday, sunday);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_WEEKLY_CLOSURE", "固定公休星期設定", null);
         ra.addFlashAttribute("successMsg", "固定公休星期已更新");
@@ -678,12 +651,11 @@ public class AppointmentMvcController {
     // 需求 16：將指定日期設為公休日，當天所有時段自動不開放預約
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/closed-date/add")
-    public String addClosedDate(HttpServletRequest request,
-                                @RequestParam
+    public String addClosedDate(@RequestParam
                                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                 @RequestParam(required = false) String reason,
-                                RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                RedirectAttributes ra,
+                                @CurrentUser User user) {
         closedDateService.setClosed(date, reason);
         operationLogService.log(user, "APPOINTMENT", "SET_CLOSED_DATE",
                 date.toString(), reason == null || reason.isBlank() ? "公休" : reason);
@@ -694,11 +666,10 @@ public class AppointmentMvcController {
     // ── POST /appointments/slots-manage/closed-date/remove ────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/closed-date/remove")
-    public String removeClosedDate(HttpServletRequest request,
-                                   @RequestParam
+    public String removeClosedDate(@RequestParam
                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                   RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                   RedirectAttributes ra,
+                                   @CurrentUser User user) {
         closedDateService.removeClosed(date);
         operationLogService.log(user, "APPOINTMENT", "UNSET_CLOSED_DATE", date.toString(), "取消公休");
         ra.addFlashAttribute("successMsg", date + " 已取消公休設定");
@@ -709,15 +680,14 @@ public class AppointmentMvcController {
     // 需求（追加，2026-09-08）：一併調整這一天這個時段限定的物種（空字串＝不限制）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/update")
-    public String updateSlotCapacity(HttpServletRequest request,
-                                     @RequestParam
+    public String updateSlotCapacity(@RequestParam
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                      @RequestParam
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
                                      @RequestParam int capacity,
                                      @RequestParam(required = false) String allowedPetType,
-                                     RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                     RedirectAttributes ra,
+                                     @CurrentUser User user) {
         try {
             PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
             slotCapacityService.setCapacity(date, time, capacity, parsedPetType);

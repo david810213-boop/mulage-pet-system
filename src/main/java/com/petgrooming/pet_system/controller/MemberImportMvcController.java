@@ -1,12 +1,12 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,27 +25,16 @@ public class MemberImportMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
-    public String page(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String page(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         return "admin/member-import";
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/upload")
-    public String upload(HttpServletRequest request, @RequestParam MultipartFile file, Model model) {
-        User user = getLoginUser(request);
+    public String upload(@RequestParam MultipartFile file, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
         if (file.isEmpty()) {
             model.addAttribute("errorMsg", "請選擇檔案");
@@ -66,8 +55,7 @@ public class MemberImportMvcController {
     // ── 需求（追加）：儲值餘額批次匯入 ────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/upload-wallet")
-    public String uploadWallet(HttpServletRequest request, @RequestParam MultipartFile file, Model model) {
-        User user = getLoginUser(request);
+    public String uploadWallet(@RequestParam MultipartFile file, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
         if (file.isEmpty()) {
             model.addAttribute("walletErrorMsg", "請選擇檔案");
@@ -87,8 +75,7 @@ public class MemberImportMvcController {
     // ── 需求（追加）：消費紀錄批次匯入 ────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/upload-consumption")
-    public String uploadConsumption(HttpServletRequest request, @RequestParam MultipartFile file, Model model) {
-        User user = getLoginUser(request);
+    public String uploadConsumption(@RequestParam MultipartFile file, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
         if (file.isEmpty()) {
             model.addAttribute("consumptionErrorMsg", "請選擇檔案");

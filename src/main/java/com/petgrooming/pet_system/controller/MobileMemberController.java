@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
@@ -17,7 +18,6 @@ import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -64,24 +64,12 @@ public class MobileMemberController {
     private final WalletService walletService;
     private final MobileViewHelper view;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) {
-            return null;
-        }
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     // ── 毛孩列表 ────────────────────────────────────────────────────────
     @GetMapping("/pets")
-    public String pets(HttpServletRequest request, Model model,
+    public String pets(Model model,
             @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "all") String f) {
-        User user = getLoginUser(request);
+            @RequestParam(defaultValue = "all") String f,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -113,8 +101,7 @@ public class MobileMemberController {
 
     // ── 毛孩檔案 ────────────────────────────────────────────────────────
     @GetMapping("/pets/{id}")
-    public String pet(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String pet(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -167,9 +154,9 @@ public class MobileMemberController {
 
     // ── 會員列表 ────────────────────────────────────────────────────────
     @GetMapping("/members")
-    public String members(HttpServletRequest request, Model model,
-            @RequestParam(required = false) String q) {
-        User user = getLoginUser(request);
+    public String members(Model model,
+            @RequestParam(required = false) String q,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -210,8 +197,7 @@ public class MobileMemberController {
 
     // ── 會員資料 ────────────────────────────────────────────────────────
     @GetMapping("/members/{username}")
-    public String member(@PathVariable String username, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String member(@PathVariable String username, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
@@ -105,8 +106,7 @@ public class MobileMvcController {
 
     // ── 今日 ────────────────────────────────────────────────────────────
     @GetMapping({ "", "/", "/today" })
-    public String today(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String today(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -192,11 +192,11 @@ public class MobileMvcController {
     // date：只看某一天（優先於 f）
     // q：關鍵字（預約編號、飼主、毛孩名字，優先於 date 跟 f，搜尋全部預約）
     @GetMapping("/appointments")
-    public String appointments(HttpServletRequest request, Model model,
+    public String appointments(Model model,
             @RequestParam(defaultValue = "upcoming") String f,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) String q) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String q,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -282,8 +282,7 @@ public class MobileMvcController {
 
     // ── 預約詳情 ────────────────────────────────────────────────────────
     @GetMapping("/appointments/{id}")
-    public String appointmentDetail(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String appointmentDetail(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -366,8 +365,7 @@ public class MobileMvcController {
 
     // ── 到店開單：依現場情況勾選本次實際服務項目 ─────────────────────────
     @GetMapping("/appointments/{id}/checkin")
-    public String checkinForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String checkinForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -404,8 +402,8 @@ public class MobileMvcController {
             @RequestParam(required = false) List<String> itemCodes,
             @RequestParam(required = false) List<String> operatorStaffIds,
             @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）：第二經手人
-            HttpServletRequest request, RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+             RedirectAttributes redirectAttributes,
+             @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -428,8 +426,7 @@ public class MobileMvcController {
 
     // ── 核對：跟家長確認本次項目與金額、填美容狀況備注、家長簽名 ─────────
     @GetMapping("/appointments/{id}/final-check")
-    public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String finalCheckForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -471,9 +468,8 @@ public class MobileMvcController {
             @RequestParam(required = false) String note,
             @RequestParam(required = false) String signatureData,
             @RequestParam(required = false) List<String> photoUrls,
-            @RequestParam(required = false) List<String> photoPublicIds,
-            HttpServletRequest request, RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) List<String> photoPublicIds, RedirectAttributes redirectAttributes,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -552,8 +548,7 @@ public class MobileMvcController {
 
     // ── 結帳 ────────────────────────────────────────────────────────────
     @GetMapping("/appointments/{id}/checkout")
-    public String checkoutForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String checkoutForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -613,9 +608,8 @@ public class MobileMvcController {
 
     @PostMapping("/appointments/{id}/checkout")
     public String checkoutSubmit(@PathVariable Long id,
-            @RequestParam(required = false) PaymentMethod paymentMethod,
-            HttpServletRequest request, RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) PaymentMethod paymentMethod, RedirectAttributes redirectAttributes,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -655,8 +649,7 @@ public class MobileMvcController {
 
     // ── 更多（全部功能入口）──────────────────────────────────────────────
     @GetMapping("/more")
-    public String more(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String more(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.MobileLineItem;
@@ -93,8 +94,7 @@ public class MobileWalkInController {
 
     // ── 現場單列表：未結帳全部＋今天已結帳 ─────────────────────────────────
     @GetMapping({ "", "/" })
-    public String list(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String list(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -116,12 +116,12 @@ public class MobileWalkInController {
     // 沒帶 member / guest：顯示搜尋客人畫面
     // 帶 member（＋pet）或 guest=1：顯示開單表單
     @GetMapping("/new")
-    public String newOrder(HttpServletRequest request, Model model,
+    public String newOrder(Model model,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String member,
             @RequestParam(required = false) String pet,
-            @RequestParam(required = false) String guest) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String guest,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -190,7 +190,7 @@ public class MobileWalkInController {
     }
 
     @PostMapping("/create")
-    public String create(HttpServletRequest request, RedirectAttributes ra,
+    public String create(RedirectAttributes ra,
             @RequestParam(required = false) String memberUsername,
             @RequestParam(required = false) String petName,
             @RequestParam(required = false) String note,
@@ -199,8 +199,8 @@ public class MobileWalkInController {
             @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）：第二經手人
             @RequestParam(required = false) List<String> retailProductIds,
             @RequestParam(required = false) List<String> retailQuantities,
-            @RequestParam(required = false) String backQuery) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String backQuery,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -274,8 +274,7 @@ public class MobileWalkInController {
 
     // ── 現場單明細 ──────────────────────────────────────────────────────
     @GetMapping("/{id}")
-    public String detail(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String detail(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -324,8 +323,8 @@ public class MobileWalkInController {
     public String fillOperator(@PathVariable Long id, @PathVariable Long itemId,
             @RequestParam(required = false) Long staffId,
             @RequestParam(required = false) Long staffId2, // 需求（2026-10-02）：第二經手人
-            HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+             RedirectAttributes ra,
+             @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -346,8 +345,7 @@ public class MobileWalkInController {
 
     // ── 核對（共用 m/final-check 樣板）──────────────────────────────────
     @GetMapping("/{id}/final-check")
-    public String finalCheckForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String finalCheckForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -388,9 +386,8 @@ public class MobileWalkInController {
             @RequestParam(required = false) String note,
             @RequestParam(required = false) String signatureData,
             @RequestParam(required = false) List<String> photoUrls,
-            @RequestParam(required = false) List<String> photoPublicIds,
-            HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) List<String> photoPublicIds, RedirectAttributes ra,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -452,8 +449,7 @@ public class MobileWalkInController {
 
     // ── 結帳（共用 m/checkout 樣板）─────────────────────────────────────
     @GetMapping("/{id}/checkout")
-    public String checkoutForm(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String checkoutForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -517,9 +513,8 @@ public class MobileWalkInController {
 
     @PostMapping("/{id}/checkout")
     public String checkoutSubmit(@PathVariable Long id,
-            @RequestParam(required = false) PaymentMethod paymentMethod,
-            HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) PaymentMethod paymentMethod, RedirectAttributes ra,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

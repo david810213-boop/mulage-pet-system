@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
@@ -12,7 +13,6 @@ import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -54,22 +54,9 @@ public class MobileOpsController {
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) {
-            return null;
-        }
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     // ── 待補經手人 ──────────────────────────────────────────────────────
     @GetMapping("/operators")
-    public String operators(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String operators(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -85,12 +72,12 @@ public class MobileOpsController {
 
     // kinds、itemIds、staffIds 三個平行陣列，一個項目一組；staffId 空白就跳過（維持待補）
     @PostMapping("/operators")
-    public String saveOperators(HttpServletRequest request, RedirectAttributes ra,
+    public String saveOperators(RedirectAttributes ra,
             @RequestParam(required = false) List<String> kinds,
             @RequestParam(required = false) List<Long> itemIds,
             @RequestParam(required = false) List<String> staffIds,
-            @RequestParam(required = false) List<String> staffIds2) { // 需求（2026-10-02）：第二經手人
-        User user = getLoginUser(request);
+            @RequestParam(required = false) List<String> staffIds2,
+            @CurrentUser User user) { // 需求（2026-10-02）：第二經手人
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -137,8 +124,7 @@ public class MobileOpsController {
 
     // ── 儲值審核 ────────────────────────────────────────────────────────
     @GetMapping("/topups")
-    public String topups(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String topups(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -153,8 +139,7 @@ public class MobileOpsController {
     }
 
     @PostMapping("/topups/{id}/confirm")
-    public String confirmTopup(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String confirmTopup(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -170,9 +155,7 @@ public class MobileOpsController {
     }
 
     @PostMapping("/topups/{id}/reject")
-    public String rejectTopup(@PathVariable Long id, @RequestParam(required = false) String reason,
-            HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String rejectTopup(@PathVariable Long id, @RequestParam(required = false) String reason, RedirectAttributes ra, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

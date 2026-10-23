@@ -1,11 +1,11 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.enums.CustomerSource;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -37,20 +37,8 @@ public class CustomerProfileMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     @GetMapping
-    public String editForm(@RequestParam(required = false) String username,
-                           HttpServletRequest request, Model model) {
-        User loginUser = getLoginUser(request);
+    public String editForm(@RequestParam(required = false) String username, Model model, @CurrentUser User loginUser) {
         if (loginUser == null) return "redirect:/auth/login?redirect=/my-profile";
 
         model.addAttribute("user", loginUser);
@@ -89,9 +77,8 @@ public class CustomerProfileMvcController {
     public String submit(@Valid @ModelAttribute("req") UpdateProfileRequest req,
                          BindingResult bindingResult,
                          @RequestParam String targetUsername,
-                         HttpServletRequest request,
-                         Model model) {
-        User loginUser = getLoginUser(request);
+                         Model model,
+                         @CurrentUser User loginUser) {
         if (loginUser == null) return "redirect:/auth/login?redirect=/my-profile";
 
         // 安全防呆：會員只能編輯自己的帳號，不管表單隱藏欄位傳了什麼都強制鎖定成本人

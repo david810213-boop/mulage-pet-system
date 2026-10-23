@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
@@ -7,7 +8,6 @@ import com.petgrooming.pet_system.service.InventoryImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,20 +31,10 @@ public class RetailProductMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
-    public String list(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String list(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("products", retailProductService.listActive());
         return "admin/retail-products";
     }
@@ -53,18 +43,17 @@ public class RetailProductMvcController {
     // 一次全部填完，不用從完整商品清單裡自己找哪些還是 0。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/cost-backfill")
-    public String costBackfill(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String costBackfill(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("pendingProducts", retailProductService.listPendingCostBackfill());
         return "admin/retail-product-cost-backfill";
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/cost-backfill/submit")
-    public String submitCostBackfill(HttpServletRequest request,
-                                      @RequestParam Map<String, String> allParams,
-                                      RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String submitCostBackfill(@RequestParam Map<String, String> allParams,
+                                      RedirectAttributes ra,
+                                      @CurrentUser User user) {
         // 表單欄位命名為 cost_{id}，例如 cost_17=120，逐一解析成 Map<商品id, 成本>
         Map<Long, Integer> idToCost = new HashMap<>();
         for (var entry : allParams.entrySet()) {
@@ -87,15 +76,14 @@ public class RetailProductMvcController {
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/create")
-    public String create(HttpServletRequest request,
-                         @RequestParam String name,
+    public String create(@RequestParam String name,
                          @RequestParam int price,
                          @RequestParam(defaultValue = "0") int stockQuantity,
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
                          @RequestParam(required = false) String barcode, // 需求（2026-10-02）：留空＝系統產生
-                         RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                         RedirectAttributes ra,
+                         @CurrentUser User user) {
         try {
             var product = retailProductService.create(name, price, stockQuantity, description, unitCost, barcode);
             operationLogService.log(user, "RETAIL", "CREATE_RETAIL_PRODUCT",
@@ -109,14 +97,14 @@ public class RetailProductMvcController {
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/update")
-    public String update(@PathVariable Long id, HttpServletRequest request,
+    public String update(@PathVariable Long id,
                          @RequestParam String name,
                          @RequestParam int price,
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
                          @RequestParam(required = false) String barcode,
-                         RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                         RedirectAttributes ra,
+                         @CurrentUser User user) {
         try {
             // 表單沒帶條碼欄位＝不改條碼；帶了空白＝改回系統產生的店內條碼
             if (barcode == null) {
@@ -135,9 +123,9 @@ public class RetailProductMvcController {
     // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）──────────
     @RequireRole({UserRole.ADMIN})
     @PostMapping("/{id}/stocktake")
-    public String stocktake(@PathVariable Long id, HttpServletRequest request,
-                            @RequestParam int actual, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String stocktake(@PathVariable Long id,
+                            @RequestParam int actual, RedirectAttributes ra,
+                            @CurrentUser User user) {
         try {
             int diff = retailProductService.stocktake(id, actual);
             operationLogService.log(user, "RETAIL", "STOCKTAKE_RETAIL",
@@ -152,10 +140,9 @@ public class RetailProductMvcController {
     // ── 需求（追加，2026-10-02 店家確認 7）：CSV 批次匯入 ──────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/import")
-    public String importCsv(HttpServletRequest request,
-                            @RequestParam("file") MultipartFile file,
-                            RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String importCsv(@RequestParam("file") MultipartFile file,
+                            RedirectAttributes ra,
+                            @CurrentUser User user) {
         try {
             var result = inventoryImportService.importRetail(file);
             operationLogService.log(user, "RETAIL", "IMPORT_RETAIL",
@@ -170,10 +157,10 @@ public class RetailProductMvcController {
     // 補貨／盤點修正：delta 正數＝入庫，負數＝扣減（例如報損）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/adjust-stock")
-    public String adjustStock(@PathVariable Long id, HttpServletRequest request,
+    public String adjustStock(@PathVariable Long id,
                               @RequestParam int delta,
-                              RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                              RedirectAttributes ra,
+                              @CurrentUser User user) {
         try {
             retailProductService.adjustStock(id, delta);
             operationLogService.log(user, "RETAIL", "ADJUST_RETAIL_STOCK",
@@ -187,8 +174,7 @@ public class RetailProductMvcController {
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String delete(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
         retailProductService.softDelete(id);
         operationLogService.log(user, "RETAIL", "DELETE_RETAIL_PRODUCT", "下架商品 #" + id, null);
         ra.addFlashAttribute("successMsg", "商品已下架");

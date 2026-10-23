@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.PetDiscountStatusResponse;
@@ -12,7 +13,6 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetConsumptionHistoryService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,21 +40,15 @@ public class PetController {
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService;
     private final WalletService walletService;
 
-    // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
-    // 不論是店家網頁登入（WEB）還是顧客 LINE 登入（LINE），走同一套機制
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
-
     // ── POST /api/pets ─────────────────────────────────────────────────────
     // 新增寵物，以 JWT 解析出的 username 識別飼主
     // @Valid 觸發 PetRequest 的 Bean Validation，驗證失敗自動回 400
     @PostMapping
     public ResponseEntity<?> addPet(
-            HttpServletRequest request,
-            @Valid @RequestBody PetRequest petRequest) {
-        PetResponse res = petService.addPet(currentUsername(request), petRequest);
-        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "ADD_PET",
+            @Valid @RequestBody PetRequest petRequest,
+            @CurrentUser String username) {
+        PetResponse res = petService.addPet(username, petRequest);
+        operationLogService.logByUsername(username, "CUSTOMER", "ADD_PET",
                 "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
         return ResponseEntity.ok(res);
     }
@@ -66,12 +60,12 @@ public class PetController {
     // 物種沿用資料庫既有值。
     @PutMapping("/{petId}")
     public ResponseEntity<?> updatePet(
-            HttpServletRequest request,
             @PathVariable Long petId,
-            @Valid @RequestBody PetRequest petRequest) {
-        petService.assertOwnership(petId, currentUsername(request));
+            @Valid @RequestBody PetRequest petRequest,
+            @CurrentUser String username) {
+        petService.assertOwnership(petId, username);
         PetResponse res = petService.updatePet(petId, petRequest);
-        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPDATE_PET",
+        operationLogService.logByUsername(username, "CUSTOMER", "UPDATE_PET",
                 "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
         return ResponseEntity.ok(res);
     }
@@ -80,10 +74,10 @@ public class PetController {
     // 需求（追加，2026-08-26）：顧客自己在 LIFF「我的毛孩」刪除自己的寵物。
     // 有預約或消費紀錄的話會被 PetService.deletePet() 擋下（見該方法說明）。
     @DeleteMapping("/{petId}")
-    public ResponseEntity<?> deletePet(HttpServletRequest request, @PathVariable Long petId) {
-        petService.assertOwnership(petId, currentUsername(request));
+    public ResponseEntity<?> deletePet(@PathVariable Long petId, @CurrentUser String username) {
+        petService.assertOwnership(petId, username);
         petService.deletePet(petId);
-        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "DELETE_PET",
+        operationLogService.logByUsername(username, "CUSTOMER", "DELETE_PET",
                 "寵物 #" + petId, null);
         return ResponseEntity.ok().build();
     }
@@ -104,8 +98,8 @@ public class PetController {
 
     // ── GET /api/pets/my ───────────────────────────────────────────────────
     @GetMapping("/my")
-    public ResponseEntity<?> getMyPets(HttpServletRequest request) {
-        List<PetResponse> res = petService.getMyPets(currentUsername(request));
+    public ResponseEntity<?> getMyPets(@CurrentUser String username) {
+        List<PetResponse> res = petService.getMyPets(username);
         return ResponseEntity.ok(res);
     }
 
@@ -115,13 +109,13 @@ public class PetController {
     public ResponseEntity<?> uploadPhoto(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
-            HttpServletRequest request) {
+            @CurrentUser String username) {
         var pet = petService.getPetEntity(id);
-        if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
+        if (!pet.getOwner().getUsername().equals(username)) {
             throw new PetException(ErrorCode.FORBIDDEN, "只能上傳自己寵物的照片");
         }
         PetResponse res = petService.updatePhoto(id, file);
-        operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",
+        operationLogService.logByUsername(username, "CUSTOMER", "UPLOAD_PET_PHOTO",
                 "寵物 " + res.getName() + " #" + res.getId(), null);
         return ResponseEntity.ok(res);
     }
@@ -135,14 +129,13 @@ public class PetController {
     // ── GET /api/pets/{petId}/grooming-history ────────────────────────────
     // 需求（2026-09-29）：LIFF「我的毛孩」查看每次美容的狀況備註與照片
     @GetMapping("/{petId}/grooming-history")
-    public ResponseEntity<?> getGroomingHistory(HttpServletRequest request, @PathVariable Long petId) {
-        petService.assertOwnership(petId, currentUsername(request));
+    public ResponseEntity<?> getGroomingHistory(@PathVariable Long petId, @CurrentUser String username) {
+        petService.assertOwnership(petId, username);
         return ResponseEntity.ok(petService.getGroomingHistory(petId));
     }
 
     @GetMapping("/{petId}/discount-status")
     public ResponseEntity<?> getDiscountStatus(
-            HttpServletRequest request,
             @PathVariable Long petId,
             // 需求（追加，2026-09-06）：距上次洗澡幾天／是否符合定期養護禮遇資格，
             // 應該用「顧客實際選的預約日期」去算，不是永遠用「今天」——
@@ -150,8 +143,9 @@ public class PetController {
             // 符合資格。前端在選好日期後會帶這個參數重新查一次；還沒選日期時
             // （例如剛選完毛孩、日期欄位還空著）不帶這個參數，退回用「今天」
             // 當基準日，先讓使用者看到一個大概的狀態。
-            @RequestParam(required = false) String asOfDate) {
-        petService.assertOwnership(petId, currentUsername(request));
+            @RequestParam(required = false) String asOfDate,
+            @CurrentUser String username) {
+        petService.assertOwnership(petId, username);
         var pet = petService.getPetEntity(petId);
         var owner = pet.getOwner();
         String petType = pet.getPetType().name();

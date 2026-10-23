@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
@@ -18,7 +19,6 @@ import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -44,20 +44,14 @@ public class WalletMvcController {
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
-
     // ── GET /admin/wallets ─────────────────────────────────────────────────
     // 顧客儲值管理首頁：列出所有 CUSTOMER，可搜尋
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
-    public String listCustomers(HttpServletRequest request, Model model,
-                                @RequestParam(required = false) String keyword) {
-        model.addAttribute("user", getLoginUser(request));
+    public String listCustomers(Model model,
+                                @RequestParam(required = false) String keyword,
+                                @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
 
         var allCustomers = userService.getAllCustomers(); // 下面 UserService 補這個方法
 
@@ -101,9 +95,8 @@ public class WalletMvcController {
     // 查看特定顧客的錢包詳細資料
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{username}")
-    public String walletDetail(@PathVariable String username,
-                               HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String walletDetail(@PathVariable String username, Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("customer", userService.getUserEntityByUsername(username));
         model.addAttribute("wallet", walletService.getWallet(username));
         model.addAttribute("transactions", walletService.getTransactions(username));
@@ -137,9 +130,8 @@ public class WalletMvcController {
                           @Valid @ModelAttribute PetRequest petRequest,
                           BindingResult bindingResult,
                           @RequestParam(required = false) String returnTo,
-                          HttpServletRequest request,
-                          RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                          RedirectAttributes ra,
+                          @CurrentUser User user) {
         String redirectUrl = "redirect:" + (returnTo != null && !returnTo.isBlank()
                 ? returnTo : "/admin/wallets/" + username);
         if (bindingResult.hasErrors()) {
@@ -164,9 +156,8 @@ public class WalletMvcController {
     public String setCatCoatCategory(@PathVariable String username, @PathVariable Long petId,
                               @RequestParam CatCoatCategory catCoatCategory,
                               @RequestParam(required = false) String returnTo,
-                              HttpServletRequest request,
-                              RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                              RedirectAttributes ra,
+                              @CurrentUser User user) {
         try {
             petService.setCatCoatCategory(petId, catCoatCategory);
             operationLogService.log(user, "CUSTOMER", "SET_CAT_COAT_CATEGORY",
@@ -186,9 +177,8 @@ public class WalletMvcController {
     public String setCoatType(@PathVariable String username, @PathVariable Long petId,
                               @RequestParam CoatType coatType,
                               @RequestParam(required = false) String returnTo,
-                              HttpServletRequest request,
-                              RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                              RedirectAttributes ra,
+                              @CurrentUser User user) {
         try {
             petService.setCoatType(petId, coatType);
             operationLogService.log(user, "CUSTOMER", "SET_COAT_TYPE",
@@ -208,9 +198,8 @@ public class WalletMvcController {
     public String uploadPetPhoto(@PathVariable String username, @PathVariable Long petId,
                                  @RequestParam("file") MultipartFile file,
                                  @RequestParam(required = false) String returnTo,
-                                 HttpServletRequest request,
-                                 RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                 RedirectAttributes ra,
+                                 @CurrentUser User user) {
         try {
             petService.updatePhoto(petId, file);
             operationLogService.log(user, "CUSTOMER", "UPLOAD_PET_PHOTO",
@@ -230,9 +219,8 @@ public class WalletMvcController {
     public String uploadGroomingNotePhoto(@PathVariable String username, @PathVariable Long noteId,
                                           @RequestParam("file") MultipartFile file,
                                           @RequestParam(required = false) String returnTo,
-                                          HttpServletRequest request,
-                                          RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                          RedirectAttributes ra,
+                                          @CurrentUser User user) {
         try {
             petService.uploadGroomingNotePhoto(noteId, file);
             operationLogService.log(user, "CUSTOMER", "UPLOAD_GROOMING_NOTE_PHOTO",
@@ -252,9 +240,8 @@ public class WalletMvcController {
     public String setAdminNote(@PathVariable String username,
                                @RequestParam(required = false) String adminNote,
                                @RequestParam(required = false) String returnTo,
-                               HttpServletRequest request,
-                               RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                               RedirectAttributes ra,
+                               @CurrentUser User user) {
         try {
             userService.setAdminNote(username, adminNote);
             operationLogService.log(user, "CUSTOMER", "SET_NOTE", "會員 " + username,
@@ -275,9 +262,9 @@ public class WalletMvcController {
     public String deposit(@PathVariable String username,
                           @ModelAttribute DepositRequest req, // 修正（2026-10-02）：不用 @Valid，金額檢查交給
                                                               // WalletService，錯誤才會顯示在頁面上而不是一串 JSON
-                          HttpServletRequest request,
-                          RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                          
+                          RedirectAttributes ra,
+                          @CurrentUser User user) {
         try {
             var result = walletService.deposit(username, req);
             try {

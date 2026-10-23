@@ -1,11 +1,11 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.CookieUtils;
 import com.petgrooming.pet_system.utils.JwtUtils;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,18 +40,10 @@ public class SwitchUserController {
     @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
-
     // ── GET /auth/switch-user ─────────────────────────────────────────────
     // 列出所有「已設定 PIN 碼」的員工/管理員，供點選切換
     @GetMapping
-    public String switchUserPage(HttpServletRequest request, Model model) {
-        User currentUser = getLoginUser(request);
+    public String switchUserPage(Model model, @CurrentUser User currentUser) {
         if (currentUser == null || currentUser.isCustomer()) {
             return "redirect:/auth/login";
         }
@@ -69,10 +61,9 @@ public class SwitchUserController {
     @PostMapping
     public String doSwitch(@RequestParam Long targetUserId,
                            @RequestParam String pin,
-                           HttpServletRequest request,
                            HttpServletResponse response,
-                           RedirectAttributes ra) {
-        User currentUser = getLoginUser(request);
+                           RedirectAttributes ra,
+                           @CurrentUser User currentUser) {
         if (currentUser == null || currentUser.isCustomer()) {
             return "redirect:/auth/login";
         }

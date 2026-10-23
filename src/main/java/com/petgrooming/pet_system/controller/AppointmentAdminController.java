@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentNoteRequest;
@@ -7,7 +8,6 @@ import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.ConfirmAppointmentRequest;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.AppointmentService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,10 +28,6 @@ public class AppointmentAdminController {
 
     private final AppointmentService appointmentService;
 
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
-
     // 需求 7：後台清單，含 internalNote
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
@@ -44,9 +40,9 @@ public class AppointmentAdminController {
     @PostMapping("/{id}/confirm")
     public ResponseEntity<?> confirm(@PathVariable Long id,
                                      @RequestBody(required = false) ConfirmAppointmentRequest req,
-                                     HttpServletRequest request) {
+                                     @CurrentUser String username) {
         AppointmentResponse res = appointmentService.confirm(
-                id, req != null ? req.getConfirmedTime() : null, currentUsername(request));
+                id, req != null ? req.getConfirmedTime() : null, username);
         return ResponseEntity.ok(res);
     }
 
@@ -55,9 +51,9 @@ public class AppointmentAdminController {
     @PutMapping("/{id}/notes")
     public ResponseEntity<?> setNotes(@PathVariable Long id,
                                       @RequestBody AppointmentNoteRequest req,
-                                      HttpServletRequest request) {
+                                      @CurrentUser String username) {
         AppointmentAdminResponse res = appointmentService.setNotes(
-                id, req.getInternalNote(), req.getMemberNote(), currentUsername(request));
+                id, req.getInternalNote(), req.getMemberNote(), username);
         return ResponseEntity.ok(res);
     }
 }

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CatRewashCandidateResponse;
 import com.petgrooming.pet_system.enums.PetType;
@@ -8,7 +9,6 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
@@ -36,16 +36,6 @@ public class CatRewashMvcController {
     private final PetRepository petRepository;
     private final UserService userService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     // filter: "within"（還在優惠期內）／"overdue"（已超過90天）／不填＝全部有洗澡紀錄的貓
     private List<CatRewashCandidateResponse> loadCandidates(String filter) {
         Boolean withinWindowOnly = switch (filter == null ? "" : filter) {
@@ -59,9 +49,10 @@ public class CatRewashMvcController {
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
-    public String list(HttpServletRequest request, Model model,
-                       @RequestParam(required = false) String filter) {
-        model.addAttribute("user", getLoginUser(request));
+    public String list(Model model,
+                       @RequestParam(required = false) String filter,
+                       @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("filter", filter);
         model.addAttribute("candidates", loadCandidates(filter));
         model.addAttribute("rewashWindowDays", CatRewashDiscountService.REWASH_WINDOW_DAYS);
