@@ -6,7 +6,6 @@ import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.BankAccountPurpose;
-import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
@@ -14,16 +13,13 @@ import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.service.AppointmentService;
-import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
-import com.petgrooming.pet_system.service.CatRewashDiscountService;
-import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.CheckoutPreviewService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
-import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +29,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -45,12 +40,9 @@ import java.util.Map;
 public class PaymentMvcController {
 
     private final PaymentService paymentService;
-    private final WalletService walletService;
     private final OperationLogService operationLogService;
     private final AppointmentService appointmentService;
-    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1
-    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
-    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
+    private final CheckoutPreviewService checkoutPreviewService;
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
@@ -88,67 +80,44 @@ public class PaymentMvcController {
     @GetMapping("/checkout/{appointmentId}")
     public String checkoutPage(@PathVariable Long appointmentId, Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
+        model.addAttribute("checkoutRequest", new CheckoutRequest());
+        addCheckoutBasics(model, appointmentId, user);
+        addMenuAndPreview(model, appointmentId, user);
+        return "payments/checkout";
+    }
+
+    /** 結帳頁一定要有的資料：付款方式、匯款帳號、加購商品清單。 */
+    private void addCheckoutBasics(Model model, Long appointmentId, User user) {
         model.addAttribute("user", user);
         model.addAttribute("appointmentId", appointmentId);
-        // 需求 10：結帳畫面不再提供「信用卡」選項（歷史資料仍保留該列舉值，僅畫面隱藏）
-        model.addAttribute("paymentMethods", Arrays.stream(PaymentMethod.values())
-                .filter(m -> m != PaymentMethod.CREDIT_CARD).toList());
-        model.addAttribute("checkoutRequest", new CheckoutRequest());
-        model.addAttribute("bankAccountInfo",
-                paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
+        model.addAttribute("bankAccountInfo", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
-        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
-        boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
-        String petType = appointmentService.getPetTypeForAppointment(appointmentId);
-        // 「新增服務項目」選單依這隻寵物的體型篩選（規則見 GroomingMenuFilter，網頁版與手機版一致）
-        var pet = appointmentService.getPetForAppointment(appointmentId);
-        model.addAttribute("pet", pet);
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", PerformanceCategory.values());
+    }
+
+    /**
+     * 「新增服務項目」選單（依這隻寵物的體型篩選，規則見 GroomingMenuFilter）、逐項目消費明細，
+     * 以及會員的儲值金餘額與折扣後金額預覽（跟實際結帳逐項目扣款用同一份資料，見 CheckoutPreviewService）。
+     */
+    private void addMenuAndPreview(Model model, Long appointmentId, User user) {
+        boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
+        String petType = appointmentService.getPetTypeForAppointment(appointmentId);
+        var pet = appointmentService.getPetForAppointment(appointmentId);
+        model.addAttribute("pet", pet);
         model.addAttribute("groomingItems", groomingMenuFilter.filterForPetShape(
                 groomingService.getAllItems(), isExisting, petType, pet));
         model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
 
-        // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
-        Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
-        if (appointment != null && appointment.getUser() != null) {
-            var wallet = walletService.getWallet(appointment.getUser().getUsername());
-            model.addAttribute("walletBalance", wallet.getBalance());
-            model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-            model.addAttribute("walletDiscount", wallet.getDiscount());
-            model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-            model.addAttribute("baseAmount", appointment.getTotalAmount());
-        }
-
-        // 需求：結帳頁面顯示逐項目消費明細（含折扣資格），跟實際結帳邏輯用同一份資料，
-        // 避免像舊版「整筆金額×折扣」預覽跟實際逐項目扣款金額對不上。
         var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
         model.addAttribute("detailItems", detail.getItems());
+        Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
         if (appointment != null && appointment.getUser() != null) {
-            double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
-            // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
-            // 不再是舊版的「符合會員折扣就直接乘」。
-            // 需求（追加）：貓咪首次體驗優惠加入後，isFirstVisitEligible() 這個旗標狗貓共用，
-            // 這裡依 petType 分流到正確的 service（兩邊算法完全一致，只是分開呼叫語意才清楚）。
-            boolean isDogPet = "DOG".equalsIgnoreCase(petType);
-            double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> {
-                        if (it.isFirstVisitEligible() && isDogPet) {
-                            return dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
-                        }
-                        if (it.isFirstVisitEligible()) {
-                            return catFirstVisitDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
-                        }
-                        return catRewashDiscountService.resolvePreferredDiscount(
-                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price();
-                    })
-                    .sum();
-            model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
+            model.addAttribute("baseAmount", appointment.getTotalAmount());
+            CheckoutPageSupport.addWalletPreview(model, checkoutPreviewService.forAppointment(
+                    appointment.getUser().getUsername(), detail.getItems(), petType));
         }
-
-        return "payments/checkout";
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-retail-item ────────────
@@ -260,17 +229,8 @@ public class PaymentMvcController {
             operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
 
-            // 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗
-            // 還沒鎖定固定套餐，跳提醒請店員記得更新體重（見 WalkInOrderMvcController
-            // 同樣邏輯的說明）。不管等一下要導去 /payments 還是 /appointments，
-            // 兩個頁面都有放這個彈窗的渲染邏輯，flash attribute 都讀得到。
-            var pet = appointmentService.getPetForAppointment(appointmentId);
-            if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
-                    && pet.getLockedGroomingItemId() == null) {
-                redirectAttributes.addFlashAttribute("weightReminderPetId", pet.getId());
-                redirectAttributes.addFlashAttribute("weightReminderPetName", pet.getName());
-                redirectAttributes.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
-            }
+            CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes,
+                    appointmentService.getPetForAppointment(appointmentId));
 
             // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
             // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
@@ -283,56 +243,18 @@ public class PaymentMvcController {
                 return "redirect:/appointments";
             }
         } catch (IllegalArgumentException e) {
-            model.addAttribute("user", user);
-            model.addAttribute("appointmentId", appointmentId);
-            model.addAttribute("paymentMethods", PaymentMethod.values());
-            model.addAttribute("retailProducts", retailProductService.listActive());
-            boolean isExistingErr = appointmentService.isExistingCustomerPet(appointmentId);
-            String petTypeErr = appointmentService.getPetTypeForAppointment(appointmentId);
-            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
-                    .filter(i -> isExistingErr || !i.isRequiresExistingCustomer())
-                    .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petTypeErr))
-                    .toList());
+            // 結帳被業務規則擋下（例如還沒核對、儲值金不足）：回到結帳頁顯示原因，保留剛才選的付款方式
+            model.addAttribute("checkoutRequest", req);
             model.addAttribute("errorMsg", e.getMessage());
-
-            // 需求（追加）：組錯誤頁預覽資料本身如果又出錯（例如這筆預約資料本身有異常），
-            // 不能讓第二個例外蓋掉使用者原本該看到的錯誤訊息，變成一片空白的 500 錯誤頁。
-            // 這裡包一層 try/catch，最差情況就是錯誤頁少了金額預覽，但至少使用者看得到
-            // 「為什麼結帳失敗」這句話，店家也才能照著訊息判斷下一步。
+            addCheckoutBasics(model, appointmentId, user);
+            // 組選單與金額預覽時如果又出錯（例如這筆預約資料本身有異常），不能讓第二個例外蓋掉
+            // 原本該看到的錯誤訊息；最差情況就是頁面少了選單與金額預覽，但看得到「為什麼結帳失敗」。
             try {
-                Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
-                if (appointment != null && appointment.getUser() != null) {
-                    var wallet = walletService.getWallet(appointment.getUser().getUsername());
-                    model.addAttribute("walletBalance", wallet.getBalance());
-                    model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-                    model.addAttribute("walletDiscount", wallet.getDiscount());
-                    model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-                    model.addAttribute("baseAmount", appointment.getTotalAmount());
-                    // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
-                    var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
-                    model.addAttribute("detailItems", detail.getItems());
-                    boolean isDogPetErr = "DOG".equalsIgnoreCase(petTypeErr);
-                    double walletPreview = detail.getItems().stream()
-                            .mapToDouble(it -> {
-                                if (it.isFirstVisitEligible() && isDogPetErr) {
-                                    return dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
-                                }
-                                if (it.isFirstVisitEligible()) {
-                                    return catFirstVisitDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
-                                }
-                                return catRewashDiscountService.resolvePreferredDiscount(
-                                        it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price();
-                            })
-                            .sum();
-                    model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
-                }
+                addMenuAndPreview(model, appointmentId, user);
             } catch (Exception previewError) {
                 log.warn("結帳錯誤頁組金額預覽時另外出錯，預約 #{}，僅顯示原始錯誤訊息：{}",
                         appointmentId, previewError.getMessage(), previewError);
             }
-
             return "payments/checkout";
         } catch (Exception e) {
             // 保底：checkout() 本身如果拋出非預期的例外（不是業務規則的 IllegalArgumentException），

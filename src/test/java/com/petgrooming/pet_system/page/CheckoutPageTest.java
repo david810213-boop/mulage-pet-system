@@ -1,13 +1,21 @@
 package com.petgrooming.pet_system.page;
 
+import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.model.Appointment;
+import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
+import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
 import com.petgrooming.pet_system.utils.JwtUtils;
@@ -21,7 +29,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -30,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
- * 結帳頁：「新增服務項目」選單依體型篩選（狗狗未填體重時提醒）、結帳失敗時回到結帳頁顯示原因。
+ * 結帳頁（預約、現場單）：「新增服務項目」選單依體型篩選（狗狗未填體重時提醒）、儲值金折扣預覽、
+ * 結帳失敗時回到結帳頁顯示原因。
  */
 class CheckoutPageTest extends IntegrationTestBase {
 
@@ -39,6 +51,9 @@ class CheckoutPageTest extends IntegrationTestBase {
     @Autowired private TestData testData;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PetRepository petRepository;
+    @Autowired private GroomingItemRepository groomingItemRepository;
+    @Autowired private WalletService walletService;
+    @Autowired private WalkInOrderService walkInOrderService;
 
     private MockMvc mvc;
 
@@ -95,6 +110,67 @@ class CheckoutPageTest extends IntegrationTestBase {
 
         assertThat((String) result.getModelAndView().getModel().get("errorMsg")).contains("核對");
         assertThat(result.getResponse().getContentAsString()).contains("核對");
+    }
+
+    @Test
+    void appointmentCheckoutPreviewsMemberWalletDiscount() throws Exception {
+        User member = testData.customer();
+        walletService.deposit(member.getUsername(), deposit(15000)); // 金卡 9 折
+        PetResponse cat = testData.cat(member);
+        Appointment appointment = appointment(member, cat.getName());
+        appointment.setPetType("CAT");
+        appointment.setTotalAmount(1000);
+        appointment.setSelectedItems(new ArrayList<>(List.of(groomingItem(1000))));
+        appointmentRepository.save(appointment);
+
+        Map<String, Object> model = checkout(appointment).getModelAndView().getModel();
+
+        assertThat(model.get("baseAmount")).isEqualTo(1000);
+        assertThat(model.get("walletBalance")).isEqualTo(15000);
+        assertThat(model.get("walletLowBalance")).isEqualTo(false);
+        assertThat(model.get("walletDiscount")).isEqualTo(0.9);
+        assertThat(model.get("walletDiscountActive")).isEqualTo(true);
+        assertThat(model.get("walletFinalAmount")).isEqualTo(900);
+        assertThat((List<?>) model.get("paymentMethods")).doesNotContain(PaymentMethod.CREDIT_CARD).contains(PaymentMethod.CASH);
+    }
+
+    @Test
+    void walkInCheckoutPreviewsMemberWalletDiscount() throws Exception {
+        User staff = testData.staff();
+        User member = testData.customer();
+        walletService.deposit(member.getUsername(), deposit(15000));
+        GroomingItem bath = groomingItem(1000);
+        WalkInOrderCreateRequest.Item line = new WalkInOrderCreateRequest.Item();
+        line.setItemCode(bath.getItemCode());
+        WalkInOrderCreateRequest req = new WalkInOrderCreateRequest();
+        req.setMemberUsername(member.getUsername());
+        req.setPetName("現場毛孩");
+        req.setItems(new ArrayList<>(List.of(line)));
+        req.setRetailItems(new ArrayList<>());
+        var order = walkInOrderService.create(req, staff.getUsername());
+
+        Map<String, Object> model = mvc.perform(get("/admin/walk-in-orders/" + order.getId() + "/checkout")
+                        .cookie(new Cookie("JWT_TOKEN", jwtUtils.generateToken(staff.getUsername(), staff.getRole().name()))))
+                .andExpect(status().isOk())
+                .andReturn().getModelAndView().getModel();
+
+        assertThat(model.get("walletBalance")).isEqualTo(15000);
+        assertThat(model.get("walletDiscountActive")).isEqualTo(true);
+        assertThat(model.get("walletFinalAmount")).isEqualTo(900);
+        assertThat((List<?>) model.get("paymentMethods")).doesNotContain(PaymentMethod.CREDIT_CARD);
+    }
+
+    private GroomingItem groomingItem(int price) {
+        String code = "K" + UUID.randomUUID().toString().substring(0, 8);
+        return groomingItemRepository.save(GroomingItem.builder()
+                .itemCode(code).name("結帳頁測試項目" + code).price((double) price)
+                .performanceCategory(PerformanceCategory.OTHER).discountEligible(true).build());
+    }
+
+    private static DepositRequest deposit(int amount) {
+        DepositRequest req = new DepositRequest();
+        req.setAmount(amount);
+        return req;
     }
 
     @SuppressWarnings("unchecked")

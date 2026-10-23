@@ -525,13 +525,7 @@ public class MobileWalkInController {
                     result.getPaymentMethodLabel() + "（手機版）");
 
             // 跟網頁版一樣：狗狗還沒鎖定固定套餐的話，結帳完提醒更新體重
-            PetResponse pet = safePet(id);
-            if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
-                    && pet.getLockedGroomingItemId() == null) {
-                ra.addFlashAttribute("weightReminderPetId", pet.getId());
-                ra.addFlashAttribute("weightReminderPetName", pet.getName());
-                ra.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
-            }
+            CheckoutPageSupport.addWeightUpdateReminder(ra, safePet(id));
             ra.addFlashAttribute("toast", result.isPaid()
                     ? "結帳完成"
                     : "已送出，等收到匯款後記得按「確認已收到匯款」");
