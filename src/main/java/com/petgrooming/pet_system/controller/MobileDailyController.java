@@ -7,7 +7,6 @@ import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.model.StoreSupply;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PerformanceService;
@@ -32,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 員工手機版：我的績效、店用洗劑、零售商品庫存（需求，2026-09-24 第七批）。
@@ -52,7 +50,6 @@ public class MobileDailyController {
 
     private final UserService userService;
     private final PerformanceService performanceService;
-    private final PerformanceRecordRepository performanceRecordRepository;
     private final StoreSupplyService storeSupplyService;
     private final RetailProductService retailProductService;
     private final OperationLogService operationLogService;
@@ -83,12 +80,9 @@ public class MobileDailyController {
         LocalDate monthStart = today.withDayOfMonth(1);
         var progress = performanceService.getMyProgress(user.getId(), today);
 
-        List<PerformanceRecord> records = performanceRecordRepository
-                .findByStaffIdAndServiceDateBetweenOrderByServiceDateDesc(user.getId(), monthStart, today);
+        List<PerformanceRecord> records = performanceService.getRecordsBetween(user.getId(), monthStart, today);
         // 已經被拆分過的原始紀錄（不能再拆），用來決定要不要顯示「拆給同事」按鈕
-        Set<Long> alreadySplit = performanceRecordRepository.findBySplitFromRecordIdIsNotNull().stream()
-                .map(PerformanceRecord::getSplitFromRecordId)
-                .collect(Collectors.toSet());
+        Set<Long> alreadySplit = performanceService.getSplitSourceRecordIds();
 
         Map<String, List<Map<String, Object>>> byDate = new LinkedHashMap<>();
         Map<String, Double> dayTotal = new LinkedHashMap<>();
@@ -148,7 +142,7 @@ public class MobileDailyController {
         }
         try {
             // 手機版只能拆自己的紀錄；拆別人的積分請到網頁版績效管理
-            PerformanceRecord source = performanceRecordRepository.findById(sourceRecordId).orElse(null);
+            PerformanceRecord source = performanceService.findRecord(sourceRecordId).orElse(null);
             if (source == null || source.getStaff() == null || !source.getStaff().getId().equals(user.getId())) {
                 ra.addFlashAttribute("toastError", "只能拆分自己的積分");
                 return "redirect:/m/perf";

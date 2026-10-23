@@ -7,14 +7,13 @@ import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.SlotCapacityService;
-import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalkInOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -51,14 +50,13 @@ public class MobileScheduleController {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
 
-    private final UserService userService;
     private final AppointmentService appointmentService;
     private final SlotCapacityService slotCapacityService;
     private final ClosedDateService closedDateService;
     private final PaymentService paymentService;
-    private final WalkInOrderRepository walkInOrderRepository;
     private final MemberConsumptionService memberConsumptionService;
     private final OperationLogService operationLogService;
+    private final WalkInOrderService walkInOrderService;
 
     // ── 時段管理（單日）────────────────────────────────────────────────
     @GetMapping("/slots")
@@ -189,7 +187,7 @@ public class MobileScheduleController {
         final LocalDate t = to;
 
         List<ConsumptionRecordResponse> all = memberConsumptionService.buildCombinedRecords(
-                paymentService.getAllTransactions(), walkInOrderRepository.findAllByOrderByCreatedAtDesc());
+                paymentService.getAllTransactions(), walkInOrderService.findAllOrders());
         List<ConsumptionRecordResponse> picked = all.stream()
                 .filter(x -> x.getTime() != null)
                 .filter(x -> !x.getTime().toLocalDate().isBefore(f) && !x.getTime().toLocalDate().isAfter(t))

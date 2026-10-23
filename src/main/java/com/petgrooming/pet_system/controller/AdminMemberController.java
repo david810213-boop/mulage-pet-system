@@ -8,7 +8,6 @@ import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.PetSearchResult;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
-import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
@@ -35,7 +34,6 @@ public class AdminMemberController {
 
     private final UserService userService;
     private final PetService petService;
-    private final PetRepository petRepository;
     private final MemberImportService memberImportService; // 需求（追加，2026-09-08）：手動綁定既有匯入資料
 
     // ── GET /api/admin/members/search?keyword=xxx ───────────────────────────
@@ -69,28 +67,7 @@ public class AdminMemberController {
         if (keyword == null || keyword.isBlank()) {
             return ResponseEntity.ok(List.of());
         }
-        List<PetSearchResult> results = petRepository
-                .findByNameContainingIgnoreCase(keyword.trim())
-                .stream()
-                .filter(p -> p.getOwner() != null)
-                .limit(20)
-                .map(p -> {
-                    String phone = p.getOwnerPhone() != null && p.getOwnerPhone().length() >= 4
-                            ? p.getOwnerPhone().substring(p.getOwnerPhone().length() - 4)
-                            : "未填";
-                    return PetSearchResult.builder()
-                            .petId(p.getId())
-                            .petName(p.getName())
-                            .petType(p.getPetType() != null ? p.getPetType().name() : null)
-                            .breed(p.getBreed())
-                            .ownerUsername(p.getOwner().getUsername())
-                            .ownerName(p.getOwner().getName())
-                            .ownerPhone(p.getOwnerPhone())
-                            .photoUrl(p.getPhotoUrl())
-                            .displayLabel(p.getName() + "（家長：" + p.getOwner().getName() + "・電話末四碼 " + phone + "）")
-                            .build();
-                })
-                .toList();
+        List<PetSearchResult> results = petService.searchForStaff(keyword);
         return ResponseEntity.ok(results);
     }
 

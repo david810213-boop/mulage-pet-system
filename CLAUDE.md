@@ -66,6 +66,8 @@
 - `fetch()` 呼叫一律預期後端可能回傳純文字錯誤，不要寫死用 `res.json()` 解析，先讀 `res.text()` 能解析成 JSON 才當 JSON 用
 - **API 錯誤一律丟業務例外，不要在 controller 自己組錯誤回應**：`throw new XxxException(ErrorCode.NOT_FOUND, "找不到…")`（不帶 ErrorCode 時預設 `BUSINESS_RULE`／400）。回應格式由 `GlobalApiExceptionHandler` 統一產生：`{ status, detail, code, message, errors? }`，前端讀 `message`、依 `code` 判斷。`BusinessException` 刻意繼承 `IllegalArgumentException`（網頁版 MVC controller 有上百處 `catch (IllegalArgumentException e)` 依賴它），不要改成 `RuntimeException`
 - **請求內容一律用 DTO（新寫的用 `record`）＋ Bean Validation 接收**，不要用 `@RequestBody Map`
+- **分層規則（ArchUnit 測試強制）**：Controller 不得注入或呼叫 Repository，查詢一律寫成 Service 方法；Service 不得依賴 Controller。取得登入者用 `@CurrentUser String username` 或 `@CurrentUser User user`，不要讀 `request.getAttribute("tokenUsername")`
+- Service 方法若會讀取實體的延遲載入關聯（例如 `pet.getOwner()`），要加 `@Transactional(readOnly = true)`，不要依賴請求層級的資料庫連線
 - 合併 Git 分支衝突時，如果雙方版本內容差異很大，一定要問清楚使用者要保留哪一版，不要自己選
 - **系統效能問題排查，先用瀏覽器 Performance API 實測 TTFB，再看 Railway 即時 log 找實際 SQL 執行模式，不要只憑猜測**
 - **文件更新時，新版本要是完全獨立、自我完整的內容，不要寫「詳見前版本」「內容不變」這種依賴舊版才看得懂的引用**

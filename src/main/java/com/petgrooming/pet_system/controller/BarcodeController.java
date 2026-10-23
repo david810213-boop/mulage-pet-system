@@ -8,7 +8,6 @@ import com.petgrooming.pet_system.service.BarcodeService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.StoreSupplyService;
-import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -32,7 +31,6 @@ public class BarcodeController {
     private final BarcodeService barcodeService;
     private final RetailProductService retailProductService;
     private final StoreSupplyService storeSupplyService;
-    private final UserService userService;
     private final OperationLogService operationLogService;
 
     // GET /api/admin/inventory/barcode?code=xxx

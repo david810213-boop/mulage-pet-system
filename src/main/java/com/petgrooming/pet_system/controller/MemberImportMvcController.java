@@ -6,7 +6,6 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class MemberImportMvcController {
 
     private final MemberImportService memberImportService;
-    private final UserService userService;
     private final OperationLogService operationLogService;
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

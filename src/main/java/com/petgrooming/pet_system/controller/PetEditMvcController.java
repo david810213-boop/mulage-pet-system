@@ -6,9 +6,7 @@ import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.PetService;
-import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -32,14 +30,12 @@ import java.util.List;
 public class PetEditMvcController {
 
     private final PetService petService;
-    private final PetRepository petRepository;
-    private final UserService userService;
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{id}/edit")
     public String editPage(@PathVariable Long id, Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
-        var pet = petRepository.findById(id).orElse(null);
+        var pet = petService.findPet(id).orElse(null);
         if (pet == null) {
             model.addAttribute("errorMsg", "找不到這隻寵物");
             return "admin/pet-edit";
@@ -71,7 +67,7 @@ public class PetEditMvcController {
                           @ModelAttribute PetRequest petRequest,
                           @RequestParam(required = false) String returnTo, RedirectAttributes ra,
                           @CurrentUser User user) {
-        var existing = petRepository.findById(id).orElse(null);
+        var existing = petService.findPet(id).orElse(null);
         if (existing == null) {
             ra.addFlashAttribute("errorMsg", "找不到這隻寵物");
             return "redirect:/admin/pets/" + id + "/edit";

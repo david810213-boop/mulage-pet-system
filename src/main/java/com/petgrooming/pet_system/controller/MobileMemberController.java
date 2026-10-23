@@ -9,8 +9,6 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
-import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
@@ -55,9 +53,7 @@ public class MobileMemberController {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final UserService userService;
-    private final UserRepository userRepository;
     private final PetService petService;
-    private final PetGroomingNoteRepository petGroomingNoteRepository;
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final AppointmentService appointmentService;
     private final MemberConsumptionService memberConsumptionService;
@@ -123,7 +119,7 @@ public class MobileMemberController {
             return "redirect:/m/pets";
         }
 
-        List<PetGroomingNote> noteEntities = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(id)
+        List<PetGroomingNote> noteEntities = petService.getGroomingNotes(id)
                 .stream().limit(10).toList();
         // 需求（2026-09-29）：每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
         Map<Long, List<String>> photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(noteEntities);
@@ -201,7 +197,7 @@ public class MobileMemberController {
         if (user == null) {
             return "redirect:/auth/login";
         }
-        User customer = userRepository.findByUsername(username).orElse(null);
+        User customer = userService.findByUsername(username).orElse(null);
         if (customer == null || !customer.isCustomer()) {
             return "redirect:/m/members";
         }

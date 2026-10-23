@@ -11,7 +11,6 @@ import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.TopUpService;
-import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -46,7 +45,6 @@ public class MobileOpsController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("M/d");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
 
-    private final UserService userService;
     private final PendingOperatorMatrixService pendingOperatorMatrixService;
     private final AppointmentService appointmentService;
     private final WalkInOrderService walkInOrderService;

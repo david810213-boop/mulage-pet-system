@@ -992,4 +992,13 @@ public class WalkInOrderService {
         }
         return (int) Math.round(total);
     }
+
+    /** 全部現場單（實體），新的在前；報表與營收計算用。 */
+    public List<WalkInOrder> findAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    public List<WalkInOrder> findOrdersOfMember(String username) {
+        return orderRepository.findByMemberUsernameOrderByCreatedAtDesc(username);
+    }
 }

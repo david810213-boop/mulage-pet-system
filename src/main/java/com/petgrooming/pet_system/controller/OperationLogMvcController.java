@@ -5,7 +5,6 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class OperationLogMvcController {
 
     private final OperationLogService operationLogService;
-    private final UserService userService;
 
     @RequireRole(UserRole.ADMIN)
     @GetMapping

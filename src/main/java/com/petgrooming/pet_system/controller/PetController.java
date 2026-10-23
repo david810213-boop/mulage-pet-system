@@ -36,8 +36,6 @@ public class PetController {
     // 需求（追加，2026-09-04）：寵物折扣狀態查詢用
     private final PetConsumptionHistoryService petConsumptionHistoryService;
     private final CatRewashDiscountService catRewashDiscountService;
-    private final CatFirstVisitDiscountService catFirstVisitDiscountService;
-    private final DogFirstVisitDiscountService dogFirstVisitDiscountService;
     private final WalletService walletService;
 
     // ── POST /api/pets ─────────────────────────────────────────────────────

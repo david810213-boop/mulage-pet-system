@@ -1456,4 +1456,8 @@ public class AppointmentService {
                 .resolvePreferredDiscount(100.0, rewashApplicable, memberApplicable, memberDiscountRate)
                 .type();
     }
+
+    public Optional<Appointment> findAppointment(Long appointmentId) {
+        return appointmentRepository.findById(appointmentId);
+    }
 }
