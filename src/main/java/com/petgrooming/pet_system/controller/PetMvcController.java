@@ -7,7 +7,6 @@ import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
-import com.petgrooming.pet_system.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -23,7 +22,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PetMvcController {
 
     private final PetService petService;
-    private final UserService userService;
     private final OperationLogService operationLogService;
 
     @GetMapping

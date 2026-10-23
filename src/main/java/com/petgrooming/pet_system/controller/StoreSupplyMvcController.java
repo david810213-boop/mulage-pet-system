@@ -7,7 +7,6 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.InventoryImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.StoreSupplyService;
-import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,7 +24,6 @@ public class StoreSupplyMvcController {
 
     private final StoreSupplyService storeSupplyService;
     private final InventoryImportService inventoryImportService; // 需求（2026-10-02）
-    private final UserService userService;
     private final OperationLogService operationLogService;
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

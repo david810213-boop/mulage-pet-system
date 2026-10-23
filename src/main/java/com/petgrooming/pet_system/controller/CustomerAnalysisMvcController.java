@@ -8,9 +8,6 @@ import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
-import com.petgrooming.pet_system.repository.TransactionRepository;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.CustomerAnalysisService;
 import com.petgrooming.pet_system.service.GroomingNotePhotoService;
@@ -18,7 +15,6 @@ import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
-import com.petgrooming.pet_system.service.WalkInOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -44,11 +40,7 @@ public class CustomerAnalysisMvcController {
     private final PetService petService;
     private final WalletService walletService;
     private final AppointmentService appointmentService;
-    private final PetGroomingNoteRepository petGroomingNoteRepository;
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
-    private final TransactionRepository transactionRepository;
-    private final WalkInOrderRepository walkInOrderRepository;
-    private final WalkInOrderService walkInOrderService;
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
@@ -119,7 +111,7 @@ public class CustomerAnalysisMvcController {
         var consumptionByPetId = new HashMap<Long, List<ConsumptionRecordResponse>>();
         for (var p : pets) {
             groomingNotesByPetId.put(p.getId(),
-                    petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(p.getId()));
+                    petService.getGroomingNotes(p.getId()));
             consumptionByPetId.put(p.getId(),
                     records.stream()
                             .filter(r -> p.getName().equals(r.getPetName()))

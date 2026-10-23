@@ -6,7 +6,6 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.TopUpService;
-import com.petgrooming.pet_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,7 +22,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class TopUpMvcController {
 
     private final TopUpService topUpService;
-    private final UserService userService;
     private final OperationLogService operationLogService;
 
     // ── GET /admin/topup ────────────────────────────────────────────────────

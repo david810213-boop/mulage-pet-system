@@ -15,8 +15,6 @@ import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
-import com.petgrooming.pet_system.repository.AppointmentRepository;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
@@ -25,7 +23,7 @@ import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.RetailProductService;
-import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import lombok.RequiredArgsConstructor;
@@ -48,10 +46,7 @@ import java.util.Map;
 public class PaymentMvcController {
 
     private final PaymentService paymentService;
-    private final UserService userService;
     private final WalletService walletService;
-    private final AppointmentRepository appointmentRepository;
-    private final WalkInOrderRepository walkInOrderRepository;
     private final OperationLogService operationLogService;
     private final AppointmentService appointmentService;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1
@@ -60,6 +55,7 @@ public class PaymentMvcController {
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
+    private final WalkInOrderService walkInOrderService;
 
     // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
     // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
@@ -79,11 +75,11 @@ public class PaymentMvcController {
         if (user.isStaffOrAdmin()) {
             model.addAttribute("transactions", buildCombinedRecords(
                     paymentService.getAllTransactions(),
-                    walkInOrderRepository.findAllByOrderByCreatedAtDesc()));
+                    walkInOrderService.findAllOrders()));
         } else {
             model.addAttribute("transactions", buildCombinedRecords(
                     paymentService.getMyTransactions(user.getUsername()),
-                    walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(user.getUsername())));
+                    walkInOrderService.findOrdersOfMember(user.getUsername())));
         }
         return "payments/list";
     }
@@ -139,7 +135,7 @@ public class PaymentMvcController {
                 .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
-        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+        Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
         if (appointment != null && appointment.getUser() != null) {
             var wallet = walletService.getWallet(appointment.getUser().getUsername());
             model.addAttribute("walletBalance", wallet.getBalance());
@@ -329,7 +325,7 @@ public class PaymentMvcController {
             // 這裡包一層 try/catch，最差情況就是錯誤頁少了金額預覽，但至少使用者看得到
             // 「為什麼結帳失敗」這句話，店家也才能照著訊息判斷下一步。
             try {
-                Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+                Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
                 if (appointment != null && appointment.getUser() != null) {
                     var wallet = walletService.getWallet(appointment.getUser().getUsername());
                     model.addAttribute("walletBalance", wallet.getBalance());

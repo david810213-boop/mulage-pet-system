@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.dto.PetSearchResult;
 import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
@@ -11,6 +12,7 @@ import com.petgrooming.pet_system.exception.PetException;
 import com.petgrooming.pet_system.model.CatBreedCoatMapping;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
+import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -339,5 +342,48 @@ public class PetService {
             result.add(m);
         }
         return result;
+    }
+
+    public Optional<Pet> findPet(Long petId) {
+        return petRepository.findById(petId);
+    }
+
+    public List<Pet> findAllByType(PetType petType) {
+        return petRepository.findByPetType(petType);
+    }
+
+    public List<Pet> searchByName(String keyword) {
+        return petRepository.findByNameContainingIgnoreCase(keyword);
+    }
+
+    /** 依寵物名稱搜尋（店員用），同名寵物以家長姓名與電話末四碼區分，最多 20 筆。 */
+    public List<PetSearchResult> searchForStaff(String keyword) {
+        return searchByName(keyword.trim()).stream()
+                .filter(p -> p.getOwner() != null)
+                .limit(20)
+                .map(PetService::toSearchResult)
+                .toList();
+    }
+
+    private static PetSearchResult toSearchResult(Pet p) {
+        String phone = p.getOwnerPhone() != null && p.getOwnerPhone().length() >= 4
+                ? p.getOwnerPhone().substring(p.getOwnerPhone().length() - 4)
+                : "未填";
+        return PetSearchResult.builder()
+                .petId(p.getId())
+                .petName(p.getName())
+                .petType(p.getPetType() != null ? p.getPetType().name() : null)
+                .breed(p.getBreed())
+                .ownerUsername(p.getOwner().getUsername())
+                .ownerName(p.getOwner().getName())
+                .ownerPhone(p.getOwnerPhone())
+                .photoUrl(p.getPhotoUrl())
+                .displayLabel(p.getName() + "（家長：" + p.getOwner().getName() + "・電話末四碼 " + phone + "）")
+                .build();
+    }
+
+    /** 寵物的美容紀錄，新的在前。 */
+    public List<PetGroomingNote> getGroomingNotes(Long petId) {
+        return petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(petId);
     }
 }

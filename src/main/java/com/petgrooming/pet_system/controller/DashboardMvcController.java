@@ -5,13 +5,13 @@ import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.TransactionRepository;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -35,9 +35,9 @@ public class DashboardMvcController {
     private final UserService userService;
     private final TopUpService topUpService;
     private final WalletService walletService;
-    private final TransactionRepository transactionRepository;
-    private final WalkInOrderRepository walkInOrderRepository;
     private final RetailProductService retailProductService; // 需求（追加，2026-08-31）：Dashboard 庫存管理區塊
+    private final PaymentService paymentService;
+    private final WalkInOrderService walkInOrderService;
 
     @GetMapping
     public String dashboard(Model model, @CurrentUser User user) {
@@ -65,11 +65,11 @@ public class DashboardMvcController {
 
             // 今日營收：預約結帳(Transaction) + 現場開單(WalkInOrder) 當日已付款金額加總
             // 兩者是分開的資料表，這裡以「付款時間」為準合併計算，才是真正當日實際收入
-            int appointmentRevenueToday = transactionRepository.findByPaidTrue().stream()
+            int appointmentRevenueToday = paymentService.findPaidTransactions().stream()
                     .filter(t -> t.getPaymentTime() != null && t.getPaymentTime().toLocalDate().isEqual(today))
                     .mapToInt(t -> t.getFinalAmount())
                     .sum();
-            int walkInRevenueToday = walkInOrderRepository.findAllByOrderByCreatedAtDesc().stream()
+            int walkInRevenueToday = walkInOrderService.findAllOrders().stream()
                     .filter(w -> w.isPaid() && w.getPaymentTime() != null && w.getPaymentTime().toLocalDate().isEqual(today))
                     .mapToInt(w -> w.getTotalAmount())
                     .sum();

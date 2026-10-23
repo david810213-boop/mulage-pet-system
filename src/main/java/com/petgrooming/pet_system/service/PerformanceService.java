@@ -620,4 +620,19 @@ public class PerformanceService {
                 .map(orig -> orig.getStaff().getId().equals(staffId))
                 .orElse(false);
     }
+
+    public List<PerformanceRecord> getRecordsBetween(Long staffId, LocalDate from, LocalDate to) {
+        return recordRepo.findByStaffIdAndServiceDateBetweenOrderByServiceDateDesc(staffId, from, to);
+    }
+
+    public Optional<PerformanceRecord> findRecord(Long recordId) {
+        return recordRepo.findById(recordId);
+    }
+
+    /** 已經被拆分過的原始紀錄 id（不能再拆）。 */
+    public Set<Long> getSplitSourceRecordIds() {
+        return recordRepo.findBySplitFromRecordIdIsNotNull().stream()
+                .map(PerformanceRecord::getSplitFromRecordId)
+                .collect(Collectors.toSet());
+    }
 }

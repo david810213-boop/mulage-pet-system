@@ -716,4 +716,9 @@ public class PaymentService {
         settings.setDogShortCoatWeightLimit(updated.getDogShortCoatWeightLimit());
         pricingSettingsRepository.save(settings);
     }
+
+    /** 已付款的預約結帳交易（不含待確認的匯款）。 */
+    public List<Transaction> findPaidTransactions() {
+        return transactionRepository.findByPaidTrue();
+    }
 }

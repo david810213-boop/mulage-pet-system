@@ -6,9 +6,8 @@ import com.petgrooming.pet_system.dto.CatRewashCandidateResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
-import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.PetService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
@@ -33,8 +32,7 @@ import java.util.List;
 public class CatRewashMvcController {
 
     private final CatRewashDiscountService catRewashDiscountService;
-    private final PetRepository petRepository;
-    private final UserService userService;
+    private final PetService petService;
 
     // filter: "within"（還在優惠期內）／"overdue"（已超過90天）／不填＝全部有洗澡紀錄的貓
     private List<CatRewashCandidateResponse> loadCandidates(String filter) {
@@ -44,7 +42,7 @@ public class CatRewashMvcController {
             default -> null;
         };
         return catRewashDiscountService.listCandidates(
-                petRepository.findByPetType(PetType.CAT), withinWindowOnly);
+                petService.findAllByType(PetType.CAT), withinWindowOnly);
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})

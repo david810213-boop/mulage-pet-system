@@ -3,7 +3,6 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
-import com.petgrooming.pet_system.dto.MobileLineItem;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.dto.WalkInOrderResponse;
@@ -13,8 +12,6 @@ import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PetRepository;
-import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
@@ -69,9 +66,7 @@ public class MobileWalkInController {
 
     private final WalkInOrderService walkInOrderService;
     private final UserService userService;
-    private final UserRepository userRepository;
     private final PetService petService;
-    private final PetRepository petRepository;
     private final GroomingService groomingItemService;
     private final GroomingMenuFilter groomingMenuFilter;
     private final RetailProductService retailProductService;
@@ -141,7 +136,7 @@ public class MobileWalkInController {
         PetResponse selectedPet = null;
         String memberName = null;
         if (hasMember) {
-            User m = userRepository.findByUsername(member).orElse(null);
+            User m = userService.findByUsername(member).orElse(null);
             if (m == null) {
                 return "redirect:/m/walk-in/new";
             }
@@ -646,12 +641,12 @@ public class MobileWalkInController {
 
         String digits = kw.replaceAll("[^0-9]", "");
         if (digits.length() >= 3) {
-            userRepository.findByRole(UserRole.CUSTOMER).stream()
+            userService.getAllCustomers().stream()
                     .filter(u -> u.getPhone() != null && u.getPhone().replaceAll("[^0-9]", "").contains(digits))
                     .limit(20)
                     .forEach(u -> found.putIfAbsent(u.getUsername(), u));
         }
-        for (Pet p : petRepository.findByNameContainingIgnoreCase(kw)) {
+        for (Pet p : petService.searchByName(kw)) {
             if (p.getOwner() != null && !p.isDeleted()) {
                 found.putIfAbsent(p.getOwner().getUsername(), p.getOwner());
             }

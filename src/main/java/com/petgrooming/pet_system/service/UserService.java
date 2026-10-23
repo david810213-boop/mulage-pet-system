@@ -358,4 +358,8 @@ public class UserService {
         if (user.getSwitchPin() == null) return false;
         return passwordEncoder.matches(pin, user.getSwitchPin());
     }
+
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
 }
