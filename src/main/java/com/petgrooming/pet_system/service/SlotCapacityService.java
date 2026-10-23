@@ -3,6 +3,8 @@ package com.petgrooming.pet_system.service;
 import com.petgrooming.pet_system.exception.AppointmentException;
 import com.petgrooming.pet_system.model.SlotCapacity;
 import com.petgrooming.pet_system.repository.SlotCapacityRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Optional;
 
 /**
  * 需求 3：時段名額控管（同時段最多 5 隻），併發安全。
@@ -33,6 +36,7 @@ public class SlotCapacityService {
     // 初始上限改成讀這份範本（每個時段可以分別設定不同預設值），
     // 不再是所有時段統一寫死同一個數字。
     private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService;
+    private final EntityManager entityManager;
 
     /**
      * 確保 (date, time) 的計數列存在。獨立交易，冪等。
@@ -61,7 +65,7 @@ public class SlotCapacityService {
      */
     @Transactional
     public void reserve(LocalDate date, LocalTime time) {
-        SlotCapacity slot = slotRepo.lockSlot(date, time)
+        SlotCapacity slot = lockSlot(date, time)
                 .orElseThrow(() -> new AppointmentException("時段計數列不存在，請先 ensureSlot"));
 
         if (slot.getBooked() >= slot.getCapacity()) {
@@ -76,7 +80,7 @@ public class SlotCapacityService {
      */
     @Transactional
     public void release(LocalDate date, LocalTime time) {
-        slotRepo.lockSlot(date, time).ifPresent(slot -> {
+        lockSlot(date, time).ifPresent(slot -> {
             if (slot.getBooked() > 0) {
                 slot.setBooked(slot.getBooked() - 1);
                 slotRepo.save(slot);
@@ -87,6 +91,20 @@ public class SlotCapacityService {
     /**
      * 查某時段目前已預約數（顯示剩餘名額用，不加鎖）。
      */
+    /**
+     * 取得時段計數列並加悲觀寫鎖，鎖持有到本交易 commit，讓同時段的預約依序扣名額。
+     *
+     * 必須用 refresh 搭配鎖定模式重新讀取：預約流程會在同一交易內先讀取時段（檢查限定物種），
+     * 一般的鎖定查詢雖然會取得列鎖，Hibernate 卻會回傳快取中的舊名額；
+     * 而不帶鎖的重新讀取在 MySQL 可重複讀隔離層級下只會讀到交易開始時的快照。
+     */
+    private Optional<SlotCapacity> lockSlot(LocalDate date, LocalTime time) {
+        return slotRepo.findBySlotDateAndSlotTime(date, time).map(slot -> {
+            entityManager.refresh(slot, LockModeType.PESSIMISTIC_WRITE);
+            return slot;
+        });
+    }
+
     public int bookedCount(LocalDate date, LocalTime time) {
         return slotRepo.findBySlotDateAndSlotTime(date, time)
                 .map(SlotCapacity::getBooked).orElse(0);

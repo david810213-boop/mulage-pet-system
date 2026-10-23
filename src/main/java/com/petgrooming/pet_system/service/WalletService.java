@@ -11,6 +11,8 @@ import com.petgrooming.pet_system.model.Wallet;
 import com.petgrooming.pet_system.model.WalletTransaction;
 import com.petgrooming.pet_system.repository.WalletRepository;
 import com.petgrooming.pet_system.repository.WalletTransactionRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository txRepository;
     private final UserService userService;
+    private final EntityManager entityManager;
 
     public static final int MIN_DEPOSIT = 5000; // 單筆儲值下限（店家規定）
 
@@ -52,7 +55,7 @@ public class WalletService {
         if (amount < MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
-        Wallet wallet = getOrCreateWallet(username);
+        Wallet wallet = lockWallet(username);
 
         // 1. 加入儲值金額
         wallet.setBalance(wallet.getBalance() + amount);
@@ -88,14 +91,7 @@ public class WalletService {
     // （例如「現場單 #5 消費扣款」），避免顯示成看起來像 bug 的「預約 #null」。
     @Transactional
     public void deduct(String username, int amount, Long appointmentId, String note) {
-        User user = userService.getUserEntityByUsername(username);
-
-        // 先確保錢包存在（首次消費者可能還沒錢包）
-        getOrCreateWallet(username);
-
-        // 加鎖重新讀取，鎖持有到本交易 commit
-        Wallet wallet = walletRepository.lockByUserId(user.getId())
-                .orElseThrow(() -> new WalletException("找不到錢包"));
+        Wallet wallet = lockWallet(username);
 
         if (wallet.getBalance() < amount) {
             throw new WalletException("儲值金餘額不足，目前餘額：$" + wallet.getBalance());
@@ -117,12 +113,7 @@ public class WalletService {
     // ── 退款補回儲值金（僅限原本用儲值金付款的訂單退款時呼叫）──────────────
     @Transactional
     public void refund(String username, int amount, Long appointmentId, String note) {
-        User user = userService.getUserEntityByUsername(username);
-        getOrCreateWallet(username);
-
-        // 加鎖重新讀取，避免跟同一時間其他扣款/退款動作互相覆蓋
-        Wallet wallet = walletRepository.lockByUserId(user.getId())
-                .orElseThrow(() -> new WalletException("找不到錢包"));
+        Wallet wallet = lockWallet(username);
 
         wallet.setBalance(wallet.getBalance() + amount);
 
@@ -136,6 +127,19 @@ public class WalletService {
                 .build();
         txRepository.save(tx);
         walletRepository.save(wallet);
+    }
+
+    /**
+     * 取得錢包並加悲觀寫鎖，鎖持有到本交易 commit，讓同一錢包的儲值／扣款／退款依序執行。
+     *
+     * 必須用 refresh 搭配鎖定模式重新讀取：錢包若已在同一交易內被讀取過，
+     * 一般的鎖定查詢雖然會取得列鎖，Hibernate 卻會回傳快取中的舊餘額；
+     * 而不帶鎖的重新讀取在 MySQL 可重複讀隔離層級下只會讀到交易開始時的快照。
+     */
+    private Wallet lockWallet(String username) {
+        Wallet wallet = getOrCreateWallet(username);
+        entityManager.refresh(wallet, LockModeType.PESSIMISTIC_WRITE);
+        return wallet;
     }
 
     // ── 取得或建立錢包（加 @Transactional 防止並發重複建立）──────────────
