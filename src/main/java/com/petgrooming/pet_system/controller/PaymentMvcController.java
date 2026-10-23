@@ -6,8 +6,6 @@ import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.BankAccountPurpose;
-import com.petgrooming.pet_system.enums.CoatType;
-import com.petgrooming.pet_system.enums.DogWeightTier;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -19,6 +17,7 @@ import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
 import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
@@ -56,6 +55,7 @@ public class PaymentMvcController {
     private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
     private final WalkInOrderService walkInOrderService;
+    private final GroomingMenuFilter groomingMenuFilter;
 
     // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
     // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
@@ -100,39 +100,14 @@ public class PaymentMvcController {
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
         String petType = appointmentService.getPetTypeForAppointment(appointmentId);
-        // 需求（追加，2026-08-24）：狗狗定價流程簡化——依這隻狗目前的體重/是否
-        // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單（跟現場開單結帳頁
-        // 同一套邏輯，先前這裡漏做了，這次一併補上）。
+        // 「新增服務項目」選單依這隻寵物的體型篩選（規則見 GroomingMenuFilter，網頁版與手機版一致）
         var pet = appointmentService.getPetForAppointment(appointmentId);
         model.addAttribute("pet", pet);
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", PerformanceCategory.values());
-        final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
-        final DogWeightTier dogTier =
-                pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
-                        ? DogWeightTier.forWeight(pet.getWeight())
-                        : null;
-        // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
-        // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。中長毛現在
-        // 也有自己對應的套餐了（DOG049~072），一併算「已定義」。只有還沒
-        // 定義（UNDEFINED）才不篩毛長，維持「這個體重級距的都顯示」。
-        final CoatType petCoatType = pet != null ? pet.getCoatType() : null;
-        final boolean coatDefined = petCoatType == CoatType.SHORT
-                || petCoatType == CoatType.LONG
-                || petCoatType == CoatType.MEDIUM;
-        model.addAttribute("groomingItems", groomingService.getAllItems().stream()
-                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
-                .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
-                .filter(i -> {
-                    if (i.getDogWeightTier() == null) return true;
-                    if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                    if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
-                    if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
-                        return i.getDogCoatLength().equals(petCoatType.name());
-                    }
-                    return true;
-                })
-                .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
+        model.addAttribute("groomingItems", groomingMenuFilter.filterForPetShape(
+                groomingService.getAllItems(), isExisting, petType, pet));
+        model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
 
         // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
         Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);

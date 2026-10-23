@@ -17,7 +17,7 @@ public interface GroomingService {
     // 2. 需求 14：修改指定的美容項目（名稱/描述/金額/是否可預約，不含代碼——代碼唯讀）
     GroomingItemResponse updateItem(Long id, UpdateGroomingItemRequest request);
     
-    //3. 新建项目
+    //3. 新建項目
     void createItem(GroomingItemRequest request);
 
     // 4. 邏輯刪除指定的美容項目

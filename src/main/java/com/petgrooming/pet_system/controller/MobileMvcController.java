@@ -377,6 +377,7 @@ public class MobileMvcController {
         PetResponse pet = appointmentService.getPetForAppointment(id);
         List<GroomingItemResponse> items = groomingMenuFilter.filterForPetShape(
                 groomingItemService.getAllItems(), isExisting, a.getPetType(), pet);
+        model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(a.getPetType(), pet));
 
         // 顧客預約時選的項目，開單頁預設幫忙勾好，店員只要改有變動的部分
         Set<String> preselected = a.getSelectedItems() == null ? Set.of()

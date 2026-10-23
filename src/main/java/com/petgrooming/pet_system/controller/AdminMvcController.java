@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
+import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;
 import com.petgrooming.pet_system.dto.ResetPasswordRequest;
 import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
@@ -19,6 +20,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,6 +32,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin")
@@ -72,7 +75,7 @@ public class AdminMvcController {
         model.addAttribute("allStaff", userService.getAllStaff());
         model.addAttribute("createStaffRequest", new CreateStaffRequest());
         model.addAttribute("groomingItems", groomingService.getAllItems());
-        //接收服务项目的空物件
+        //接收服務項目的空物件
         model.addAttribute("groomingItemRequest", new GroomingItemRequest());
         
         return "admin/home";
@@ -246,6 +249,8 @@ public class AdminMvcController {
                     if (r == 0) cell.setCellStyle(headerStyle);
                 }
             }
+            int nextRow = writeDiscountRows(summarySheet, summaryRows.length, "當日折扣", report.getTodayDiscounts());
+            writeDiscountRows(summarySheet, nextRow, "當月折扣", report.getMonthDiscounts());
             // 需求（追加）：autoSizeColumn() 底層要呼叫 Java AWT 字型系統量測文字寬度，
             // Railway 的容器沒有安裝 libfreetype 等字型函式庫，一呼叫就會直接噴
             // UnsatisfiedLinkError 導致整個匯出失敗。改成固定欄寬，不依賴字型系統。
@@ -320,5 +325,22 @@ public class AdminMvcController {
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
         }
+    }
+
+    /** 財務報表 Excel：折扣統計列，例如「當日折扣 9折｜3 筆（折讓 450）」。 */
+    private static int writeDiscountRows(Sheet sheet, int rowIndex, String period,
+                                         List<FinancialReportResponse.DiscountSummary> discounts) {
+        if (discounts.isEmpty()) {
+            var row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(period);
+            row.createCell(1).setCellValue("沒有折扣訂單");
+            return rowIndex;
+        }
+        for (var d : discounts) {
+            var row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(period + " " + d.getLabel());
+            row.createCell(1).setCellValue(d.getOrderCount() + " 筆（折讓 " + d.getDiscountAmount() + "）");
+        }
+        return rowIndex;
     }
 }

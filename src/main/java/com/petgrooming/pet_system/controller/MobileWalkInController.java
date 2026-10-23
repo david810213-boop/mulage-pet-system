@@ -154,6 +154,8 @@ public class MobileWalkInController {
         List<GroomingItemResponse> menu = selectedPet != null
                 ? groomingMenuFilter.filterForPetShape(all, true, selectedPet.getPetType().name(), selectedPet)
                 : all;
+        model.addAttribute("weightMissing", selectedPet != null
+                && groomingMenuFilter.needsWeight(selectedPet.getPetType().name(), selectedPet));
 
         model.addAttribute("step", "form");
         model.addAttribute("guest", isGuest);

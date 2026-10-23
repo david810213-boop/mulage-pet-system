@@ -5,8 +5,6 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.enums.BankAccountPurpose;
-import com.petgrooming.pet_system.enums.CoatType;
-import com.petgrooming.pet_system.enums.DogWeightTier;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -14,6 +12,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
 import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
@@ -54,6 +53,7 @@ public class WalkInOrderMvcController {
     private final PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
     private final RetailProductService retailProductService; // 需求 7-1
     private final PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
+    private final GroomingMenuFilter groomingMenuFilter;
 
     // ── GET /admin/walk-in-orders ───────────────────────────────────────────
     // 開單表單 + 交易紀錄列表 + 待補經手人清單
@@ -217,24 +217,10 @@ public class WalkInOrderMvcController {
             // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
             boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
             String petType = walkInOrderService.getPetTypeForOrder(id);
-            // 需求（追加，2026-08-24）：狗狗定價流程簡化——依這隻狗目前的體重/是否
-            // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單。
             var pet = walkInOrderService.getPetForOrder(id);
             model.addAttribute("pet", pet);
             // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
             model.addAttribute("performanceCategories", PerformanceCategory.values());
-            final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
-            final DogWeightTier dogTier =
-                    pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
-                            ? DogWeightTier.forWeight(pet.getWeight())
-                            : null;
-            // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分，邏輯跟預約結帳頁
-            // （PaymentMvcController）同一套，見該處註解說明。
-            final CoatType petCoatType = pet != null ? pet.getCoatType() : null;
-            final boolean coatDefined = petCoatType == CoatType.SHORT
-                    || petCoatType == CoatType.LONG
-                    || petCoatType == CoatType.MEDIUM;
-
             // 需求（追加，2026-08-24 修正）：先抓一份完整、沒被篩過的服務項目清單，
             // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份
             // 完整清單衍生，不要各自分開查——原本的 bug 就是兩邊各自查了不同時機/
@@ -255,20 +241,11 @@ public class WalkInOrderMvcController {
                 });
             }
 
-            model.addAttribute("groomingItems", allGroomingItems.stream()
-                    .filter(i -> isExisting || !i.isRequiresExistingCustomer())
-                    .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
-                    .filter(i -> {
-                        // 沒有標體重級距的項目（通用加購）不受這條規則影響
-                        if (i.getDogWeightTier() == null) return true;
-                        if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                        if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
-                        if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
-                            return i.getDogCoatLength().equals(petCoatType.name());
-                        }
-                        return true; // 抓不到這隻狗的體重資料（例如純現場客沒建檔），不篩選，讓店員自己選
-                    })
-                    .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
+            // 「新增服務項目」選單依這隻寵物的體型篩選（規則見 GroomingMenuFilter）；非會員、沒有寵物資料時只依物種篩選
+            model.addAttribute("groomingItems", pet != null
+                    ? groomingMenuFilter.filterForPetShape(allGroomingItems, isExisting, petType, pet)
+                    : groomingMenuFilter.filterForOptionalPetType(allGroomingItems, isExisting, petType));
+            model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
             model.addAttribute("bankAccountInfo",
                     paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT)); // 需求 15 修正
 

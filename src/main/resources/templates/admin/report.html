@@ -57,6 +57,19 @@
           </div>
         </div>
 
+        <!-- 折扣統計：實收低於帳面金額的訂單，依折數分組 -->
+        <div class="card" style="padding: 1rem 1.5rem; margin: -1rem 0 2rem;">
+          <div style="font-size: 12px; color: var(--brown-mid); font-weight: 600; margin-bottom: 8px;">當日折扣統計<span style="font-weight:400;">（實收低於帳面金額的訂單）</span></div>
+          <div th:if="${#lists.isEmpty(report.todayDiscounts)}" style="font-size: 14px; color: var(--brown-light);">沒有折扣訂單</div>
+          <div th:unless="${#lists.isEmpty(report.todayDiscounts)}" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <span th:each="d : ${report.todayDiscounts}" style="padding: 4px 12px; border-radius: 999px; background-color: var(--cream-100); font-size: 14px; color: var(--brown-dark);">
+              <strong th:text="${d.label}"></strong>
+              <span th:text="${d.orderCount} + ' 筆'"></span>
+              <span style="color: var(--brown-light);" th:text="'（折讓 $' + ${d.discountAmount} + '）'"></span>
+            </span>
+          </div>
+        </div>
+
         <!-- ── 當月業績 ────────────────────────────────────────────────── -->
         <h3 style="font-size: 15px; margin-bottom: 10px;">🗓️ 當月業績</h3>
         <div
@@ -90,6 +103,19 @@
           <div class="card" style="padding: 1.2rem 1.5rem">
             <div style="font-size: 12px; color: var(--brown-light); margin-bottom: 6px;">本月儲值金額<span style="font-weight:400;">（預收款，非業績）</span></div>
             <div style="font-size: 22px; font-weight: 700; color: #8a8072;" th:text="'$' + ${report.monthTopupCollected}"></div>
+          </div>
+        </div>
+
+        <!-- 折扣統計：實收低於帳面金額的訂單，依折數分組 -->
+        <div class="card" style="padding: 1rem 1.5rem; margin: -1rem 0 2rem;">
+          <div style="font-size: 12px; color: var(--brown-mid); font-weight: 600; margin-bottom: 8px;">當月折扣統計<span style="font-weight:400;">（實收低於帳面金額的訂單）</span></div>
+          <div th:if="${#lists.isEmpty(report.monthDiscounts)}" style="font-size: 14px; color: var(--brown-light);">沒有折扣訂單</div>
+          <div th:unless="${#lists.isEmpty(report.monthDiscounts)}" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <span th:each="d : ${report.monthDiscounts}" style="padding: 4px 12px; border-radius: 999px; background-color: var(--cream-100); font-size: 14px; color: var(--brown-dark);">
+              <strong th:text="${d.label}"></strong>
+              <span th:text="${d.orderCount} + ' 筆'"></span>
+              <span style="color: var(--brown-light);" th:text="'（折讓 $' + ${d.discountAmount} + '）'"></span>
+            </span>
           </div>
         </div>
 

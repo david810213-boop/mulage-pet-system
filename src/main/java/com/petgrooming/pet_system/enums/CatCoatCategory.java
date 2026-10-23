@@ -14,7 +14,7 @@ import lombok.Getter;
  *
  * SPECIAL：品種不在對照表裡（特殊貓種），系統無法自動判斷，LIFF 預約頁
  * 這種情況會顯示全部貓咪項目讓店家人工協助判斷，不會顯示「另外報價」
- * 字樣误導顧客以為要額外收費。
+ * 字樣誤導顧客以為要額外收費。
  */
 @Getter
 public enum CatCoatCategory {
