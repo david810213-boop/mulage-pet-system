@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestCreate;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.TopUpStatus;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.WalletException;
 import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.User;
@@ -41,7 +42,7 @@ public class TopUpService {
     @Transactional
     public TopUpRequestResponse submit(String username, TopUpRequestCreate req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new WalletException("找不到使用者"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (req.getAmount() == null || req.getAmount() < WalletService.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
@@ -75,7 +76,7 @@ public class TopUpService {
     @Transactional
     public TopUpRequestResponse confirm(Long id, String reviewerName) {
         TopUpRequest topUp = topUpRepository.findById(id)
-                .orElseThrow(() -> new WalletException("找不到此儲值申請"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
 
         if (topUp.getStatus() != TopUpStatus.PENDING) {
             throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
@@ -101,7 +102,7 @@ public class TopUpService {
     @Transactional
     public TopUpRequestResponse reject(Long id, String reviewerName, String reason) {
         TopUpRequest topUp = topUpRepository.findById(id)
-                .orElseThrow(() -> new WalletException("找不到此儲值申請"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
 
         if (topUp.getStatus() != TopUpStatus.PENDING) {
             throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());

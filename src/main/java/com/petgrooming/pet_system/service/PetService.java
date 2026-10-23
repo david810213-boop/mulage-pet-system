@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PetException;
 import com.petgrooming.pet_system.model.CatBreedCoatMapping;
 import com.petgrooming.pet_system.model.GroomingItem;
@@ -44,7 +45,7 @@ public class PetService {
     public PetResponse addPet(String username, PetRequest req) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PetException("找不到該使用者：" + username));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到該使用者：" + username));
 
         // 自動依 petType + weight 判斷體型分類
         PetSizeCategory sizeCategory = PetSizeCategory.determine(req.getPetType(), req.getWeight());
@@ -114,7 +115,7 @@ public class PetService {
     @Transactional
     public PetResponse updatePet(Long petId, PetRequest req) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
 
         PetSizeCategory sizeCategory = PetSizeCategory.determine(pet.getPetType(), req.getWeight());
         CatCoatCategory catCoatCategory =
@@ -161,7 +162,7 @@ public class PetService {
     @Transactional
     public void deletePet(Long petId) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setDeleted(true);
         petRepository.save(pet);
     }
@@ -172,7 +173,7 @@ public class PetService {
 
         // 確認 user 存在，避免靜默回傳空清單讓呼叫端誤以為「此人只是沒有寵物」
         User owner = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PetException("找不到該使用者：" + username));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到該使用者：" + username));
 
         return petRepository.findByOwnerUsername(username)
                 .stream()
@@ -200,7 +201,7 @@ public class PetService {
             throw new PetException("毛長不能為空");
         }
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setCoatType(coatType);
         return PetResponse.from(petRepository.save(pet));
     }
@@ -226,9 +227,9 @@ public class PetService {
     @Transactional
     public PetResponse lockGroomingItem(Long petId, Long groomingItemId) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         var item = groomingItemRepository.findById(groomingItemId)
-                .orElseThrow(() -> new PetException("找不到服務項目 #" + groomingItemId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到服務項目 #" + groomingItemId));
         pet.setLockedGroomingItemId(groomingItemId);
         petRepository.save(pet);
         return PetResponse.from(pet, item);
@@ -239,7 +240,7 @@ public class PetService {
     @Transactional
     public PetResponse unlockGroomingItem(Long petId) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setLockedGroomingItemId(null);
         petRepository.save(pet);
         return PetResponse.from(pet);
@@ -251,7 +252,7 @@ public class PetService {
     @Transactional
     public PetResponse updateWeight(Long petId, double weight) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setWeight(weight);
         // 體重變了，體型分類（PetSizeCategory，影響貓咪 90 天回洗優惠等其他既有
         // 邏輯）也要跟著重新算一次，維持資料一致。
@@ -274,7 +275,7 @@ public class PetService {
             throw new PetException("毛髮分類不能為空");
         }
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setCatCoatCategory(category);
         return PetResponse.from(petRepository.save(pet));
     }
@@ -286,7 +287,7 @@ public class PetService {
     @Transactional
     public PetResponse updatePhoto(Long petId, MultipartFile file) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
 
         CloudinaryService.UploadResult result = cloudinaryService.upload(file, "pets");
 
@@ -303,7 +304,7 @@ public class PetService {
     // 供 Controller 檢查「這隻寵物是不是這個 username 的」，避免會員上傳到別人的寵物
     public Pet getPetEntity(Long petId) {
         return petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
     }
 
     // ── 5. 上傳美容狀況歷史照片（需求 18：美容歷史相簿）─────────────────
@@ -311,7 +312,7 @@ public class PetService {
     @Transactional
     public void uploadGroomingNotePhoto(Long noteId, MultipartFile file) {
         var note = petGroomingNoteRepository.findById(noteId)
-                .orElseThrow(() -> new PetException("找不到美容狀況紀錄 #" + noteId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到美容狀況紀錄 #" + noteId));
 
         CloudinaryService.UploadResult result = cloudinaryService.upload(file, "grooming-notes");
 

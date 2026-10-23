@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.*;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.PerformanceRecord;
@@ -195,13 +196,13 @@ public class WalkInOrderService {
     @Transactional
     public WalkInOrderResponse endService(Long orderId, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new PaymentException("權限不足：僅店家 / 員工可操作");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作");
         }
 
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
         if (order.isPaid()) {
             throw new PaymentException("此單已結帳，無法結束服務");
@@ -258,13 +259,13 @@ public class WalkInOrderService {
     public WalkInOrderResponse finalCheck(Long orderId, String note, String signatureData, String username,
             List<String> photoUrls, List<String> photoPublicIds) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new PaymentException("權限不足：僅店家 / 員工可操作");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作");
         }
 
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
         if (!order.isServiceEndedDone()) {
             throw new PaymentException("請先點擊「結束服務」才能進行核對");
@@ -331,7 +332,7 @@ public class WalkInOrderService {
         if (quantity <= 0) throw new PaymentException("加購數量必須大於 0");
 
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.isPaid()) {
             throw new PaymentException("此單已結帳，無法再加購商品");
         }
@@ -369,7 +370,7 @@ public class WalkInOrderService {
     // 現場單沒綁會員的話沒辦法查歷史消費紀錄，保守回傳 false（視為不是既有客戶）。
     public boolean isExistingCustomerPet(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.getMember() == null) return false;
         return petConsumptionHistoryService.hasPriorPaidService(
                 order.getMember().getId(), order.getPetName(), orderId);
@@ -379,7 +380,7 @@ public class WalkInOrderService {
     // 沒綁會員或查不到對應的寵物資料就回傳 null（無法判斷，畫面上不濾掉任何物種，避免誤擋）。
     public String getPetTypeForOrder(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.getMember() == null) return null;
         return petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
                 .map(pet -> pet.getPetType().name())
@@ -392,7 +393,7 @@ public class WalkInOrderService {
     // 沒綁會員或查不到對應寵物就回傳 null（純現場客、沒建檔的寵物，不套用這套邏輯）。
     public PetResponse getPetForOrder(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.getMember() == null) return null;
         var pet = petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
                 .orElse(null);
@@ -432,13 +433,13 @@ public class WalkInOrderService {
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice,
             Long operatorStaffId, Long operatorStaffId2, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.isPaid()) {
             throw new PaymentException("此單已結帳，無法再編輯項目，請改用退款重開");
         }
 
         GroomingItem gi = groomingItemRepository.findById(groomingItemId)
-                .orElseThrow(() -> new PaymentException("找不到服務項目"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到服務項目"));
 
         // 需求（追加）：僅限既有客戶的項目，沒綁會員的現場單無法查歷史消費紀錄，
         // 保守起見一律擋下（不確定是不是既有客戶時，不開放使用這類項目）。
@@ -519,7 +520,7 @@ public class WalkInOrderService {
             PerformanceCategory category, Long operatorStaffId,
             Long operatorStaffId2, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.isPaid()) {
             throw new PaymentException("此單已結帳，無法再編輯項目，請改用退款重開");
         }
@@ -556,13 +557,13 @@ public class WalkInOrderService {
     @Transactional
     public WalkInOrderResponse removeItem(Long orderId, Long orderItemId, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.isPaid()) {
             throw new PaymentException("此單已結帳，無法再編輯項目，請改用退款重開");
         }
 
         WalkInOrderItem item = orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new PaymentException("找不到項目 #" + orderItemId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到項目 #" + orderItemId));
         if (!item.getOrder().getId().equals(orderId)) {
             throw new PaymentException("項目不屬於這張現場單");
         }
@@ -586,7 +587,7 @@ public class WalkInOrderService {
             PaymentMethod paymentMethod,
             String staffUsername) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
         if (order.isPaid()) {
             throw new PaymentException("此單已完成結帳");
@@ -660,13 +661,13 @@ public class WalkInOrderService {
     @Transactional
     public WalkInOrderResponse confirmWireTransferPayment(Long orderId, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new PaymentException("權限不足：僅店家 / 員工可確認收款");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可確認收款");
         }
 
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
         if (order.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
             throw new PaymentException("此單不是匯款付款，無需確認收款");
@@ -691,13 +692,13 @@ public class WalkInOrderService {
     @Transactional
     public void refund(Long orderId, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!user.isStaffOrAdmin()) {
-            throw new PaymentException("權限不足：僅店家 / 員工可操作退款");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作退款");
         }
 
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
         if (!order.isPaid()) {
             throw new PaymentException("此單尚未結帳，無法退款");
@@ -736,7 +737,7 @@ public class WalkInOrderService {
     // ── 查單筆現場單完整明細（供會員信息頁「消費記錄」點擊查看用）─────────
     public WalkInOrderResponse getById(Long id) {
         WalkInOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + id));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + id));
         WalkInOrderResponse res = WalkInOrderResponse.from(order);
         populateDiscountInfo(res, order);
         return res;
@@ -819,7 +820,7 @@ public class WalkInOrderService {
     @Transactional
     public void fillOperator(Long orderItemId, Long staffId, Long staffId2) {
         WalkInOrderItem item = orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new PaymentException("找不到項目 #" + orderItemId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到項目 #" + orderItemId));
 
         if (item.getOperatorStaff() != null) {
             throw new PaymentException("此項目已填寫經手人，無法重複填寫");
@@ -857,7 +858,7 @@ public class WalkInOrderService {
     private User findOperator(Long staffId) {
         if (staffId == null) return null;
         User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new PaymentException("找不到員工 #" + staffId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到員工 #" + staffId));
         if (!staff.isStaffOrAdmin()) {
             throw new PaymentException("經手人必須是店內員工");
         }
@@ -919,7 +920,7 @@ public class WalkInOrderService {
     @Transactional
     public int previewStandardAmount(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         return calculateAmountWithRewashDiscount(order);
     }
 
@@ -927,7 +928,7 @@ public class WalkInOrderService {
     @Transactional
     public Integer previewWalletAmount(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
         if (order.getMember() == null) {
             return null;
         }

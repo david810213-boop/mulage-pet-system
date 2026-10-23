@@ -1,9 +1,10 @@
 package com.petgrooming.pet_system.controller;
 
-import com.petgrooming.pet_system.dto.ErrorResponse;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.PetDiscountStatusResponse;
+import com.petgrooming.pet_system.exception.ErrorCode;
+import com.petgrooming.pet_system.exception.PetException;
 import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
 import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
@@ -117,7 +118,7 @@ public class PetController {
             HttpServletRequest request) {
         var pet = petService.getPetEntity(id);
         if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
-            return ResponseEntity.status(403).body(ErrorResponse.of("只能上傳自己寵物的照片"));
+            throw new PetException(ErrorCode.FORBIDDEN, "只能上傳自己寵物的照片");
         }
         PetResponse res = petService.updatePhoto(id, file);
         operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",

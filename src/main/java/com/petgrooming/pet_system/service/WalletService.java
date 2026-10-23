@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.dto.WalletTransactionResponse;
 import com.petgrooming.pet_system.enums.MemberCardTier;
 import com.petgrooming.pet_system.enums.WalletTransactionType;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.WalletException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.Wallet;
@@ -143,7 +144,7 @@ public class WalletService {
         entityManager.flush();
         entityManager.detach(cached);
         return walletRepository.lockByUserId(userId)
-                .orElseThrow(() -> new WalletException("找不到錢包"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到錢包"));
     }
 
     // ── 取得或建立錢包（加 @Transactional 防止並發重複建立）──────────────

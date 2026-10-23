@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.TopUpStatus;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.AppointmentItem;
@@ -85,17 +86,17 @@ public class PaymentService {
                                         String username) {
         // 1a. 確認預約存在
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         // 1b. 確認使用者與權限
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
 
         boolean isOwner       = appointment.getUser().getId().equals(user.getId());
         boolean isStaffOrAdmin = user.isStaffOrAdmin();
 
         if (!isOwner && !isStaffOrAdmin) {
-            throw new PaymentException("權限不足：只能結自己的帳");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：只能結自己的帳");
         }
 
         // 1c. 確認尚未付款
@@ -193,16 +194,16 @@ public class PaymentService {
     @Transactional
     public TransactionResponse confirmWireTransferPayment(Long appointmentId, String username) {
         User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!staff.isStaffOrAdmin()) {
-            throw new PaymentException("權限不足：僅店家 / 員工可確認收款");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可確認收款");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到此預約的交易紀錄"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到此預約的交易紀錄"));
 
         if (transaction.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
             throw new PaymentException("此交易不是匯款付款，無需確認收款");
@@ -289,20 +290,20 @@ public class PaymentService {
     @Transactional
     public void refund(Long appointmentId, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException("找不到使用者"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (!user.isStaffOrAdmin()) {
-            throw new PaymentException("權限不足：僅店家 / 員工可操作退款");
+            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作退款");
         }
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
         if (!appointment.isPaid()) {
             throw new PaymentException("此預約尚未結帳，無法退款");
         }
 
         Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到此預約的交易紀錄"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到此預約的交易紀錄"));
 
         // 1. 若原本用儲值金付款，退回儲值餘額
         if (transaction.getPaymentMethod() == PaymentMethod.WALLET) {
@@ -562,7 +563,7 @@ public class PaymentService {
     @Transactional
     public int previewStandardAmount(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         return PaymentMethod.CASH
                 .calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
     }
@@ -571,7 +572,7 @@ public class PaymentService {
     @Transactional
     public int previewWalletAmount(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new PaymentException("找不到該預約"));
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
         return calculateWalletAmountPerItem(appointment, discount);
     }

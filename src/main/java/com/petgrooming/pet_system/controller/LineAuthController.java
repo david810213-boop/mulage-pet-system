@@ -1,13 +1,15 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.ClaimByPhoneRequest;
-import com.petgrooming.pet_system.dto.ErrorResponse;
 import com.petgrooming.pet_system.dto.LineBindRequest;
 import com.petgrooming.pet_system.dto.LineLoginRequest;
 import com.petgrooming.pet_system.dto.LineLoginResponse;
 import com.petgrooming.pet_system.dto.LineVerifyResponse;
 import com.petgrooming.pet_system.dto.MemberLookupRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
+import com.petgrooming.pet_system.exception.AuthException;
+import com.petgrooming.pet_system.exception.ErrorCode;
+import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.ClaimAttemptLimiter;
 import com.petgrooming.pet_system.service.LineBindService;
@@ -22,7 +24,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
@@ -78,13 +79,13 @@ public class LineAuthController {
             verified = verifyIdToken(req.getIdToken());
         } catch (RestClientResponseException e) {
             log.warn("LINE idToken 驗證失敗: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("idToken 無效或已過期"));
+            throw new AuthException("idToken 無效或已過期");
         }
 
         // 2. 確認 token 是發給「我們的」LINE Login Channel，避免被其他應用程式的 token 冒用
         if (!channelId.equals(verified.getAud())) {
             log.warn("idToken aud 不符，預期: {}，實際: {}", channelId, verified.getAud());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("idToken 不屬於本系統"));
+            throw new AuthException("idToken 不屬於本系統");
         }
 
         // 3. 依 LINE userId 查找會員，找不到就自動建立
@@ -136,12 +137,10 @@ public class LineAuthController {
             verified = verifyIdToken(idToken);
         } catch (RestClientResponseException e) {
             log.warn("LINE idToken 驗證失敗（綁定流程）: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ErrorResponse.of("LINE 登入驗證失敗，請重新開啟頁面再試一次"));
+            throw new AuthException("LINE 登入驗證失敗，請重新開啟頁面再試一次");
         }
         if (!channelId.equals(verified.getAud())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ErrorResponse.of("idToken 不屬於本系統"));
+            throw new AuthException("idToken 不屬於本系統");
         }
 
         User bound = lineBindService.bindByCode(code, verified.getSub());
@@ -157,15 +156,14 @@ public class LineAuthController {
     public ResponseEntity<?> memberLookup(HttpServletRequest request, @Valid @RequestBody MemberLookupRequest body) {
         String username = (String) request.getAttribute("tokenUsername");
         if (username == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("請先登入"));
+            throw new AuthException("請先登入");
         }
         String phone = body.phone();
         if (!MemberImportService.normalizePhone(phone).matches("09\\d{8}")) {
-            return ResponseEntity.badRequest().body(ErrorResponse.of("請輸入 09 開頭的 10 碼手機號碼"));
+            throw new MemberException(ErrorCode.VALIDATION_FAILED, "請輸入 09 開頭的 10 碼手機號碼");
         }
         if (!claimAttemptLimiter.tryAcquire(username)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ErrorResponse.of("嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助"));
+            throw new MemberException(ErrorCode.TOO_MANY_REQUESTS, "嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助");
         }
         User current = userService.getUserEntityByUsername(username);
         return ResponseEntity.ok(memberImportService.lookupForClaim(current, phone));
@@ -183,12 +181,11 @@ public class LineAuthController {
     public ResponseEntity<?> claimByPhone(HttpServletRequest request, @Valid @RequestBody ClaimByPhoneRequest body) {
         String username = (String) request.getAttribute("tokenUsername");
         if (username == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("請先登入"));
+            throw new AuthException("請先登入");
         }
         String phone = body.phone();
         if (!claimAttemptLimiter.tryAcquire(username)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ErrorResponse.of("嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助"));
+            throw new MemberException(ErrorCode.TOO_MANY_REQUESTS, "嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助");
         }
         User current = userService.getUserEntityByUsername(username);
         User claimed = memberImportService.claimByPhone(current, phone, body.verification());
