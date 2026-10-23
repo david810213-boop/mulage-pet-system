@@ -671,7 +671,7 @@
       }
 
       // 依 currentPetDiscountStatus，算出這個項目「較優惠」的折扣後價格；
-      // 三種折扣互斥擇優，邏輯跟後端 resolvePreferredDiscount() 一致：
+      // 三種折扣互斥擇優，邏輯跟後端 DiscountCalculator.resolve() 一致：
       // 特殊優惠（首次體驗/回洗）跟會員儲值折扣都適用時，取金額較低者，
       // 打平時優先算特殊優惠（跟後端 <= 判斷一致）。都不適用則回傳原價。
       function resolveDiscountedPrice(item) {

@@ -35,6 +35,8 @@ import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.service.discount.DiscountCalculator;
+import com.petgrooming.pet_system.service.discount.EligibleOffers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
@@ -70,9 +73,7 @@ public class PaymentService {
     private final CompanySignatureRepository companySignatureRepository;
     private final PricingSettingsRepository pricingSettingsRepository; // 需求（追加）：體重定價門檻
     private final GroomingItemRepository groomingItemRepository;
-    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
-    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
-    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
+    private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
     private final WalkInOrderRepository walkInOrderRepository; // 需求 6
     private final TopUpRequestRepository topUpRequestRepository; // 需求 6
     private final RetailProductRepository retailProductRepository; // 需求 6
@@ -550,108 +551,50 @@ public class PaymentService {
         return calculateWalletAmountPerItem(appointment, discount);
     }
 
-    // ── 需求 5：儲值金結帳金額計算，逐項目判斷是否可享折扣 ───────────────
-    // 優先用現場開單（依預約編號）的實際項目；沒有的話退回顧客線上勾選的項目。
-    // 需求 8-1 修正：回洗優惠與會員折扣只能擇一（取較優惠者），不再疊加相乘。
-    // 需求（追加）：狗狗首次體驗優惠比照同樣邏輯，兩種優惠依品種各自的分類互斥，
-    // 不會同時套用在同一個項目上，判斷哪個適用後交給對應 service 算「跟會員折扣擇優」。
-    private int calculateWalletAmountPerItem(Appointment appointment, double discount) {
-        List<AppointmentItem> checkinItems =
-                appointmentItemRepository.findByAppointmentId(appointment.getId());
+    // ── 結帳金額計算（擇優規則見 DiscountCalculator）──────────────────────
 
-        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
-        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
-        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
+    /** 計價用的項目：優先用到店開單的實際項目；沒有的話退回顧客線上勾選的項目。 */
+    private record PriceLine(double price, PerformanceCategory category, boolean memberDiscountEligible) {
+    }
 
-        double total = 0;
-        if (!checkinItems.isEmpty()) {
-            for (AppointmentItem item : checkinItems) {
-                boolean memberEligible = item.getGroomingItemId() != null
-                        && groomingItemRepository.findById(item.getGroomingItemId())
-                                .map(GroomingItem::isDiscountEligible)
-                                .orElse(true);
-                boolean firstVisitApplicable = firstVisitEligible
-                        && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
-                if (firstVisitApplicable) {
-                    total += dogFirstVisitDiscountService.resolvePreferredDiscount(
-                            item.getPrice(), true, memberEligible, discount).price();
-                    continue;
-                }
-                boolean catFirstVisitApplicable = catFirstVisitEligible
-                        && catFirstVisitDiscountService.isCatBathCategory(item.getPerformanceCategory());
-                if (catFirstVisitApplicable) {
-                    total += catFirstVisitDiscountService.resolvePreferredDiscount(
-                            item.getPrice(), true, memberEligible, discount).price();
-                    continue;
-                }
-                boolean rewashApplicable = rewashEligible
-                        && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
-                total += catRewashDiscountService.resolvePreferredDiscount(
-                        item.getPrice(), rewashApplicable, memberEligible, discount).price();
-            }
-        } else {
-            for (GroomingItem item : appointment.getSelectedItems()) {
-                double price = item.getPrice() != null ? item.getPrice() : 0;
-                boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item);
-                if (firstVisitApplicable) {
-                    total += dogFirstVisitDiscountService.resolvePreferredDiscount(
-                            price, true, item.isDiscountEligible(), discount).price();
-                    continue;
-                }
-                boolean catFirstVisitApplicable = catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(item);
-                if (catFirstVisitApplicable) {
-                    total += catFirstVisitDiscountService.resolvePreferredDiscount(
-                            price, true, item.isDiscountEligible(), discount).price();
-                    continue;
-                }
-                boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(item);
-                total += catRewashDiscountService.resolvePreferredDiscount(
-                        price, rewashApplicable, item.isDiscountEligible(), discount).price();
-            }
+    private List<PriceLine> priceLines(Appointment appointment) {
+        List<AppointmentItem> checkinItems = appointmentItemRepository.findByAppointmentId(appointment.getId());
+        if (checkinItems.isEmpty()) {
+            return appointment.getSelectedItems().stream()
+                    .map(item -> new PriceLine(item.getPrice() != null ? item.getPrice() : 0,
+                            item.getPerformanceCategory(), item.isDiscountEligible()))
+                    .toList();
         }
+        // 開單項目的會員折扣資格以服務項目目前的設定為準；零售商品、自訂項目（沒有對應服務項目）不打折，
+        // 服務項目已被刪除時視為可打折
+        Map<Long, Boolean> eligibleByItemId = groomingItemRepository.findAllById(checkinItems.stream()
+                        .map(AppointmentItem::getGroomingItemId).filter(Objects::nonNull).distinct().toList())
+                .stream().collect(Collectors.toMap(GroomingItem::getId, GroomingItem::isDiscountEligible));
+        return checkinItems.stream()
+                .map(item -> new PriceLine(item.getPrice(), item.getPerformanceCategory(),
+                        item.getGroomingItemId() != null && eligibleByItemId.getOrDefault(item.getGroomingItemId(), true)))
+                .toList();
+    }
+
+    /** 儲值金付款（需求 5、8-1）：逐項目在服務促銷與會員折扣之間擇優，不疊加。 */
+    private int calculateWalletAmountPerItem(Appointment appointment, double memberDiscountRate) {
+        EligibleOffers offers = discountCalculator.eligibleOffers(appointment);
+        double total = priceLines(appointment).stream()
+                .mapToDouble(line -> offers.resolve(line.price(), line.category(),
+                        line.memberDiscountEligible(), memberDiscountRate).price())
+                .sum();
         return (int) Math.round(total);
     }
 
-    // ── 需求 8-1：非儲值金付款的一般結帳金額計算，套用貓咪 90 天回洗優惠 ──
-    // 邏輯與 calculateWalletAmountPerItem 同樣優先用現場開單項目，但沒有會員等級折扣，
-    // 只套用回洗優惠／狗狗首次體驗優惠（不符合資格的話金額等同原本的 totalAmount）。
+    /** 非儲值金付款（需求 8-1）：只套用服務促銷；沒有任何促銷資格時就是預約金額。 */
     private int calculateAmountWithRewashDiscount(Appointment appointment) {
-        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment);
-        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
-        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
-        if (!rewashEligible && !firstVisitEligible && !catFirstVisitEligible) {
+        EligibleOffers offers = discountCalculator.eligibleOffers(appointment);
+        if (offers.isEmpty()) {
             return appointment.getTotalAmount();
         }
-
-        List<AppointmentItem> checkinItems =
-                appointmentItemRepository.findByAppointmentId(appointment.getId());
-
-        double total = 0;
-        if (!checkinItems.isEmpty()) {
-            for (AppointmentItem item : checkinItems) {
-                double price = item.getPrice();
-                if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
-                    price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-                } else if (catFirstVisitEligible && catFirstVisitDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
-                    price *= CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-                } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
-                    price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
-                }
-                total += price;
-            }
-        } else {
-            for (GroomingItem item : appointment.getSelectedItems()) {
-                double price = item.getPrice() != null ? item.getPrice() : 0;
-                if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item)) {
-                    price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-                } else if (catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(item)) {
-                    price *= CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-                } else if (rewashEligible && catRewashDiscountService.isCatBathItem(item)) {
-                    price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
-                }
-                total += price;
-            }
-        }
+        double total = priceLines(appointment).stream()
+                .mapToDouble(line -> offers.resolve(line.price(), line.category(), false, 1.0).price())
+                .sum();
         return (int) Math.round(total);
     }
 

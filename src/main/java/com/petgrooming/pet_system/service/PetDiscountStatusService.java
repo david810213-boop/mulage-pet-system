@@ -14,7 +14,7 @@ import java.util.List;
  * 以及服務項目要不要顯示「原價劃掉＋折扣價」。
  *
  * 三種折扣互斥擇優：首次體驗優惠與 90 天定期養護禮遇（貓咪回洗優惠）兩者本身也互斥，
- * 跟會員儲值折扣分開回傳，前端渲染時自己取較優惠者，邏輯跟結帳時的 resolvePreferredDiscount() 一致。
+ * 跟會員儲值折扣分開回傳，前端渲染時自己取較優惠者，邏輯跟結帳時的 DiscountCalculator.resolve() 一致。
  */
 @Service
 @RequiredArgsConstructor

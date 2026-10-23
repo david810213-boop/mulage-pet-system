@@ -2,6 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.*;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.enums.DiscountType;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.ErrorCode;
@@ -23,6 +24,8 @@ import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderItemRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.notification.LineMessagingService;
+import com.petgrooming.pet_system.service.discount.DiscountCalculator;
+import com.petgrooming.pet_system.service.discount.EligibleOffers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,9 +57,7 @@ public class WalkInOrderService {
     private final PerformanceService performanceService;
     private final PerformanceRecordRepository performanceRecordRepository;
     private final LineMessagingService lineMessagingService;
-    private final CatRewashDiscountService catRewashDiscountService; // 需求 8
-    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
-    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
+    private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final PetRepository petRepository; // 需求（追加）：查現場單寵物物種
@@ -729,9 +730,7 @@ public class WalkInOrderService {
     // 未結帳（尚未決定付款方式）則只標示 rewashEligible，不填 appliedDiscountType。
     // 需求（追加）：狗狗首次體驗優惠比照同樣模式，跟回洗優惠是互斥品種、不會同一個項目都符合。
     private void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {
-        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
-        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
-        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
+        EligibleOffers offers = discountCalculator.eligibleOffers(order);
         boolean paidByWallet = order.isPaid()
                 && order.getPaymentMethod() == PaymentMethod.WALLET;
         double memberDiscountRate = paidByWallet
@@ -743,30 +742,13 @@ public class WalkInOrderService {
         for (int i = 0; i < entities.size() && i < lines.size(); i++) {
             WalkInOrderItem entity = entities.get(i);
             WalkInOrderResponse.ItemLine line = lines.get(i);
-            boolean rewashApplicable = rewashEligible
-                    && catRewashDiscountService.isCatBathCategory(entity.getPerformanceCategory());
-            boolean firstVisitApplicable = firstVisitEligible
-                    && dogFirstVisitDiscountService.isDogPackageCategory(entity.getPerformanceCategory());
-            // 需求（追加）：貓咪首次體驗，跟狗狗首次體驗共用同一個 firstVisitEligible 欄位
-            // 顯示（前端只在意「是不是首次體驗」，不需要細分品種）。
-            boolean catFirstVisitApplicable = catFirstVisitEligible
-                    && catFirstVisitDiscountService.isCatBathCategory(entity.getPerformanceCategory());
-            line.setRewashEligible(rewashApplicable);
-            line.setFirstVisitEligible(firstVisitApplicable || catFirstVisitApplicable);
+            PerformanceCategory category = entity.getPerformanceCategory();
+            line.setRewashEligible(offers.applies(DiscountType.REWASH, category));
+            // 狗狗、貓咪首次體驗共用同一個欄位顯示（前端只在意「是不是首次體驗」）
+            line.setFirstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category));
             if (order.isPaid()) {
-                if (firstVisitApplicable) {
-                    line.setAppliedDiscountType(dogFirstVisitDiscountService.resolvePreferredDiscount(
-                            entity.getPrice(), true,
-                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
-                } else if (catFirstVisitApplicable) {
-                    line.setAppliedDiscountType(catFirstVisitDiscountService.resolvePreferredDiscount(
-                            entity.getPrice(), true,
-                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
-                } else {
-                    line.setAppliedDiscountType(catRewashDiscountService.resolvePreferredDiscount(
-                            entity.getPrice(), rewashApplicable,
-                            entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
-                }
+                line.setAppliedDiscountType(offers.resolve(entity.getPrice(), category,
+                        entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
             }
         }
     }
@@ -917,60 +899,30 @@ public class WalkInOrderService {
         return calculateWalletAmountPerItem(order, discount);
     }
 
-    // ── 需求 5：現場單儲值金結帳金額計算，逐項目判斷是否可享折扣 ─────────
-    // 用開單當下存的 discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
-    // 需求 8 修正：貓咪回洗優惠（若有會員）與會員儲值折扣只能擇一，取較優惠者。
-    // 需求（追加）：狗狗首次體驗優惠同樣邏輯，兩者依品種分類互斥不會同時套用在同一項目。
+    // ── 現場單結帳金額計算（擇優規則見 DiscountCalculator）──────────────────
+
+    /**
+     * 儲值金付款（需求 5、8）：逐項目在服務促銷與會員折扣之間擇優。會員折扣資格用開單當下存的
+     * discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
+     */
     private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
-        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
-        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order);
-        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
-        double total = 0;
-        for (WalkInOrderItem item : order.getItems()) {
-            boolean firstVisitApplicable = firstVisitEligible
-                    && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
-            if (firstVisitApplicable) {
-                total += dogFirstVisitDiscountService.resolvePreferredDiscount(
-                        item.getPrice(), true, item.isDiscountEligible(), discount).price();
-                continue;
-            }
-            boolean catFirstVisitApplicable = catFirstVisitEligible
-                    && catFirstVisitDiscountService.isCatBathCategory(item.getPerformanceCategory());
-            if (catFirstVisitApplicable) {
-                total += catFirstVisitDiscountService.resolvePreferredDiscount(
-                        item.getPrice(), true, item.isDiscountEligible(), discount).price();
-                continue;
-            }
-            boolean rewashApplicable = rewashEligible
-                    && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory());
-            total += catRewashDiscountService.resolvePreferredDiscount(
-                    item.getPrice(), rewashApplicable, item.isDiscountEligible(), discount).price();
-        }
+        EligibleOffers offers = discountCalculator.eligibleOffers(order);
+        double total = order.getItems().stream()
+                .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(),
+                        item.isDiscountEligible(), discount).price())
+                .sum();
         return (int) Math.round(total);
     }
 
-    // ── 需求 8 修正：非儲值金付款的現場單結帳金額計算，套用貓咪回洗優惠 ──
-    // 邏輯比照 PaymentService.calculateAmountWithRewashDiscount：沒有會員等級折扣，
-    // 只套用回洗優惠／狗狗首次體驗優惠／貓咪首次體驗優惠（不符合資格的話金額等同原本的 order.getTotalAmount()）。
+    /** 非儲值金付款（需求 8）：只套用服務促銷；沒有任何促銷資格時就是開單金額。 */
     private int calculateAmountWithRewashDiscount(WalkInOrder order) {
-        boolean rewashEligible = catRewashDiscountService.isRewashEligible(order);
-        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order);
-        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
-        if (!rewashEligible && !firstVisitEligible && !catFirstVisitEligible) {
+        EligibleOffers offers = discountCalculator.eligibleOffers(order);
+        if (offers.isEmpty()) {
             return order.getTotalAmount();
         }
-        double total = 0;
-        for (WalkInOrderItem item : order.getItems()) {
-            double price = item.getPrice();
-            if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
-                price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-            } else if (catFirstVisitEligible && catFirstVisitDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
-                price *= CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
-            } else if (rewashEligible && catRewashDiscountService.isCatBathCategory(item.getPerformanceCategory())) {
-                price *= CatRewashDiscountService.REWASH_DISCOUNT_RATE;
-            }
-            total += price;
-        }
+        double total = order.getItems().stream()
+                .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(), false, 1.0).price())
+                .sum();
         return (int) Math.round(total);
     }
 
