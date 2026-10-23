@@ -1369,9 +1369,17 @@ public class AppointmentService {
                                     .price(ci.getPrice())
                                     .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
                                     .retailItem(ci.getRetailProductId() != null),
-                            ci.getPerformanceCategory(), source == null || source.isDiscountEligible(), discounts);
+                            ci.getPerformanceCategory(), memberDiscountEligible(ci, source), discounts);
                 })
                 .toList();
+    }
+
+    /**
+     * 開單項目可否享會員折扣，跟結帳扣款（PaymentService）同一套規則：以服務項目目前的設定為準；
+     * 零售商品、自訂項目（沒有對應服務項目）不打折；服務項目已被刪除時視為可打折。
+     */
+    private static boolean memberDiscountEligible(AppointmentItem item, GroomingItem source) {
+        return item.getGroomingItemId() != null && (source == null || source.isDiscountEligible());
     }
 
     /**
