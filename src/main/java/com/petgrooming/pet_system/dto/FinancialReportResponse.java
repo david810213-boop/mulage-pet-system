@@ -44,8 +44,23 @@ public class FinancialReportResponse {
     private int monthTotalCost;           // 上面兩項合計
     private int monthEstimatedProfit;     // monthRevenueTotal - monthTotalCost（粗估毛利，未計入人事/房租等固定成本）
 
+    // ── 折扣統計：實收低於帳面金額的訂單，依折數分組（店家要求，一眼看出折扣有幾筆）──────
+    private List<DiscountSummary> todayDiscounts;
+    private List<DiscountSummary> monthDiscounts;
+
     // ── 明細（供頁面表格顯示 / Excel 匯出）───────────────────────────────
     private List<RevenueDetailLine> details;
+
+    /** 同一折數的訂單統計，例如「9折 3 筆，折讓 $450」。 */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DiscountSummary {
+        private String label;          // 顯示用折數，例如「9折」「88折」
+        private int percent;           // 實收占帳面金額的百分比，例如 90、88
+        private int orderCount;        // 筆數
+        private int discountAmount;    // 折讓金額合計（帳面 − 實收）
+    }
 
     @Data
     @NoArgsConstructor

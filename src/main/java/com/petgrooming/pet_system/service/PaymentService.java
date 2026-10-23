@@ -48,6 +48,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
@@ -374,6 +375,8 @@ public class PaymentService {
         report.setMonthSupplyCost(monthSupplyCost);
         report.setMonthTotalCost(monthRetailCost + monthSupplyCost);
         report.setMonthEstimatedProfit(monthRevenue - monthRetailCost - monthSupplyCost);
+        report.setTodayDiscounts(discountSummary(orders, todayStart));
+        report.setMonthDiscounts(discountSummary(orders, monthStart));
         report.setDetails(orders.stream()
                 .sorted(Comparator.comparing(PaidOrder::paidAt).reversed())
                 .map(PaidOrder::toDetailLine)
@@ -386,7 +389,15 @@ public class PaymentService {
      * 零售營收以售價加總；零售成本以商品「目前」進貨單價估算（賣出當下沒有成本快照，因此是近似值）。
      */
     private record PaidOrder(String source, String code, LocalDateTime paidAt, PaymentMethod method,
-                             int amount, String handledBy, int retailRevenue, int retailCost) {
+                             int baseAmount, int amount, String handledBy, int retailRevenue, int retailCost) {
+
+        /** 實收低於帳面金額時，回傳實收占帳面的百分比（四捨五入到整數）；沒有折扣時回傳空值。 */
+        Optional<Integer> discountPercent() {
+            if (baseAmount <= 0 || amount >= baseAmount) {
+                return Optional.empty();
+            }
+            return Optional.of((int) Math.round(amount * 100.0 / baseAmount));
+        }
 
         int walletAmount() {
             return method == PaymentMethod.WALLET ? amount : 0;
@@ -419,7 +430,7 @@ public class PaymentService {
                             .filter(i -> i.getRetailProductId() != null).toList();
             orders.add(new PaidOrder("預約結帳",
                     t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—",
-                    t.getPaymentTime(), t.getPaymentMethod(), t.getFinalAmount(), t.getHandledBy(),
+                    t.getPaymentTime(), t.getPaymentMethod(), t.getBaseAmount(), t.getFinalAmount(), t.getHandledBy(),
                     retailItems.stream().mapToInt(AppointmentItem::getPrice).sum(),
                     estimatedCost(retailItems.stream().map(AppointmentItem::getRetailProductId).toList(), retailUnitCosts)));
         }
@@ -428,7 +439,7 @@ public class PaymentService {
             List<WalkInOrderItem> retailItems = w.getItems().stream()
                     .filter(i -> i.getRetailProductId() != null).toList();
             orders.add(new PaidOrder("現場開單", "現場單#" + w.getId(), w.getPaymentTime(), w.getPaymentMethod(),
-                    w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount(), w.getCreatedBy(),
+                    w.getTotalAmount(), w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount(), w.getCreatedBy(),
                     retailItems.stream().mapToInt(WalkInOrderItem::getPrice).sum(),
                     estimatedCost(retailItems.stream().map(WalkInOrderItem::getRetailProductId).toList(), retailUnitCosts)));
         }
@@ -447,6 +458,29 @@ public class PaymentService {
 
     private static int sumSince(List<PaidOrder> orders, LocalDateTime from, ToIntFunction<PaidOrder> value) {
         return orders.stream().filter(o -> !o.paidAt().isBefore(from)).mapToInt(value).sum();
+    }
+
+    /**
+     * 期間內有折扣的訂單（實收低於帳面），依折數分組，折扣少的排前面（例如 95折、9折、88折）。
+     * 一張訂單只有部分項目打折時，折數是整張單的實收比例，可能出現 93折 這類非整數折扣。
+     */
+    private static List<FinancialReportResponse.DiscountSummary> discountSummary(List<PaidOrder> orders, LocalDateTime from) {
+        Map<Integer, List<PaidOrder>> byPercent = orders.stream()
+                .filter(o -> !o.paidAt().isBefore(from) && o.discountPercent().isPresent())
+                .collect(Collectors.groupingBy(o -> o.discountPercent().get()));
+        return byPercent.entrySet().stream()
+                .sorted(Map.Entry.<Integer, List<PaidOrder>>comparingByKey().reversed())
+                .map(e -> new FinancialReportResponse.DiscountSummary(
+                        discountLabel(e.getKey()),
+                        e.getKey(),
+                        e.getValue().size(),
+                        e.getValue().stream().mapToInt(o -> o.baseAmount() - o.amount()).sum()))
+                .toList();
+    }
+
+    /** 90 → 「9折」、88 → 「88折」。 */
+    static String discountLabel(int percent) {
+        return (percent % 10 == 0 ? String.valueOf(percent / 10) : String.valueOf(percent)) + "折";
     }
 
     private static int topUpsSince(List<TopUpRequest> topUps, LocalDateTime from) {

@@ -34,7 +34,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 財務報表：業績只算已結帳（預約＋現場單），儲值另計；零售營收、零售成本估算、洗劑成本。
+ * 財務報表：業績只算已結帳（預約＋現場單），儲值另計；零售營收、零售成本估算、洗劑成本、折扣統計。
  * 報表統計整個資料庫，因此以「加入已知資料前後的差額」驗證，不受其他測試資料影響。
  */
 class FinancialReportTest extends IntegrationTestBase {
@@ -118,7 +118,34 @@ class FinancialReportTest extends IntegrationTestBase {
                     assertThat(line.getCode()).isEqualTo("現場單#" + cashWalkIn.getId());
                     assertThat(line.getAmount()).isEqualTo(450);
                 });
+        // 折扣統計：儲值金 9 折（1000 → 900）與現場單（500 → 450）都歸在「9折」；原價結帳不列入
+        assertThat(discountCount(after.getTodayDiscounts(), "9折") - discountCount(before.getTodayDiscounts(), "9折"))
+                .isEqualTo(2);
+        assertThat(discountAmount(after.getTodayDiscounts(), "9折") - discountAmount(before.getTodayDiscounts(), "9折"))
+                .isEqualTo(100 + 50);
+        assertThat(discountCount(after.getMonthDiscounts(), "9折") - discountCount(before.getMonthDiscounts(), "9折"))
+                .isEqualTo(2);
+        assertThat(after.getTodayDiscounts()).extracting(FinancialReportResponse.DiscountSummary::getPercent)
+                .isSortedAccordingTo(java.util.Comparator.reverseOrder());
         assertThat(after.getDetails()).isSortedAccordingTo((a, b) -> b.getPaymentTime().compareTo(a.getPaymentTime()));
+    }
+
+    @Test
+    void discountLabelUsesChineseDiscountWording() {
+        assertThat(PaymentService.discountLabel(90)).isEqualTo("9折");
+        assertThat(PaymentService.discountLabel(88)).isEqualTo("88折");
+        assertThat(PaymentService.discountLabel(85)).isEqualTo("85折");
+        assertThat(PaymentService.discountLabel(50)).isEqualTo("5折");
+    }
+
+    private static int discountCount(List<FinancialReportResponse.DiscountSummary> discounts, String label) {
+        return discounts.stream().filter(d -> d.getLabel().equals(label))
+                .mapToInt(FinancialReportResponse.DiscountSummary::getOrderCount).sum();
+    }
+
+    private static int discountAmount(List<FinancialReportResponse.DiscountSummary> discounts, String label) {
+        return discounts.stream().filter(d -> d.getLabel().equals(label))
+                .mapToInt(FinancialReportResponse.DiscountSummary::getDiscountAmount).sum();
     }
 
     private FinancialReportResponse report() {

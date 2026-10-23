@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  狗狗還沒填體重時的提醒彈窗（店家規定）：沒有體重就無法判斷適用的套餐，
+  「新增服務項目」選單不會列出有體重級距的套餐，請店員先填寫體重。
+  使用方式：在頁面 </body> 前加上
+  <th:block th:replace="~{fragments/weight-reminder :: weightReminder}"></th:block>
+  controller 需提供 weightMissing（GroomingMenuFilter.needsWeight）。
+-->
+<th:block th:fragment="weightReminder">
+  <script th:if="${weightMissing}">
+    window.addEventListener("load", function () {
+      alert("請先填寫體重\n\n這隻狗狗還沒有體重資料，無法顯示對應體重的套餐項目。");
+    });
+  </script>
+</th:block>
+</body>
+</html>

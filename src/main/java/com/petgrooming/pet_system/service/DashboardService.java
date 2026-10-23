@@ -90,8 +90,7 @@ public class DashboardService {
     }
 
     /**
-     * 今日營收：預約結帳與現場單當日已付款金額加總，以付款時間為準。
-     * 現場單以帳面金額（totalAmount）計算。
+     * 今日營收：預約結帳與現場單當日已付款的實收金額加總，以付款時間為準（與財務報表一致）。
      */
     private int todayRevenue(LocalDate today) {
         int appointmentRevenue = paymentService.findPaidTransactions().stream()
@@ -100,7 +99,7 @@ public class DashboardService {
                 .sum();
         int walkInRevenue = walkInOrderService.findAllOrders().stream()
                 .filter(w -> w.isPaid() && w.getPaymentTime() != null && w.getPaymentTime().toLocalDate().isEqual(today))
-                .mapToInt(w -> w.getTotalAmount())
+                .mapToInt(w -> w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount())
                 .sum();
         return appointmentRevenue + walkInRevenue;
     }

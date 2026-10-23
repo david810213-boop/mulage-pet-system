@@ -92,7 +92,7 @@ class DashboardPageTest extends IntegrationTestBase {
         assertThat(after.keySet()).containsAll(STAFF_ATTRIBUTES);
         assertThat(delta(before, after, "todayCount")).isEqualTo(1);
         assertThat(delta(before, after, "pendingConfirmCount")).isEqualTo(1);
-        assertThat(delta(before, after, "todayRevenue")).isEqualTo(1000 + 500); // 現場單以帳面金額計
+        assertThat(delta(before, after, "todayRevenue")).isEqualTo(1000 + 450); // 現場單以實收金額計（帳面 500、實收 450）
         assertThat(delta(before, after, "pendingTopupCount")).isEqualTo(1);
         assertThat(delta(before, after, "memberCount")).isEqualTo(1);
         assertThat(delta(before, after, "retailProductCount")).isEqualTo(1);

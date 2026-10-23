@@ -206,6 +206,7 @@ public class AppointmentMvcController {
         model.addAttribute("pet", pet); // 需求（追加，2026-08-29）：頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
         model.addAttribute("groomingItems", filterItemsForPetShape(
                 groomingItemService.getAllItems(), isExisting, target.getPetType(), pet));
+        model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(target.getPetType(), pet));
         model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：開單可選經手人
         return "appointments/checkin-order";
     }
