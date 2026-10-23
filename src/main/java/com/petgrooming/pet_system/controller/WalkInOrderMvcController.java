@@ -100,41 +100,8 @@ public class WalkInOrderMvcController {
             req.setPetName(petName);
             req.setNote(note);
 
-            List<WalkInOrderCreateRequest.Item> items = new ArrayList<>();
-            if (itemCodes != null) {
-                for (int i = 0; i < itemCodes.size(); i++) {
-                    String code = itemCodes.get(i);
-                    if (code == null || code.isBlank()) continue; // 表單裡沒選的空列跳過
-                    WalkInOrderCreateRequest.Item item = new WalkInOrderCreateRequest.Item();
-                    item.setItemCode(code);
-                    String staffIdStr = (operatorStaffIds != null && i < operatorStaffIds.size())
-                            ? operatorStaffIds.get(i) : null;
-                    item.setOperatorStaffId((staffIdStr != null && !staffIdStr.isBlank())
-                            ? Long.valueOf(staffIdStr) : null); // null → 未填寫，之後從待補清單補
-                    String staffIdStr2 = (operatorStaffIds2 != null && i < operatorStaffIds2.size())
-                            ? operatorStaffIds2.get(i) : null;
-                    item.setOperatorStaffId2((staffIdStr2 != null && !staffIdStr2.isBlank())
-                            ? Long.valueOf(staffIdStr2) : null);
-                    items.add(item);
-                }
-            }
-            req.setItems(items);
-
-            // 需求 7-1：開單當下也能直接加零售商品，支援純零售訂單（沒有任何美容服務項目）
-            List<WalkInOrderCreateRequest.RetailItem> retailItems = new ArrayList<>();
-            if (retailProductIds != null) {
-                for (int i = 0; i < retailProductIds.size(); i++) {
-                    String idStr = retailProductIds.get(i);
-                    if (idStr == null || idStr.isBlank()) continue;
-                    String qtyStr = (retailQuantities != null && i < retailQuantities.size())
-                            ? retailQuantities.get(i) : "1";
-                    WalkInOrderCreateRequest.RetailItem retailItem = new WalkInOrderCreateRequest.RetailItem();
-                    retailItem.setRetailProductId(Long.valueOf(idStr));
-                    retailItem.setQuantity((qtyStr == null || qtyStr.isBlank()) ? 1 : Integer.parseInt(qtyStr));
-                    retailItems.add(retailItem);
-                }
-            }
-            req.setRetailItems(retailItems);
+            req.setItems(WalkInOrderForm.serviceItems(itemCodes, operatorStaffIds, operatorStaffIds2));
+            req.setRetailItems(retailItems(retailProductIds, retailQuantities));
 
             var result = walkInOrderService.create(req, user.getUsername());
             operationLogService.log(user, "WALKIN", "CREATE", "現場單 #" + result.getId(),
@@ -194,6 +161,26 @@ public class WalkInOrderMvcController {
             ra.addFlashAttribute("successMsg", "已一次性補填 " + filled + " 筆經手人");
         }
         return "redirect:/admin/walk-in-orders";
+    }
+
+    /**
+     * 需求 7-1：開單當下也能直接加零售商品，支援純零售訂單（沒有任何美容服務項目）。
+     * 商品空白的列跳過，數量空白視為 1。
+     */
+    private static List<WalkInOrderCreateRequest.RetailItem> retailItems(List<String> retailProductIds,
+                                                                         List<String> retailQuantities) {
+        List<WalkInOrderCreateRequest.RetailItem> retailItems = new ArrayList<>();
+        if (retailProductIds == null) return retailItems;
+        for (int i = 0; i < retailProductIds.size(); i++) {
+            String idStr = retailProductIds.get(i);
+            if (idStr == null || idStr.isBlank()) continue;
+            String qtyStr = retailQuantities != null && i < retailQuantities.size() ? retailQuantities.get(i) : "1";
+            WalkInOrderCreateRequest.RetailItem retailItem = new WalkInOrderCreateRequest.RetailItem();
+            retailItem.setRetailProductId(Long.valueOf(idStr));
+            retailItem.setQuantity(qtyStr == null || qtyStr.isBlank() ? 1 : Integer.parseInt(qtyStr));
+            retailItems.add(retailItem);
+        }
+        return retailItems;
     }
 
     // ── GET /admin/walk-in-orders/{id}/checkout ──────────────────────────
