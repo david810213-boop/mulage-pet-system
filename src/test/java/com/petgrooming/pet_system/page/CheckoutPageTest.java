@@ -25,10 +25,12 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
- * 結帳頁「新增服務項目」選單：狗狗未填體重時不顯示體重套餐、頁面跳出「請先填寫體重」提醒（原本會直接 500）。
+ * 結帳頁：「新增服務項目」選單依體型篩選（狗狗未填體重時提醒）、結帳失敗時回到結帳頁顯示原因。
  */
 class CheckoutPageTest extends IntegrationTestBase {
 
@@ -73,6 +75,26 @@ class CheckoutPageTest extends IntegrationTestBase {
         assertThat(groomingItems(result))
                 .allSatisfy(i -> assertThat(i.getDogWeightTier()).isIn(null, "MEDIUM_SMALL"));
         assertThat(result.getResponse().getContentAsString()).doesNotContain("請先填寫體重");
+    }
+
+    @Test
+    void failedCheckoutShowsTheReasonOnTheCheckoutPage() throws Exception {
+        User customer = testData.customer();
+        PetResponse dog = testData.dog(customer);
+        Appointment appointment = appointment(customer, dog.getName());
+        appointment.setFinalCheckDone(false); // 還沒核對，結帳會被擋下
+        appointmentRepository.save(appointment);
+        User staff = testData.staff();
+
+        MvcResult result = mvc.perform(post("/payments/checkout/" + appointment.getId() + "/submit")
+                        .param("paymentMethod", "CASH")
+                        .cookie(new Cookie("JWT_TOKEN", jwtUtils.generateToken(staff.getUsername(), staff.getRole().name()))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("payments/checkout"))
+                .andReturn();
+
+        assertThat((String) result.getModelAndView().getModel().get("errorMsg")).contains("核對");
+        assertThat(result.getResponse().getContentAsString()).contains("核對");
     }
 
     @SuppressWarnings("unchecked")
