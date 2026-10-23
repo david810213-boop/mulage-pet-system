@@ -107,10 +107,11 @@ class PetDiscountStatusApiTest extends IntegrationTestBase {
     }
 
     @Test
-    void otherCustomersPetIsForbidden() throws Exception {
+    void otherCustomersPetIsRejected() throws Exception {
         PetResponse dog = testData.dog(testData.customer());
 
-        discountStatus(testData.customer(), dog, null).andExpect(status().isForbidden());
+        // 目前沿用 PetService.assertOwnership 的業務規則例外（400）
+        discountStatus(testData.customer(), dog, null).andExpect(status().isBadRequest());
     }
 
     private ResultActions discountStatus(User user, PetResponse pet, String asOfDate) throws Exception {
