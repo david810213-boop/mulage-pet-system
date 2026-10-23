@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
@@ -27,7 +28,6 @@ import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -61,21 +61,6 @@ public class PaymentMvcController {
     private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
-    /**
-     * JWT 版獲取當前登入使用者
-     * 從 LoginInterceptor 存入的 request attribute 拿取 username，
-     * 再用 UserService 查出完整的 User entity，沒有就回傳 null
-     */
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
     // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
     // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
@@ -88,8 +73,7 @@ public class PaymentMvcController {
 
     // 列出付款紀錄（員工/管理員看全部，顧客只看自己的）
     @GetMapping
-    public String list(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String list(Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         if (user.isStaffOrAdmin()) {
@@ -106,9 +90,7 @@ public class PaymentMvcController {
 
     // 結帳頁面（從預約列表點「結帳」連過來）
     @GetMapping("/checkout/{appointmentId}")
-    public String checkoutPage(@PathVariable Long appointmentId,
-                               HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String checkoutPage(@PathVariable Long appointmentId, Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         model.addAttribute("appointmentId", appointmentId);
@@ -205,9 +187,8 @@ public class PaymentMvcController {
                                 @RequestParam Long retailProductId,
                                 @RequestParam(defaultValue = "1") int quantity,
                                 @RequestParam(defaultValue = "checkout") String from,
-                                HttpServletRequest request,
-                                RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                RedirectAttributes redirectAttributes,
+                                @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -229,9 +210,8 @@ public class PaymentMvcController {
                                   @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
                                   @RequestParam(required = false) Long operatorStaffId2,
                                   @RequestParam(defaultValue = "checkout") String from,
-                                  HttpServletRequest request,
-                                  RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                  RedirectAttributes redirectAttributes,
+                                  @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -253,9 +233,8 @@ public class PaymentMvcController {
                                 @RequestParam(required = false) Long operatorStaffId,
                                 @RequestParam(required = false) Long operatorStaffId2,
                                 @RequestParam(defaultValue = "checkout") String from,
-                                HttpServletRequest request,
-                                RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                RedirectAttributes redirectAttributes,
+                                @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -274,9 +253,8 @@ public class PaymentMvcController {
     public String removeItem(@PathVariable Long appointmentId,
                              @RequestParam Long itemId,
                              @RequestParam(defaultValue = "checkout") String from,
-                             HttpServletRequest request,
-                             RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                             RedirectAttributes redirectAttributes,
+                             @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -300,11 +278,10 @@ public class PaymentMvcController {
     @PostMapping("/checkout/{appointmentId}/submit")
     public String checkoutSubmit(@PathVariable Long appointmentId,
                                  @ModelAttribute CheckoutRequest req,
-                                 HttpServletRequest request,
                                  RedirectAttributes redirectAttributes,
-                                 Model model) {
+                                 Model model,
+                                 @CurrentUser User user) {
 
-        User user = getLoginUser(request);
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -400,9 +377,9 @@ public class PaymentMvcController {
     // ── POST /payments/{id}/confirm-wire-transfer ───────────────────────
     // 需求 10：店員核對匯款到帳後點擊，訂單才正式轉為已完成
     @PostMapping("/{id}/confirm-wire-transfer")
-    public String confirmWireTransfer(@PathVariable Long id, HttpServletRequest request,
-                                      RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+    public String confirmWireTransfer(@PathVariable Long id,
+                                      RedirectAttributes redirectAttributes,
+                                      @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -419,9 +396,9 @@ public class PaymentMvcController {
     // 退款：僅限「已結帳」的預約。退款後回到「已確認」狀態，清空現場開單、
     // 結束服務、核對進度，可重新開單重新結帳；管理員與員工皆可操作。
     @PostMapping("/{id}/refund")
-    public String refund(@PathVariable Long id, HttpServletRequest request,
-                         RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+    public String refund(@PathVariable Long id,
+                         RedirectAttributes redirectAttributes,
+                         @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -439,8 +416,8 @@ public class PaymentMvcController {
     // 需求（追加）：改成同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/bank-account")
-    public String bankAccountForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String bankAccountForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("checkoutInfo",
                 paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("topupInfo",
@@ -453,9 +430,8 @@ public class PaymentMvcController {
     public String updateBankAccount(@RequestParam BankAccountPurpose purpose,
                                     @RequestParam String bankName,
                                     @RequestParam String accountNumber,
-                                    @RequestParam String accountHolder,
-                                    HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                    @RequestParam String accountHolder, RedirectAttributes ra,
+                                    @CurrentUser User user) {
         paymentService.updateBankAccountInfo(purpose, bankName, accountNumber, accountHolder);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT",
                 purpose.getLabel() + " 帳號設定", null);
@@ -468,9 +444,8 @@ public class PaymentMvcController {
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account/qr-code")
     public String uploadBankAccountQrCode(@RequestParam BankAccountPurpose purpose,
-                                          @RequestParam("file") MultipartFile file,
-                                          HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                          @RequestParam("file") MultipartFile file, RedirectAttributes ra,
+                                          @CurrentUser User user) {
         try {
             paymentService.updateBankAccountQrCode(purpose, file);
             operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT_QR",
@@ -486,17 +461,15 @@ public class PaymentMvcController {
     // 需求 22：店家上傳乙方固定電子簽名檔（顯示在顧客端契約最下方）
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/company-signature")
-    public String companySignatureForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String companySignatureForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("signatureImage", paymentService.getCompanySignatureImage());
         return "payments/company-signature";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/company-signature")
-    public String updateCompanySignature(@RequestParam String signatureImage,
-                                         HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String updateCompanySignature(@RequestParam String signatureImage, RedirectAttributes ra, @CurrentUser User user) {
         if (signatureImage == null || !signatureImage.startsWith("data:image")) {
             ra.addFlashAttribute("errorMsg", "請上傳有效的圖片檔案");
             return "redirect:/payments/company-signature";
@@ -524,17 +497,15 @@ public class PaymentMvcController {
     // 需求（追加）：貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/pricing-settings")
-    public String pricingSettingsForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String pricingSettingsForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("settings", paymentService.getPricingSettings());
         return "payments/pricing-settings";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/pricing-settings")
-    public String updatePricingSettings(@ModelAttribute PricingSettings settings,
-                                        HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String updatePricingSettings(@ModelAttribute PricingSettings settings, RedirectAttributes ra, @CurrentUser User user) {
         paymentService.updatePricingSettings(settings);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_PRICING_SETTINGS", "體重定價門檻設定", null);
         ra.addFlashAttribute("successMsg", "已更新體重定價門檻");

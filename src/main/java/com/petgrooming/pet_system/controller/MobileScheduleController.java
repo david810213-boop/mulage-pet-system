@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
@@ -14,7 +15,6 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.SlotCapacityService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -60,23 +60,11 @@ public class MobileScheduleController {
     private final MemberConsumptionService memberConsumptionService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) {
-            return null;
-        }
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     // ── 時段管理（單日）────────────────────────────────────────────────
     @GetMapping("/slots")
-    public String slots(HttpServletRequest request, Model model,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        User user = getLoginUser(request);
+    public String slots(Model model,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -133,12 +121,12 @@ public class MobileScheduleController {
     }
 
     @PostMapping("/slots/update")
-    public String updateSlot(HttpServletRequest request, RedirectAttributes ra,
+    public String updateSlot(RedirectAttributes ra,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
             @RequestParam int capacity,
-            @RequestParam(required = false) String allowedPetType) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String allowedPetType,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -156,11 +144,11 @@ public class MobileScheduleController {
     }
 
     @PostMapping("/slots/closed")
-    public String setClosed(HttpServletRequest request, RedirectAttributes ra,
+    public String setClosed(RedirectAttributes ra,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "true") boolean closed,
-            @RequestParam(required = false) String reason) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String reason,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -181,9 +169,9 @@ public class MobileScheduleController {
     // ── 交易紀錄 ────────────────────────────────────────────────────────
     // r：today 今天（預設）/ yesterday 昨天 / week 本週 / month 本月 / last30 近 30 天
     @GetMapping("/transactions")
-    public String transactions(HttpServletRequest request, Model model,
-            @RequestParam(defaultValue = "today") String r) {
-        User user = getLoginUser(request);
+    public String transactions(Model model,
+            @RequestParam(defaultValue = "today") String r,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

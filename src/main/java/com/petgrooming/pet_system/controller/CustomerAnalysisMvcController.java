@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.enums.CatCoatCategory;
@@ -18,7 +19,6 @@ import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -51,22 +51,12 @@ public class CustomerAnalysisMvcController {
     private final WalkInOrderService walkInOrderService;
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null)
-            return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
-    public String overview(HttpServletRequest request, Model model,
-            @RequestParam(required = false) String keyword) {
-        model.addAttribute("user", getLoginUser(request));
+    public String overview(Model model,
+            @RequestParam(required = false) String keyword,
+            @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("stats", customerAnalysisService.getOverview());
 
         var all = userService.getAllCustomers();
@@ -92,8 +82,7 @@ public class CustomerAnalysisMvcController {
     // 會員信息詳情：整合會員資料、寵物資料、預約紀錄、消費紀錄於同一頁
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/{username}")
-    public String customerDetail(@PathVariable String username, HttpServletRequest request, Model model) {
-        User loginUser = getLoginUser(request);
+    public String customerDetail(@PathVariable String username, Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
 
         User customer = userService.getUserEntityByUsername(username);

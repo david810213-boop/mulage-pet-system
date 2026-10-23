@@ -1,10 +1,10 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.*;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.WalkInOrderService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,15 +28,10 @@ public class WalkInOrderController {
 
     private final WalkInOrderService walkInOrderService;
 
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
-
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody WalkInOrderCreateRequest req,
-            HttpServletRequest request) {
-        return ResponseEntity.ok(walkInOrderService.create(req, currentUsername(request)));
+    public ResponseEntity<?> create(@Valid @RequestBody WalkInOrderCreateRequest req, @CurrentUser String username) {
+        return ResponseEntity.ok(walkInOrderService.create(req, username));
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })

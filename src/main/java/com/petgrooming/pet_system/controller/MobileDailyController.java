@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.PerformanceRecord;
@@ -74,8 +75,7 @@ public class MobileDailyController {
 
     // ── 我的績效 ────────────────────────────────────────────────────────
     @GetMapping("/perf")
-    public String myPerformance(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String myPerformance(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -134,11 +134,11 @@ public class MobileDailyController {
     }
 
     @PostMapping("/perf/split")
-    public String split(HttpServletRequest request, RedirectAttributes ra,
+    public String split(RedirectAttributes ra,
             @RequestParam Long sourceRecordId,
             @RequestParam(required = false) Long toStaffId,
-            @RequestParam(required = false) String note) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String note,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -166,8 +166,7 @@ public class MobileDailyController {
 
     // ── 店用洗劑 ────────────────────────────────────────────────────────
     @GetMapping("/supplies")
-    public String supplies(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String supplies(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -211,8 +210,7 @@ public class MobileDailyController {
 
     // ── 零售商品庫存 ────────────────────────────────────────────────────
     @GetMapping("/retail")
-    public String retail(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String retail(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -239,9 +237,9 @@ public class MobileDailyController {
 
     // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）───────────
     @PostMapping("/retail/{id}/stocktake")
-    public String stocktakeRetail(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
-            @RequestParam int actual) {
-        User user = getLoginUser(request);
+    public String stocktakeRetail(@PathVariable Long id, RedirectAttributes ra,
+            @RequestParam int actual,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -261,9 +259,9 @@ public class MobileDailyController {
     }
 
     @PostMapping("/supplies/{id}/stocktake")
-    public String stocktakeSupply(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
-            @RequestParam int actual) {
-        User user = getLoginUser(request);
+    public String stocktakeSupply(@PathVariable Long id, RedirectAttributes ra,
+            @RequestParam int actual,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -284,9 +282,9 @@ public class MobileDailyController {
 
     // delta 正數＝進貨，負數＝報損／盤點扣減
     @PostMapping("/retail/{id}/adjust")
-    public String adjustRetail(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
-            @RequestParam int delta) {
-        User user = getLoginUser(request);
+    public String adjustRetail(@PathVariable Long id, RedirectAttributes ra,
+            @RequestParam int delta,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

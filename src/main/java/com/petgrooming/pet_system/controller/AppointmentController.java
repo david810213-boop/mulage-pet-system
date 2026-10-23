@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
@@ -11,7 +12,6 @@ import com.petgrooming.pet_system.exception.AuthException;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.OperationLogService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -29,19 +29,14 @@ public class AppointmentController {
     private final OperationLogService operationLogService;
     private final ClosedDateService closedDateService; // 需求 16
 
-    // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
-
     // ── POST /api/appointments ─────────────────────────────────────────────
     // 建立預約（對應原本 bookAppointment），身分取自 JWT，店家網頁與顧客 LINE 共用
     @PostMapping
     public ResponseEntity<?> book(
             @RequestBody AppointmentRequest req,
-            HttpServletRequest request) {
-        AppointmentResponse res = appointmentService.book(req, currentUsername(request));
-        operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "BOOK",
+            @CurrentUser String username) {
+        AppointmentResponse res = appointmentService.book(req, username);
+        operationLogService.logByUsername(username, "APPOINTMENT", "BOOK",
                 "預約 " + res.getAppointmentCode(), res.getPetName());
         return ResponseEntity.ok(res);
     }
@@ -49,8 +44,8 @@ public class AppointmentController {
     // ── GET /api/appointments/my ───────────────────────────────────────────
     // 查詢自己的預約紀錄（對應原本 viewAppointments）
     @GetMapping("/my")
-    public ResponseEntity<List<AppointmentResponse>> getMyAppointments(HttpServletRequest request) {
-        return ResponseEntity.ok(appointmentService.getMyAppointments(currentUsername(request)));
+    public ResponseEntity<List<AppointmentResponse>> getMyAppointments(@CurrentUser String username) {
+        return ResponseEntity.ok(appointmentService.getMyAppointments(username));
     }
 
     // ── GET /api/appointments ──────────────────────────────────────────────
@@ -67,9 +62,9 @@ public class AppointmentController {
     public ResponseEntity<?> cancel(
             @PathVariable Long id,
             @RequestBody(required = false) CancelAppointmentRequest req,
-            HttpServletRequest request) {
-        AppointmentResponse res = appointmentService.cancel(id, req, currentUsername(request));
-        operationLogService.logByUsername(currentUsername(request), "APPOINTMENT", "CANCEL",
+            @CurrentUser String username) {
+        AppointmentResponse res = appointmentService.cancel(id, req, username);
+        operationLogService.logByUsername(username, "APPOINTMENT", "CANCEL",
                 "預約 " + res.getAppointmentCode(),
                 req != null && req.getReason() != null ? req.getReason() : "顧客自行取消");
         return ResponseEntity.ok(res);
@@ -104,8 +99,7 @@ public class AppointmentController {
     // 需求（追加，2026-10-02）：LIFF 預約頁選好毛孩後查詢是不是初次預約
     // （初次只選時段，不選服務項目）。
     @GetMapping("/first-visit")
-    public ResponseEntity<?> firstVisit(@RequestParam Long petId, HttpServletRequest request) {
-        String username = currentUsername(request);
+    public ResponseEntity<?> firstVisit(@RequestParam Long petId, @CurrentUser String username) {
         if (username == null) {
             throw new AuthException("請先登入");
         }
@@ -127,14 +121,14 @@ public class AppointmentController {
     // 需求（追加，2026-10-02）：契約副本——「雙方各執一份契約正本」，顧客在 LIFF「我的預約」
     // 可以隨時查看這筆預約簽署的契約紀錄（簽名、時間、版本）；店員也可以查。
     @GetMapping("/{id}/contract")
-    public ResponseEntity<?> getContract(@PathVariable Long id, HttpServletRequest request) {
-        return ResponseEntity.ok(appointmentService.getContractRecord(id, currentUsername(request)));
+    public ResponseEntity<?> getContract(@PathVariable Long id, @CurrentUser String username) {
+        return ResponseEntity.ok(appointmentService.getContractRecord(id, username));
     }
 
     // ── GET /api/appointments/{id}/detail ──────────────────────────────────
     // 取得某筆預約的完整消費明細（服務項目、金額、付款方式、經手人等），供 LIFF 點擊查看用
     @GetMapping("/{id}/detail")
-    public ResponseEntity<?> getDetail(@PathVariable Long id, HttpServletRequest request) {
-        return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, currentUsername(request)));
+    public ResponseEntity<?> getDetail(@PathVariable Long id, @CurrentUser String username) {
+        return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, username));
     }
 }

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.ClaimByPhoneRequest;
 import com.petgrooming.pet_system.dto.LineBindRequest;
 import com.petgrooming.pet_system.dto.LineLoginRequest;
@@ -18,7 +19,6 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.utils.CookieUtils;
 import com.petgrooming.pet_system.utils.JwtUtils;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -153,8 +153,7 @@ public class LineAuthController {
     // 還是新客（走填資料）。用 POST 不用 GET，避免電話出現在網址／存取紀錄裡。
     // 每個 LINE 帳號 10 分鐘最多 5 次（跟認領共用），避免有人拿來一直換號碼試。
     @PostMapping("/member-lookup")
-    public ResponseEntity<?> memberLookup(HttpServletRequest request, @Valid @RequestBody MemberLookupRequest body) {
-        String username = (String) request.getAttribute("tokenUsername");
+    public ResponseEntity<?> memberLookup(@Valid @RequestBody MemberLookupRequest body, @CurrentUser String username) {
         if (username == null) {
             throw new AuthException("請先登入");
         }
@@ -178,8 +177,7 @@ public class LineAuthController {
     // 需求（追加，2026-09-30）：多一個 verification（毛孩名字或姓名），規則見
     // MemberImportService#claimByPhone；確認失敗也算一次嘗試，跟查詢共用次數限制。
     @PostMapping("/claim-by-phone")
-    public ResponseEntity<?> claimByPhone(HttpServletRequest request, @Valid @RequestBody ClaimByPhoneRequest body) {
-        String username = (String) request.getAttribute("tokenUsername");
+    public ResponseEntity<?> claimByPhone(@Valid @RequestBody ClaimByPhoneRequest body, @CurrentUser String username) {
         if (username == null) {
             throw new AuthException("請先登入");
         }

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -39,21 +40,15 @@ public class PerformanceMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
-
     // ── GET /admin/performance ─────────────────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
-    public String daily(HttpServletRequest request, Model model,
+    public String daily(Model model,
                         @RequestParam(required = false)
-                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                        @CurrentUser User loginUser) {
         if (date == null) date = LocalDate.now();
-        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
         // 需求 12：當日績效紀錄排除已拆分過的（只在拆分歷史顯示，避免同一筆看起來出現兩次）
         model.addAttribute("records", performanceService.getDailyRecordsForDisplay(date));
@@ -77,9 +72,8 @@ public class PerformanceMvcController {
                               @RequestParam(required = false)
                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                               @RequestParam(required = false) String returnTo,
-                              HttpServletRequest request,
-                              RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                              RedirectAttributes ra,
+                              @CurrentUser User user) {
         try {
             performanceService.splitRecord(sourceRecordId, toStaffId, note);
             operationLogService.log(user, "PERFORMANCE", "SPLIT_POINTS",
@@ -98,14 +92,15 @@ public class PerformanceMvcController {
     // 月報：所有員工月度積分排行
     @RequireRole({UserRole.ADMIN})
     @GetMapping("/monthly")
-    public String monthly(HttpServletRequest request, Model model,
+    public String monthly(Model model,
                           @RequestParam(required = false) Integer year,
-                          @RequestParam(required = false) Integer month) {
+                          @RequestParam(required = false) Integer month,
+                          @CurrentUser User loginUser) {
         YearMonth ym = (year != null && month != null)
                 ? YearMonth.of(year, month)
                 : YearMonth.now();
 
-        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("user", loginUser);
         model.addAttribute("ym", ym);
         model.addAttribute("ranking", performanceService.getLiveMonthlyRanking(ym.getYear(), ym.getMonthValue()));
         model.addAttribute("tiers", performanceService.getAllBonusTiers());
@@ -116,9 +111,7 @@ public class PerformanceMvcController {
     // 月底結算（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/settle")
-    public String settle(@RequestParam int year, @RequestParam int month,
-                         HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String settle(@RequestParam int year, @RequestParam int month, RedirectAttributes ra, @CurrentUser User user) {
         try {
             List<MonthlyPerformance> results = performanceService.settleMonth(year, month);
             operationLogService.log(user, "PERFORMANCE", "SETTLE",
@@ -137,12 +130,12 @@ public class PerformanceMvcController {
     @GetMapping("/staff/{staffId}")
     public String staffDetail(@PathVariable Long staffId,
                               @RequestParam(required = false) Integer year,
-                              @RequestParam(required = false) Integer month,
-                              HttpServletRequest request, Model model) {
+                              @RequestParam(required = false) Integer month, Model model,
+                              @CurrentUser User loginUser) {
         YearMonth ym = (year != null && month != null)
                 ? YearMonth.of(year, month) : YearMonth.now();
 
-        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("user", loginUser);
         model.addAttribute("staff", userService.getUserEntityById(staffId));
         model.addAttribute("ym", ym);
         model.addAttribute("records", performanceService.getMonthlyRecords(staffId, ym.getYear(), ym.getMonthValue()));
@@ -158,9 +151,7 @@ public class PerformanceMvcController {
     // 取消結算：僅限「當月」，避免不小心取消掉過去已對外發放獎金的月份
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/cancel-settle")
-    public String cancelSettle(@RequestParam int year, @RequestParam int month,
-                               HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String cancelSettle(@RequestParam int year, @RequestParam int month, RedirectAttributes ra, @CurrentUser User user) {
         try {
             performanceService.cancelSettlement(year, month);
             operationLogService.log(user, "PERFORMANCE", "CANCEL_SETTLE", year + "年" + month + "月", null);
@@ -175,8 +166,7 @@ public class PerformanceMvcController {
     // 我的績效：員工查詢自己今日/當月累積積分，以及距離下一個獎勵金級距還差幾分
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/my")
-    public String myProgress(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String myProgress(Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
         model.addAttribute("progress",
                 performanceService.getMyProgress(user.getId(), LocalDate.now()));
@@ -190,8 +180,8 @@ public class PerformanceMvcController {
     // ── GET /admin/performance/bonus-tiers ──────────────────────────────
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/bonus-tiers")
-    public String bonusTiers(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String bonusTiers(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("tiers", performanceService.getAllBonusTiers());
         return "admin/performance-bonus-tiers";
     }
@@ -200,9 +190,8 @@ public class PerformanceMvcController {
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bonus-tiers/create")
     public String createBonusTier(@RequestParam int minPoints, @RequestParam int maxPoints,
-                                  @RequestParam int bonusAmount,
-                                  HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                  @RequestParam int bonusAmount, RedirectAttributes ra,
+                                  @CurrentUser User user) {
         try {
             performanceService.createBonusTier(minPoints, maxPoints, bonusAmount);
             operationLogService.log(user, "PERFORMANCE", "CREATE_BONUS_TIER",
@@ -218,9 +207,8 @@ public class PerformanceMvcController {
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bonus-tiers/{id}/update")
     public String updateBonusTier(@PathVariable Long id, @RequestParam int minPoints,
-                                  @RequestParam int maxPoints, @RequestParam int bonusAmount,
-                                  HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                                  @RequestParam int maxPoints, @RequestParam int bonusAmount, RedirectAttributes ra,
+                                  @CurrentUser User user) {
         try {
             performanceService.updateBonusTier(id, minPoints, maxPoints, bonusAmount);
             operationLogService.log(user, "PERFORMANCE", "UPDATE_BONUS_TIER",
@@ -235,8 +223,7 @@ public class PerformanceMvcController {
     // ── POST /admin/performance/bonus-tiers/{id}/delete ─────────────────
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bonus-tiers/{id}/delete")
-    public String deleteBonusTier(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String deleteBonusTier(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
         performanceService.deleteBonusTier(id);
         operationLogService.log(user, "PERFORMANCE", "DELETE_BONUS_TIER", "級距 #" + id, null);
         ra.addFlashAttribute("successMsg", "已刪除級距");
@@ -247,12 +234,13 @@ public class PerformanceMvcController {
     // 積分項目統計矩陣：全部員工 × 全部積分項目，一次看完
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/staff-breakdown")
-    public String staffBreakdown(HttpServletRequest request, Model model,
+    public String staffBreakdown(Model model,
                                  @RequestParam(required = false) Integer year,
-                                 @RequestParam(required = false) Integer month) {
+                                 @RequestParam(required = false) Integer month,
+                                 @CurrentUser User loginUser) {
         YearMonth ym = (year != null && month != null) ? YearMonth.of(year, month) : YearMonth.now();
 
-        model.addAttribute("user", getLoginUser(request));
+        model.addAttribute("user", loginUser);
         model.addAttribute("ym", ym);
         model.addAttribute("matrix", performanceService.getMonthlyMatrix(ym.getYear(), ym.getMonthValue()));
         return "admin/performance-staff-breakdown";
@@ -357,14 +345,15 @@ public class PerformanceMvcController {
     // ＋拆分歷史查詢（誰在何時把哪隻寵物的哪個項目拆給了誰）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/split-manage")
-    public String splitManage(HttpServletRequest request, Model model,
+    public String splitManage(Model model,
                               @RequestParam(required = false)
                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
                               @RequestParam(required = false)
                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
                               @RequestParam(required = false) String petName,
-                              @RequestParam(required = false) Long staffId) {
-        model.addAttribute("user", getLoginUser(request));
+                              @RequestParam(required = false) Long staffId,
+                              @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("staffList", userService.getAllStaffEntities());
         model.addAttribute("dateFrom", dateFrom != null ? dateFrom : LocalDate.now());
         model.addAttribute("dateTo", dateTo != null ? dateTo : LocalDate.now());

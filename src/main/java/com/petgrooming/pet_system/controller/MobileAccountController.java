@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
@@ -40,21 +41,8 @@ public class MobileAccountController {
     private final LineBindService lineBindService;
     private final OperationLogService operationLogService;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) {
-            return null;
-        }
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     @GetMapping({ "", "/" })
-    public String account(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String account(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -69,11 +57,11 @@ public class MobileAccountController {
 
     @RequireCsrf
     @PostMapping("/password")
-    public String changePassword(HttpServletRequest request, RedirectAttributes ra,
+    public String changePassword(RedirectAttributes ra,
             @RequestParam String oldPassword,
             @RequestParam String newPassword,
-            @RequestParam String confirmPassword) {
-        User user = getLoginUser(request);
+            @RequestParam String confirmPassword,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -97,11 +85,11 @@ public class MobileAccountController {
     }
 
     @PostMapping("/pin")
-    public String setPin(HttpServletRequest request, RedirectAttributes ra,
+    public String setPin(RedirectAttributes ra,
             @RequestParam String currentPassword,
             @RequestParam String pin,
-            @RequestParam String confirmPin) {
-        User user = getLoginUser(request);
+            @RequestParam String confirmPin,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -122,8 +110,7 @@ public class MobileAccountController {
     }
 
     @PostMapping("/bind-line")
-    public String bindLine(HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String bindLine(RedirectAttributes ra, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
