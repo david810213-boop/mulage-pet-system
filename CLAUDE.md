@@ -16,7 +16,8 @@
 
 ## 二、部署與環境
 
-- **GitHub**：`david810213-boop/mulage-pet-system`，開發分支 **`redesign`**，公開作品集分支 **`main`**（README.md 放 `main`，兩分支的 README 內容不一樣，改 README 要先確認自己在哪個分支）
+- **GitHub**：`david810213-boop/mulage-pet-system`，開發分支 **`redesign`**，正式部署分支 **`main`**（Railway 自動部署 `main`；`redesign` 開發完成、CI 通過後合併至 `main` 才會上線）。重構等較大的工作另開 `refactor/*` 分支，CI 通過後再合併回 `redesign`
+- **CI**：GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`、`redesign`、`refactor/**` 時執行 `mvn verify`；測試以 Testcontainers 啟動 MySQL 8，本機跑測試需要 Docker。測試結果與失敗原因會以註記（annotation）顯示在 GitHub 的 Checks 頁
 - **正式環境**：Railway，`MySQL` 服務 + `mulage-pet-system`（App）服務，兩者已同區域（跨區延遲問題已解決，但 N+1 查詢問題本身還沒處理，見第六節）
 - **本機資料庫**：Docker 容器 `pet-mysql`，對外 **port 3307**（容器內部仍是 3306）；⚠️ 這台電腦另外還有一個**原生 MySQL（port 3306）**，連線前務必先確認 port
 - **連線正式環境資料庫**：`railway link` → `railway connect MySQL`（走 SSH tunnel，不用開 Public Networking）
