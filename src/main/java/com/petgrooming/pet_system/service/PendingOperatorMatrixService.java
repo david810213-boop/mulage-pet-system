@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -181,7 +182,7 @@ public class PendingOperatorMatrixService {
     }
 
     private <T> void assignWithOverflow(List<T> items,
-            java.util.function.Function<T, PerformanceCategory> categoryOf,
+            Function<T, PerformanceCategory> categoryOf,
             Map<PerformanceCategory, T> assigned) {
         List<T> overflow = new ArrayList<>();
         for (T item : items) {

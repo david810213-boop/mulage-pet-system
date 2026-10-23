@@ -1,11 +1,14 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
+import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,18 +35,18 @@ public class MemberConsumptionService {
      * @param viewerUsername 查看的店家／員工帳號（查預約明細時需要權限判斷用），null 時不帶預約明細
      */
     public List<ConsumptionRecordResponse> buildPaidRecords(String username, String viewerUsername) {
-        java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse> records = new java.util.ArrayList<>();
+        List<ConsumptionRecordResponse> records = new ArrayList<>();
 
         // 來源 1：預約結帳（Transaction）
         for (var t : transactionRepository.findByUserUsername(username)) {
             if (!t.isPaid())
                 continue;
-            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
+            List<ConsumptionRecordResponse.Item> items = List.of();
             if (t.getAppointment() != null && viewerUsername != null) {
                 try {
                     var detail = appointmentService.getAppointmentDetail(t.getAppointment().getId(), viewerUsername);
                     items = detail.getItems().stream()
-                            .map(di -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
+                            .map(di -> ConsumptionRecordResponse.Item.builder()
                                     .name(di.getName())
                                     .staffName(di.getOperatorName())
                                     .discountLabel(di.getAppliedDiscountType() != null ? di.getAppliedDiscountType().getLabel() : null)
@@ -54,7 +57,7 @@ public class MemberConsumptionService {
                     // 找不到明細（例如舊資料）就顯示空清單，不影響整頁其他內容
                 }
             }
-            records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
+            records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("預約結帳")
                     .sourceType("APPOINTMENT")
                     .recordId(t.getAppointment() != null ? t.getAppointment().getId() : null)
@@ -73,11 +76,11 @@ public class MemberConsumptionService {
         for (var w : walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(username)) {
             if (!w.isPaid())
                 continue;
-            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
+            List<ConsumptionRecordResponse.Item> items = List.of();
             try {
                 var detail = walkInOrderService.getById(w.getId());
                 items = detail.getItems().stream()
-                        .map(il -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
+                        .map(il -> ConsumptionRecordResponse.Item.builder()
                                 .name(il.getItemName())
                                 .staffName(il.getOperator())
                                 .discountLabel(il.getAppliedDiscountType() != null ? il.getAppliedDiscountType().getLabel() : null)
@@ -87,7 +90,7 @@ public class MemberConsumptionService {
             } catch (Exception ignored) {
                 // 找不到明細就顯示空清單，不影響整頁其他內容
             }
-            records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
+            records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("現場開單")
                     .sourceType("WALKIN")
                     .recordId(w.getId())
@@ -119,11 +122,11 @@ public class MemberConsumptionService {
      * 只取已付款，依付款時間新到舊排序。原本是 PaymentMvcController 的 private 方法，
      * 員工手機版交易紀錄頁也要用，原封不動搬到這裡共用，內容沒有任何行為變更。
      */
-    public java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
-            java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
-            java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
+    public List<ConsumptionRecordResponse> buildCombinedRecords(
+            List<TransactionResponse> transactions,
+            List<WalkInOrder> walkInOrders) {
 
-        java.util.List<ConsumptionRecordResponse> records = new java.util.ArrayList<>();
+        List<ConsumptionRecordResponse> records = new ArrayList<>();
 
         for (var t : transactions) {
             if (!t.isPaid()) continue;

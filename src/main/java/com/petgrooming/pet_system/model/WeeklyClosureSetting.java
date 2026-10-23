@@ -3,6 +3,8 @@ package com.petgrooming.pet_system.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.DayOfWeek;
+
 /**
  * 固定公休星期設定（單例設定，全店只有一筆）。
  * 跟需求 16 的 ClosedDate（單一天公休）是兩套獨立機制：
@@ -50,7 +52,7 @@ public class WeeklyClosureSetting {
     @Builder.Default
     private boolean closedSunday = false;
 
-    public boolean isClosedOn(java.time.DayOfWeek dayOfWeek) {
+    public boolean isClosedOn(DayOfWeek dayOfWeek) {
         return switch (dayOfWeek) {
             case MONDAY -> closedMonday;
             case TUESDAY -> closedTuesday;

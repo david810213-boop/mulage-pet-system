@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.dto;
 
+import com.petgrooming.pet_system.enums.PetType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -38,5 +39,5 @@ public class UpdateGroomingItemRequest {
     private Boolean requiresExistingCustomer = false;
 
     // 需求（追加）：適用物種
-    private com.petgrooming.pet_system.enums.PetType applicablePetType;
+    private PetType applicablePetType;
 }

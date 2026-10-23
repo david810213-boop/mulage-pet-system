@@ -3,20 +3,32 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;
 import com.petgrooming.pet_system.dto.ResetPasswordRequest;
+import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Controller
 @RequestMapping("/admin")
@@ -125,7 +137,7 @@ public class AdminMvcController {
      */
     @PostMapping("/grooming/update/{id}")
     public String updateItem(@PathVariable Long id,
-                             @Valid @ModelAttribute("updateGroomingItemRequest") com.petgrooming.pet_system.dto.UpdateGroomingItemRequest req,
+                             @Valid @ModelAttribute("updateGroomingItemRequest") UpdateGroomingItemRequest req,
                              BindingResult bindingResult,
                              HttpServletRequest request,
                               RedirectAttributes redirectAttributes,
@@ -191,20 +203,20 @@ public class AdminMvcController {
     // ── GET /admin/report/export.xlsx ───────────────────────────────────
     // 需求 6：財務報表匯出 Excel（當日/當月彙總 + 成本毛利 + 逐筆明細，三個工作表）
     @GetMapping("/report/export.xlsx")
-    public void exportReport(HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    public void exportReport(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!isAdmin(request)) {
             response.sendRedirect("/dashboard");
             return;
         }
         var report = paymentService.getFinancialReport();
 
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
-            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
             // ── 工作表 1：彙總 ──────────────────────────────────────────
             var summarySheet = workbook.createSheet("業績彙總");
@@ -258,7 +270,7 @@ public class AdminMvcController {
                 row.createCell(2).setCellValue(d.getPaymentMethodLabel());
                 row.createCell(3).setCellValue(d.getAmount());
                 row.createCell(4).setCellValue(d.getPaymentTime() != null
-                        ? d.getPaymentTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
+                        ? d.getPaymentTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
                 row.createCell(5).setCellValue(d.getHandledBy() != null ? d.getHandledBy() : "");
             }
             int[] detailColWidths = {10, 12, 12, 10, 20, 16};
@@ -266,8 +278,8 @@ public class AdminMvcController {
                 detailSheet.setColumnWidth(i, detailColWidths[i] * 256);
             }
 
-            String filename = "財務報表_" + java.time.LocalDate.now() + ".xlsx";
-            String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
+            String filename = "財務報表_" + LocalDate.now() + ".xlsx";
+            String encodedFilename = URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
             workbook.write(response.getOutputStream());
@@ -299,7 +311,7 @@ public class AdminMvcController {
 
         try {
             groomingService.createItem(req);
-            redirectAttributes.addFlashAttribute("successMsg", "✨ 成功建立新的美容項目！");
+            redirectAttributes.addFlashAttribute("successMsg", "\u2728 成功建立新的美容項目！");
             return "redirect:/admin";
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);

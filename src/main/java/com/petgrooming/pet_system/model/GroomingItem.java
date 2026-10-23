@@ -1,6 +1,10 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.CatCoatCategory;
+import com.petgrooming.pet_system.enums.CoatType;
+import com.petgrooming.pet_system.enums.DogWeightTier;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.PetType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -88,7 +92,7 @@ public class GroomingItem {
     // null = 兩種都適用（例如清潔費這類共用加購項目），允許 null 不用給資料庫層級預設值。
     @Enumerated(EnumType.STRING)
     @Column(name = "applicable_pet_type")
-    private com.petgrooming.pet_system.enums.PetType applicablePetType;
+    private PetType applicablePetType;
 
     // 需求（追加）：菜單簡化——貓咪套餐項目（CAT001~024）依「單層毛/雙層毛/長毛」
     // 進一步細分，LIFF 預約頁依所選毛孩的品種自動判斷結果篩選菜單，顧客只會看到
@@ -97,7 +101,7 @@ public class GroomingItem {
     // 這種項目不受這個欄位篩選影響，任何毛髮分類的貓都看得到（如果本身是貓咪適用的話）。
     @Enumerated(EnumType.STRING)
     @Column(name = "cat_coat_category")
-    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+    private CatCoatCategory catCoatCategory;
 
     // 需求（追加，2026-08-24）：狗狗定價流程簡化——DOG001~036 依體重級距標記，
     // LIFF 預約頁/店員開單頁依這隻狗目前的體重（Pet.weight）自動篩選對應級距的
@@ -105,7 +109,7 @@ public class GroomingItem {
     // null = 跟體重級距無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
     @Enumerated(EnumType.STRING)
     @Column(name = "dog_weight_tier")
-    private com.petgrooming.pet_system.enums.DogWeightTier dogWeightTier;
+    private DogWeightTier dogWeightTier;
 
     // 需求（追加，2026-09-06）：狗狗套餐項目再依「毛長」細分——原本同一個體重
     // 級距底下短毛/長毛兩種都會顯示、由顧客自己挑，改成搭配 Pet.coatType（店家
@@ -117,5 +121,5 @@ public class GroomingItem {
     // null = 跟毛長無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
     @Enumerated(EnumType.STRING)
     @Column(name = "dog_coat_length")
-    private com.petgrooming.pet_system.enums.CoatType dogCoatLength;
+    private CoatType dogCoatLength;
 }

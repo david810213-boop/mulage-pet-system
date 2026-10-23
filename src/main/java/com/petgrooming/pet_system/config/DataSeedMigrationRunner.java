@@ -54,7 +54,7 @@ public class DataSeedMigrationRunner implements ApplicationRunner {
 
         var result = flyway.migrate();
         if (result.migrationsExecuted > 0) {
-            log.info("✨ [資料遷移] 本次啟動執行了 {} 個新的資料遷移檔案：{}",
+            log.info("[資料遷移] 本次啟動執行了 {} 個新的資料遷移檔案：{}",
                     result.migrationsExecuted,
                     result.migrations.stream().map(m -> m.version).toList());
         } else {

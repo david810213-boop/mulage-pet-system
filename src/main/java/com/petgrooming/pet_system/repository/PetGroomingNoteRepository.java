@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.model.PetGroomingNote;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -14,5 +15,5 @@ public interface PetGroomingNoteRepository extends JpaRepository<PetGroomingNote
 
     List<PetGroomingNote> findByAppointmentId(Long appointmentId);
 
-    List<PetGroomingNote> findByAppointmentIdIn(java.util.Collection<Long> appointmentIds);
+    List<PetGroomingNote> findByAppointmentIdIn(Collection<Long> appointmentIds);
 }

@@ -1,7 +1,9 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.LineBindService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +24,7 @@ public class AccountMvcController {
 
     private final UserService userService;
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.LineBindService lineBindService;
+    private final LineBindService lineBindService;
 
     /** 店員綁定 LINE 用的 LIFF 網址（application.yml 的 line.liff.bind-url） */
     @Value("${line.liff.bind-url}")
@@ -45,7 +47,7 @@ public class AccountMvcController {
     }
 
     // ── POST /account/password ─────────────────────────────────────────────
-    @com.petgrooming.pet_system.annotation.RequireCsrf
+    @RequireCsrf
     @PostMapping("/password")
     public String changePassword(@RequestParam String oldPassword,
                                  @RequestParam String newPassword,

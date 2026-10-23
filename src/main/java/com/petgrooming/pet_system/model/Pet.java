@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
@@ -56,7 +57,7 @@ public class Pet {
     // 只能透過選品種間接觸發。
     @Enumerated(EnumType.STRING)
     @Column(name = "cat_coat_category")
-    private com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory;
+    private CatCoatCategory catCoatCategory;
 
     // 需求（追加，2026-08-24）：狗狗定價流程簡化——成犬定型後，店員在店裡核對
     // 選出真正對應的套餐項目，這裡記錄下來變成這隻狗的「固定套餐」。

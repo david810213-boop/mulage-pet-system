@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -31,8 +33,8 @@ public class PaymentController {
     // 任何已登入使用者皆可查（顧客儲值前本來就需要看到這份資訊，不需要限定店家/員工）
     @GetMapping("/bank-account")
     public ResponseEntity<?> getBankAccountInfo() {
-        var info = paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP);
-        return ResponseEntity.ok(java.util.Map.of(
+        var info = paymentService.getBankAccountInfo(BankAccountPurpose.TOPUP);
+        return ResponseEntity.ok(Map.of(
                 "bankName", info.getBankName() != null ? info.getBankName() : "",
                 "accountNumber", info.getAccountNumber() != null ? info.getAccountNumber() : "",
                 "accountHolder", info.getAccountHolder() != null ? info.getAccountHolder() : "",

@@ -79,7 +79,7 @@ public class GlobalApiExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        log.warn("⚠️ [全域例外處理] 資料庫約束衝突，回傳友善訊息給前端：{}", ex.getMessage());
+        log.warn("[全域例外處理] 資料庫約束衝突，回傳友善訊息給前端：{}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of("這筆資料跟其他紀錄有關聯，無法執行這個操作，請聯絡工程人員協助確認"));
     }

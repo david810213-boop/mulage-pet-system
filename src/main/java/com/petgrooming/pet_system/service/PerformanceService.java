@@ -1,5 +1,10 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.dto.PerformanceMatrixResponse;
+import com.petgrooming.pet_system.dto.SplitCandidateResponse;
+import com.petgrooming.pet_system.dto.SplitHistoryResponse;
+import com.petgrooming.pet_system.dto.StaffMatrixRow;
+import com.petgrooming.pet_system.dto.StaffProgressResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.PerformanceException;
 import com.petgrooming.pet_system.model.Appointment;
@@ -301,7 +306,7 @@ public class PerformanceService {
     }
 
     // ── 我的績效：員工查詢自己今日/當月累積積分，以及距離下一級距還差幾分 ──
-    public com.petgrooming.pet_system.dto.StaffProgressResponse getMyProgress(Long staffId, LocalDate today) {
+    public StaffProgressResponse getMyProgress(Long staffId, LocalDate today) {
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new PerformanceException("找不到員工：" + staffId));
 
@@ -336,7 +341,7 @@ public class PerformanceService {
             }
         }
 
-        return com.petgrooming.pet_system.dto.StaffProgressResponse.builder()
+        return StaffProgressResponse.builder()
                 .staffName(staff.getName())
                 .todayPoints(todayPoints)
                 .monthMainPoints(mainPts)
@@ -351,7 +356,7 @@ public class PerformanceService {
     // 「總計/隻數」= 該項目當月累積積分 ÷ 單次積分（換算完成幾隻/幾次）
     // 「換算積分」= 該項目當月累積積分本身
     // 排除 OTHER（不計分項目）；CHECKIN/CHECKOUT/COMPLETE 一併含在矩陣裡。
-    public com.petgrooming.pet_system.dto.PerformanceMatrixResponse getMonthlyMatrix(int year, int month) {
+    public PerformanceMatrixResponse getMonthlyMatrix(int year, int month) {
         YearMonth ym = YearMonth.of(year, month);
         List<PerformanceRecord> allRecords = recordRepo.findByMonth(ym.atDay(1), ym.atEndOfMonth());
 
@@ -362,7 +367,7 @@ public class PerformanceService {
         Map<Long, List<PerformanceRecord>> byStaff = allRecords.stream()
                 .collect(Collectors.groupingBy(r -> r.getStaff().getId()));
 
-        List<com.petgrooming.pet_system.dto.StaffMatrixRow> rows = new ArrayList<>();
+        List<StaffMatrixRow> rows = new ArrayList<>();
         Map<PerformanceCategory, Double> columnTotalsPoints = new EnumMap<>(PerformanceCategory.class);
         for (PerformanceCategory c : categories) columnTotalsPoints.put(c, 0.0);
         double grandTotal = 0;
@@ -375,7 +380,7 @@ public class PerformanceService {
 
         for (Map.Entry<Long, List<PerformanceRecord>> entry : sortedEntries) {
             List<PerformanceRecord> records = entry.getValue();
-            com.petgrooming.pet_system.dto.StaffMatrixRow row = buildStaffMatrixRow(records, categories);
+            StaffMatrixRow row = buildStaffMatrixRow(records, categories);
             rows.add(row);
             grandTotal += row.getTotalPoints();
             for (PerformanceCategory c : categories) {
@@ -395,7 +400,7 @@ public class PerformanceService {
             }
         }
 
-        com.petgrooming.pet_system.dto.StaffMatrixRow totalsRow = com.petgrooming.pet_system.dto.StaffMatrixRow.builder()
+        StaffMatrixRow totalsRow = StaffMatrixRow.builder()
                 .staffId(null)
                 .staffName("合計")
                 .countByCategory(columnTotalsCount)
@@ -403,7 +408,7 @@ public class PerformanceService {
                 .totalPoints(grandTotal)
                 .build();
 
-        return com.petgrooming.pet_system.dto.PerformanceMatrixResponse.builder()
+        return PerformanceMatrixResponse.builder()
                 .categories(categories)
                 .rows(rows)
                 .totalsRow(totalsRow)
@@ -412,7 +417,7 @@ public class PerformanceService {
     }
 
     // ── 需求：月報「明細」按鈕直接顯示該員工的積分項目統計（矩陣的單一列）──
-    public com.petgrooming.pet_system.dto.StaffMatrixRow getStaffMonthlyBreakdown(
+    public StaffMatrixRow getStaffMonthlyBreakdown(
             Long staffId, int year, int month) {
         YearMonth ym = YearMonth.of(year, month);
         List<PerformanceCategory> categories = Arrays.stream(PerformanceCategory.values())
@@ -424,7 +429,7 @@ public class PerformanceService {
     }
 
     // ── 私有：把一位員工當月的績效紀錄，依項目分類彙整成矩陣的一列 ─────
-    private com.petgrooming.pet_system.dto.StaffMatrixRow buildStaffMatrixRow(
+    private StaffMatrixRow buildStaffMatrixRow(
             List<PerformanceRecord> records, List<PerformanceCategory> categories) {
         Map<PerformanceCategory, Double> pointsByCategory = new EnumMap<>(PerformanceCategory.class);
         Map<PerformanceCategory, Double> countByCategory = new EnumMap<>(PerformanceCategory.class);
@@ -444,7 +449,7 @@ public class PerformanceService {
         }
 
         User staff = records.isEmpty() ? null : records.get(0).getStaff();
-        return com.petgrooming.pet_system.dto.StaffMatrixRow.builder()
+        return StaffMatrixRow.builder()
                 .staffId(staff != null ? staff.getId() : null)
                 .staffName(staff != null ? staff.getName() : null)
                 .countByCategory(countByCategory)
@@ -529,7 +534,7 @@ public class PerformanceService {
 
     // ── 需求 12：待拆分積分清單（強化版，含寵物名/服務項目，支援篩選）───
     // 篩選條件皆為選填：不給日期區間預設查當日；petNameKeyword 模糊比對；staffId 篩經手人。
-    public List<com.petgrooming.pet_system.dto.SplitCandidateResponse> getSplitCandidates(
+    public List<SplitCandidateResponse> getSplitCandidates(
             LocalDate dateFrom, LocalDate dateTo, String petNameKeyword, Long staffId) {
 
         LocalDate start = dateFrom != null ? dateFrom : LocalDate.now();
@@ -549,14 +554,14 @@ public class PerformanceService {
         Set<Long> splitInvolved = getSplitInvolvedRecordIds();
         records = records.stream().filter(r -> !splitInvolved.contains(r.getId())).toList();
 
-        List<com.petgrooming.pet_system.dto.SplitCandidateResponse> result = new ArrayList<>();
+        List<SplitCandidateResponse> result = new ArrayList<>();
         for (PerformanceRecord r : records) {
             String petName = resolvePetName(r);
             if (petNameKeyword != null && !petNameKeyword.isBlank()
                     && (petName == null || !petName.contains(petNameKeyword.trim()))) {
                 continue;
             }
-            result.add(com.petgrooming.pet_system.dto.SplitCandidateResponse.builder()
+            result.add(SplitCandidateResponse.builder()
                     .id(r.getId())
                     .serviceDate(r.getServiceDate())
                     .petName(petName)
@@ -572,7 +577,7 @@ public class PerformanceService {
     }
 
     // ── 需求 12：拆分歷史查詢（誰在什麼時候把哪隻寵物的哪個項目拆給了誰）─
-    public List<com.petgrooming.pet_system.dto.SplitHistoryResponse> getSplitHistory(
+    public List<SplitHistoryResponse> getSplitHistory(
             LocalDate dateFrom, LocalDate dateTo, String petNameKeyword, Long staffId) {
 
         LocalDate start = dateFrom != null ? dateFrom : LocalDate.now().minusDays(30);
@@ -581,7 +586,7 @@ public class PerformanceService {
         List<PerformanceRecord> splitRecords = recordRepo
                 .findBySplitFromRecordIdIsNotNullAndServiceDateBetweenOrderByServiceDateDesc(start, end);
 
-        List<com.petgrooming.pet_system.dto.SplitHistoryResponse> result = new ArrayList<>();
+        List<SplitHistoryResponse> result = new ArrayList<>();
         for (PerformanceRecord splitRec : splitRecords) {
             if (staffId != null && !splitRec.getStaff().getId().equals(staffId)
                     && !isOriginalStaffMatch(splitRec, staffId)) {
@@ -596,7 +601,7 @@ public class PerformanceService {
                     .map(orig -> orig.getStaff().getName())
                     .orElse("（原紀錄已不存在）");
 
-            result.add(com.petgrooming.pet_system.dto.SplitHistoryResponse.builder()
+            result.add(SplitHistoryResponse.builder()
                     .splitRecordId(splitRec.getId())
                     .serviceDate(splitRec.getServiceDate())
                     .petName(petName)

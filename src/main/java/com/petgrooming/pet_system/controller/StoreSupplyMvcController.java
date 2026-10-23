@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.InventoryImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.StoreSupplyService;
 import com.petgrooming.pet_system.service.UserService;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
@@ -22,7 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class StoreSupplyMvcController {
 
     private final StoreSupplyService storeSupplyService;
-    private final com.petgrooming.pet_system.service.InventoryImportService inventoryImportService; // 需求（2026-10-02）
+    private final InventoryImportService inventoryImportService; // 需求（2026-10-02）
     private final UserService userService;
     private final OperationLogService operationLogService;
 
@@ -109,7 +111,7 @@ public class StoreSupplyMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/import")
     public String importCsv(HttpServletRequest request,
-                            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                            @RequestParam("file") MultipartFile file,
                             RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {

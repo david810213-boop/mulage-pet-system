@@ -1,12 +1,15 @@
 package com.petgrooming.pet_system.config;
 
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.BankAccountInfo;
 import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.model.WeeklyClosureSetting;
 import com.petgrooming.pet_system.repository.BankAccountInfoRepository;
 import com.petgrooming.pet_system.repository.BonusTierRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
+import com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -42,7 +45,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final BonusTierRepository bonusTierRepository;
     private final BankAccountInfoRepository bankAccountInfoRepository;
-    private final com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
+    private final WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -78,18 +81,18 @@ public class DataInitializer implements ApplicationRunner {
 
         // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
         // 需求（追加）：改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
-        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT).isEmpty()) {
+        if (bankAccountInfoRepository.findByPurpose(BankAccountPurpose.CHECKOUT).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
-                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)
+                    .purpose(BankAccountPurpose.CHECKOUT)
                     .bankName("請於後台設定銀行名稱")
                     .accountNumber("請於後台設定帳號")
                     .accountHolder("請於後台設定戶名")
                     .build());
             log.info("結帳收款帳號預設資料初始化完成，請記得到後台修改成實際帳號");
         }
-        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP).isEmpty()) {
+        if (bankAccountInfoRepository.findByPurpose(BankAccountPurpose.TOPUP).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
-                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP)
+                    .purpose(BankAccountPurpose.TOPUP)
                     .bankName("請於後台設定銀行名稱")
                     .accountNumber("請於後台設定帳號")
                     .accountHolder("請於後台設定戶名")
@@ -101,7 +104,7 @@ public class DataInitializer implements ApplicationRunner {
         // （這段文字之前只是契約說明，系統沒有真的去擋，這裡補上讓它成為實際生效的規則）。
         // 只在還沒有任何設定時建立這筆預設值，之後店家在後台改過的設定不會被這段覆蓋。
         if (weeklyClosureSettingRepository.count() == 0) {
-            weeklyClosureSettingRepository.save(com.petgrooming.pet_system.model.WeeklyClosureSetting.builder()
+            weeklyClosureSettingRepository.save(WeeklyClosureSetting.builder()
                     .closedThursday(true)
                     .closedFriday(true)
                     .build());
@@ -115,7 +118,7 @@ public class DataInitializer implements ApplicationRunner {
     private void warnIfDefaultPasswordStillActive(String username, String defaultPassword, String roleDescription) {
         userRepository.findByUsername(username).ifPresent(user -> {
             if (passwordEncoder.matches(defaultPassword, user.getPassword())) {
-                log.warn("⚠️⚠️⚠️ 帳號 {}（{}）目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上，" +
+                log.warn("帳號 {}（{}）目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上，" +
                         "任何人都看得到！請立刻登入後台（帳號設定 → 修改密碼）改成一組別人猜不到的新密碼。",
                         username, roleDescription);
             }

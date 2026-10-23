@@ -1,6 +1,8 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
+import com.petgrooming.pet_system.dto.ErrorResponse;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.SetCoatTypeRequest;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -9,6 +11,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 需求 2：店家後台管理寵物毛長
@@ -36,10 +40,10 @@ public class AdminPetController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PutMapping("/{petId}/lock-grooming-item")
     public ResponseEntity<?> lockGroomingItem(@PathVariable Long petId,
-                                               @RequestBody java.util.Map<String, Long> body) {
+                                               @RequestBody Map<String, Long> body) {
         Long groomingItemId = body.get("groomingItemId");
         if (groomingItemId == null) {
-            return ResponseEntity.badRequest().body(com.petgrooming.pet_system.dto.ErrorResponse.of("請提供 groomingItemId"));
+            return ResponseEntity.badRequest().body(ErrorResponse.of("請提供 groomingItemId"));
         }
         return ResponseEntity.ok(petService.lockGroomingItem(petId, groomingItemId));
     }
@@ -55,10 +59,10 @@ public class AdminPetController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PutMapping("/{petId}/weight")
     public ResponseEntity<?> updateWeight(@PathVariable Long petId,
-                                           @RequestBody java.util.Map<String, Double> body) {
+                                           @RequestBody Map<String, Double> body) {
         Double weight = body.get("weight");
         if (weight == null || weight <= 0) {
-            return ResponseEntity.badRequest().body(com.petgrooming.pet_system.dto.ErrorResponse.of("請提供有效的體重"));
+            return ResponseEntity.badRequest().body(ErrorResponse.of("請提供有效的體重"));
         }
         return ResponseEntity.ok(petService.updateWeight(petId, weight));
     }
@@ -66,7 +70,7 @@ public class AdminPetController {
     // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約或消費紀錄的話會被
     // PetService.deletePet() 擋下（見該方法說明），不用在這裡重複檢查。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @com.petgrooming.pet_system.annotation.RequireCsrf
+    @RequireCsrf
     @DeleteMapping("/{petId}")
     public ResponseEntity<?> deletePet(@PathVariable Long petId) {
         petService.deletePet(petId);

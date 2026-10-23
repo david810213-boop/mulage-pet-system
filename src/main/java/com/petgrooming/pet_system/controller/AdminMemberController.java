@@ -1,10 +1,13 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.MemberNoteRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.dto.PetSearchResult;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
@@ -30,7 +33,7 @@ public class AdminMemberController {
 
     private final UserService userService;
     private final PetService petService;
-    private final com.petgrooming.pet_system.repository.PetRepository petRepository;
+    private final PetRepository petRepository;
     private final MemberImportService memberImportService; // 需求（追加，2026-09-08）：手動綁定既有匯入資料
 
     // ── GET /api/admin/members/search?keyword=xxx ───────────────────────────
@@ -59,12 +62,12 @@ public class AdminMemberController {
     // 若有同名寵物，displayLabel 會附上家長姓名＋電話末四碼方便店員辨識選對象。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/search-by-pet")
-    public ResponseEntity<List<com.petgrooming.pet_system.dto.PetSearchResult>> searchByPet(
+    public ResponseEntity<List<PetSearchResult>> searchByPet(
             @RequestParam String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return ResponseEntity.ok(List.of());
         }
-        List<com.petgrooming.pet_system.dto.PetSearchResult> results = petRepository
+        List<PetSearchResult> results = petRepository
                 .findByNameContainingIgnoreCase(keyword.trim())
                 .stream()
                 .filter(p -> p.getOwner() != null)
@@ -73,7 +76,7 @@ public class AdminMemberController {
                     String phone = p.getOwnerPhone() != null && p.getOwnerPhone().length() >= 4
                             ? p.getOwnerPhone().substring(p.getOwnerPhone().length() - 4)
                             : "未填";
-                    return com.petgrooming.pet_system.dto.PetSearchResult.builder()
+                    return PetSearchResult.builder()
                             .petId(p.getId())
                             .petName(p.getName())
                             .petType(p.getPetType() != null ? p.getPetType().name() : null)
@@ -122,7 +125,7 @@ public class AdminMemberController {
     // 人工判斷後手動合併。importedUsername 必須是 imported_ 開頭的匯入暫時
     // 帳號，targetUsername 是要合併過去的真正會員帳號（通常是 line_ 開頭）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @com.petgrooming.pet_system.annotation.RequireCsrf
+    @RequireCsrf
     @PostMapping("/merge")
     public ResponseEntity<?> merge(@RequestBody Map<String, String> req) {
         String importedUsername = req.get("importedUsername");

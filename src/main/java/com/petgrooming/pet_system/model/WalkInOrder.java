@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -70,7 +71,7 @@ public class WalkInOrder {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 20)
-    private com.petgrooming.pet_system.enums.PaymentMethod paymentMethod;
+    private PaymentMethod paymentMethod;
 
     @Column(name = "payment_time")
     private LocalDateTime paymentTime;

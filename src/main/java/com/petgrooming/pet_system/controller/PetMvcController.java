@@ -14,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -104,7 +105,7 @@ public class PetMvcController {
     // 因為建立當下還沒有 petId）。只能傳自己名下的寵物。
     @PostMapping("/{id}/photo")
     public String uploadPhoto(@PathVariable Long id,
-                              @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                              @RequestParam("file") MultipartFile file,
                               HttpServletRequest request,
                               RedirectAttributes ra) {
         User user = getLoginUser(request);

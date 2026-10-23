@@ -1,15 +1,25 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
+import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
+import com.petgrooming.pet_system.dto.CancelAppointmentRequest;
+import com.petgrooming.pet_system.dto.FinalCheckRequest;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.ClosedDateService;
+import com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService;
+import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
+import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.PetService;
+import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.SlotCapacityService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -25,6 +35,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
@@ -38,11 +51,11 @@ public class AppointmentMvcController {
     private final PetService petService;
     private final OperationLogService operationLogService;
     private final SlotCapacityService slotCapacityService;
-    private final com.petgrooming.pet_system.service.ClosedDateService closedDateService; // 需求 16：公休日設定
-    private final com.petgrooming.pet_system.service.PaymentService paymentService;
-    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
-    private final com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
-    private final com.petgrooming.pet_system.service.GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
+    private final ClosedDateService closedDateService; // 需求 16：公休日設定
+    private final PaymentService paymentService;
+    private final RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
+    private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
+    private final GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
 
     /**
      * JWT 版獲取當前登入使用者
@@ -75,11 +88,11 @@ public class AppointmentMvcController {
 
         if (user.isStaffOrAdmin()) {
             // 需求 3 / 7：店家後台看完整資訊（含內部備注、確認狀態）
-            List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> allAdmin =
+            List<AppointmentAdminResponse> allAdmin =
                     appointmentService.getAllForAdmin();
 
             // 頂部統計卡片：一律以「今天」為基準計算，不受篩選條件影響
-            java.time.LocalDate today = java.time.LocalDate.now();
+            LocalDate today = LocalDate.now();
             long todayCount = allAdmin.stream()
                     .filter(a -> !a.isCancelled() && a.getDate().isEqual(today))
                     .count();
@@ -89,7 +102,7 @@ public class AppointmentMvcController {
                     .count();
             int todayRevenue = allAdmin.stream()
                     .filter(a -> !a.isCancelled() && a.getDate().isEqual(today) && a.isPaid())
-                    .mapToInt(com.petgrooming.pet_system.dto.AppointmentAdminResponse::getTotalAmount)
+                    .mapToInt(AppointmentAdminResponse::getTotalAmount)
                     .sum();
             long pendingCount = allAdmin.stream()
                     .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
@@ -100,7 +113,7 @@ public class AppointmentMvcController {
             model.addAttribute("pendingCount", pendingCount);
             model.addAttribute("today", today);
 
-            List<com.petgrooming.pet_system.dto.AppointmentAdminResponse> filteredAdmin = allAdmin.stream()
+            List<AppointmentAdminResponse> filteredAdmin = allAdmin.stream()
                     .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
                     .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
                     .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
@@ -110,9 +123,9 @@ public class AppointmentMvcController {
                     .toList();
             model.addAttribute("appointments", filteredAdmin);
         } else {
-            List<com.petgrooming.pet_system.dto.AppointmentResponse> all =
+            List<AppointmentResponse> all =
                     appointmentService.getMyAppointments(user.getUsername());
-            List<com.petgrooming.pet_system.dto.AppointmentResponse> filtered = all.stream()
+            List<AppointmentResponse> filtered = all.stream()
                     .filter(a -> dateFrom == null || !a.getDate().isBefore(dateFrom))
                     .filter(a -> dateTo == null || !a.getDate().isAfter(dateTo))
                     .filter(a -> status == null || status.isBlank() || a.getStatus().name().equals(status))
@@ -131,7 +144,7 @@ public class AppointmentMvcController {
     }
 
     // 關鍵字比對：預約編號（AP001 或純數字）、飼主姓名、寵物名稱
-    private boolean matchesKeyword(com.petgrooming.pet_system.dto.AppointmentResponse a, String keyword) {
+    private boolean matchesKeyword(AppointmentResponse a, String keyword) {
         String kw = keyword.trim().toLowerCase();
         return a.getAppointmentCode().toLowerCase().contains(kw)
                 || String.valueOf(a.getId()).equals(kw)
@@ -139,7 +152,7 @@ public class AppointmentMvcController {
                 || a.getPetName().toLowerCase().contains(kw);
     }
 
-    private boolean matchesKeywordAdmin(com.petgrooming.pet_system.dto.AppointmentAdminResponse a, String keyword) {
+    private boolean matchesKeywordAdmin(AppointmentAdminResponse a, String keyword) {
         String kw = keyword.trim().toLowerCase();
         return a.getAppointmentCode().toLowerCase().contains(kw)
                 || String.valueOf(a.getId()).equals(kw)
@@ -153,8 +166,8 @@ public class AppointmentMvcController {
     @PostMapping("/{id}/confirm")
     public String confirm(@PathVariable Long id,
                           @RequestParam(required = false)
-                          @org.springframework.format.annotation.DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-                          java.time.LocalDateTime confirmedTime,
+                          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                          LocalDateTime confirmedTime,
                           HttpServletRequest request, RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         try {
@@ -217,8 +230,8 @@ public class AppointmentMvcController {
 
     // 需求（追加）：套餐化——「僅限既有客戶」+「適用物種」共用的選單過濾邏輯，
     // 這個 controller 裡好幾個 GET handler 都要用，抽成一個小方法避免重複寫。
-    private List<com.petgrooming.pet_system.dto.GroomingItemResponse> filterItemsFor(
-            List<com.petgrooming.pet_system.dto.GroomingItemResponse> items, boolean isExisting, String petType) {
+    private List<GroomingItemResponse> filterItemsFor(
+            List<GroomingItemResponse> items, boolean isExisting, String petType) {
         // 需求（2026-09-24）：邏輯搬到 GroomingMenuFilter 共用，內容不變
         return groomingMenuFilter.filterFor(items, isExisting, petType);
     }
@@ -226,9 +239,9 @@ public class AppointmentMvcController {
     // 需求（追加，2026-08-28）：在 filterItemsFor() 的基礎上，再依這隻寵物的體型
     // （狗狗體重級距／貓咪毛髮分類）進一步篩選，只給現場加單頁面用——結帳頁維持
     // 原本只做狗狗那一版，避免這次順手擴大改動範圍影響到已經在正常運作的結帳流程。
-    private List<com.petgrooming.pet_system.dto.GroomingItemResponse> filterItemsForPetShape(
-            List<com.petgrooming.pet_system.dto.GroomingItemResponse> items, boolean isExisting,
-            String petType, com.petgrooming.pet_system.dto.PetResponse pet) {
+    private List<GroomingItemResponse> filterItemsForPetShape(
+            List<GroomingItemResponse> items, boolean isExisting,
+            String petType, PetResponse pet) {
         // 需求（2026-09-24）：邏輯搬到 GroomingMenuFilter 共用，內容不變
         return groomingMenuFilter.filterForPetShape(items, isExisting, petType, pet);
     }
@@ -246,12 +259,12 @@ public class AppointmentMvcController {
         try {
             List<Long> opIds = null;
             if (operatorStaffIds != null) {
-                opIds = new java.util.ArrayList<>();
+                opIds = new ArrayList<>();
                 for (String s : operatorStaffIds) opIds.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
             }
             List<Long> opIds2 = null;
             if (operatorStaffIds2 != null) {
-                opIds2 = new java.util.ArrayList<>();
+                opIds2 = new ArrayList<>();
                 for (String s : operatorStaffIds2) opIds2.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
             }
             appointmentService.confirmCheckinOrder(id, itemCodes, opIds, opIds2, user.getUsername());
@@ -373,7 +386,7 @@ public class AppointmentMvcController {
         model.addAttribute("groomingItems", filteredItems); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
-        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+        model.addAttribute("performanceCategories", PerformanceCategory.values());
         model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：核對加項目可選經手人
         return "appointments/final-check";
     }
@@ -382,7 +395,7 @@ public class AppointmentMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/final-check")
     public String finalCheckSubmit(@PathVariable Long id,
-                                   @Valid @ModelAttribute com.petgrooming.pet_system.dto.FinalCheckRequest req,
+                                   @Valid @ModelAttribute FinalCheckRequest req,
                                    BindingResult bindingResult,
                                    HttpServletRequest request, Model model,
                                    RedirectAttributes redirectAttributes) {
@@ -398,7 +411,7 @@ public class AppointmentMvcController {
             boolean isExisting1 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting1, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
-            model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+            model.addAttribute("performanceCategories", PerformanceCategory.values());
             model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
             model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）
             return "appointments/final-check";
@@ -420,7 +433,7 @@ public class AppointmentMvcController {
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting2, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", e.getMessage());
-            model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+            model.addAttribute("performanceCategories", PerformanceCategory.values());
             model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）
             return "appointments/final-check";
         }
@@ -435,7 +448,7 @@ public class AppointmentMvcController {
                          RedirectAttributes redirectAttributes) {
         User user = getLoginUser(request);
         try {
-            var req = new com.petgrooming.pet_system.dto.CancelAppointmentRequest();
+            var req = new CancelAppointmentRequest();
             req.setReason(reason);
             appointmentService.cancel(id, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CANCEL", "預約 #" + id, reason);
@@ -456,7 +469,7 @@ public class AppointmentMvcController {
         // 需求 20：店家/員工可代客建立預約——forUsername 有帶值時，
         // 幫「那個會員」查寵物清單，而不是查登入者自己的寵物。
         String targetUsername = user.getUsername();
-        com.petgrooming.pet_system.model.User targetUser = user;
+        User targetUser = user;
         if (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) {
             try {
                 targetUser = userService.getUserEntityByUsername(forUsername);
@@ -605,7 +618,7 @@ public class AppointmentMvcController {
     @PostMapping("/slots-manage/template/update")
     public String updateDefaultSlotCapacityTemplate(HttpServletRequest request,
                                      @RequestParam
-                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
                                      @RequestParam int capacity,
                                      @RequestParam(required = false) String allowedPetType,
                                      @RequestParam(required = false)
@@ -613,7 +626,7 @@ public class AppointmentMvcController {
                                      RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            com.petgrooming.pet_system.enums.PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
+            PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
             defaultSlotCapacityTemplateService.setCapacity(time, capacity, parsedPetType);
             operationLogService.log(user, "APPOINTMENT", "SET_DEFAULT_SLOT_CAPACITY",
                     time.toString(), "預設範本調整為 " + capacity + " 位"
@@ -630,10 +643,10 @@ public class AppointmentMvcController {
 
     // 需求（追加，2026-09-08）：時段管理表單裡的物種下拉選單值轉成 PetType，
     // 空字串／null／不合法值一律當「不限制」，兩個時段管理 POST endpoint 共用。
-    private com.petgrooming.pet_system.enums.PetType parsePetTypeOrNull(String raw) {
+    private PetType parsePetTypeOrNull(String raw) {
         if (raw == null || raw.isBlank()) return null;
         try {
-            return com.petgrooming.pet_system.enums.PetType.valueOf(raw.toUpperCase());
+            return PetType.valueOf(raw.toUpperCase());
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -700,13 +713,13 @@ public class AppointmentMvcController {
                                      @RequestParam
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                      @RequestParam
-                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) java.time.LocalTime time,
+                                     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
                                      @RequestParam int capacity,
                                      @RequestParam(required = false) String allowedPetType,
                                      RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
-            com.petgrooming.pet_system.enums.PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
+            PetType parsedPetType = parsePetTypeOrNull(allowedPetType);
             slotCapacityService.setCapacity(date, time, capacity, parsedPetType);
             operationLogService.log(user, "APPOINTMENT", "SET_SLOT_CAPACITY",
                     date + " " + time, "調整為 " + capacity + " 位"

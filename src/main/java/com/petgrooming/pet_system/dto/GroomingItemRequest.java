@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.dto;
 
+import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.enums.PetType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -32,7 +34,7 @@ public class GroomingItemRequest {
     // 需求（追加）：可享折扣/回洗優惠/首次體驗優惠都要看這個分類判斷，
     // 之前的表單沒有開放選這欄，新增的項目一律預設「其他」（不計分），
     // 導致無法建立像「小型犬洗吹」這種需要對應正確分類的項目。
-    private com.petgrooming.pet_system.enums.PerformanceCategory performanceCategory;
+    private PerformanceCategory performanceCategory;
 
     // 需求（追加）：積分分類——同一個績效分類（例如 BATH_SMALL）現在會對應到很多不同
     // 價格的項目（貓咪/狗狗各種體型級距），如果積分都直接沿用分類的固定預設值，
@@ -44,6 +46,6 @@ public class GroomingItemRequest {
     private Boolean requiresExistingCustomer = false;
 
     // 需求（追加）：適用物種（貓咪預約只顯示貓的項目，狗狗預約只顯示狗的項目）
-    private com.petgrooming.pet_system.enums.PetType applicablePetType;
+    private PetType applicablePetType;
 
 }

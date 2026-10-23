@@ -3,26 +3,50 @@ package com.petgrooming.pet_system.service;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.enums.TopUpStatus;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.Appointment;
+import com.petgrooming.pet_system.model.AppointmentItem;
+import com.petgrooming.pet_system.model.BankAccountInfo;
+import com.petgrooming.pet_system.model.CompanySignature;
 import com.petgrooming.pet_system.model.GroomingItem;
+import com.petgrooming.pet_system.model.PerformanceRecord;
+import com.petgrooming.pet_system.model.PricingSettings;
+import com.petgrooming.pet_system.model.SupplyUsageRecord;
+import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.model.WalkInOrder;
+import com.petgrooming.pet_system.model.WalkInOrderItem;
 import com.petgrooming.pet_system.repository.AppointmentItemRepository;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.repository.BankAccountInfoRepository;
+import com.petgrooming.pet_system.repository.CompanySignatureRepository;
+import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
+import com.petgrooming.pet_system.repository.PricingSettingsRepository;
+import com.petgrooming.pet_system.repository.RetailProductRepository;
+import com.petgrooming.pet_system.repository.SupplyUsageRecordRepository;
+import com.petgrooming.pet_system.repository.TopUpRequestRepository;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -37,18 +61,18 @@ public class PaymentService {
     private final AppointmentService appointmentService;
     private final AppointmentItemRepository appointmentItemRepository;
     private final PerformanceRecordRepository performanceRecordRepository;
-    private final com.petgrooming.pet_system.repository.BankAccountInfoRepository bankAccountInfoRepository;
+    private final BankAccountInfoRepository bankAccountInfoRepository;
     private final CloudinaryService cloudinaryService; // 需求 21：匯款/儲值 QR Code 上傳
-    private final com.petgrooming.pet_system.repository.CompanySignatureRepository companySignatureRepository;
-    private final com.petgrooming.pet_system.repository.PricingSettingsRepository pricingSettingsRepository; // 需求（追加）：體重定價門檻
-    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository;
+    private final CompanySignatureRepository companySignatureRepository;
+    private final PricingSettingsRepository pricingSettingsRepository; // 需求（追加）：體重定價門檻
+    private final GroomingItemRepository groomingItemRepository;
     private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
-    private final com.petgrooming.pet_system.repository.WalkInOrderRepository walkInOrderRepository; // 需求 6
-    private final com.petgrooming.pet_system.repository.TopUpRequestRepository topUpRequestRepository; // 需求 6
-    private final com.petgrooming.pet_system.repository.RetailProductRepository retailProductRepository; // 需求 6
-    private final com.petgrooming.pet_system.repository.SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
+    private final WalkInOrderRepository walkInOrderRepository; // 需求 6
+    private final TopUpRequestRepository topUpRequestRepository; // 需求 6
+    private final RetailProductRepository retailProductRepository; // 需求 6
+    private final SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品，結帳時扣庫存
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
@@ -93,7 +117,7 @@ public class PaymentService {
         // 因為顧客結完帳當下商品就會實際帶走，不是等匯款核對完成才拿走）。
         // 故意在真正寫入交易紀錄之前先做，扣庫存失敗（例如庫存被其他單搶先扣完）
         // 就直接整筆結帳拋例外中止，不會留下「已收款但庫存沒扣成功」的不一致狀態。
-        for (com.petgrooming.pet_system.model.AppointmentItem item
+        for (AppointmentItem item
                 : appointmentItemRepository.findByAppointmentId(appointmentId)) {
             if (item.getRetailProductId() != null) {
                 retailProductService.deductStock(item.getRetailProductId(), 1);
@@ -113,7 +137,7 @@ public class PaymentService {
         //   - 僅限店家/員工於後台操作（顧客不可自行使用此付款方式）
         //   - 套用會員等級折扣（現金/信用卡/LinePay 不套用會員折扣）
         //   - 折扣後金額才是實際扣款與交易紀錄的最終金額
-        if (req.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET) {
+        if (req.getPaymentMethod() == PaymentMethod.WALLET) {
             if (!isStaffOrAdmin) {
                 throw new PaymentException("儲值金結帳僅限店家/員工於後台操作");
             }
@@ -133,7 +157,7 @@ public class PaymentService {
         // 1g. 建立交易紀錄
         // 需求 10：選「匯款」時，訂單先進入「待對帳」狀態（paid=false），
         // 要等店員另外按「確認收款」才算真正完成；其他付款方式維持原本立即完成的邏輯。
-        boolean isWireTransfer = req.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER;
+        boolean isWireTransfer = req.getPaymentMethod() == PaymentMethod.WIRE_TRANSFER;
 
         Transaction transaction = Transaction.builder()
                 .appointment(appointment)
@@ -180,7 +204,7 @@ public class PaymentService {
         Transaction transaction = transactionRepository.findByAppointmentId(appointmentId)
                 .orElseThrow(() -> new PaymentException("找不到此預約的交易紀錄"));
 
-        if (transaction.getPaymentMethod() != com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER) {
+        if (transaction.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
             throw new PaymentException("此交易不是匯款付款，無需確認收款");
         }
         if (transaction.isPaid()) {
@@ -290,14 +314,14 @@ public class PaymentService {
         }
 
         // 2. 刪除這筆預約已經記過的所有績效積分（接進/完成/接出/服務項目）
-        List<com.petgrooming.pet_system.model.PerformanceRecord> records =
+        List<PerformanceRecord> records =
                 performanceRecordRepository.findByAppointmentId(appointmentId);
         if (!records.isEmpty()) {
             performanceRecordRepository.deleteAll(records);
         }
 
         // 3. 刪除現場開單（依預約編號）已勾選的服務項目，讓店家可以重新開單
-        List<com.petgrooming.pet_system.model.AppointmentItem> items =
+        List<AppointmentItem> items =
                 appointmentItemRepository.findByAppointmentId(appointmentId);
         if (!items.isEmpty()) {
             appointmentItemRepository.deleteAll(items);
@@ -341,17 +365,17 @@ public class PaymentService {
     // 儲值本身不算業績（那是預收款，另外用 topupCollected 呈現）。
     public FinancialReportResponse getFinancialReport() {
         LocalDateTime now = LocalDateTime.now();
-        java.time.LocalDate today = now.toLocalDate();
+        LocalDate today = now.toLocalDate();
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
 
         List<Transaction> paidTransactions = transactionRepository.findByPaidTrue();
-        List<com.petgrooming.pet_system.model.WalkInOrder> paidWalkInOrders =
+        List<WalkInOrder> paidWalkInOrders =
                 walkInOrderRepository.findAll().stream()
-                        .filter(com.petgrooming.pet_system.model.WalkInOrder::isPaid)
+                        .filter(WalkInOrder::isPaid)
                         .toList();
 
-        List<FinancialReportResponse.RevenueDetailLine> allLines = new java.util.ArrayList<>();
+        List<FinancialReportResponse.RevenueDetailLine> allLines = new ArrayList<>();
 
         for (Transaction t : paidTransactions) {
             if (t.getPaymentTime() == null) continue; // 防呆：理論上 paid=true 一定有付款時間
@@ -364,7 +388,7 @@ public class PaymentService {
                     t.getFinalAmount(),
                     t.getHandledBy()));
         }
-        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+        for (WalkInOrder w : paidWalkInOrders) {
             if (w.getPaymentTime() == null) continue;
             int amount = w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount();
             allLines.add(new FinancialReportResponse.RevenueDetailLine(
@@ -401,9 +425,9 @@ public class PaymentService {
         }
 
         // ── 儲值總額（預收款，不計入業績，僅供參考）──────────────────────────
-        List<com.petgrooming.pet_system.model.TopUpRequest> confirmedTopups =
+        List<TopUpRequest> confirmedTopups =
                 topUpRequestRepository.findByStatusOrderByCreatedAtAsc(
-                        com.petgrooming.pet_system.enums.TopUpStatus.CONFIRMED);
+                        TopUpStatus.CONFIRMED);
         int todayTopup = 0, monthTopup = 0;
         for (var tu : confirmedTopups) {
             if (tu.getReviewedAt() == null) continue;
@@ -415,11 +439,11 @@ public class PaymentService {
         // 方便店家知道業績裡「賣商品」跟「做服務」各佔多少。用售價（item.getPrice()）
         // 加總，來源涵蓋現場開單（WalkInOrderItem）跟預約結帳頁加購（AppointmentItem）。
         int todayRetailRevenue = 0, monthRetailRevenue = 0;
-        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+        for (WalkInOrder w : paidWalkInOrders) {
             if (w.getPaymentTime() == null) continue;
             int retailSum = w.getItems().stream()
                     .filter(i -> i.getRetailProductId() != null)
-                    .mapToInt(com.petgrooming.pet_system.model.WalkInOrderItem::getPrice)
+                    .mapToInt(WalkInOrderItem::getPrice)
                     .sum();
             if (retailSum == 0) continue;
             if (!w.getPaymentTime().isBefore(monthStart)) monthRetailRevenue += retailSum;
@@ -429,7 +453,7 @@ public class PaymentService {
             if (t.getPaymentTime() == null || t.getAppointment() == null) continue;
             int retailSum = appointmentItemRepository.findByAppointmentId(t.getAppointment().getId()).stream()
                     .filter(i -> i.getRetailProductId() != null)
-                    .mapToInt(com.petgrooming.pet_system.model.AppointmentItem::getPrice)
+                    .mapToInt(AppointmentItem::getPrice)
                     .sum();
             if (retailSum == 0) continue;
             if (!t.getPaymentTime().isBefore(monthStart)) monthRetailRevenue += retailSum;
@@ -442,9 +466,9 @@ public class PaymentService {
         // 需求（追加）：來源除了現場開單，也要涵蓋預約結帳頁加購（否則加購功能上線後成本會低估）。
         int monthRetailCost = 0;
         var retailProducts = retailProductRepository.findAll();
-        java.util.Map<Long, Integer> retailUnitCostById = new java.util.HashMap<>();
+        Map<Long, Integer> retailUnitCostById = new HashMap<>();
         for (var p : retailProducts) retailUnitCostById.put(p.getId(), p.getUnitCost());
-        for (com.petgrooming.pet_system.model.WalkInOrder w : paidWalkInOrders) {
+        for (WalkInOrder w : paidWalkInOrders) {
             if (w.getPaymentTime() == null || w.getPaymentTime().isBefore(monthStart)) continue;
             for (var item : w.getItems()) {
                 if (item.getRetailProductId() == null) continue;
@@ -462,7 +486,7 @@ public class PaymentService {
         }
 
         // 店用洗劑成本：有逐筆單價快照，精確加總本月領用紀錄
-        List<com.petgrooming.pet_system.model.SupplyUsageRecord> monthUsages =
+        List<SupplyUsageRecord> monthUsages =
                 supplyUsageRecordRepository.findByUsedAtBetween(monthStart, now);
         int monthSupplyCost = monthUsages.stream()
                 .mapToInt(u -> u.getUnitCostSnapshot() * u.getQuantity())
@@ -494,19 +518,19 @@ public class PaymentService {
 
     // ── 店家匯款帳號資訊（依用途分開：結帳收款 / 儲值金收款大額專用）────
     // 需求（追加）：LIFF 儲值金常有大額匯款，跟現場結帳的日常小額收款要分開帳戶方便對帳。
-    public com.petgrooming.pet_system.model.BankAccountInfo getBankAccountInfo(
-            com.petgrooming.pet_system.enums.BankAccountPurpose purpose) {
+    public BankAccountInfo getBankAccountInfo(
+            BankAccountPurpose purpose) {
         return bankAccountInfoRepository.findByPurpose(purpose)
-                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder()
+                .orElse(BankAccountInfo.builder()
                         .purpose(purpose)
                         .bankName("尚未設定").accountNumber("尚未設定").accountHolder("尚未設定").build());
     }
 
     @Transactional
-    public void updateBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+    public void updateBankAccountInfo(BankAccountPurpose purpose,
                                       String bankName, String accountNumber, String accountHolder) {
-        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
-                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().purpose(purpose).build());
+        BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(BankAccountInfo.builder().purpose(purpose).build());
         info.setBankName(bankName);
         info.setAccountNumber(accountNumber);
         info.setAccountHolder(accountHolder);
@@ -515,10 +539,10 @@ public class PaymentService {
 
     // ── 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立一張）──────────
     @Transactional
-    public void updateBankAccountQrCode(com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
-                                        org.springframework.web.multipart.MultipartFile file) {
-        com.petgrooming.pet_system.model.BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
-                .orElse(com.petgrooming.pet_system.model.BankAccountInfo.builder().purpose(purpose).build());
+    public void updateBankAccountQrCode(BankAccountPurpose purpose,
+                                        MultipartFile file) {
+        BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
+                .orElse(BankAccountInfo.builder().purpose(purpose).build());
 
         CloudinaryService.UploadResult result = cloudinaryService.upload(file, "bank-account");
 
@@ -539,7 +563,7 @@ public class PaymentService {
     public int previewStandardAmount(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new PaymentException("找不到該預約"));
-        return com.petgrooming.pet_system.enums.PaymentMethod.CASH
+        return PaymentMethod.CASH
                 .calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
     }
 
@@ -558,7 +582,7 @@ public class PaymentService {
     // 需求（追加）：狗狗首次體驗優惠比照同樣邏輯，兩種優惠依品種各自的分類互斥，
     // 不會同時套用在同一個項目上，判斷哪個適用後交給對應 service 算「跟會員折扣擇優」。
     private int calculateWalletAmountPerItem(Appointment appointment, double discount) {
-        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
+        List<AppointmentItem> checkinItems =
                 appointmentItemRepository.findByAppointmentId(appointment.getId());
 
         boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
@@ -567,10 +591,10 @@ public class PaymentService {
 
         double total = 0;
         if (!checkinItems.isEmpty()) {
-            for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
+            for (AppointmentItem item : checkinItems) {
                 boolean memberEligible = item.getGroomingItemId() != null
                         && groomingItemRepository.findById(item.getGroomingItemId())
-                                .map(com.petgrooming.pet_system.model.GroomingItem::isDiscountEligible)
+                                .map(GroomingItem::isDiscountEligible)
                                 .orElse(true);
                 boolean firstVisitApplicable = firstVisitEligible
                         && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory());
@@ -592,7 +616,7 @@ public class PaymentService {
                         item.getPrice(), rewashApplicable, memberEligible, discount).price();
             }
         } else {
-            for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
+            for (GroomingItem item : appointment.getSelectedItems()) {
                 double price = item.getPrice() != null ? item.getPrice() : 0;
                 boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item);
                 if (firstVisitApplicable) {
@@ -625,12 +649,12 @@ public class PaymentService {
             return appointment.getTotalAmount();
         }
 
-        List<com.petgrooming.pet_system.model.AppointmentItem> checkinItems =
+        List<AppointmentItem> checkinItems =
                 appointmentItemRepository.findByAppointmentId(appointment.getId());
 
         double total = 0;
         if (!checkinItems.isEmpty()) {
-            for (com.petgrooming.pet_system.model.AppointmentItem item : checkinItems) {
+            for (AppointmentItem item : checkinItems) {
                 double price = item.getPrice();
                 if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageCategory(item.getPerformanceCategory())) {
                     price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
@@ -642,7 +666,7 @@ public class PaymentService {
                 total += price;
             }
         } else {
-            for (com.petgrooming.pet_system.model.GroomingItem item : appointment.getSelectedItems()) {
+            for (GroomingItem item : appointment.getSelectedItems()) {
                 double price = item.getPrice() != null ? item.getPrice() : 0;
                 if (firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(item)) {
                     price *= DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE;
@@ -660,28 +684,28 @@ public class PaymentService {
     // ── 需求 22：乙方（店家）固定電子簽名檔，顯示在顧客端契約最下方 ──────
     public String getCompanySignatureImage() {
         return companySignatureRepository.findFirstByOrderByIdDesc()
-                .map(com.petgrooming.pet_system.model.CompanySignature::getSignatureImage)
+                .map(CompanySignature::getSignatureImage)
                 .orElse(null);
     }
 
     @Transactional
     public void updateCompanySignature(String base64Image) {
-        com.petgrooming.pet_system.model.CompanySignature sig = companySignatureRepository.findFirstByOrderByIdDesc()
-                .orElse(com.petgrooming.pet_system.model.CompanySignature.builder().build());
+        CompanySignature sig = companySignatureRepository.findFirstByOrderByIdDesc()
+                .orElse(CompanySignature.builder().build());
         sig.setSignatureImage(base64Image);
         companySignatureRepository.save(sig);
     }
 
     // ── 需求（追加）：體重定價門檻設定（單例，同 CompanySignature 做法）─────
-    public com.petgrooming.pet_system.model.PricingSettings getPricingSettings() {
+    public PricingSettings getPricingSettings() {
         return pricingSettingsRepository.findFirstByOrderByIdDesc()
-                .orElse(com.petgrooming.pet_system.model.PricingSettings.builder().build());
+                .orElse(PricingSettings.builder().build());
     }
 
     @Transactional
-    public void updatePricingSettings(com.petgrooming.pet_system.model.PricingSettings updated) {
-        com.petgrooming.pet_system.model.PricingSettings settings = pricingSettingsRepository.findFirstByOrderByIdDesc()
-                .orElse(com.petgrooming.pet_system.model.PricingSettings.builder().build());
+    public void updatePricingSettings(PricingSettings updated) {
+        PricingSettings settings = pricingSettingsRepository.findFirstByOrderByIdDesc()
+                .orElse(PricingSettings.builder().build());
         settings.setCatBaseWeightLimit(updated.getCatBaseWeightLimit());
         settings.setCatMidWeightLimit(updated.getCatMidWeightLimit());
         settings.setCatMidSurcharge(updated.getCatMidSurcharge());

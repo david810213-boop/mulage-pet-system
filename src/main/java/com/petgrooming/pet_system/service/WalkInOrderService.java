@@ -1,14 +1,23 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.*;
+import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.GroomingItem;
+import com.petgrooming.pet_system.model.PerformanceRecord;
+import com.petgrooming.pet_system.model.Pet;
+import com.petgrooming.pet_system.model.PetGroomingNote;
+import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.model.WalkInOrderItem;
+import com.petgrooming.pet_system.repository.GroomingItemComponentRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
+import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
+import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderItemRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
@@ -48,10 +57,10 @@ public class WalkInOrderService {
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
     private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final com.petgrooming.pet_system.repository.GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
-    private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（追加）：查現場單寵物物種
+    private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
+    private final PetRepository petRepository; // 需求（追加）：查現場單寵物物種
     private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
-    private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求（2026-09-29）：現場單核對也寫入美容紀錄
+    private final PetGroomingNoteRepository petGroomingNoteRepository; // 需求（2026-09-29）：現場單核對也寫入美容紀錄
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：核對照片
 
     // ── 需求 5：建立現場單（存入交易紀錄）───────────────────────────────────
@@ -274,7 +283,7 @@ public class WalkInOrderService {
         }
 
         List<String[]> photos = groomingNotePhotoService.normalize(photoUrls, photoPublicIds);
-        com.petgrooming.pet_system.model.Pet pet = order.getMember() == null ? null
+        Pet pet = order.getMember() == null ? null
                 : petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
                         .orElse(null);
         if (pet == null && !photos.isEmpty()) {
@@ -290,8 +299,8 @@ public class WalkInOrderService {
 
         // 需求（2026-09-29）：會員單的核對備註＋照片也寫進毛孩美容紀錄
         if (pet != null) {
-            com.petgrooming.pet_system.model.PetGroomingNote historyNote = petGroomingNoteRepository.save(
-                    com.petgrooming.pet_system.model.PetGroomingNote.builder()
+            PetGroomingNote historyNote = petGroomingNoteRepository.save(
+                    PetGroomingNote.builder()
                             .pet(pet)
                             .walkInOrderId(order.getId())
                             .staff(staff)
@@ -345,7 +354,7 @@ public class WalkInOrderService {
 
     // 需求 7-1：建立一筆零售商品的訂單項目快照，供開單當下加購、結帳頁加購共用同一份邏輯，
     // 避免兩處各寫一次、日後改欄位漏改其中一邊。
-    private WalkInOrderItem buildRetailOrderItem(com.petgrooming.pet_system.model.RetailProduct product) {
+    private WalkInOrderItem buildRetailOrderItem(RetailProduct product) {
         return WalkInOrderItem.builder()
                 .retailProductId(product.getId())
                 .itemName(product.getName())
@@ -381,7 +390,7 @@ public class WalkInOrderService {
     // （含目前體重、鎖定的固定套餐），供結帳頁篩選「新增服務項目」下拉選單、
     // 顯示鎖定套餐提示、還有「鎖定為固定套餐」按鈕使用。
     // 沒綁會員或查不到對應寵物就回傳 null（純現場客、沒建檔的寵物，不套用這套邏輯）。
-    public com.petgrooming.pet_system.dto.PetResponse getPetForOrder(Long orderId) {
+    public PetResponse getPetForOrder(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
         if (order.getMember() == null) return null;
@@ -391,7 +400,7 @@ public class WalkInOrderService {
         var lockedItem = pet.getLockedGroomingItemId() != null
                 ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
                 : null;
-        return com.petgrooming.pet_system.dto.PetResponse.from(pet, lockedItem);
+        return PetResponse.from(pet, lockedItem);
     }
 
     // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
@@ -495,19 +504,19 @@ public class WalkInOrderService {
     // 依實際情況談定的金額，不應該再疊加折扣。
     @Transactional
     public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
-            com.petgrooming.pet_system.enums.PerformanceCategory category, String username) {
+            PerformanceCategory category, String username) {
         return addCustomItem(orderId, itemName, price, category, null, null, username);
     }
 
     @Transactional
     public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
-            com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId, String username) {
+            PerformanceCategory category, Long operatorStaffId, String username) {
         return addCustomItem(orderId, itemName, price, category, operatorStaffId, null, username);
     }
 
     @Transactional
     public WalkInOrderResponse addCustomItem(Long orderId, String itemName, int price,
-            com.petgrooming.pet_system.enums.PerformanceCategory category, Long operatorStaffId,
+            PerformanceCategory category, Long operatorStaffId,
             Long operatorStaffId2, String username) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
@@ -521,7 +530,7 @@ public class WalkInOrderService {
             throw new PaymentException("金額不能是負數");
         }
 
-        var actualCategory = category != null ? category : com.petgrooming.pet_system.enums.PerformanceCategory.OTHER;
+        var actualCategory = category != null ? category : PerformanceCategory.OTHER;
         WalkInOrderItem item = WalkInOrderItem.builder()
                 .groomingItemId(null) // 不綁定任何現有服務項目
                 .itemName(itemName.trim() + "（自訂項目）")
@@ -574,7 +583,7 @@ public class WalkInOrderService {
     // 僅限「有綁定會員」的單才能用（非會員沒有錢包可扣）。
     @Transactional
     public WalkInOrderResponse checkout(Long orderId,
-            com.petgrooming.pet_system.enums.PaymentMethod paymentMethod,
+            PaymentMethod paymentMethod,
             String staffUsername) {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
@@ -600,7 +609,7 @@ public class WalkInOrderService {
         }
 
         int chargedAmount = order.getTotalAmount();
-        if (paymentMethod == com.petgrooming.pet_system.enums.PaymentMethod.WALLET) {
+        if (paymentMethod == PaymentMethod.WALLET) {
             if (order.getMember() == null) {
                 throw new PaymentException("此單無會員資料，無法用儲值金付款");
             }
@@ -624,7 +633,7 @@ public class WalkInOrderService {
         // 先記下付款方式與金額，但不標記已付款，等店家另外按「確認收款」才轉為已完成。
         // WalkInOrderItem 的積分是在指定經手人當下就發放（不是結帳才發放），
         // 所以這裡不用擔心「待對帳期間積分該不該先發」的問題，跟預約結帳的積分時機完全不同。
-        boolean isWireTransfer = paymentMethod == com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER;
+        boolean isWireTransfer = paymentMethod == PaymentMethod.WIRE_TRANSFER;
 
         order.setPaymentMethod(paymentMethod);
         order.setChargedAmount(chargedAmount);
@@ -637,7 +646,7 @@ public class WalkInOrderService {
         }
 
         order.setPaid(true);
-        order.setPaymentTime(java.time.LocalDateTime.now());
+        order.setPaymentTime(LocalDateTime.now());
         WalkInOrder saved = orderRepository.save(order);
 
         log.info("現場單 #{} 結帳完成，付款方式：{}", saved.getId(), paymentMethod);
@@ -659,7 +668,7 @@ public class WalkInOrderService {
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("找不到現場單 #" + orderId));
 
-        if (order.getPaymentMethod() != com.petgrooming.pet_system.enums.PaymentMethod.WIRE_TRANSFER) {
+        if (order.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
             throw new PaymentException("此單不是匯款付款，無需確認收款");
         }
         if (order.isPaid()) {
@@ -667,7 +676,7 @@ public class WalkInOrderService {
         }
 
         order.setPaid(true);
-        order.setPaymentTime(java.time.LocalDateTime.now());
+        order.setPaymentTime(LocalDateTime.now());
         WalkInOrder saved = orderRepository.save(order);
 
         log.info("現場單 #{} 匯款收款已確認，操作人：{}", orderId, username);
@@ -695,7 +704,7 @@ public class WalkInOrderService {
         }
 
         // 1. 若原本用儲值金付款，退回會員儲值餘額（退實際扣款金額，不是帳面未打折總額）
-        if (order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET
+        if (order.getPaymentMethod() == PaymentMethod.WALLET
                 && order.getMember() != null) {
             int refundAmount = order.getChargedAmount() != null ? order.getChargedAmount() : order.getTotalAmount();
             walletService.refund(
@@ -706,7 +715,7 @@ public class WalkInOrderService {
         }
 
         // 2. 刪除這張單已經記過的所有績效積分（接進/完成/接出/服務項目）
-        List<com.petgrooming.pet_system.model.PerformanceRecord> records =
+        List<PerformanceRecord> records =
                 performanceRecordRepository.findByWalkInOrderId(orderId);
         if (!records.isEmpty()) {
             performanceRecordRepository.deleteAll(records);
@@ -742,7 +751,7 @@ public class WalkInOrderService {
         boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
         boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(order); // 需求（追加）
         boolean paidByWallet = order.isPaid()
-                && order.getPaymentMethod() == com.petgrooming.pet_system.enums.PaymentMethod.WALLET;
+                && order.getPaymentMethod() == PaymentMethod.WALLET;
         double memberDiscountRate = paidByWallet
                 ? walletService.getWallet(order.getMember().getUsername()).getDiscount()
                 : 1.0;

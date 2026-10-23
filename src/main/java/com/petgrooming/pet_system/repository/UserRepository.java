@@ -31,5 +31,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 需求（追加，2026-09-30）：新客報到分流／認領／填資料防重複都用這支。
     // 限定 CUSTOMER，避免還沒綁 LINE 的店員帳號剛好電話相同被當成既有會員；
     // 用 findFirst，萬一資料裡同一支電話有兩筆未認領資料也不會直接丟例外。
-    Optional<User> findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(String phone, com.petgrooming.pet_system.enums.UserRole role);
+    Optional<User> findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(String phone, UserRole role);
 }

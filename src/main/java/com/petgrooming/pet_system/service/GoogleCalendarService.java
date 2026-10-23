@@ -138,8 +138,8 @@ public class GoogleCalendarService {
     }
 
     private String buildTitle(Appointment appointment) {
-        String petTypeIcon = "DOG".equalsIgnoreCase(appointment.getPetType()) ? "🐶"
-                : "CAT".equalsIgnoreCase(appointment.getPetType()) ? "🐱" : "🐾";
+        String petTypeIcon = "DOG".equalsIgnoreCase(appointment.getPetType()) ? "\uD83D\uDC36"
+                : "CAT".equalsIgnoreCase(appointment.getPetType()) ? "\uD83D\uDC31" : "\uD83D\uDC3E";
         return petTypeIcon + " " + appointment.getPetName() + "（" + appointment.getUser().getName() + "）";
     }
 

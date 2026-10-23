@@ -6,8 +6,12 @@ import com.petgrooming.pet_system.dto.LineLoginResponse;
 import com.petgrooming.pet_system.dto.LineVerifyResponse;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.ClaimAttemptLimiter;
+import com.petgrooming.pet_system.service.LineBindService;
+import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.utils.CookieUtils;
 import com.petgrooming.pet_system.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -24,6 +29,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.AbstractMap;
+import java.util.Map;
 
 /**
  * 顧客端 LINE 登入入口。
@@ -48,9 +54,9 @@ public class LineAuthController {
     private final JwtUtils jwtUtils;
     private final RestClient restClient = RestClient.create();
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.LineBindService lineBindService; // 店員綁定 LINE 用
-    private final com.petgrooming.pet_system.service.MemberImportService memberImportService; // 需求（追加）：老客戶認領既有匯入資料
-    private final com.petgrooming.pet_system.service.ClaimAttemptLimiter claimAttemptLimiter; // 需求（追加，2026-09-30）：查詢／認領次數限制
+    private final LineBindService lineBindService; // 店員綁定 LINE 用
+    private final MemberImportService memberImportService; // 需求（追加）：老客戶認領既有匯入資料
+    private final ClaimAttemptLimiter claimAttemptLimiter; // 需求（追加，2026-09-30）：查詢／認領次數限制
 
     // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
     @Value("${COOKIE_SECURE:false}")
@@ -94,7 +100,7 @@ public class LineAuthController {
         // 資安修正：改用 CookieUtils 帶上 SameSite=Lax，跟 AuthMvcController 的
         // 網頁版登入/登出保持一致做法。
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", token, 86400, cookieSecure));
 
         LineLoginResponse body = new LineLoginResponse(token, UserResponse.from(user), isNewMember);
@@ -108,7 +114,7 @@ public class LineAuthController {
 
         return restClient.post()
                 .uri(LINE_VERIFY_URL)
-                .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form)
                 .retrieve()
                 .body(LineVerifyResponse.class);
@@ -118,7 +124,7 @@ public class LineAuthController {
     // 店員/店家綁定 LINE：手機上開啟綁定用的 LIFF 頁面，輸入從後台拿到的 6 位數驗證碼，
     // 驗證通過就把這支手機的 LINE userId 寫進對應店員帳號，讓低庫存等通知發得到。
     @PostMapping("/bind")
-    public ResponseEntity<?> bind(@RequestBody java.util.Map<String, String> body) {
+    public ResponseEntity<?> bind(@RequestBody Map<String, String> body) {
         String idToken = body.get("idToken");
         String code = body.get("code");
         if (idToken == null || idToken.isBlank() || code == null || code.isBlank()) {
@@ -140,7 +146,7 @@ public class LineAuthController {
 
         User bound = lineBindService.bindByCode(code, verified.getSub());
         operationLogService.logByUsername(bound.getUsername(), "AUTH", "BIND_LINE", bound.getUsername(), null);
-        return ResponseEntity.ok(java.util.Map.of("name", bound.getName()));
+        return ResponseEntity.ok(Map.of("name", bound.getName()));
     }
 
     // ── POST /api/line/member-lookup ────────────────────────────────────
@@ -148,13 +154,13 @@ public class LineAuthController {
     // 還是新客（走填資料）。用 POST 不用 GET，避免電話出現在網址／存取紀錄裡。
     // 每個 LINE 帳號 10 分鐘最多 5 次（跟認領共用），避免有人拿來一直換號碼試。
     @PostMapping("/member-lookup")
-    public ResponseEntity<?> memberLookup(HttpServletRequest request, @RequestBody java.util.Map<String, String> body) {
+    public ResponseEntity<?> memberLookup(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String username = (String) request.getAttribute("tokenUsername");
         if (username == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("請先登入"));
         }
         String phone = body.get("phone");
-        if (phone == null || !com.petgrooming.pet_system.service.MemberImportService.normalizePhone(phone).matches("09\\d{8}")) {
+        if (phone == null || !MemberImportService.normalizePhone(phone).matches("09\\d{8}")) {
             return ResponseEntity.badRequest().body(ErrorResponse.of("請輸入 09 開頭的 10 碼手機號碼"));
         }
         if (!claimAttemptLimiter.tryAcquire(username)) {
@@ -174,7 +180,7 @@ public class LineAuthController {
     // 需求（追加，2026-09-30）：多一個 verification（毛孩名字或姓名），規則見
     // MemberImportService#claimByPhone；確認失敗也算一次嘗試，跟查詢共用次數限制。
     @PostMapping("/claim-by-phone")
-    public ResponseEntity<?> claimByPhone(HttpServletRequest request, @RequestBody java.util.Map<String, String> body) {
+    public ResponseEntity<?> claimByPhone(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String username = (String) request.getAttribute("tokenUsername");
         if (username == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of("請先登入"));

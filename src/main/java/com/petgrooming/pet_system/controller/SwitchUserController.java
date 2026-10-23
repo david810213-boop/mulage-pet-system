@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.utils.CookieUtils;
 import com.petgrooming.pet_system.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 新需求：共用平板（例如店內 iPad）快速切換使用者。
@@ -93,14 +95,14 @@ public class SwitchUserController {
         // 對不上而被一律擋下，直到重新登出登入為止。順手改用跟登入流程一致的
         // CookieUtils（帶 SameSite=Lax），原本這裡是用舊版 Cookie API 直接
         // addCookie()，沒有這層保護。
-        String csrfToken = java.util.UUID.randomUUID().toString();
+        String csrfToken = UUID.randomUUID().toString();
         String token = jwtUtils.generateToken(target.getUsername(), target.getRole().name(), "WEB", csrfToken);
 
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", token, 86400, cookieSecure));
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                CookieUtils.buildReadableCookieHeader(
                         "XSRF-TOKEN", csrfToken, 86400, cookieSecure));
 
         operationLogService.log(currentUser, "AUTH", "SWITCH_USER",

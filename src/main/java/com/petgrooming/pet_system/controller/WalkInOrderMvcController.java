@@ -1,12 +1,25 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.RequireRole;
+import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
+import com.petgrooming.pet_system.enums.CoatType;
+import com.petgrooming.pet_system.enums.DogWeightTier;
+import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.CatRewashDiscountService;
+import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.OperationLogService;
+import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
+import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +29,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 需求 5 / 6：現場開單店家後台頁面。
@@ -31,13 +47,13 @@ public class WalkInOrderMvcController {
     private final GroomingService groomingService;
     private final UserService userService;
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.WalletService walletService; // 需求 15
-    private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 15
-    private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
-    private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
-    private final com.petgrooming.pet_system.service.PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
-    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求 7-1
-    private final com.petgrooming.pet_system.service.PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
+    private final WalletService walletService; // 需求 15
+    private final CatRewashDiscountService catRewashDiscountService; // 需求 15
+    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
+    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
+    private final PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
+    private final RetailProductService retailProductService; // 需求 7-1
+    private final PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -57,7 +73,7 @@ public class WalkInOrderMvcController {
         // 不能直接丟整個 RetailProduct entity，裡面的 createdAt（LocalDateTime）Jackson 預設不認得，
         // 會直接讓整頁渲染中斷（跟 staffList 同樣的處理方式，只留 JS 真正需要的欄位）。
         model.addAttribute("retailProducts", retailProductService.listActive().stream()
-                .map(p -> java.util.Map.of(
+                .map(p -> Map.of(
                         "id", p.getId(),
                         "name", p.getName(),
                         "price", p.getPrice(),
@@ -68,13 +84,13 @@ public class WalkInOrderMvcController {
         List<User> staffAndAdmin = new ArrayList<>(userService.getAllStaffEntities());
         staffAndAdmin.addAll(userService.getAllAdminEntities());
         model.addAttribute("staffList", staffAndAdmin.stream()
-                .map(s -> java.util.Map.of("id", s.getId(), "name", s.getName()))
+                .map(s -> Map.of("id", s.getId(), "name", s.getName()))
                 .toList());
         model.addAttribute("orders", walkInOrderService.listAll());
         // 需求（追加）：待補經手人改成矩陣式表單，取代原本一列一項目的清單
         model.addAttribute("walkInMatrixRows", pendingOperatorMatrixService.buildWalkInMatrix());
         model.addAttribute("appointmentMatrixRows", pendingOperatorMatrixService.buildAppointmentMatrix());
-        model.addAttribute("matrixColumns", com.petgrooming.pet_system.service.PendingOperatorMatrixService.COLUMNS);
+        model.addAttribute("matrixColumns", PendingOperatorMatrixService.COLUMNS);
         model.addAttribute("pointsReport", walkInOrderService.operatorPointsReport());
         return "admin/walk-in-orders";
     }
@@ -216,29 +232,29 @@ public class WalkInOrderMvcController {
             var pet = walkInOrderService.getPetForOrder(id);
             model.addAttribute("pet", pet);
             // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
-            model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+            model.addAttribute("performanceCategories", PerformanceCategory.values());
             final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
-            final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
+            final DogWeightTier dogTier =
                     pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
-                            ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
+                            ? DogWeightTier.forWeight(pet.getWeight())
                             : null;
             // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分，邏輯跟預約結帳頁
             // （PaymentMvcController）同一套，見該處註解說明。
-            final com.petgrooming.pet_system.enums.CoatType petCoatType = pet != null ? pet.getCoatType() : null;
-            final boolean coatDefined = petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                    || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
-                    || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM;
+            final CoatType petCoatType = pet != null ? pet.getCoatType() : null;
+            final boolean coatDefined = petCoatType == CoatType.SHORT
+                    || petCoatType == CoatType.LONG
+                    || petCoatType == CoatType.MEDIUM;
 
             // 需求（追加，2026-08-24 修正）：先抓一份完整、沒被篩過的服務項目清單，
             // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份
             // 完整清單衍生，不要各自分開查——原本的 bug 就是兩邊各自查了不同時機/
             // 條件的清單，導致這張單已經選定的項目沒辦法反查回自己的體重級距。
             var allGroomingItems = groomingService.getAllItems();
-            java.util.Map<Long, String> tierByItemId = allGroomingItems.stream()
+            Map<Long, String> tierByItemId = allGroomingItems.stream()
                     .filter(i -> i.getDogWeightTier() != null)
-                    .collect(java.util.stream.Collectors.toMap(
-                            com.petgrooming.pet_system.dto.GroomingItemResponse::getId,
-                            com.petgrooming.pet_system.dto.GroomingItemResponse::getDogWeightTier));
+                    .collect(Collectors.toMap(
+                            GroomingItemResponse::getId,
+                            GroomingItemResponse::getDogWeightTier));
             // 幫這張單消費明細裡的每一項目，直接標上自己的體重級距（如果有的話），
             // 前端「鎖定為固定套餐」按鈕靠這個欄位判斷，不用再跟下拉選單那份清單比對。
             if (order.getItems() != null) {
@@ -264,19 +280,19 @@ public class WalkInOrderMvcController {
                     })
                     .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
             model.addAttribute("bankAccountInfo",
-                    paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)); // 需求 15 修正
+                    paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT)); // 需求 15 修正
 
             // 需求 10：跟預約結帳一致，不再提供「信用卡」選項
             // 需求 15 修正：匯款現在有待對帳流程了，重新加回選單
-            model.addAttribute("paymentMethods", java.util.Arrays.stream(
-                            com.petgrooming.pet_system.enums.PaymentMethod.values())
-                    .filter(m -> m != com.petgrooming.pet_system.enums.PaymentMethod.CREDIT_CARD)
+            model.addAttribute("paymentMethods", Arrays.stream(
+                            PaymentMethod.values())
+                    .filter(m -> m != PaymentMethod.CREDIT_CARD)
                     .toList());
 
             if (order.getMemberUsername() != null) {
                 var wallet = walletService.getWallet(order.getMemberUsername());
                 model.addAttribute("walletBalance", wallet.getBalance());
-                model.addAttribute("walletLowBalance", wallet.getBalance() < com.petgrooming.pet_system.service.PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
+                model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
                 model.addAttribute("walletDiscount", wallet.getDiscount());
                 model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
 
@@ -354,7 +370,7 @@ public class WalkInOrderMvcController {
     public String addCustomItem(@PathVariable Long id, HttpServletRequest request,
                                 @RequestParam String itemName,
                                 @RequestParam int price,
-                                @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(required = false) PerformanceCategory category,
                                 @RequestParam(required = false) Long operatorStaffId,
                                 @RequestParam(required = false) Long operatorStaffId2,
                                 @RequestParam(defaultValue = "checkout") String from,
@@ -393,7 +409,7 @@ public class WalkInOrderMvcController {
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/checkout")
     public String checkout(@PathVariable Long id,
-                           @RequestParam com.petgrooming.pet_system.enums.PaymentMethod paymentMethod,
+                           @RequestParam PaymentMethod paymentMethod,
                            HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {
@@ -451,7 +467,7 @@ public class WalkInOrderMvcController {
                 .toList()); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
-        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
+        model.addAttribute("performanceCategories", PerformanceCategory.values());
         try {
             var orderForCheck = walkInOrderService.getById(id);
             model.addAttribute("order", orderForCheck);
@@ -486,8 +502,8 @@ public class WalkInOrderMvcController {
     public String finalCheck(@PathVariable Long id,
                              @RequestParam String note,
                              @RequestParam(name = "signatureData") String signatureData,
-                             @RequestParam(required = false) java.util.List<String> photoUrls,
-                             @RequestParam(required = false) java.util.List<String> photoPublicIds,
+                             @RequestParam(required = false) List<String> photoUrls,
+                             @RequestParam(required = false) List<String> photoPublicIds,
                              HttpServletRequest request, RedirectAttributes ra) {
         User user = getLoginUser(request);
         try {

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.dto.ErrorResponse;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.PetDiscountStatusResponse;
@@ -15,10 +16,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pets")
@@ -88,7 +93,7 @@ public class PetController {
     @GetMapping("/cat-breeds")
     public ResponseEntity<?> listCatBreeds() {
         var breeds = petService.listCatBreedOptions().stream()
-                .map(b -> java.util.Map.of(
+                .map(b -> Map.of(
                         "breedName", b.getBreedName(),
                         "coatCategory", b.getCoatCategory().name(),
                         "coatCategoryLabel", b.getCoatCategory().getLabel()))
@@ -108,11 +113,11 @@ public class PetController {
     @PostMapping("/{id}/photo")
     public ResponseEntity<?> uploadPhoto(
             @PathVariable Long id,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         var pet = petService.getPetEntity(id);
         if (!pet.getOwner().getUsername().equals(currentUsername(request))) {
-            return ResponseEntity.status(403).body(com.petgrooming.pet_system.dto.ErrorResponse.of("只能上傳自己寵物的照片"));
+            return ResponseEntity.status(403).body(ErrorResponse.of("只能上傳自己寵物的照片"));
         }
         PetResponse res = petService.updatePhoto(id, file);
         operationLogService.logByUsername(currentUsername(request), "CUSTOMER", "UPLOAD_PET_PHOTO",
@@ -144,7 +149,7 @@ public class PetController {
             // 符合資格。前端在選好日期後會帶這個參數重新查一次；還沒選日期時
             // （例如剛選完毛孩、日期欄位還空著）不帶這個參數，退回用「今天」
             // 當基準日，先讓使用者看到一個大概的狀態。
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String asOfDate) {
+            @RequestParam(required = false) String asOfDate) {
         petService.assertOwnership(petId, currentUsername(request));
         var pet = petService.getPetEntity(petId);
         var owner = pet.getOwner();
@@ -156,7 +161,7 @@ public class PetController {
         if (asOfDate != null && !asOfDate.isBlank()) {
             try {
                 referenceDate = LocalDate.parse(asOfDate);
-            } catch (java.time.format.DateTimeParseException e) {
+            } catch (DateTimeParseException e) {
                 // 格式錯誤就忽略，退回用今天，不要因為這個附加參數壞掉
                 // 而讓整支 API 掛掉
             }

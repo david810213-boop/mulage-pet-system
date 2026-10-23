@@ -30,7 +30,7 @@ public class JwtUtils {
     @PostConstruct
     public void init() {
         if (secretString.startsWith("INSECURE_DEFAULT")) {
-            log.warn("⚠️⚠️⚠️ 尚未設定環境變數 JWT_SECRET，目前使用不安全的預設密鑰！" +
+            log.warn("尚未設定環境變數 JWT_SECRET，目前使用不安全的預設密鑰！" +
                     "正式環境請務必設定一組隨機產生、至少 32 字元的 JWT_SECRET，否則任何人都能偽造登入憑證。");
         }
         this.key = Keys.hmacShaKeyFor(secretString.getBytes());
@@ -103,7 +103,7 @@ public class JwtUtils {
                     .getBody();
         } catch (JwtException | IllegalArgumentException e) {
             // 當 Token 過期、被篡改、格式不對，都會觸發異常
-            System.out.println("JWT 驗證失敗原因: " + e.getMessage());
+            log.debug("JWT 驗證失敗：{}", e.getMessage());
             return null; // 驗證失敗就回傳 null
         }
     }

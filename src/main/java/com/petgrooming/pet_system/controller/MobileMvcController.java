@@ -14,6 +14,7 @@ import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
+import com.petgrooming.pet_system.model.AppointmentItem;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentService;
@@ -47,6 +48,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -245,11 +247,11 @@ public class MobileMvcController {
             String key = a.getDate().isEqual(today) ? "今天 " + dateLabel(a.getDate())
                     : a.getDate().isEqual(today.plusDays(1)) ? "明天 " + dateLabel(a.getDate())
                     : dateLabel(a.getDate());
-            groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(toCard(a, today));
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(toCard(a, today));
         }
 
         // 日期列：今天起 7 天，每天的預約數
-        List<Map<String, Object>> days = new java.util.ArrayList<>();
+        List<Map<String, Object>> days = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
             LocalDate d = today.plusDays(i);
             long count = all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(d)).count();
@@ -438,7 +440,7 @@ public class MobileMvcController {
         if (a.isFinalCheckDone() || a.getStatus() != AppointmentStatus.IN_PROGRESS || !a.isServiceEndedDone()) {
             return "redirect:/m/appointments/" + id;
         }
-        List<com.petgrooming.pet_system.model.AppointmentItem> items = appointmentService.getCheckinItems(id);
+        List<AppointmentItem> items = appointmentService.getCheckinItems(id);
         // 跟網頁版核對頁同一套：只篩「僅限既有客戶」＋「適用物種」，不篩體型，
         // 讓店員現場可以補任何尺寸的項目
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
@@ -454,7 +456,7 @@ public class MobileMvcController {
         model.addAttribute("avSpecies", card.getSpecies());
         model.addAttribute("avInitial", card.getPetInitial());
         model.addAttribute("lines", view.fromAppointmentItems(items));
-        model.addAttribute("linesTotal", items.stream().mapToInt(com.petgrooming.pet_system.model.AppointmentItem::getPrice).sum());
+        model.addAttribute("linesTotal", items.stream().mapToInt(AppointmentItem::getPrice).sum());
         model.addAttribute("groomingItems", addable);
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
@@ -524,7 +526,7 @@ public class MobileMvcController {
     // 經手人下拉選單的值（空字串＝稍後補填）轉成 id 清單，順序跟 itemCodes 一致
     private static List<Long> parseStaffIds(List<String> raw) {
         if (raw == null) return null;
-        List<Long> ids = new java.util.ArrayList<>();
+        List<Long> ids = new ArrayList<>();
         for (String s : raw) {
             ids.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
         }

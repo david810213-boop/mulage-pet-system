@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -84,7 +85,7 @@ public class RoleInterceptor implements HandlerInterceptor {
     }
 
     private void writeJsonError(HttpServletResponse response, int status, String error, String message)
-            throws java.io.IOException {
+            throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"error\":\"" + error + "\",\"message\":\"" + message + "\"}");
