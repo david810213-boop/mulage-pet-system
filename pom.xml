@@ -142,11 +142,6 @@
 			<artifactId>testcontainers-mysql</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webmvc-test</artifactId>
-			<scope>test</scope>
-		</dependency>
 		<!-- 測試：以程式碼檢查分層規則（Controller 不得依賴 Repository 等） -->
 		<dependency>
 			<groupId>com.tngtech.archunit</groupId>
