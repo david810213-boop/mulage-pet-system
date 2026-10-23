@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -1285,97 +1286,19 @@ public class AppointmentService {
         return m;
     }
 
-    public AppointmentDetailResponse getAppointmentDetail(
-            Long appointmentId, String username) {
-
+    /** 預約明細（顧客 LIFF 與後台共用）。只有預約本人與員工可以查看。 */
+    @Transactional(readOnly = true)
+    public AppointmentDetailResponse getAppointmentDetail(Long appointmentId, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
-
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
-
-        boolean isOwner = appointment.getUser().getId().equals(user.getId());
-        if (!isOwner && !user.isStaffOrAdmin()) {
+        if (!appointment.getUser().getId().equals(user.getId()) && !user.isStaffOrAdmin()) {
             throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：只能查看自己的預約明細");
         }
+        Optional<Transaction> transaction = transactionRepository.findByAppointmentId(appointmentId);
 
-        // 需求 8-1 修正：先查出這筆預約是否有交易紀錄、用什麼付款方式，
-        // 才能判斷每個項目「實際」套用的是回洗優惠還是會員折扣（兩者只能擇一）。
-        var transactionOpt = transactionRepository.findByAppointmentId(appointmentId);
-        boolean paidByWallet = transactionOpt
-                .map(tx -> tx.getPaymentMethod() == PaymentMethod.WALLET)
-                .orElse(false);
-        double memberDiscountRate = paidByWallet
-                ? walletService.getWallet(appointment.getUser().getUsername()).getDiscount()
-                : 1.0;
-        boolean rewashEligible = catRewashDiscountService.isRewashEligible(appointment); // 需求 8-1
-        boolean firstVisitEligible = dogFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
-        boolean catFirstVisitEligible = catFirstVisitDiscountService.isFirstVisitEligible(appointment); // 需求（追加）
-
-        List<AppointmentItem> checkinItems = appointmentItemRepository
-                .findByAppointmentId(appointmentId);
-
-        List<AppointmentDetailResponse.DetailItem> items;
-        if (!checkinItems.isEmpty()) {
-            items = checkinItems.stream()
-                    .map(ci -> {
-                        // 需求（追加，2026-08-24）：這次順便撈出 dogWeightTier，跟原本查
-                        // memberEligible 用同一次 findById，不用再多查一次資料庫。
-                        var groomingItemOpt = ci.getGroomingItemId() != null
-                                ? groomingItemRepository.findById(ci.getGroomingItemId())
-                                : Optional.<GroomingItem>empty();
-                        boolean memberEligible = groomingItemOpt
-                                .map(GroomingItem::isDiscountEligible)
-                                .orElse(true);
-                        boolean rewashApplicable = rewashEligible
-                                && catRewashDiscountService.isCatBathCategory(ci.getPerformanceCategory());
-                        boolean firstVisitApplicable = firstVisitEligible
-                                && dogFirstVisitDiscountService.isDogPackageCategory(ci.getPerformanceCategory());
-                        boolean catFirstVisitApplicable = catFirstVisitEligible
-                                && catFirstVisitDiscountService.isCatBathCategory(ci.getPerformanceCategory());
-                        return AppointmentDetailResponse.DetailItem.builder()
-                                .itemId(ci.getId())
-                                .groomingItemId(ci.getGroomingItemId())
-                                .dogWeightTier(groomingItemOpt
-                                        .map(gi -> gi.getDogWeightTier() != null ? gi.getDogWeightTier().name() : null)
-                                        .orElse(null))
-                                .name(ci.getItemName())
-                                .price(ci.getPrice())
-                                .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
-                                .discountEligible(memberEligible)
-                                .rewashEligible(rewashApplicable)
-                                .firstVisitEligible(firstVisitApplicable || catFirstVisitApplicable)
-                                .retailItem(ci.getRetailProductId() != null)
-                                .appliedDiscountType(transactionOpt.isPresent()
-                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, catFirstVisitApplicable, memberEligible && paidByWallet, memberDiscountRate)
-                                        : null)
-                                .build();
-                    })
-                    .toList();
-        } else {
-            items = appointment.getSelectedItems().stream()
-                    .map(gi -> {
-                        boolean rewashApplicable = rewashEligible && catRewashDiscountService.isCatBathItem(gi);
-                        boolean firstVisitApplicable = firstVisitEligible && dogFirstVisitDiscountService.isDogPackageItem(gi);
-                        boolean catFirstVisitApplicable = catFirstVisitEligible && catFirstVisitDiscountService.isCatBathItem(gi);
-                        return AppointmentDetailResponse.DetailItem.builder()
-                                .groomingItemId(gi.getId())
-                                .dogWeightTier(gi.getDogWeightTier() != null ? gi.getDogWeightTier().name() : null)
-                                .name(gi.getName())
-                                .price((int) Math.round(gi.getPrice()))
-                                .operatorName(null)
-                                .discountEligible(gi.isDiscountEligible())
-                                .rewashEligible(rewashApplicable)
-                                .firstVisitEligible(firstVisitApplicable || catFirstVisitApplicable)
-                                .appliedDiscountType(transactionOpt.isPresent()
-                                        ? resolveAppliedDiscountType(rewashApplicable, firstVisitApplicable, catFirstVisitApplicable, gi.isDiscountEligible() && paidByWallet, memberDiscountRate)
-                                        : null)
-                                .build();
-                    })
-                    .toList();
-        }
-
-        var detailBuilder = AppointmentDetailResponse.builder()
+        var detail = AppointmentDetailResponse.builder()
                 .appointmentCode(String.format("AP%03d", appointment.getId()))
                 .petName(appointment.getPetName())
                 .petType(appointment.getPetType())
@@ -1385,32 +1308,99 @@ public class AppointmentService {
                 .statusLabel(appointment.getStatus().getLabel())
                 .cancelled(appointment.isCancelled())
                 .memberNote(appointment.getMemberNote())
-                .items(items)
+                .items(detailItems(appointment, discountContext(appointment, transaction)))
                 .totalAmount(appointment.getTotalAmount())
                 .quotePending(appointment.isFirstVisitAssessment() && !appointment.isCheckinOrderConfirmed())
                 .paid(appointment.isPaid());
-
-        // 需求（2026-09-29）：核對時留下的美容狀況備註與照片（顧客在 LIFF 明細看得到）
         if (appointment.isFinalCheckDone()) {
-            detailBuilder.groomingNote(appointment.getFinalCheckNote());
-            List<String> photoList = new ArrayList<>();
-            for (PetGroomingNote n : petGroomingNoteRepository.findByAppointmentId(appointmentId)) {
-                photoList.addAll(groomingNotePhotoService.photoUrls(n));
-            }
-            detailBuilder.groomingPhotos(photoList);
+            detail.groomingNote(appointment.getFinalCheckNote())
+                    .groomingPhotos(groomingPhotoUrls(appointmentId));
         }
+        // 帳面總額（totalAmount）與實收金額（chargedAmount）分開顯示，顧客才看得出打了多少折
+        transaction.ifPresent(tx -> detail
+                .paymentMethodLabel(tx.getPaymentMethod() != null ? tx.getPaymentMethod().getDisplayName() : null)
+                .paymentTime(tx.getPaymentTime())
+                .handledBy(tx.getHandledBy())
+                .chargedAmount(tx.getFinalAmount()));
+        return detail.build();
+    }
 
-        transactionOpt.ifPresent(tx -> {
-            detailBuilder
-                    .paymentMethodLabel(tx.getPaymentMethod() != null ? tx.getPaymentMethod().getDisplayName() : null);
-            detailBuilder.paymentTime(tx.getPaymentTime());
-            detailBuilder.handledBy(tx.getHandledBy());
-            // 需求 5：實際扣款金額獨立顯示，不要覆蓋掉帳面未打折的 totalAmount，
-            // 兩者一起顯示消費者才看得出「有沒有打折、打了多少」。
-            detailBuilder.chargedAmount(tx.getFinalAmount());
-        });
+    /**
+     * 判斷各項目實際套用哪一種折扣所需的資訊。會員折扣只有儲值金付款才有，
+     * 且與首次體驗、貓咪回洗擇優不疊加，因此要先知道這筆預約用什麼方式付款。
+     */
+    private record DiscountContext(boolean paid, boolean paidByWallet, double memberRate,
+                                   boolean rewash, boolean dogFirstVisit, boolean catFirstVisit) {
+    }
 
-        return detailBuilder.build();
+    private DiscountContext discountContext(Appointment appointment, Optional<Transaction> transaction) {
+        boolean paidByWallet = transaction.map(tx -> tx.getPaymentMethod() == PaymentMethod.WALLET).orElse(false);
+        double memberRate = paidByWallet
+                ? walletService.getWallet(appointment.getUser().getUsername()).getDiscount()
+                : 1.0;
+        return new DiscountContext(transaction.isPresent(), paidByWallet, memberRate,
+                catRewashDiscountService.isRewashEligible(appointment),
+                dogFirstVisitDiscountService.isFirstVisitEligible(appointment),
+                catFirstVisitDiscountService.isFirstVisitEligible(appointment));
+    }
+
+    /** 有到店開單項目時以開單項目為準（含經手人與加購商品），否則列出預約時選的項目。 */
+    private List<AppointmentDetailResponse.DetailItem> detailItems(Appointment appointment, DiscountContext discounts) {
+        List<AppointmentItem> checkinItems = appointmentItemRepository.findByAppointmentId(appointment.getId());
+        if (checkinItems.isEmpty()) {
+            return appointment.getSelectedItems().stream()
+                    .map(item -> withDiscounts(AppointmentDetailResponse.DetailItem.builder()
+                                    .groomingItemId(item.getId())
+                                    .dogWeightTier(item.getDogWeightTier() != null ? item.getDogWeightTier().name() : null)
+                                    .name(item.getName())
+                                    .price((int) Math.round(item.getPrice())),
+                            item.getPerformanceCategory(), item.isDiscountEligible(), discounts))
+                    .toList();
+        }
+        Map<Long, GroomingItem> groomingItems = groomingItemRepository.findAllById(checkinItems.stream()
+                        .map(AppointmentItem::getGroomingItemId).filter(Objects::nonNull).toList())
+                .stream().collect(Collectors.toMap(GroomingItem::getId, item -> item));
+        return checkinItems.stream()
+                .map(ci -> {
+                    GroomingItem source = ci.getGroomingItemId() != null ? groomingItems.get(ci.getGroomingItemId()) : null;
+                    return withDiscounts(AppointmentDetailResponse.DetailItem.builder()
+                                    .itemId(ci.getId())
+                                    .groomingItemId(ci.getGroomingItemId())
+                                    .dogWeightTier(source != null && source.getDogWeightTier() != null
+                                            ? source.getDogWeightTier().name() : null)
+                                    .name(ci.getItemName())
+                                    .price(ci.getPrice())
+                                    .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
+                                    .retailItem(ci.getRetailProductId() != null),
+                            ci.getPerformanceCategory(), source == null || source.isDiscountEligible(), discounts);
+                })
+                .toList();
+    }
+
+    private AppointmentDetailResponse.DetailItem withDiscounts(AppointmentDetailResponse.DetailItem.DetailItemBuilder item,
+                                                                PerformanceCategory category, boolean memberEligible,
+                                                                DiscountContext discounts) {
+        boolean rewash = discounts.rewash() && catRewashDiscountService.isCatBathCategory(category);
+        boolean dogFirstVisit = discounts.dogFirstVisit() && dogFirstVisitDiscountService.isDogPackageCategory(category);
+        boolean catFirstVisit = discounts.catFirstVisit() && catFirstVisitDiscountService.isCatBathCategory(category);
+        return item
+                .discountEligible(memberEligible)
+                .rewashEligible(rewash)
+                .firstVisitEligible(dogFirstVisit || catFirstVisit)
+                .appliedDiscountType(discounts.paid()
+                        ? resolveAppliedDiscountType(rewash, dogFirstVisit, catFirstVisit,
+                                memberEligible && discounts.paidByWallet(), discounts.memberRate())
+                        : null)
+                .build();
+    }
+
+    /** 現場核對時留下的美容狀況照片（顧客在 LIFF 明細看得到）。 */
+    private List<String> groomingPhotoUrls(Long appointmentId) {
+        List<String> urls = new ArrayList<>();
+        for (PetGroomingNote note : petGroomingNoteRepository.findByAppointmentId(appointmentId)) {
+            urls.addAll(groomingNotePhotoService.photoUrls(note));
+        }
+        return urls;
     }
 
     // 需求 8-1 修正：只回傳「實際套用哪一種折扣」的標籤，不重算金額
