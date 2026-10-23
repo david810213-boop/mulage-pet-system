@@ -24,6 +24,7 @@ public class AppointmentListService {
                     .thenComparing(AppointmentAdminResponse::getStartTime);
 
     private final AppointmentService appointmentService;
+    private final DashboardService dashboardService;
 
     /** 網頁版預約列表的篩選條件；空白代表不限。付款狀態 PAID＝已付款，其他值＝未付款。 */
     public record Filter(LocalDate dateFrom, LocalDate dateTo, String status, String paidStatus, String keyword) {
@@ -38,7 +39,10 @@ public class AppointmentListService {
         }
     }
 
-    /** 網頁版預約列表頂部的統計卡片：一律以「今天」為基準計算，不受篩選條件影響。 */
+    /**
+     * 網頁版預約列表頂部的統計卡片：一律以「今天」為基準計算，不受篩選條件影響。
+     * 今日營收與首頁相同，是當日已付款的實收金額（預約＋現場單），見 {@link DashboardService#todayRevenue}。
+     */
     public record StaffSummary(long todayCount, long completedCount, int todayRevenue, long pendingCount) {
     }
 
@@ -52,8 +56,7 @@ public class AppointmentListService {
                 all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(today)).count(),
                 all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(today)
                         && a.getStatus() == AppointmentStatus.COMPLETED).count(),
-                all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(today) && a.isPaid())
-                        .mapToInt(AppointmentAdminResponse::getTotalAmount).sum(),
+                dashboardService.todayRevenue(today),
                 all.stream().filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM).count());
         List<AppointmentAdminResponse> filtered = all.stream()
                 .filter(a -> filter.matches(a.getDate(), a.getStatus(), a.isPaid(),

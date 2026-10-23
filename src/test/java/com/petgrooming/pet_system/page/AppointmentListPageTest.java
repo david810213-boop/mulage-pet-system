@@ -3,9 +3,13 @@ package com.petgrooming.pet_system.page;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
+import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.service.DashboardService;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
 import com.petgrooming.pet_system.utils.JwtUtils;
@@ -18,6 +22,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 預約列表（網頁版、手機版）：篩選條件、統計數字、手機版分組與日期列。
+ * 預約列表（網頁版、手機版）：篩選條件、統計數字（今日營收與首頁一致，以實收金額計）、手機版分組與日期列。
  * 資料庫是共用的，統計數字以「加入已知資料前後的差額」驗證，清單以這次建立的唯一日期／名字篩選。
  */
 class AppointmentListPageTest extends IntegrationTestBase {
@@ -37,6 +42,8 @@ class AppointmentListPageTest extends IntegrationTestBase {
     @Autowired private JwtUtils jwtUtils;
     @Autowired private TestData testData;
     @Autowired private AppointmentRepository appointmentRepository;
+    @Autowired private WalkInOrderRepository walkInOrderRepository;
+    @Autowired private DashboardService dashboardService;
 
     private MockMvc mvc;
 
@@ -86,6 +93,20 @@ class AppointmentListPageTest extends IntegrationTestBase {
         assertThat(delta(before, after, "completedCount")).isEqualTo(1);
         assertThat(delta(before, after, "pendingCount")).isEqualTo(1);
         assertThat(after.get("today")).isEqualTo(today);
+    }
+
+    @Test
+    void todayRevenueIsTheChargedAmountSameAsTheDashboard() throws Exception {
+        User staff = testData.staff();
+        Map<String, Object> before = webList(staff);
+
+        walkInOrderRepository.save(WalkInOrder.builder()
+                .petName("營收毛孩").totalAmount(500).chargedAmount(450).createdBy("列表測試")
+                .paid(true).paymentMethod(PaymentMethod.CASH).paymentTime(LocalDateTime.now()).build());
+
+        Map<String, Object> after = webList(staff);
+        assertThat(delta(before, after, "todayRevenue")).isEqualTo(450);
+        assertThat(after.get("todayRevenue")).isEqualTo(dashboardService.todayRevenue(LocalDate.now()));
     }
 
     @Test
