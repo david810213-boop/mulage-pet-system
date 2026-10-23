@@ -94,12 +94,14 @@ public class SlotCapacityService {
     /**
      * 取得時段計數列並加悲觀寫鎖，鎖持有到本交易 commit，讓同時段的預約依序扣名額。
      *
-     * 必須用 refresh 搭配鎖定模式重新讀取：預約流程會在同一交易內先讀取時段（檢查限定物種），
-     * 一般的鎖定查詢雖然會取得列鎖，Hibernate 卻會回傳快取中的舊名額；
-     * 而不帶鎖的重新讀取在 MySQL 可重複讀隔離層級下只會讀到交易開始時的快照。
+     * 兩步缺一不可：
+     * 1. 以鎖定查詢找列：時段列可能是剛在獨立交易（ensureSlot）建立的，
+     *    一般查詢在 MySQL 可重複讀隔離層級下只看得到交易開始時的快照，會找不到這一列。
+     * 2. 再以鎖定模式 refresh：預約流程會在同一交易內先讀取時段（檢查限定物種），
+     *    鎖定查詢雖然取得列鎖，Hibernate 仍會回傳快取中的舊名額。
      */
     private Optional<SlotCapacity> lockSlot(LocalDate date, LocalTime time) {
-        return slotRepo.findBySlotDateAndSlotTime(date, time).map(slot -> {
+        return slotRepo.lockSlot(date, time).map(slot -> {
             entityManager.refresh(slot, LockModeType.PESSIMISTIC_WRITE);
             return slot;
         });
