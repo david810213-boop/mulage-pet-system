@@ -20,7 +20,11 @@ jobs:
           cache: maven
 
       - name: Build and test
-        run: mvn -B -ntp verify
+        run: mvn -B -ntp verify 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+
+      - name: Report results
+        if: always()
+        run: python3 .github/scripts/report-build.py build.log
 
       - name: Upload test reports
         if: failure()
