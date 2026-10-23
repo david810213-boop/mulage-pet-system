@@ -46,6 +46,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
 
     @Autowired private PaymentService paymentService;
     @Autowired private WalletService walletService;
+    @Autowired private RetailProductService retailProductService;
     @Autowired private AppointmentService appointmentService;
     @Autowired private WalkInOrderService walkInOrderService;
     @Autowired private CheckoutPreviewService checkoutPreviewService;
@@ -294,7 +295,8 @@ class DiscountCheckoutTest extends IntegrationTestBase {
         appointmentItemRepository.save(AppointmentItem.builder()
                 .appointment(appointment)
                 .groomingItemId(source != null ? source.getId() : null)
-                .retailProductId(source == null ? 1L : null)
+                .retailProductId(source == null ? retailProductService.create(
+                        "折扣測試商品-" + UUID.randomUUID().toString().substring(0, 6), price, 10, null, 50).getId() : null)
                 .itemName(source != null ? source.getName() : "加購商品")
                 .price(price).performanceCategory(category).build());
     }
