@@ -69,22 +69,19 @@ class PerformanceSplitTest extends IntegrationTestBase {
 
         assertThat(candidates(date, petName, null)).isEmpty();
         assertThat(performanceService.getSplitSourceRecordIds()).contains(bath.getId());
-        assertThat(transactionTemplate.execute(s -> performanceService.getDailyRecordsForDisplay(date)))
-                .extracting(PerformanceRecord::getId)
+        List<PerformanceRecord> daily = transactionTemplate.execute(s -> performanceService.getDailyRecordsForDisplay(date));
+        assertThat(daily).extracting(PerformanceRecord::getId)
                 .contains(checkin.getId()).doesNotContain(bath.getId(), split.getId());
 
-        List<SplitHistoryResponse> history = transactionTemplate.execute(s ->
-                performanceService.getSplitHistory(date, date, petName, null));
+        List<SplitHistoryResponse> history = history(date, petName, null);
         assertThat(history).singleElement().satisfies(h -> {
             assertThat(h.getSplitRecordId()).isEqualTo(split.getId());
             assertThat(h.getFromStaffName()).isEqualTo(groomer.getName());
             assertThat(h.getToStaffName()).isEqualTo(helper.getName());
             assertThat(h.getHalfPoints()).isEqualTo(1.5);
         });
-        assertThat(transactionTemplate.execute(s -> performanceService.getSplitHistory(date, date, petName, groomer.getId())))
-                .hasSize(1); // 原負責員工也查得到
-        assertThat(transactionTemplate.execute(s -> performanceService.getSplitHistory(date, date, petName, testData.staff().getId())))
-                .isEmpty();
+        assertThat(history(date, petName, groomer.getId())).hasSize(1); // 原負責員工也查得到
+        assertThat(history(date, petName, testData.staff().getId())).isEmpty();
     }
 
     @Test
@@ -128,6 +125,10 @@ class PerformanceSplitTest extends IntegrationTestBase {
 
         performanceService.deleteBonusTier(tier.getId());
         assertThat(performanceService.getAllBonusTiers()).extracting(BonusTier::getId).doesNotContain(tier.getId());
+    }
+
+    private List<SplitHistoryResponse> history(LocalDate date, String petName, Long staffId) {
+        return transactionTemplate.execute(s -> performanceService.getSplitHistory(date, date, petName, staffId));
     }
 
     private List<SplitCandidateResponse> candidates(LocalDate date, String petName, Long staffId) {
