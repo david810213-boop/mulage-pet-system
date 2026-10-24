@@ -36,7 +36,12 @@ public class TopUpController {
 
     // ── 顧客送出申請 ────────────────────────────────────────────────────────
     @PostMapping({"/api/top-ups", "/api/topup"})
-    public ResponseEntity<?> submit(@Valid @RequestBody CreateTopUpRequest req, @CurrentUser String username) {
+    public ResponseEntity<?> submit(@Valid @RequestBody CreateTopUpRequest req,
+                                    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                    @CurrentUser String username) {
+        if (idempotencyKey != null) {
+            req.setIdempotencyKey(idempotencyKey);
+        }
         var res = topUpService.submit(username, req);
         operationLogService.logByUsername(username, "WALLET", "TOPUP_REQUEST",
                 "會員 " + username, "+$" + req.getAmount() + "（末五碼 " + req.getLastFiveDigits() + "）");

@@ -13,4 +13,7 @@ public class DepositRequest {
     private Integer amount;
 
     private String note; // 備註（選填）
+
+    // 防重複送出的識別碼，見 IdempotencyService
+    private String idempotencyKey;
 }

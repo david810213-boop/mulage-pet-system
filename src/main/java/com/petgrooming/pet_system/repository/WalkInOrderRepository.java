@@ -2,10 +2,13 @@ package com.petgrooming.pet_system.repository;
 
 import com.petgrooming.pet_system.model.WalkInOrder;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WalkInOrderRepository extends JpaRepository<WalkInOrder, Long> {
@@ -24,4 +27,9 @@ public interface WalkInOrderRepository extends JpaRepository<WalkInOrder, Long> 
 
     // 首頁今日營收：只查付款時間在指定區間內的已付款現場單，不撈全部歷史
     List<WalkInOrder> findByPaidTrueAndPaymentTimeGreaterThanEqualAndPaymentTimeLessThan(LocalDateTime from, LocalDateTime to);
+
+    // 加鎖讀取（SELECT ... FOR UPDATE）：同一筆的結帳／確認收款／退款依序執行。
+    // 只讀回判斷用的欄位：鎖定讀取一定讀到最新已提交的值，不受快取中的舊實體與交易快照影響（見 docs/adr/0008）。
+    @Query(value = "select paid from walk_in_orders where id = :id for update", nativeQuery = true)
+    Optional<Boolean> lockPaidById(@Param("id") Long id);
 }

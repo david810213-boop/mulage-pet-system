@@ -82,4 +82,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             "LEFT JOIN FETCH a.selectedItems " +
             "WHERE a.id = :id")
     Optional<Appointment> findWithUserAndItemsById(@Param("id") Long id);
+
+    // 加鎖讀取（SELECT ... FOR UPDATE）：同一筆的結帳／確認收款／退款依序執行。
+    // 只讀回判斷用的欄位：鎖定讀取一定讀到最新已提交的值，不受快取中的舊實體與交易快照影響（見 docs/adr/0008）。
+    @Query(value = "select paid from appointments where id = :id for update", nativeQuery = true)
+    Optional<Boolean> lockPaidById(@Param("id") Long id);
 }

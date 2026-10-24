@@ -38,6 +38,7 @@ public class TopUpService {
     private final TopUpRequestRepository topUpRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    private final IdempotencyService idempotencyService;
 
     // ── 顧客送出轉帳儲值申請 ────────────────────────────────────────────────
     @Transactional
@@ -47,6 +48,7 @@ public class TopUpService {
         if (req.getAmount() == null || req.getAmount() < StoreRules.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
+        idempotencyService.claim("TOPUP_REQUEST", req.getIdempotencyKey());
 
         TopUpRequest topUp = TopUpRequest.builder()
                 .user(user)
@@ -73,14 +75,22 @@ public class TopUpService {
                 .stream().map(TopUpRequestResponse::from).toList();
     }
 
+    /** 鎖住這筆申請並讀回最新狀態，連點或兩位員工同時處理時依序執行，避免重複入帳。 */
+    private TopUpStatus lockStatus(Long id) {
+        return topUpRepository.lockStatusById(id)
+                .map(TopUpStatus::valueOf)
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
+    }
+
     // ── 店家：確認入帳 ──────────────────────────────────────────────────────
     @Transactional
     public TopUpRequestResponse confirm(Long id, String reviewerName) {
+        TopUpStatus status = lockStatus(id);
         TopUpRequest topUp = topUpRepository.findById(id)
                 .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
 
-        if (topUp.getStatus() != TopUpStatus.PENDING) {
-            throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
+        if (status != TopUpStatus.PENDING) {
+            throw new WalletException("此申請已處理過，狀態：" + status.getLabel());
         }
 
         // 真正加值：複用既有錢包儲值邏輯（含贈點 / 升卡）
@@ -102,11 +112,12 @@ public class TopUpService {
     // ── 店家：駁回 ──────────────────────────────────────────────────────────
     @Transactional
     public TopUpRequestResponse reject(Long id, String reviewerName, String reason) {
+        TopUpStatus status = lockStatus(id);
         TopUpRequest topUp = topUpRepository.findById(id)
                 .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
 
-        if (topUp.getStatus() != TopUpStatus.PENDING) {
-            throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
+        if (status != TopUpStatus.PENDING) {
+            throw new WalletException("此申請已處理過，狀態：" + status.getLabel());
         }
 
         topUp.setStatus(TopUpStatus.REJECTED);

@@ -56,8 +56,9 @@ public class CustomerWalletAdminController {
     public ResponseEntity<?> depositById(
             @PathVariable Long userId,
             @Valid @RequestBody DepositRequest req,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @CurrentUser String reviewer) {
-        return deposit(usernameOf(userId), req, reviewer);
+        return deposit(usernameOf(userId), req, idempotencyKey, reviewer);
     }
 
     private String usernameOf(Long userId) {
@@ -83,7 +84,11 @@ public class CustomerWalletAdminController {
     public ResponseEntity<?> deposit(
             @PathVariable String username,
             @Valid @RequestBody DepositRequest req,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @CurrentUser String reviewer) {
+        if (idempotencyKey != null) {
+            req.setIdempotencyKey(idempotencyKey);
+        }
         WalletResponse res = walletService.deposit(username, req);
         try {
             var targetCustomer = userService.getUserEntityByUsername(username);
