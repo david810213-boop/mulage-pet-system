@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import org.springframework.data.domain.Sort;
-import PageRequest;
+import org.springframework.data.domain.PageRequest;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.RegisterRequest;
