@@ -71,16 +71,40 @@ public class AdminMemberController {
         return ResponseEntity.ok(results);
     }
 
-    // ── GET /api/admin/members/{username}/pets ──────────────────────────────
+    // ── GET /api/admin/members/{userId}/pets ────────────────────────────────
     // 現場開單：選定會員後自動帶出名下寵物清單
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/{username}/pets")
+    @GetMapping("/{userId:\\d+}/pets")
+    public ResponseEntity<List<PetResponse>> petsById(@PathVariable Long userId) {
+        return pets(usernameOf(userId));
+    }
+
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/{userId:\\d+}/note")
+    public ResponseEntity<?> getNoteById(@PathVariable Long userId) {
+        return getNote(usernameOf(userId));
+    }
+
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PutMapping("/{userId:\\d+}/note")
+    public ResponseEntity<?> setNoteById(@PathVariable Long userId, @RequestBody MemberNoteRequest req) {
+        return setNote(usernameOf(userId), req);
+    }
+
+    private String usernameOf(Long userId) {
+        return userService.getUserEntityById(userId).getUsername();
+    }
+
+    // 以下三個是舊路徑（網址帶帳號），改用上方以 userId 識別的路徑。
+    // 帳號限定含非數字字元，純數字一律視為 userId，兩組路徑不會同時符合。
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/{username:.*\\D.*}/pets")
     public ResponseEntity<List<PetResponse>> pets(@PathVariable String username) {
         return ResponseEntity.ok(petService.getMyPets(username));
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/{username}/note")
+    @GetMapping("/{username:.*\\D.*}/note")
     public ResponseEntity<?> getNote(@PathVariable String username) {
         return ResponseEntity.ok(Map.of(
                 "username", username,
@@ -89,7 +113,7 @@ public class AdminMemberController {
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PutMapping("/{username}/note")
+    @PutMapping("/{username:.*\\D.*}/note")
     public ResponseEntity<?> setNote(@PathVariable String username,
                                      @RequestBody MemberNoteRequest req) {
         String saved = userService.setAdminNote(username, req.getAdminNote());

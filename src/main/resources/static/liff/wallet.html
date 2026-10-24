@@ -581,7 +581,7 @@
           return;
         }
         try {
-          const res = await fetch("/api/topup", {
+          const res = await fetch("/api/top-ups", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -630,7 +630,7 @@
       // 載入自己的儲值申請狀態
       async function loadMyTopUps() {
         try {
-          const res = await fetch("/api/topup/my", {
+          const res = await fetch("/api/me/top-ups", {
             headers: { Authorization: "Bearer " + jwtToken },
           });
           if (!res.ok) return;

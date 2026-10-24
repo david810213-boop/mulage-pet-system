@@ -193,7 +193,7 @@
               async function unlockPet(petId) {
                 if (!confirm('確定要解鎖嗎？解鎖後菜單會恢復成依體重重新篩選。')) return;
                 try {
-                  const res = await fetch('/api/admin/pets/' + petId + '/unlock-grooming-item', { method: 'PUT' });
+                  const res = await fetch('/api/admin/pets/' + petId + '/locked-item', { method: 'DELETE' });
                   if (!res.ok) {
                     alert('解鎖失敗，請重試');
                     return;

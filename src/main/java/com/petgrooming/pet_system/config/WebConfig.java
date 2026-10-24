@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.config;
 
 import com.petgrooming.pet_system.interceptor.CsrfInterceptor;
+import com.petgrooming.pet_system.interceptor.DeprecatedApiInterceptor;
 import com.petgrooming.pet_system.interceptor.LoginInterceptor;
 import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.interceptor.RoleInterceptor;
@@ -38,6 +39,7 @@ public class WebConfig implements WebMvcConfigurer {
         private final RoleInterceptor roleInterceptor;
         private final CsrfInterceptor csrfInterceptor;
         private final MobileRedirectInterceptor mobileRedirectInterceptor;
+        private final DeprecatedApiInterceptor deprecatedApiInterceptor;
         private final CurrentUserArgumentResolver currentUserArgumentResolver;
 
         @Override
@@ -84,6 +86,11 @@ public class WebConfig implements WebMvcConfigurer {
 
         @Override
         public void addInterceptors(@NonNull InterceptorRegistry registry) {
+
+                // 0. 舊 API 路徑使用紀錄（只記 log，不擋請求）
+                registry.addInterceptor(deprecatedApiInterceptor)
+                                .addPathPatterns("/api/**")
+                                .order(0);
 
                 // 1. 登入檢查（優先，所有路徑）
                 registry.addInterceptor(loginInterceptor)

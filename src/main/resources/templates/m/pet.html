@@ -128,8 +128,12 @@
 <script>
   (function () {
     function put(url, body) {
+      return send("PUT", url, body);
+    }
+
+    function send(method, url, body) {
       return fetch(url, {
-        method: "PUT",
+        method: method,
         headers: body ? { "Content-Type": "application/json" } : {},
         body: body ? JSON.stringify(body) : undefined
       }).then(function (res) {
@@ -171,7 +175,7 @@
       unlock.addEventListener("click", function () {
         if (!window.confirm("解鎖後會改回依體重、毛長篩選套餐，確定嗎？")) return;
         unlock.disabled = true;
-        put("/api/admin/pets/" + petId + "/unlock-grooming-item", null)
+        send("DELETE", "/api/admin/pets/" + petId + "/locked-item", null)
           .then(function () { location.reload(); })
           .catch(function (e) { unlock.disabled = false; window.alert(e.message); });
       });

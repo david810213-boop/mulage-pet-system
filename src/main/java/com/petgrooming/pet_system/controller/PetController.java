@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/pets")
 @RequiredArgsConstructor
 public class PetController {
 
@@ -33,7 +32,7 @@ public class PetController {
     // ── POST /api/pets ─────────────────────────────────────────────────────
     // 新增寵物，以 JWT 解析出的 username 識別飼主
     // @Valid 觸發 PetRequest 的 Bean Validation，驗證失敗自動回 400
-    @PostMapping
+    @PostMapping("/api/pets")
     public ResponseEntity<?> addPet(
             @Valid @RequestBody PetRequest petRequest,
             @CurrentUser String username) {
@@ -48,7 +47,7 @@ public class PetController {
     // 物種（petType）不開放修改，PetRequest 裡即使傳了也會被忽略——
     // 實際更新邏輯（PetService.updatePet）只採用 name/breed/weight/age 等欄位，
     // 物種沿用資料庫既有值。
-    @PutMapping("/{petId}")
+    @PutMapping("/api/pets/{petId}")
     public ResponseEntity<?> updatePet(
             @PathVariable Long petId,
             @Valid @RequestBody PetRequest petRequest,
@@ -63,7 +62,7 @@ public class PetController {
     // ── DELETE /api/pets/{petId} ──────────────────────────────────────────
     // 顧客自己在 LIFF「我的毛孩」刪除自己的寵物。
     // 有預約或消費紀錄的話會被 PetService.deletePet() 擋下（見該方法說明）。
-    @DeleteMapping("/{petId}")
+    @DeleteMapping("/api/pets/{petId}")
     public ResponseEntity<?> deletePet(@PathVariable Long petId, @CurrentUser String username) {
         petService.assertOwnership(petId, username);
         petService.deletePet(petId);
@@ -75,7 +74,7 @@ public class PetController {
     // ── GET /api/pets/cat-breeds ────────────────────────────────────────────
     // LIFF「新增毛孩」頁面貓咪品種下拉選單資料來源，不需要特別檢查
     // 身分是誰（只是回傳一份對照表清單，不含任何使用者個資），有登入即可呼叫。
-    @GetMapping("/cat-breeds")
+    @GetMapping("/api/pets/cat-breeds")
     public ResponseEntity<?> listCatBreeds() {
         var breeds = petService.listCatBreedOptions().stream()
                 .map(b -> Map.of(
@@ -86,8 +85,8 @@ public class PetController {
         return ResponseEntity.ok(breeds);
     }
 
-    // ── GET /api/pets/my ───────────────────────────────────────────────────
-    @GetMapping("/my")
+    // ── GET /api/me/pets ───────────────────────────────────────────────────
+    @GetMapping({"/api/me/pets", "/api/pets/my"})
     public ResponseEntity<?> getMyPets(@CurrentUser String username) {
         List<PetResponse> res = petService.getMyPets(username);
         return ResponseEntity.ok(res);
@@ -95,7 +94,7 @@ public class PetController {
 
     // ── POST /api/pets/{id}/photo ────────────────────────────────────────
     // LIFF「我的毛孩」上傳/更換寵物照片。只能傳自己名下的寵物。
-    @PostMapping("/{id}/photo")
+    @PostMapping("/api/pets/{id}/photo")
     public ResponseEntity<?> uploadPhoto(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
@@ -112,7 +111,7 @@ public class PetController {
 
     // ── GET /api/pets/{petId}/grooming-history ────────────────────────────
     // LIFF「我的毛孩」查看每次美容的狀況備註與照片
-    @GetMapping("/{petId}/grooming-history")
+    @GetMapping("/api/pets/{petId}/grooming-history")
     public ResponseEntity<?> getGroomingHistory(@PathVariable Long petId, @CurrentUser String username) {
         petService.assertOwnership(petId, username);
         return ResponseEntity.ok(petService.getGroomingHistory(petId));
@@ -120,7 +119,7 @@ public class PetController {
 
     // ── GET /api/pets/{petId}/discount-status ──────────────────────────────
     // LIFF 預約頁顯示的折扣資格（規則見 PetDiscountStatusService）
-    @GetMapping("/{petId}/discount-status")
+    @GetMapping("/api/pets/{petId}/discount-status")
     public ResponseEntity<?> getDiscountStatus(
             @PathVariable Long petId,
             // 距上次洗澡幾天／是否符合定期養護禮遇資格，

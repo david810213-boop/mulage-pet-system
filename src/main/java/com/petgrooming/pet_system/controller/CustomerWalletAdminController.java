@@ -23,7 +23,7 @@ import java.util.List;
  * 幫指定顧客儲值、查詢任意顧客的錢包與紀錄
  */
 @RestController
-@RequestMapping("/api/admin/wallet")
+@RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class CustomerWalletAdminController {
 
@@ -32,27 +32,54 @@ public class CustomerWalletAdminController {
     private final TopUpService topUpService;
     private final UserService userService;
 
-    // ── GET /api/admin/wallet/{username} ───────────────────────────────────
+    // ── GET /api/admin/wallets/{userId} ────────────────────────────────────
     // 查詢指定顧客的錢包
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/{username}")
+    @GetMapping("/wallets/{userId}")
+    public ResponseEntity<WalletResponse> getWalletById(@PathVariable Long userId) {
+        return getWallet(usernameOf(userId));
+    }
+
+    // ── GET /api/admin/wallets/{userId}/transactions ───────────────────────
+    // 查詢指定顧客的異動紀錄
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/wallets/{userId}/transactions")
+    public ResponseEntity<List<WalletTransactionResponse>> getTransactionsById(@PathVariable Long userId) {
+        return getTransactions(usernameOf(userId));
+    }
+
+    // ── POST /api/admin/wallets/{userId}/deposit ───────────────────────────
+    // 幫指定顧客儲值（收到現金/匯款後由店家操作）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @RequireCsrf
+    @PostMapping("/wallets/{userId}/deposit")
+    public ResponseEntity<?> depositById(
+            @PathVariable Long userId,
+            @Valid @RequestBody DepositRequest req,
+            @CurrentUser String reviewer) {
+        return deposit(usernameOf(userId), req, reviewer);
+    }
+
+    private String usernameOf(Long userId) {
+        return userService.getUserEntityById(userId).getUsername();
+    }
+
+    // 以下三個是舊路徑（網址帶帳號），改用上方以 userId 識別的路徑
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/wallet/{username}")
     public ResponseEntity<WalletResponse> getWallet(@PathVariable String username) {
         return ResponseEntity.ok(walletService.getWallet(username));
     }
 
-    // ── GET /api/admin/wallet/{username}/transactions ──────────────────────
-    // 查詢指定顧客的異動紀錄
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/{username}/transactions")
+    @GetMapping("/wallet/{username}/transactions")
     public ResponseEntity<List<WalletTransactionResponse>> getTransactions(@PathVariable String username) {
         return ResponseEntity.ok(walletService.getTransactions(username));
     }
 
-    // ── POST /api/admin/wallet/{username}/deposit ──────────────────────────
-    // 幫指定顧客儲值（收到現金/匯款後由店家操作）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @RequireCsrf
-    @PostMapping("/{username}/deposit")
+    @PostMapping("/wallet/{username}/deposit")
     public ResponseEntity<?> deposit(
             @PathVariable String username,
             @Valid @RequestBody DepositRequest req,

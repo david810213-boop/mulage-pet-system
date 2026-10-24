@@ -704,7 +704,7 @@
         memberSuggestions.style.display = 'none';
 
         // 選定會員後自動抓出名下寵物
-        fetch('/api/admin/members/' + encodeURIComponent(u.username) + '/pets')
+        fetch('/api/admin/members/' + u.id + '/pets')
           .then(function (res) { return res.ok ? res.json() : []; })
           .then(function (pets) { fillPetSelect(pets, null); });
       }
@@ -717,7 +717,7 @@
         memberSelectedTag.style.display = 'block';
         memberSuggestions.style.display = 'none';
 
-        fetch('/api/admin/members/' + encodeURIComponent(p.ownerUsername) + '/pets')
+        fetch('/api/admin/members/' + p.ownerId + '/pets')
           .then(function (res) { return res.ok ? res.json() : []; })
           .then(function (pets) { fillPetSelect(pets, p.petName); });
       }
@@ -843,7 +843,7 @@
         if (!pet) return;
         if (!confirm('確定要解鎖嗎？解鎖後這隻狗會恢復成依體重重新選套餐。')) return;
         try {
-          const res = await fetch('/api/admin/pets/' + pet.id + '/unlock-grooming-item', { method: 'PUT' });
+          const res = await fetch('/api/admin/pets/' + pet.id + '/locked-item', { method: 'DELETE' });
           if (!res.ok) {
             alert('解鎖失敗，請重試');
             return;

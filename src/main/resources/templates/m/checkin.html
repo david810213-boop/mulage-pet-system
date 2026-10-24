@@ -184,7 +184,7 @@
         if (!window.confirm("解鎖後會改回依體重、毛長重新篩選菜單，確定嗎？")) return;
         var petId = document.getElementById("lockBox").dataset.petId;
         unlock.disabled = true;
-        fetch("/api/admin/pets/" + encodeURIComponent(petId) + "/unlock-grooming-item", { method: "PUT" })
+        fetch("/api/admin/pets/" + encodeURIComponent(petId) + "/locked-item", { method: "DELETE" })
           .then(function (res) {
             return res.text().then(function (t) {
               if (!res.ok) {

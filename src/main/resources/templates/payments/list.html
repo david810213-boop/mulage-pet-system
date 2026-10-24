@@ -276,7 +276,7 @@
         const url =
           sourceType === "WALKIN"
             ? "/api/admin/walk-in-orders/" + recordId
-            : "/api/appointments/" + recordId + "/detail";
+            : "/api/appointments/" + recordId;
 
         try {
           const res = await fetch(url, {

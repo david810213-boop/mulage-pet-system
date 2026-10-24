@@ -674,7 +674,7 @@
 
       async function loadAppointments() {
         try {
-          const res = await fetch("/api/appointments/my", {
+          const res = await fetch("/api/me/appointments", {
             headers: {
               Authorization: "Bearer " + jwtToken,
               "ngrok-skip-browser-warning": "true",
@@ -950,7 +950,7 @@
         backdrop.classList.add("show");
 
         try {
-          const res = await fetch(`/api/appointments/${id}/detail`, {
+          const res = await fetch(`/api/appointments/${id}`, {
             headers: {
               Authorization: "Bearer " + jwtToken,
               "ngrok-skip-browser-warning": "true",

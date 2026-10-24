@@ -167,7 +167,7 @@
         const groomingItemId = select ? select.value : null;
         if (!groomingItemId) return;
         try {
-          const res = await fetch("/api/admin/pets/" + petId + "/lock-grooming-item", {
+          const res = await fetch("/api/admin/pets/" + petId + "/locked-item", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ groomingItemId: Number(groomingItemId) }),
@@ -189,8 +189,8 @@
 
       async function unlockPet(petId) {
         try {
-          const res = await fetch("/api/admin/pets/" + petId + "/unlock-grooming-item", {
-            method: "PUT",
+          const res = await fetch("/api/admin/pets/" + petId + "/locked-item", {
+            method: "DELETE",
           });
           const rawBody = await res.text();
           if (!res.ok) {

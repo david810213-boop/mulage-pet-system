@@ -35,7 +35,7 @@ public class TopUpController {
     private final OperationLogService operationLogService;
 
     // ── 顧客送出申請 ────────────────────────────────────────────────────────
-    @PostMapping("/api/topup")
+    @PostMapping({"/api/top-ups", "/api/topup"})
     public ResponseEntity<?> submit(@Valid @RequestBody CreateTopUpRequest req, @CurrentUser String username) {
         var res = topUpService.submit(username, req);
         operationLogService.logByUsername(username, "WALLET", "TOPUP_REQUEST",
@@ -44,21 +44,21 @@ public class TopUpController {
     }
 
     // ── 顧客查自己的申請 ────────────────────────────────────────────────────
-    @GetMapping("/api/topup/my")
+    @GetMapping({"/api/me/top-ups", "/api/topup/my"})
     public ResponseEntity<List<TopUpRequestResponse>> myRequests(@CurrentUser String username) {
         return ResponseEntity.ok(topUpService.myRequests(username));
     }
 
     // ── 店家待核帳清單 ──────────────────────────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/api/admin/topup/pending")
+    @GetMapping({"/api/admin/top-ups/pending", "/api/admin/topup/pending"})
     public ResponseEntity<List<TopUpRequestResponse>> pending() {
         return ResponseEntity.ok(topUpService.pending());
     }
 
     // ── 店家確認入帳 ────────────────────────────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PostMapping("/api/admin/topup/{id}/confirm")
+    @PostMapping({"/api/admin/top-ups/{id}/confirm", "/api/admin/topup/{id}/confirm"})
     public ResponseEntity<?> confirm(@PathVariable Long id, @CurrentUser String username) {
         var res = topUpService.confirm(id, username);
         operationLogService.logByUsername(username, "WALLET", "TOPUP_CONFIRM",
@@ -68,7 +68,7 @@ public class TopUpController {
 
     // ── 店家駁回 ────────────────────────────────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PostMapping("/api/admin/topup/{id}/reject")
+    @PostMapping({"/api/admin/top-ups/{id}/reject", "/api/admin/topup/{id}/reject"})
     public ResponseEntity<?> reject(@PathVariable Long id,
                                     @RequestBody(required = false) TopUpReviewRequest req,
                                     @CurrentUser String username) {

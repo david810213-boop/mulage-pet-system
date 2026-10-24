@@ -34,6 +34,18 @@ public class RoleInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // /api/admin/** 一律限員工角色，與方法上的 @RequireRole 形成雙重保護，
+        // 避免新增管理端點時漏標註解。
+        if (request.getRequestURI().startsWith("/api/admin/") && !isStaffRole(request)) {
+            if (request.getAttribute("tokenUsername") == null) {
+                writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "請先登入");
+            } else {
+                log.warn("RoleInterceptor：非員工角色嘗試存取管理端 API {}", request.getRequestURI());
+                writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "權限不足，無法存取此功能");
+            }
+            return false;
+        }
+
         // 1. 檢查是否有 @RequireRole 註解
         RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
         if (requireRole == null) {
@@ -82,6 +94,11 @@ public class RoleInterceptor implements HandlerInterceptor {
 
         log.debug("RoleInterceptor：使用者 {} 通過角色驗證，存取 {}", username, request.getRequestURI());
         return true;
+    }
+
+    private static boolean isStaffRole(HttpServletRequest request) {
+        String roleStr = (String) request.getAttribute("tokenRole");
+        return UserRole.ADMIN.name().equals(roleStr) || UserRole.STAFF.name().equals(roleStr);
     }
 
     private void writeJsonError(HttpServletResponse response, int status, String error, String message)
