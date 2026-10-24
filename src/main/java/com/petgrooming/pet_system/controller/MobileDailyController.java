@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PerformanceService;
+import com.petgrooming.pet_system.service.PerformanceSplitService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.StoreSupplyService;
 import com.petgrooming.pet_system.service.UserService;
@@ -50,6 +51,7 @@ public class MobileDailyController {
 
     private final UserService userService;
     private final PerformanceService performanceService;
+    private final PerformanceSplitService performanceSplitService;
     private final StoreSupplyService storeSupplyService;
     private final RetailProductService retailProductService;
     private final OperationLogService operationLogService;
@@ -82,7 +84,7 @@ public class MobileDailyController {
 
         List<PerformanceRecord> records = performanceService.getRecordsBetween(user.getId(), monthStart, today);
         // 已經被拆分過的原始紀錄（不能再拆），用來決定要不要顯示「拆給同事」按鈕
-        Set<Long> alreadySplit = performanceService.getSplitSourceRecordIds();
+        Set<Long> alreadySplit = performanceSplitService.getSplitSourceRecordIds();
 
         Map<String, List<Map<String, Object>>> byDate = new LinkedHashMap<>();
         Map<String, Double> dayTotal = new LinkedHashMap<>();
@@ -148,7 +150,7 @@ public class MobileDailyController {
                 return "redirect:/m/perf";
             }
             String n = note == null || note.isBlank() ? null : note.trim();
-            performanceService.splitRecord(sourceRecordId, toStaffId, n);
+            performanceSplitService.splitRecord(sourceRecordId, toStaffId, n);
             operationLogService.log(user, "PERFORMANCE", "SPLIT_POINTS", "績效紀錄 #" + sourceRecordId,
                     "拆分給員工 #" + toStaffId + (n != null ? "：" + n : "") + "（手機版）");
             ra.addFlashAttribute("toast", "已把這筆積分對半拆給同事");

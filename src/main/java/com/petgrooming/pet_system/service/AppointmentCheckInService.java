@@ -21,7 +21,6 @@ import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -30,7 +29,6 @@ import java.util.List;
 /**
  * 預約到店後的流程：到店開單、開始服務、結束服務（通知家長接回）、核對（接待送出）。
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentCheckInService {

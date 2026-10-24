@@ -14,7 +14,6 @@ import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.notification.LineMessagingService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -24,7 +23,6 @@ import java.util.List;
 /**
  * 現場單的服務流程（比照預約單）：結束服務（完成積分）、核對（美容狀況備註、簽名、照片，會員單同步寫入毛孩美容紀錄）。
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WalkInOrderCheckService {

@@ -30,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PerformanceSplitTest extends IntegrationTestBase {
 
     @Autowired private PerformanceService performanceService;
+    @Autowired private BonusTierService bonusTierService;
+    @Autowired private PerformanceSplitService performanceSplitService;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private TestData testData;
@@ -57,7 +59,7 @@ class PerformanceSplitTest extends IntegrationTestBase {
         });
         assertThat(candidates(date, petName, helper.getId())).isEmpty();
 
-        PerformanceRecord split = performanceService.splitRecord(bath.getId(), helper.getId(), null);
+        PerformanceRecord split = performanceSplitService.splitRecord(bath.getId(), helper.getId(), null);
 
         assertThat(split.getPoints()).isEqualTo(1.5);
         assertThat(split.getStaff().getId()).isEqualTo(helper.getId());
@@ -68,8 +70,8 @@ class PerformanceSplitTest extends IntegrationTestBase {
         assertThat(source.getNote()).isEqualTo("洗澡；已對半拆分 1.5 分給 " + helper.getName());
 
         assertThat(candidates(date, petName, null)).isEmpty();
-        assertThat(performanceService.getSplitSourceRecordIds()).contains(bath.getId());
-        List<PerformanceRecord> daily = transactionTemplate.execute(s -> performanceService.getDailyRecordsForDisplay(date));
+        assertThat(performanceSplitService.getSplitSourceRecordIds()).contains(bath.getId());
+        List<PerformanceRecord> daily = transactionTemplate.execute(s -> performanceSplitService.getDailyRecordsForDisplay(date));
         assertThat(daily).extracting(PerformanceRecord::getId)
                 .contains(checkin.getId()).doesNotContain(bath.getId(), split.getId());
 
@@ -92,47 +94,47 @@ class PerformanceSplitTest extends IntegrationTestBase {
         PerformanceRecord record = performanceService.addRecord(groomer.getId(), appointment("防呆毛孩", date).getId(),
                 PerformanceCategory.TRIM, 2.0, date, null);
 
-        assertThatThrownBy(() -> performanceService.splitRecord(record.getId(), groomer.getId(), null))
+        assertThatThrownBy(() -> performanceSplitService.splitRecord(record.getId(), groomer.getId(), null))
                 .isInstanceOf(PerformanceException.class).hasMessageContaining("不可與原負責員工相同");
 
-        PerformanceRecord split = performanceService.splitRecord(record.getId(), helper.getId(), "一起剪");
+        PerformanceRecord split = performanceSplitService.splitRecord(record.getId(), helper.getId(), "一起剪");
         assertThat(split.getNote()).isEqualTo("一起剪（原紀錄 #" + record.getId() + "）");
         assertThat(performanceService.findRecord(record.getId()).orElseThrow().getNote())
                 .isEqualTo("已對半拆分 1.0 分給 " + helper.getName());
 
-        assertThatThrownBy(() -> performanceService.splitRecord(record.getId(), testData.staff().getId(), null))
+        assertThatThrownBy(() -> performanceSplitService.splitRecord(record.getId(), testData.staff().getId(), null))
                 .isInstanceOf(PerformanceException.class).hasMessageContaining("已經拆分過");
-        assertThatThrownBy(() -> performanceService.splitRecord(split.getId(), groomer.getId(), null))
+        assertThatThrownBy(() -> performanceSplitService.splitRecord(split.getId(), groomer.getId(), null))
                 .isInstanceOf(PerformanceException.class).hasMessageContaining("本身就是拆分產生的");
     }
 
     @Test
     void bonusTiersCanBeManaged() {
-        assertThatThrownBy(() -> performanceService.createBonusTier(900_010, 900_000, 100))
+        assertThatThrownBy(() -> bonusTierService.createBonusTier(900_010, 900_000, 100))
                 .isInstanceOf(PerformanceException.class).hasMessage("下限不能大於上限");
 
-        BonusTier tier = performanceService.createBonusTier(900_000, 900_010, 100);
-        assertThat(performanceService.getAllBonusTiers()).extracting(BonusTier::getId).contains(tier.getId());
+        BonusTier tier = bonusTierService.createBonusTier(900_000, 900_010, 100);
+        assertThat(bonusTierService.getAllBonusTiers()).extracting(BonusTier::getId).contains(tier.getId());
 
-        performanceService.updateBonusTier(tier.getId(), 900_000, 900_020, 200);
-        assertThat(performanceService.getAllBonusTiers()).filteredOn(t -> t.getId().equals(tier.getId()))
+        bonusTierService.updateBonusTier(tier.getId(), 900_000, 900_020, 200);
+        assertThat(bonusTierService.getAllBonusTiers()).filteredOn(t -> t.getId().equals(tier.getId()))
                 .singleElement().satisfies(t -> {
                     assertThat(t.getMaxPoints()).isEqualTo(900_020);
                     assertThat(t.getBonusAmount()).isEqualTo(200);
                 });
-        assertThatThrownBy(() -> performanceService.updateBonusTier(tier.getId(), 5, 1, 0))
+        assertThatThrownBy(() -> bonusTierService.updateBonusTier(tier.getId(), 5, 1, 0))
                 .isInstanceOf(PerformanceException.class);
 
-        performanceService.deleteBonusTier(tier.getId());
-        assertThat(performanceService.getAllBonusTiers()).extracting(BonusTier::getId).doesNotContain(tier.getId());
+        bonusTierService.deleteBonusTier(tier.getId());
+        assertThat(bonusTierService.getAllBonusTiers()).extracting(BonusTier::getId).doesNotContain(tier.getId());
     }
 
     private List<SplitHistoryResponse> history(LocalDate date, String petName, Long staffId) {
-        return transactionTemplate.execute(s -> performanceService.getSplitHistory(date, date, petName, staffId));
+        return transactionTemplate.execute(s -> performanceSplitService.getSplitHistory(date, date, petName, staffId));
     }
 
     private List<SplitCandidateResponse> candidates(LocalDate date, String petName, Long staffId) {
-        return transactionTemplate.execute(s -> performanceService.getSplitCandidates(date, date, petName, staffId));
+        return transactionTemplate.execute(s -> performanceSplitService.getSplitCandidates(date, date, petName, staffId));
     }
 
     private Appointment appointment(String petName, LocalDate date) {

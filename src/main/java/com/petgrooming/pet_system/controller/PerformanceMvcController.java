@@ -10,6 +10,8 @@ import com.petgrooming.pet_system.model.MonthlyPerformance;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PerformanceService;
+import com.petgrooming.pet_system.service.BonusTierService;
+import com.petgrooming.pet_system.service.PerformanceSplitService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,6 +34,8 @@ import java.util.List;
 public class PerformanceMvcController {
 
     private final PerformanceService performanceService;
+    private final BonusTierService bonusTierService;
+    private final PerformanceSplitService performanceSplitService;
     private final UserService userService;
     private final OperationLogService operationLogService;
 
@@ -46,13 +50,13 @@ public class PerformanceMvcController {
         model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
         // 需求 12：當日績效紀錄排除已拆分過的（只在拆分歷史顯示，避免同一筆看起來出現兩次）
-        model.addAttribute("records", performanceService.getDailyRecordsForDisplay(date));
+        model.addAttribute("records", performanceSplitService.getDailyRecordsForDisplay(date));
         model.addAttribute("staffList", userService.getAllStaffEntities());
         model.addAttribute("categories", Arrays.stream(PerformanceCategory.values())
                 .filter(c -> c != PerformanceCategory.OTHER).toList());
         // 需求 12：拆分區塊直接顯示完整清單（含寵物名/服務項目）＋當日拆分歷史，不用跳頁
-        model.addAttribute("candidates", performanceService.getSplitCandidates(date, date, null, null));
-        model.addAttribute("splitHistory", performanceService.getSplitHistory(date, date, null, null));
+        model.addAttribute("candidates", performanceSplitService.getSplitCandidates(date, date, null, null));
+        model.addAttribute("splitHistory", performanceSplitService.getSplitHistory(date, date, null, null));
         return "admin/performance-daily";
     }
 
@@ -70,7 +74,7 @@ public class PerformanceMvcController {
                               RedirectAttributes ra,
                               @CurrentUser User user) {
         try {
-            performanceService.splitRecord(sourceRecordId, toStaffId, note);
+            performanceSplitService.splitRecord(sourceRecordId, toStaffId, note);
             operationLogService.log(user, "PERFORMANCE", "SPLIT_POINTS",
                     "績效紀錄 #" + sourceRecordId, "拆分給員工 #" + toStaffId + (note != null ? "：" + note : ""));
             ra.addFlashAttribute("successMsg", "積分已對半拆分成功");
@@ -98,7 +102,7 @@ public class PerformanceMvcController {
         model.addAttribute("user", loginUser);
         model.addAttribute("ym", ym);
         model.addAttribute("ranking", performanceService.getLiveMonthlyRanking(ym.getYear(), ym.getMonthValue()));
-        model.addAttribute("tiers", performanceService.getAllBonusTiers());
+        model.addAttribute("tiers", bonusTierService.getAllBonusTiers());
         return "admin/performance-monthly";
     }
 
@@ -177,7 +181,7 @@ public class PerformanceMvcController {
     @GetMapping("/bonus-tiers")
     public String bonusTiers(Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
-        model.addAttribute("tiers", performanceService.getAllBonusTiers());
+        model.addAttribute("tiers", bonusTierService.getAllBonusTiers());
         return "admin/performance-bonus-tiers";
     }
 
@@ -188,7 +192,7 @@ public class PerformanceMvcController {
                                   @RequestParam int bonusAmount, RedirectAttributes ra,
                                   @CurrentUser User user) {
         try {
-            performanceService.createBonusTier(minPoints, maxPoints, bonusAmount);
+            bonusTierService.createBonusTier(minPoints, maxPoints, bonusAmount);
             operationLogService.log(user, "PERFORMANCE", "CREATE_BONUS_TIER",
                     minPoints + "-" + maxPoints + "分", "$" + bonusAmount);
             ra.addFlashAttribute("successMsg", "已新增級距");
@@ -205,7 +209,7 @@ public class PerformanceMvcController {
                                   @RequestParam int maxPoints, @RequestParam int bonusAmount, RedirectAttributes ra,
                                   @CurrentUser User user) {
         try {
-            performanceService.updateBonusTier(id, minPoints, maxPoints, bonusAmount);
+            bonusTierService.updateBonusTier(id, minPoints, maxPoints, bonusAmount);
             operationLogService.log(user, "PERFORMANCE", "UPDATE_BONUS_TIER",
                     "級距 #" + id, minPoints + "-" + maxPoints + "分 → $" + bonusAmount);
             ra.addFlashAttribute("successMsg", "已更新級距");
@@ -219,7 +223,7 @@ public class PerformanceMvcController {
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bonus-tiers/{id}/delete")
     public String deleteBonusTier(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
-        performanceService.deleteBonusTier(id);
+        bonusTierService.deleteBonusTier(id);
         operationLogService.log(user, "PERFORMANCE", "DELETE_BONUS_TIER", "級距 #" + id, null);
         ra.addFlashAttribute("successMsg", "已刪除級距");
         return "redirect:/admin/performance/bonus-tiers";
@@ -273,9 +277,9 @@ public class PerformanceMvcController {
         model.addAttribute("petName", petName);
         model.addAttribute("staffId", staffId);
         model.addAttribute("candidates",
-                performanceService.getSplitCandidates(dateFrom, dateTo, petName, staffId));
+                performanceSplitService.getSplitCandidates(dateFrom, dateTo, petName, staffId));
         model.addAttribute("history",
-                performanceService.getSplitHistory(dateFrom, dateTo, petName, staffId));
+                performanceSplitService.getSplitHistory(dateFrom, dateTo, petName, staffId));
         return "admin/performance-split-manage";
     }
 }

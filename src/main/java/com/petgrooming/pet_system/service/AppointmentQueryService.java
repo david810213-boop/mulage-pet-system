@@ -25,7 +25,6 @@ import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.utils.ContractInfo;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -39,7 +38,6 @@ import java.util.stream.Collectors;
 /**
  * 預約查詢：我的預約、後台預約清單、可預約時段、初次預約判斷、預約對應的寵物、契約副本。
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentQueryService {
