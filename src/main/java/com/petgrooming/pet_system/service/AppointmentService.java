@@ -52,6 +52,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * 預約：建立（名額、契約簽名）、取消、確認、開始與結束服務、到店開單、核對、查詢與通知。
+ *
+ * 結帳前的訂單項目編輯、經手人與積分見 {@link AppointmentItemService}；
+ * 預約明細見 {@link AppointmentDetailService}；列表篩選見 {@link AppointmentListService}。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

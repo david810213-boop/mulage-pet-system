@@ -17,6 +17,8 @@ import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
+import com.petgrooming.pet_system.service.WalkInPaymentService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -39,6 +41,8 @@ import java.util.stream.Collectors;
 public class WalkInOrderMvcController {
 
     private final WalkInOrderService walkInOrderService;
+    private final WalkInOrderOperatorService walkInOrderOperatorService;
+    private final WalkInPaymentService walkInPaymentService;
     private final GroomingService groomingService;
     private final UserService userService;
     private final OperationLogService operationLogService;
@@ -77,7 +81,7 @@ public class WalkInOrderMvcController {
         model.addAttribute("walkInMatrixRows", pendingOperatorMatrixService.buildWalkInMatrix());
         model.addAttribute("appointmentMatrixRows", pendingOperatorMatrixService.buildAppointmentMatrix());
         model.addAttribute("matrixColumns", PendingOperatorMatrixService.COLUMNS);
-        model.addAttribute("pointsReport", walkInOrderService.operatorPointsReport());
+        model.addAttribute("pointsReport", walkInOrderOperatorService.operatorPointsReport());
         return "admin/walk-in-orders";
     }
 
@@ -123,7 +127,7 @@ public class WalkInOrderMvcController {
                                RedirectAttributes ra,
                                @CurrentUser User user) {
         try {
-            walkInOrderService.fillOperator(itemId, staffId);
+            walkInOrderOperatorService.fillOperator(itemId, staffId);
             operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
                     "項目 #" + itemId, "指定經手人 #" + staffId);
             ra.addFlashAttribute("successMsg", "已補填經手人");
@@ -148,7 +152,7 @@ public class WalkInOrderMvcController {
             try {
                 Long staffId = Long.valueOf(staffIdStr);
                 String s2 = staffIds2 != null && i < staffIds2.size() ? staffIds2.get(i) : null;
-                walkInOrderService.fillOperator(itemIds.get(i), staffId,
+                walkInOrderOperatorService.fillOperator(itemIds.get(i), staffId,
                         s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null);
                 operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
                         "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
@@ -334,7 +338,7 @@ public class WalkInOrderMvcController {
                            @RequestParam PaymentMethod paymentMethod, RedirectAttributes ra,
                            @CurrentUser User user) {
         try {
-            var result = walkInOrderService.checkout(id, paymentMethod, user.getUsername());
+            var result = walkInPaymentService.checkout(id, paymentMethod, user.getUsername());
             operationLogService.log(user, "WALKIN", "CHECKOUT", "現場單 #" + result.getId(),
                     result.getPaymentMethodLabel());
             ra.addFlashAttribute("successMsg",
@@ -355,7 +359,7 @@ public class WalkInOrderMvcController {
     @PostMapping("/{id}/confirm-wire-transfer")
     public String confirmWireTransfer(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
         try {
-            walkInOrderService.confirmWireTransferPayment(id, user.getUsername());
+            walkInPaymentService.confirmWireTransferPayment(id, user.getUsername());
             operationLogService.log(user, "WALKIN", "CONFIRM_WIRE_TRANSFER", "現場單 #" + id, null);
             ra.addFlashAttribute("successMsg", "已確認收款，現場單 #" + id + " 已完成");
         } catch (IllegalArgumentException e) {
@@ -430,7 +434,7 @@ public class WalkInOrderMvcController {
     @PostMapping("/{id}/refund")
     public String refund(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
         try {
-            walkInOrderService.refund(id, user.getUsername());
+            walkInPaymentService.refund(id, user.getUsername());
             operationLogService.log(user, "WALKIN", "REFUND", "現場單 #" + id, null);
             ra.addFlashAttribute("successMsg", "已退款並刪除此筆現場單，請重新開單");
         } catch (IllegalArgumentException e) {

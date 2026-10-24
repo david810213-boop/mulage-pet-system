@@ -49,6 +49,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
     @Autowired private RetailProductService retailProductService;
     @Autowired private AppointmentDetailService appointmentDetailService;
     @Autowired private WalkInOrderService walkInOrderService;
+    @Autowired private WalkInPaymentService walkInPaymentService;
     @Autowired private CheckoutPreviewService checkoutPreviewService;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private AppointmentItemRepository appointmentItemRepository;
@@ -150,7 +151,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
         Long orderId = walkIn(owner, dog.getName(),
                 item(1000, PerformanceCategory.BATH_SMALL), item(300, PerformanceCategory.OTHER));
 
-        WalkInOrderResponse result = walkInOrderService.checkout(orderId, PaymentMethod.CASH, testData.staff().getUsername());
+        WalkInOrderResponse result = walkInPaymentService.checkout(orderId, PaymentMethod.CASH, testData.staff().getUsername());
 
         assertThat(result.getChargedAmount()).isEqualTo(900 + 300);
         assertThat(result.getItems()).extracting(ItemLine::isFirstVisitEligible).containsExactly(true, false);
@@ -168,7 +169,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
                 item(1000, PerformanceCategory.BATH_CAT_S), item(300, PerformanceCategory.OTHER));
 
         assertThat(previewWalkIn(orderId, owner, "CAT")).isEqualTo(900 + 270);
-        WalkInOrderResponse result = walkInOrderService.checkout(orderId, PaymentMethod.WALLET, testData.staff().getUsername());
+        WalkInOrderResponse result = walkInPaymentService.checkout(orderId, PaymentMethod.WALLET, testData.staff().getUsername());
 
         assertThat(result.getChargedAmount()).isEqualTo(900 + 270);
         assertThat(result.getItems()).extracting(ItemLine::isRewashEligible).containsExactly(true, false);
@@ -186,14 +187,14 @@ class DiscountCheckoutTest extends IntegrationTestBase {
                 item(1000, PerformanceCategory.BATH_CAT_S), item(300, PerformanceCategory.OTHER));
 
         assertThat(previewWalkIn(walletOrder, owner, "CAT")).isEqualTo(850 + 255);
-        WalkInOrderResponse viaWallet = walkInOrderService.checkout(walletOrder, PaymentMethod.WALLET, testData.staff().getUsername());
+        WalkInOrderResponse viaWallet = walkInPaymentService.checkout(walletOrder, PaymentMethod.WALLET, testData.staff().getUsername());
         assertThat(viaWallet.getChargedAmount()).isEqualTo(850 + 255);
         assertThat(viaWallet.getItems()).extracting(ItemLine::getAppliedDiscountType)
                 .containsExactly(DiscountType.MEMBER, DiscountType.MEMBER);
 
         Long cashOrder = walkIn(owner, cat.getName(),
                 item(1000, PerformanceCategory.BATH_CAT_L), item(300, PerformanceCategory.OTHER));
-        WalkInOrderResponse viaCash = walkInOrderService.checkout(cashOrder, PaymentMethod.CASH, testData.staff().getUsername());
+        WalkInOrderResponse viaCash = walkInPaymentService.checkout(cashOrder, PaymentMethod.CASH, testData.staff().getUsername());
         assertThat(viaCash.getChargedAmount()).isEqualTo(900 + 300);
         assertThat(viaCash.getItems()).extracting(ItemLine::getAppliedDiscountType)
                 .containsExactly(DiscountType.REWASH, DiscountType.NONE);
@@ -207,7 +208,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
         Long orderId = walkIn(owner, cat.getName(),
                 item(1000, PerformanceCategory.BATH_CAT_S), item(200, PerformanceCategory.OTHER));
 
-        WalkInOrderResponse result = walkInOrderService.checkout(orderId, PaymentMethod.WALLET, testData.staff().getUsername());
+        WalkInOrderResponse result = walkInPaymentService.checkout(orderId, PaymentMethod.WALLET, testData.staff().getUsername());
 
         assertThat(result.getChargedAmount()).isEqualTo(900 + 190);
         assertThat(result.getItems()).extracting(ItemLine::getAppliedDiscountType)
@@ -218,7 +219,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
     void walkInWithoutMemberHasNoDiscount() {
         Long orderId = walkIn(null, "路過的狗", item(1000, PerformanceCategory.BATH_SMALL));
 
-        WalkInOrderResponse result = walkInOrderService.checkout(orderId, PaymentMethod.CASH, testData.staff().getUsername());
+        WalkInOrderResponse result = walkInPaymentService.checkout(orderId, PaymentMethod.CASH, testData.staff().getUsername());
 
         assertThat(result.getChargedAmount()).isEqualTo(1000);
         assertThat(result.getItems()).extracting(ItemLine::getAppliedDiscountType).containsExactly(DiscountType.NONE);

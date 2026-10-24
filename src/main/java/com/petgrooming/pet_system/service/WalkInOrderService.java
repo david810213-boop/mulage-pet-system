@@ -2,13 +2,10 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.*;
 import com.petgrooming.pet_system.dto.PetResponse;
-import com.petgrooming.pet_system.enums.DiscountType;
-import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.GroomingItem;
-import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.RetailProduct;
@@ -17,15 +14,12 @@ import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.model.WalkInOrderItem;
 import com.petgrooming.pet_system.repository.GroomingItemComponentRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
-import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderItemRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.notification.LineMessagingService;
-import com.petgrooming.pet_system.service.discount.DiscountCalculator;
-import com.petgrooming.pet_system.service.discount.EligibleOffers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,16 +27,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 需求 5 / 6：現場開單 + 經手人（綁定員工帳號）+ 積分結算。
+ * 需求 5：現場開單——建立、結束服務與核對、結帳前編輯項目、查詢。
  *
- * 積分串接既有績效系統：經手人一旦被填上（開單當下直接填，或事後從待補清單補），
- * 就立刻依該項目快照的 performanceCategory / points 建立一筆 PerformanceRecord，
- * 跟預約結帳（PaymentService.autoCreatePerformanceRecords）走同一套績效表，
- * 會真正算進員工的月結算，而不是只在現場開單頁面自己的報表裡打轉。
+ * 結帳／匯款確認／退款與金額計算見 {@link WalkInPaymentService}；
+ * 經手人與積分（跟預約結帳走同一套績效表，算進員工月結算）見 {@link WalkInOrderOperatorService}。
  */
 @Slf4j
 @Service
@@ -51,13 +42,12 @@ public class WalkInOrderService {
 
     private final WalkInOrderRepository orderRepository;
     private final WalkInOrderItemRepository orderItemRepository;
+    private final WalkInPaymentService walkInPaymentService; // 結帳與消費明細折扣標示
+    private final WalkInOrderOperatorService walkInOrderOperatorService; // 經手人與積分
     private final GroomingItemRepository groomingItemRepository;
     private final UserRepository userRepository;
-    private final WalletService walletService;
     private final PerformanceService performanceService;
-    private final PerformanceRecordRepository performanceRecordRepository;
     private final LineMessagingService lineMessagingService;
-    private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final PetRepository petRepository; // 需求（追加）：查現場單寵物物種
@@ -90,7 +80,7 @@ public class WalkInOrderService {
         WalkInOrder saved = orderRepository.save(order);
         saved.getItems().stream()
                 .filter(item -> item.getOperatorStaff() != null)
-                .forEach(item -> awardPoints(item, saved));
+                .forEach(item -> walkInOrderOperatorService.awardPoints(item, saved));
         log.info("現場開單 #{} 完成，共 {} 項，總額 {}", saved.getId(), saved.getItems().size(), saved.getTotalAmount());
         if (creator != null) {
             performanceService.addWalkInRecord(creator.getId(), saved.getId(),
@@ -135,7 +125,7 @@ public class WalkInOrderService {
                 .performanceCategory(gi.getPerformanceCategory())
                 .discountEligible(gi.isDiscountEligible())
                 .build();
-        assignOperators(item, line.getOperatorStaffId(), line.getOperatorStaffId2());
+        walkInOrderOperatorService.assignOperators(item, line.getOperatorStaffId(), line.getOperatorStaffId2());
         order.addItem(item);
 
         for (var component : components) {
@@ -331,7 +321,7 @@ public class WalkInOrderService {
 
         log.info("現場單 #{} 加購商品「{}」x{}", orderId, product.getName(), quantity);
         WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-        populateDiscountInfo(res, saved);
+        walkInPaymentService.populateDiscountInfo(res, saved);
         return res;
     }
 
@@ -452,7 +442,7 @@ public class WalkInOrderService {
                 .performanceCategory(gi.getPerformanceCategory())
                 .discountEligible(gi.isDiscountEligible())
                 .build();
-        assignOperators(item, operatorStaffId, operatorStaffId2);
+        walkInOrderOperatorService.assignOperators(item, operatorStaffId, operatorStaffId2);
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + item.getPrice());
 
@@ -469,12 +459,12 @@ public class WalkInOrderService {
             order.addItem(sub);
         }
         WalkInOrder saved = orderRepository.save(order);
-        awardNewlyAssignedItems(saved);
+        walkInOrderOperatorService.awardNewlyAssignedItems(saved);
 
         log.info("現場單 #{} 編輯新增服務項目「{}」{}", orderId, gi.getName(),
                 hasCustomPrice ? "（自訂價格 $" + actualPrice + "）" : "");
         WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-        populateDiscountInfo(res, saved);
+        walkInPaymentService.populateDiscountInfo(res, saved);
         return res;
     }
 
@@ -522,15 +512,15 @@ public class WalkInOrderService {
                 .performanceCategory(actualCategory)
                 .discountEligible(false)
                 .build();
-        assignOperators(item, operatorStaffId, operatorStaffId2);
+        walkInOrderOperatorService.assignOperators(item, operatorStaffId, operatorStaffId2);
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + price);
         WalkInOrder saved = orderRepository.save(order);
-        awardNewlyAssignedItems(saved);
+        walkInOrderOperatorService.awardNewlyAssignedItems(saved);
 
         log.info("現場單 #{} 新增自訂項目「{}」，金額 ${}", orderId, itemName, price);
         WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-        populateDiscountInfo(res, saved);
+        walkInPaymentService.populateDiscountInfo(res, saved);
         return res;
     }
 
@@ -558,156 +548,8 @@ public class WalkInOrderService {
         WalkInOrder saved = orderRepository.save(order);
 
         WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-        populateDiscountInfo(res, saved);
+        walkInPaymentService.populateDiscountInfo(res, saved);
         return res;
-    }
-    // 選現金/信用卡/LinePay：純標記已付款（金流在店家手上完成，系統只留紀錄）。
-    // 選儲值金：實際呼叫 WalletService.deduct() 扣款（走既有悲觀鎖，跟預約結帳同一套邏輯），
-    // 僅限「有綁定會員」的單才能用（非會員沒有錢包可扣）。
-    @Transactional
-    public WalkInOrderResponse checkout(Long orderId,
-            PaymentMethod paymentMethod,
-            String staffUsername) {
-        WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
-
-        if (order.isPaid()) {
-            throw new PaymentException("此單已完成結帳");
-        }
-        // 需求 7-1 修正：純零售商品訂單（沒有任何美容服務項目）不需要「結束服務」「核對」這兩步——
-        // 那兩步是針對美容服務設計的（核對還要填美容狀況備註+簽名），單純買東西沒有這些內容可填。
-        boolean hasServiceItems = order.getItems().stream().anyMatch(i -> i.getGroomingItemId() != null);
-        if (hasServiceItems && !order.isFinalCheckDone()) {
-            throw new PaymentException("請先完成「結束服務」與「核對」後才能結帳");
-        }
-
-        // 需求 7-1：結帳成功才真的扣零售商品庫存（不管付款方式是不是匯款待對帳，
-        // 因為顧客結完帳當下商品就會實際帶走，不是等匯款核對完成才拿走）。
-        // 這裡故意在真正寫入 paid/chargedAmount 之前先做，扣庫存失敗（例如庫存被其他單搶先扣完）
-        // 就直接整筆結帳拋例外中止，不會留下「已扣款但庫存沒扣成功」的不一致狀態。
-        for (WalkInOrderItem item : order.getItems()) {
-            if (item.getRetailProductId() != null) {
-                retailProductService.deductStock(item.getRetailProductId(), 1);
-            }
-        }
-
-        int chargedAmount = order.getTotalAmount();
-        if (paymentMethod == PaymentMethod.WALLET) {
-            if (order.getMember() == null) {
-                throw new PaymentException("此單無會員資料，無法用儲值金付款");
-            }
-            // 需求 5：套用會員等級折扣，且逐項目判斷是否可享折扣（洗澡/剪毛/調理類打折，
-            // 剪指甲/局部修剪/除廢毛等加購項目維持原價）。
-            // 需求 8 修正：貓咪回洗優惠（若有會員綁定）與會員儲值折扣只能擇一，不疊加。
-            double discount = walletService.getWallet(order.getMember().getUsername()).getDiscount();
-            chargedAmount = calculateWalletAmountPerItem(order, discount);
-            walletService.deduct(
-                    order.getMember().getUsername(),
-                    chargedAmount,
-                    null,
-                    "現場單 #" + order.getId() + " 消費扣款");
-        } else {
-            // 需求 8 修正：非儲值金付款（現金/LinePay/匯款）也要套用貓咪回洗優惠，
-            // 跟預約結帳（PaymentService）邏輯一致——回洗優惠不限付款方式，只有會員折扣才限儲值金。
-            chargedAmount = calculateAmountWithRewashDiscount(order);
-        }
-
-        // 需求 15 修正：匯款比照預約結帳（需求10）的「待對帳」機制——
-        // 先記下付款方式與金額，但不標記已付款，等店家另外按「確認收款」才轉為已完成。
-        // WalkInOrderItem 的積分是在指定經手人當下就發放（不是結帳才發放），
-        // 所以這裡不用擔心「待對帳期間積分該不該先發」的問題，跟預約結帳的積分時機完全不同。
-        boolean isWireTransfer = paymentMethod == PaymentMethod.WIRE_TRANSFER;
-
-        order.setPaymentMethod(paymentMethod);
-        order.setChargedAmount(chargedAmount);
-        if (isWireTransfer) {
-            WalkInOrder saved = orderRepository.save(order);
-            log.info("現場單 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", saved.getId());
-            WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-            populateDiscountInfo(res, saved);
-            return res;
-        }
-
-        order.setPaid(true);
-        order.setPaymentTime(LocalDateTime.now());
-        WalkInOrder saved = orderRepository.save(order);
-
-        log.info("現場單 #{} 結帳完成，付款方式：{}", saved.getId(), paymentMethod);
-        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-        populateDiscountInfo(res, saved);
-        return res;
-    }
-
-    // ── 確認匯款收款：店員核對銀行入帳後，現場單才正式轉為已完成 ─────────
-    // 需求 15 修正：比照 PaymentService.confirmWireTransferPayment() 同一套邏輯。
-    @Transactional
-    public WalkInOrderResponse confirmWireTransferPayment(Long orderId, String username) {
-        User staff = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
-        if (!staff.isStaffOrAdmin()) {
-            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可確認收款");
-        }
-
-        WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
-
-        if (order.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
-            throw new PaymentException("此單不是匯款付款，無需確認收款");
-        }
-        if (order.isPaid()) {
-            throw new PaymentException("此單已確認收款過，請勿重複操作");
-        }
-
-        order.setPaid(true);
-        order.setPaymentTime(LocalDateTime.now());
-        WalkInOrder saved = orderRepository.save(order);
-
-        log.info("現場單 #{} 匯款收款已確認，操作人：{}", orderId, username);
-        WalkInOrderResponse res = WalkInOrderResponse.from(saved);
-        populateDiscountInfo(res, saved);
-        return res;
-    }
-
-    // ── 退款：僅限「已結帳」的現場單 ──────────────────────────────────
-    // 退款後直接刪除這筆現場單（含底下所有項目），積分全部刪除、
-    // 儲值金付款的補回餘額，之後店家重新開一張全新的單即可。
-    @Transactional
-    public void refund(Long orderId, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
-        if (!user.isStaffOrAdmin()) {
-            throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作退款");
-        }
-
-        WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
-
-        if (!order.isPaid()) {
-            throw new PaymentException("此單尚未結帳，無法退款");
-        }
-
-        // 1. 若原本用儲值金付款，退回會員儲值餘額（退實際扣款金額，不是帳面未打折總額）
-        if (order.getPaymentMethod() == PaymentMethod.WALLET
-                && order.getMember() != null) {
-            int refundAmount = order.getChargedAmount() != null ? order.getChargedAmount() : order.getTotalAmount();
-            walletService.refund(
-                    order.getMember().getUsername(),
-                    refundAmount,
-                    null,
-                    "現場單 #" + orderId + " 退款");
-        }
-
-        // 2. 刪除這張單已經記過的所有績效積分（接進/完成/接出/服務項目）
-        List<PerformanceRecord> records =
-                performanceRecordRepository.findByWalkInOrderId(orderId);
-        if (!records.isEmpty()) {
-            performanceRecordRepository.deleteAll(records);
-        }
-
-        // 3. 直接刪除整筆現場單（items 設定了 cascade + orphanRemoval，會一併刪除）
-        orderRepository.delete(order);
-
-        log.info("現場單 #{} 已退款並刪除，操作人：{}", orderId, username);
     }
 
     // ── 所有現場單（交易紀錄列表）───────────────────────────────────────────
@@ -721,209 +563,8 @@ public class WalkInOrderService {
         WalkInOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + id));
         WalkInOrderResponse res = WalkInOrderResponse.from(order);
-        populateDiscountInfo(res, order);
+        walkInPaymentService.populateDiscountInfo(res, order);
         return res;
-    }
-
-    // 需求 8 修正：消費明細要能看出每個項目實際套用的是回洗優惠還是會員折扣，
-    // 邏輯比照 AppointmentDetailService.getAppointmentDetail()：只有已結帳的單才反推得出「實際」套用哪一種，
-    // 未結帳（尚未決定付款方式）則只標示 rewashEligible，不填 appliedDiscountType。
-    // 需求（追加）：狗狗首次體驗優惠比照同樣模式，跟回洗優惠是互斥品種、不會同一個項目都符合。
-    private void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {
-        EligibleOffers offers = discountCalculator.eligibleOffers(order);
-        boolean paidByWallet = order.isPaid()
-                && order.getPaymentMethod() == PaymentMethod.WALLET;
-        double memberDiscountRate = paidByWallet
-                ? walletService.getWallet(order.getMember().getUsername()).getDiscount()
-                : 1.0;
-
-        List<WalkInOrderItem> entities = order.getItems();
-        List<WalkInOrderResponse.ItemLine> lines = res.getItems();
-        for (int i = 0; i < entities.size() && i < lines.size(); i++) {
-            WalkInOrderItem entity = entities.get(i);
-            WalkInOrderResponse.ItemLine line = lines.get(i);
-            PerformanceCategory category = entity.getPerformanceCategory();
-            line.setRewashEligible(offers.applies(DiscountType.REWASH, category));
-            // 狗狗、貓咪首次體驗共用同一個欄位顯示（前端只在意「是不是首次體驗」）
-            line.setFirstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category));
-            if (order.isPaid()) {
-                line.setAppliedDiscountType(offers.resolve(entity.getPrice(), category,
-                        entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
-            }
-        }
-    }
-
-    // ── 需求 6：待補經手人清單（operatorStaff 為 null 的項目）──────────────
-    // 需求（追加）：只列出「有積分可算」的項目——零售商品加購（points 固定 0）
-    // 不會產生績效，補了經手人也沒有計算意義，不需要出現在這份待辦清單裡。
-    public List<WalkInOrderResponse.ItemLine> pendingOperatorItems() {
-        List<WalkInOrderItem> pending = orderItemRepository.findByOperatorStaffIsNull();
-        List<WalkInOrderResponse.ItemLine> result = new ArrayList<>();
-        for (WalkInOrderItem oi : pending) {
-            if (oi.getPoints() <= 0) continue;
-            WalkInOrderResponse.ItemLine line = new WalkInOrderResponse.ItemLine();
-            line.setItemId(oi.getId());
-            line.setGroomingItemId(oi.getGroomingItemId());
-            line.setItemName(oi.getItemName());
-            line.setPrice(oi.getPrice());
-            line.setPoints(oi.getPoints());
-            line.setOperatorFilled(false);
-            result.add(line);
-        }
-        return result;
-    }
-
-    // ── 需求 6：補填某個項目的經手人（同步寫入績效紀錄）─────────────────────
-    @Transactional
-    public void fillOperator(Long orderItemId, Long staffId) {
-        fillOperator(orderItemId, staffId, null);
-    }
-
-    // 需求（2026-10-02 店家確認 5）：待補經手人也可以一次選兩位
-    @Transactional
-    public void fillOperator(Long orderItemId, Long staffId, Long staffId2) {
-        WalkInOrderItem item = orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到項目 #" + orderItemId));
-
-        if (item.getOperatorStaff() != null) {
-            throw new PaymentException("此項目已填寫經手人，無法重複填寫");
-        }
-
-        assignOperators(item, staffId, staffId2);
-        orderItemRepository.save(item);
-
-        awardPoints(item, item.getOrder());
-        log.info("項目 #{} 補填經手人：{}{}", orderItemId, item.getOperatorStaff().getName(),
-                item.getOperatorStaff2() != null ? "、" + item.getOperatorStaff2().getName() : "");
-    }
-
-    // 需求（追加，2026-10-02）：核對加項目時有選經手人的，存檔後立刻寫入積分
-    // （用存檔後的項目清單逐一檢查，pointsAwarded 會擋掉已經計過的）
-    private void awardNewlyAssignedItems(WalkInOrder saved) {
-        for (WalkInOrderItem it : saved.getItems()) {
-            if (it.getOperatorStaff() != null && !it.isPointsAwarded()) {
-                awardPoints(it, saved);
-            }
-        }
-    }
-
-    private void assignOperators(WalkInOrderItem item, Long id1, Long id2) {
-        if (id1 == null && id2 != null) {
-            throw new PaymentException("請先選第一位經手人，再選第二經手人");
-        }
-        if (id1 != null && id1.equals(id2)) {
-            throw new PaymentException("兩位經手人不能是同一個人");
-        }
-        item.setOperatorStaff(findOperator(id1));
-        item.setOperatorStaff2(findOperator(id2));
-    }
-
-    private User findOperator(Long staffId) {
-        if (staffId == null) return null;
-        User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到員工 #" + staffId));
-        if (!staff.isStaffOrAdmin()) {
-            throw new PaymentException("經手人必須是店內員工");
-        }
-        return staff;
-    }
-
-    // ── 積分寫入：一筆項目只會被計入一次（pointsAwarded 防重複）────────────
-    private void awardPoints(WalkInOrderItem item, WalkInOrder order) {
-        if (item.isPointsAwarded())
-            return; // 防呆：避免同一筆被重複計分
-        if (item.getPerformanceCategory() == PerformanceCategory.OTHER)
-            return; // 跟預約結帳同樣規則，OTHER 不計分
-        if (item.getPoints() <= 0)
-            return;
-
-        LocalDate serviceDate = order.getCreatedAt() != null
-                ? order.getCreatedAt().toLocalDate()
-                : LocalDate.now();
-
-        if (item.getOperatorStaff2() != null) {
-            // 需求（2026-10-02）：雙人經手，積分各半
-            performanceService.addDualRecords(
-                    item.getOperatorStaff().getId(), item.getOperatorStaff2().getId(),
-                    null, order.getId(), item.getPerformanceCategory(), item.getPoints(), serviceDate,
-                    "現場單 #" + order.getId() + " - " + item.getItemName());
-        } else {
-            performanceService.addWalkInRecord(
-                    item.getOperatorStaff().getId(),
-                    order.getId(),
-                    item.getPerformanceCategory(),
-                    item.getPoints(),
-                    serviceDate,
-                    "現場單 #" + order.getId() + " - " + item.getItemName());
-        }
-
-        item.setPointsAwarded(true);
-        orderItemRepository.save(item);
-    }
-
-    // ── 需求 6：經手人積分結算報表（排除未填寫）────────────────────────────
-    public List<OperatorPointsResponse> operatorPointsReport() {
-        List<Object[]> rows = orderItemRepository.sumPointsByOperator();
-        List<OperatorPointsResponse> result = new ArrayList<>();
-        for (Object[] r : rows) {
-            String operatorName = (String) r[1];
-            double totalPoints = r[2] != null ? ((Number) r[2]).doubleValue() : 0;
-            int totalAmount = r[3] != null ? ((Number) r[3]).intValue() : 0;
-            long itemCount = r[4] != null ? ((Number) r[4]).longValue() : 0;
-            result.add(new OperatorPointsResponse(operatorName, totalPoints, totalAmount, itemCount));
-        }
-        return result;
-    }
-
-    // ── 需求（2026-09-24）：員工手機版現場單結帳頁的金額預覽 ────────────────
-    // 跟 PaymentService 的同名方法同樣做法：直接呼叫 checkout() 實際扣款用的
-    // 兩支計算方法，確保預覽金額跟實際結帳金額一致。純讀取，不寫入資料。
-
-    /** 現金／LINE Pay／匯款：只套首次體驗、回洗優惠，不套會員折扣 */
-    @Transactional
-    public int previewStandardAmount(Long orderId) {
-        WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
-        return calculateAmountWithRewashDiscount(order);
-    }
-
-    /** 儲值金：逐項目擇優套用首次體驗／回洗優惠／會員折扣；沒綁會員回傳 null（不能用儲值金） */
-    @Transactional
-    public Integer previewWalletAmount(Long orderId) {
-        WalkInOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
-        if (order.getMember() == null) {
-            return null;
-        }
-        double discount = walletService.getWallet(order.getMember().getUsername()).getDiscount();
-        return calculateWalletAmountPerItem(order, discount);
-    }
-
-    // ── 現場單結帳金額計算（擇優規則見 DiscountCalculator）──────────────────
-
-    /**
-     * 儲值金付款（需求 5、8）：逐項目在服務促銷與會員折扣之間擇優。會員折扣資格用開單當下存的
-     * discountEligible 快照，避免項目後來改設定，回頭影響到已經開好的舊單。
-     */
-    private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
-        EligibleOffers offers = discountCalculator.eligibleOffers(order);
-        double total = order.getItems().stream()
-                .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(),
-                        item.isDiscountEligible(), discount).price())
-                .sum();
-        return (int) Math.round(total);
-    }
-
-    /** 非儲值金付款（需求 8）：只套用服務促銷；沒有任何促銷資格時就是開單金額。 */
-    private int calculateAmountWithRewashDiscount(WalkInOrder order) {
-        EligibleOffers offers = discountCalculator.eligibleOffers(order);
-        if (offers.isEmpty()) {
-            return order.getTotalAmount();
-        }
-        double total = order.getItems().stream()
-                .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(), false, 1.0).price())
-                .sum();
-        return (int) Math.round(total);
     }
 
     /** 全部現場單（實體），新的在前；報表與營收計算用。 */
