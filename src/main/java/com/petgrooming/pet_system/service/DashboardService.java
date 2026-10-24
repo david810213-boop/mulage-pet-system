@@ -53,8 +53,7 @@ public class DashboardService {
         // 只查今天的預約與待確認的預約，不撈全部歷史
         List<AppointmentAdminResponse> todays = appointmentQueryService.getForAdminBetween(today, today);
         List<AppointmentAdminResponse> upcomingPending = appointmentQueryService.getPendingConfirmForAdminFrom(today);
-        List<User> allCustomers = userService.getAllCustomers();
-        List<User> recentCustomers = allCustomers.stream().limit(PREVIEW_SIZE).toList();
+        List<User> recentCustomers = userService.firstCustomers(PREVIEW_SIZE);
         List<RetailProduct> activeRetailProducts = retailProductService.listActive().stream()
                 .sorted(Comparator.comparingInt(RetailProduct::getStockQuantity))
                 .toList();
@@ -71,7 +70,7 @@ public class DashboardService {
                         .limit(PREVIEW_SIZE)
                         .toList(),
                 topUpService.pending(),
-                allCustomers.size(),
+                (int) userService.countCustomers(),
                 recentCustomers,
                 walletsOf(recentCustomers),
                 activeRetailProducts.stream().limit(PREVIEW_SIZE).toList(),
