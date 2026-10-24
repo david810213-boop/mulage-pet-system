@@ -1,7 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.LineBindService;
@@ -39,7 +38,6 @@ public class AccountMvcController {
     }
 
     // ── POST /account/password ─────────────────────────────────────────────
-    @RequireCsrf
     @PostMapping("/password")
     public String changePassword(@RequestParam String oldPassword,
                                  @RequestParam String newPassword,

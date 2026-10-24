@@ -1,7 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.WalletResponse;
@@ -51,7 +50,6 @@ public class CustomerWalletAdminController {
     // ── POST /api/admin/wallets/{userId}/deposit ───────────────────────────
     // 幫指定顧客儲值（收到現金/匯款後由店家操作）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @RequireCsrf
     @PostMapping("/wallets/{userId}/deposit")
     public ResponseEntity<?> depositById(
             @PathVariable Long userId,
@@ -79,7 +77,6 @@ public class CustomerWalletAdminController {
     }
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @RequireCsrf
     @PostMapping("/wallet/{username}/deposit")
     public ResponseEntity<?> deposit(
             @PathVariable String username,

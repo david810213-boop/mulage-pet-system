@@ -1,7 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.UpdateProfileRequest;
@@ -61,7 +60,6 @@ public class UserController {
     // ── POST /api/admin/staff ──────────────────────────────────────────────
     // 新增員工帳號（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
-    @RequireCsrf
     @PostMapping({"/api/admin/staff", "/api/users/staff"})
     public ResponseEntity<?> createStaff(@Valid @RequestBody CreateStaffRequest req, @CurrentUser String username) {
         UserResponse res = userService.createStaff(req);

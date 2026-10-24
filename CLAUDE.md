@@ -29,6 +29,7 @@
 - **店家/員工**：帳號密碼登入網頁版，JWT 存在 Cookie，`LoginInterceptor` + `RoleInterceptor`（搭配 `@RequireRole` 註解）做權限控管
 - **會員（顧客）**：透過 LINE LIFF 頁面，`liff.getIDToken()` 驗證後換發 JWT
 - **⚠️ 重要**：新增任何 `/api/**` 端點，如果是要給「未登入狀態」呼叫的（例如 LINE 登入/綁定），**一定要手動加進 `WebConfig` 攔截器的白名單**（踩過這個坑：`/api/line/bind` 一開始漏加）
+- **CSRF**：以 Cookie 登入的 POST／PUT／PATCH／DELETE 一律由 `CsrfInterceptor` 檢查 token，以 Bearer 登入（LIFF）與未登入的請求不檢查。員工頁面的 token 由共用 head 片段載入的 `/js/csrf.js` 自動補到表單與 fetch，**新頁面一定要用 `fragments/header :: common-head` 或 `m/fragments/app :: head`**，不用自己寫；確定無法帶 token 的端點才標 `@SkipCsrf`
 - **API 路徑規則**：資源名稱用複數（`/api/top-ups`）、登入者自己的資料放 `/api/me/**`、管理功能放 `/api/admin/**`（`RoleInterceptor` 另外以路徑限制員工角色，與 `@RequireRole` 雙重保護）、網址以數字 id 識別會員而非帳號、URL 不放動詞（用 HTTP 方法表達，狀態轉換如 `/confirm`、`/cancel` 除外）。改路徑時舊路徑先保留並登記在 `DeprecatedApiInterceptor`，log 不再出現「已淘汰的 API」後再移除
 - 老客戶用電話號碼自助認領既有匯入資料（既有會員資料匯入功能，見 `docs/功能總覽與測試手冊.md` 七之一）
 

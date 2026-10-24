@@ -1,7 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -24,8 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * 員工手機版：帳號設定。
  *
  * 修改密碼、設定 PIN 碼、綁定 LINE（收新預約／低庫存通知用），跟網頁版
- * AccountMvcController 呼叫同樣的 service。修改密碼跟網頁版一樣要求 CSRF token
- * （@RequireCsrf），token 直接從這次請求的 JWT 取出放進表單隱藏欄位。
+ * AccountMvcController 呼叫同樣的 service。表單的 CSRF token 直接從這次請求的 JWT 取出放進隱藏欄位。
  */
 @Controller
 @RequestMapping("/m/account")
@@ -55,7 +53,6 @@ public class MobileAccountController {
         return "m/account";
     }
 
-    @RequireCsrf
     @PostMapping("/password")
     public String changePassword(RedirectAttributes ra,
             @RequestParam String oldPassword,

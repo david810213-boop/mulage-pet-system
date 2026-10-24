@@ -1,6 +1,6 @@
 package com.petgrooming.pet_system.interceptor;
 
-import com.petgrooming.pet_system.annotation.RequireCsrf;
+import com.petgrooming.pet_system.annotation.SkipCsrf;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -9,27 +9,44 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
+
 /**
- * CSRF Token 防護攔截器。
+ * CSRF Token 驗證。
  *
- * 運作方式：
- * 1. 只處理有 @RequireCsrf 的方法（見該注解說明，只標在高風險端點上）
- * 2. 從 request 屬性取出 LoginInterceptor 已經解析好、驗證過簽章的 csrf claim
- *    （這個值只有在登入當下由伺服器產生、寫進 JWT，外部無法偽造）
- * 3. 跟這次請求另外帶來的 token（header X-CSRF-Token 優先，或表單欄位 _csrf）
- *    比對，兩者一致才放行
+ * 瀏覽器會自動帶上 Cookie，所以「以 Cookie 登入」的寫入請求（POST／PUT／PATCH／DELETE）
+ * 一律要另外帶 token：header X-CSRF-Token，或表單欄位 _csrf，值必須等於登入時簽進 JWT 的 csrf，
+ * 也就是前端可讀的 XSRF-TOKEN Cookie（攻擊頁面讀不到別的網域的 Cookie，所以帶不出正確的值）。
+ * 員工頁面共用的 /js/csrf.js 會自動幫所有表單與 fetch 補上，個別頁面不用自己處理。
  *
- * 為什麼這樣就有防護效果：攻擊者可以讓受害者的瀏覽器自動帶上 JWT_TOKEN
- * Cookie（如果沒有 SameSite 擋的話），但攻擊頁面讀不到 XSRF-TOKEN 這個
- * Cookie 的實際內容（跨網域，瀏覽器同源政策擋下），沒辦法在偽造的請求裡
- * 附上正確的驗證值，因此就算 SameSite 這層被繞過，這裡還有第二層防護。
- *
- * 必須排在 LoginInterceptor 之後（見 WebConfig 的 order 設定），
- * 才讀得到 tokenCsrf 這個屬性。
+ * 以 Authorization: Bearer 登入的請求（LIFF）略過：瀏覽器不會自動帶這個標頭，跨站請求帶不出來。
+ * 未登入的請求也略過，沒有登入狀態可以被冒用。確定不能帶 token 的端點標 @SkipCsrf。
  */
 @Component
 @Slf4j
 public class CsrfInterceptor implements HandlerInterceptor {
+
+    /** LoginInterceptor 在 token 來自 JWT_TOKEN Cookie 時設定的 request 屬性。 */
+    public static final String TOKEN_FROM_COOKIE = "tokenFromCookie";
+
+    private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
+
+    private static final String MESSAGE = "驗證失效，請重新整理頁面後再試一次";
+
+    private static final String ERROR_PAGE = """
+            <!doctype html>
+            <html lang="zh-TW"><head><meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>操作沒有送出 | 慕沐村 Mulage pet</title></head>
+            <body style="font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;padding:32px 16px;color:#2b2b2b;">
+            <h2 style="margin:0 0 12px;">操作沒有送出</h2>
+            <p>頁面的驗證資訊已失效（可能是登入過期或頁面開太久），剛才的操作沒有執行。</p>
+            <p>請回上一頁重新整理後再操作一次；若仍出現此畫面，請重新登入。</p>
+            <p><a href="javascript:history.back()">回上一頁</a>　<a href="/dashboard">回首頁</a>　<a href="/auth/login">重新登入</a></p>
+            </body></html>
+            """;
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request,
@@ -39,9 +56,14 @@ public class CsrfInterceptor implements HandlerInterceptor {
         if (!(handler instanceof HandlerMethod handlerMethod)) {
             return true;
         }
-
-        RequireCsrf requireCsrf = handlerMethod.getMethodAnnotation(RequireCsrf.class);
-        if (requireCsrf == null) {
+        if (SAFE_METHODS.contains(request.getMethod())) {
+            return true;
+        }
+        if (!Boolean.TRUE.equals(request.getAttribute(TOKEN_FROM_COOKIE))) {
+            return true;
+        }
+        if (handlerMethod.hasMethodAnnotation(SkipCsrf.class)
+                || handlerMethod.getBeanType().isAnnotationPresent(SkipCsrf.class)) {
             return true;
         }
 
@@ -51,22 +73,29 @@ public class CsrfInterceptor implements HandlerInterceptor {
             submitted = request.getParameter("_csrf");
         }
 
-        boolean valid = expected != null && expected.equals(submitted);
-
-        if (!valid) {
-            log.warn("CsrfInterceptor：CSRF token 驗證失敗，拒絕存取 {}", request.getRequestURI());
-            boolean isApi = request.getRequestURI().startsWith("/api/");
-            if (isApi) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write(
-                        "{\"message\":\"驗證失效，請重新整理頁面後再試一次\"}");
-            } else {
-                response.sendRedirect("/dashboard?error=csrf");
-            }
-            return false;
+        if (matches(expected, submitted)) {
+            return true;
         }
 
-        return true;
+        log.warn("CsrfInterceptor：CSRF token 驗證失敗，拒絕存取 {} {}", request.getMethod(), request.getRequestURI());
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        if (request.getRequestURI().startsWith("/api/")) {
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"status\":403,\"code\":\"FORBIDDEN\",\"detail\":\"" + MESSAGE
+                    + "\",\"message\":\"" + MESSAGE + "\"}");
+        } else {
+            // 直接顯示原因，不轉址到首頁：轉址後店員看不出剛才的操作沒有送出
+            response.setContentType("text/html;charset=UTF-8");
+            response.getWriter().write(ERROR_PAGE);
+        }
+        return false;
+    }
+
+    private static boolean matches(String expected, String submitted) {
+        if (expected == null || expected.isEmpty() || submitted == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                submitted.getBytes(StandardCharsets.UTF_8));
     }
 }
