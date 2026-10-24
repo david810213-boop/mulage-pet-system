@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.*;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.ErrorCode;
@@ -123,7 +124,7 @@ public class WalkInOrderCheckService {
             throw new PaymentException("請填寫本次美容狀況備註");
         }
         String sigTrim = signatureData == null ? "" : signatureData.trim();
-        if (sigTrim.isEmpty() || !sigTrim.startsWith("data:image") || sigTrim.length() < 1000) {
+        if (sigTrim.isEmpty() || !sigTrim.startsWith("data:image") || sigTrim.length() < StoreRules.MIN_SIGNATURE_LENGTH) {
             throw new PaymentException("請請家長於簽名板完成簽名確認");
         }
 

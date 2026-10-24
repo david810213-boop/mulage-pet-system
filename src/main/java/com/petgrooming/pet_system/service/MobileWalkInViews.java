@@ -27,6 +27,9 @@ public class MobileWalkInViews {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
+    /** 現場單搜尋會員：候選會員最多收集的人數，以及實際列出的人數。 */
+    private static final int SEARCH_CANDIDATE_LIMIT = 20;
+    private static final int SEARCH_RESULT_LIMIT = 15;
 
     private final MobileViewHelper view;
     private final UserService userService;
@@ -87,21 +90,21 @@ public class MobileWalkInViews {
         if (digits.length() >= 3) {
             userService.getAllCustomers().stream()
                     .filter(u -> u.getPhone() != null && u.getPhone().replaceAll("[^0-9]", "").contains(digits))
-                    .limit(20)
+                    .limit(SEARCH_CANDIDATE_LIMIT)
                     .forEach(u -> found.putIfAbsent(u.getUsername(), u));
         }
         for (Pet p : petService.searchByName(kw)) {
             if (p.getOwner() != null && !p.isDeleted()) {
                 found.putIfAbsent(p.getOwner().getUsername(), p.getOwner());
             }
-            if (found.size() >= 20) {
+            if (found.size() >= SEARCH_CANDIDATE_LIMIT) {
                 break;
             }
         }
 
         List<Map<String, Object>> results = new ArrayList<>();
         for (User u : found.values()) {
-            if (results.size() >= 15) {
+            if (results.size() >= SEARCH_RESULT_LIMIT) {
                 break;
             }
             List<Map<String, Object>> pets = new ArrayList<>();

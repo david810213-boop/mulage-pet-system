@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.dto.WalletResponse;
@@ -22,8 +23,6 @@ public class DashboardService {
 
     /** 首頁清單最多顯示的筆數。 */
     private static final int PREVIEW_SIZE = 8;
-    /** 零售商品沒有個別安全庫存量欄位，先以固定門檻判斷低庫存。 */
-    private static final int LOW_STOCK_THRESHOLD = 5;
     private final AppointmentQueryService appointmentQueryService;
     private final PaymentService paymentService;
     private final WalkInOrderService walkInOrderService;
@@ -75,7 +74,7 @@ public class DashboardService {
                 walletsOf(recentCustomers),
                 activeRetailProducts.stream().limit(PREVIEW_SIZE).toList(),
                 activeRetailProducts.size(),
-                activeRetailProducts.stream().filter(p -> p.getStockQuantity() <= LOW_STOCK_THRESHOLD).count());
+                activeRetailProducts.stream().filter(p -> p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD).count());
     }
 
     /**

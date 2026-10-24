@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 public class MobileAppointmentCards {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    /** 今日頁最多列出的進行中現場單。 */
+    private static final int OPEN_WALK_IN_LIMIT = 8;
 
     private final MobileViewHelper view;
     private final WalkInOrderService walkInOrderService;
@@ -41,11 +43,11 @@ public class MobileAppointmentCards {
         return todayCards.size();
     }
 
-    /** 第四批：進行中（未結帳）的現場單，今日頁一併列出，方便接著做下一步。 */
+    /** 進行中（未結帳）的現場單，今日頁一併列出，方便接著做下一步。 */
     public List<Map<String, Object>> openWalkInCards() {
         return walkInOrderService.listAll().stream()
                 .filter(o -> !o.isPaid())
-                .limit(8)
+                .limit(OPEN_WALK_IN_LIMIT)
                 .map(o -> {
                     String title = o.getPetName() != null && !o.getPetName().isBlank() ? o.getPetName()
                             : o.getMemberName() != null ? o.getMemberName() : "非會員";
