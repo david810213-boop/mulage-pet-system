@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.TopUpService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +40,7 @@ public class TopUpController {
         var res = topUpService.submit(username, req);
         operationLogService.logByUsername(username, "WALLET", "TOPUP_REQUEST",
                 "會員 " + username, "+$" + req.getAmount() + "（末五碼 " + req.getLastFiveDigits() + "）");
-        return ResponseEntity.ok(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     // ── 顧客查自己的申請 ────────────────────────────────────────────────────

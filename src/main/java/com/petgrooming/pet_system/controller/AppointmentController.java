@@ -16,6 +16,7 @@ import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +43,7 @@ public class AppointmentController {
         AppointmentResponse res = appointmentService.book(req, username);
         operationLogService.logByUsername(username, "APPOINTMENT", "BOOK",
                 "預約 " + res.getAppointmentCode(), res.getPetName());
-        return ResponseEntity.ok(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     // ── GET /api/appointments/my ───────────────────────────────────────────
