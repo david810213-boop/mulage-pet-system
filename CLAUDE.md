@@ -17,8 +17,8 @@
 ## 二、部署與環境
 
 - **GitHub**：`david810213-boop/mulage-pet-system`，開發分支 **`redesign`**，正式部署分支 **`main`**（Railway 自動部署 `main`；`redesign` 開發完成、CI 通過後合併至 `main` 才會上線）。重構等較大的工作另開 `refactor/*` 分支，CI 通過後再合併回 `redesign`
-- **CI**：GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`、`redesign`、`refactor/**`、`feature/**` 時執行 `mvn verify`；測試以 Testcontainers 啟動 MySQL 8，本機跑測試需要 Docker。測試結果與失敗原因會以註記（annotation）顯示在 GitHub 的 Checks 頁
-- **正式環境**：Railway，`MySQL` 服務 + `mulage-pet-system`（App）服務，兩者已同區域（跨區延遲問題已解決，但 N+1 查詢問題本身還沒處理，見第六節）
+- **CI**：GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`、`redesign`、`refactor/**`、`feature/**`、`perf/**` 時執行 `mvn verify`；測試以 Testcontainers 啟動 MySQL 8，本機跑測試需要 Docker。測試結果與失敗原因會以註記（annotation）顯示在 GitHub 的 Checks 頁
+- **正式環境**：Railway，`MySQL` 服務 + `mulage-pet-system`（App）服務，兩者已同區域（跨區延遲問題已解決，查詢效能現況見第六節）
 - **本機資料庫**：Docker 容器 `pet-mysql`，對外 **port 3307**（容器內部仍是 3306）；⚠️ 這台電腦另外還有一個**原生 MySQL（port 3306）**，連線前務必先確認 port
 - **連線正式環境資料庫**：`railway link` → `railway connect MySQL`（走 SSH tunnel，不用開 Public Networking）
 - **本機與正式環境資料庫完全獨立、不同步**
@@ -51,9 +51,12 @@
 5. **服務項目種子資料用 Flyway 管理**：schema 仍由 Hibernate `ddl-auto=update` 自動處理，但 `GroomingItem`/`GroomingItemComponent` 的種子資料全部搬到 `src/main/resources/db/migration/Vn__xxx.sql`，由 `DataSeedMigrationRunner`（`ApplicationRunner`，手動控制在 Hibernate 建表之後才執行 `Flyway.migrate()`）負責。**以後新增服務項目種子資料，寫新的 `Vn__xxx.sql` 遷移檔案，不要再回頭改 `DataInitializer.java`**。店家會持續自己在後台調整的營運設定（時段容量範本、公休設定、匯款帳戶等）維持 `existsBy()`/lazy 初始化寫法，不走 Flyway
 6. **CSV 匯入的編碼問題**（2026-09 踩坑）：讀取上傳檔案不能無條件假設 UTF-8——Windows 存出的 CSV 常是 Big5，`InputStreamReader` 解碼失敗時不會拋例外，而是靜默替換成 `U+FFFD`，導致 CJK 欄位（姓名、寵物名字、品種）整批變亂碼或解析失敗，但純數字/ASCII 欄位（電話、金額）不受影響，容易誤判成「只有部分資料匯入失敗」。**CSV 讀取一律先偵測編碼（BOM 判斷 + 嘗試 UTF-8 嚴格解碼失敗後退回 Big5/GBK），去除開頭 BOM，且解析失敗要記錄清楚是第幾列、哪個欄位，不要靜默跳過**
 
-## 六、已知效能技術債（尚未解決）
+## 六、效能：查詢次數與載入範圍
 
-`AppointmentQueryService.getAllForAdmin()` 對每一筆歷史預約各自觸發多次額外查詢（N+1 查詢問題），Dashboard 跟部分後台列表頁會因此變慢。跨區域網路延遲問題已透過資料庫遷移解決，但 **N+1 查詢本身還沒修**，隨資料量增加可能再次變慢。修法方向：`getAllForAdmin()` 改用 `@BatchSize` 或 `JOIN FETCH` 把 N 次查詢併成 1~2 次；Dashboard 首頁改成只查「今天」「待確認」等真正需要的少量資料，不要撈全部歷史。完整排查記錄見 `docs/疑難排解與環境設定指南.md` 第十四節。
+- **N+1 查詢已解決**：後台預約清單（`AppointmentQueryService` 的 `getAllForAdmin()` 等）用 JOIN FETCH 一次查出預約、使用者、選擇項目，開單項目與交易紀錄批次查詢。`StaffPageQueryCountTest` 會檢查首頁、預約列表、手機版今日頁、預約明細、交易紀錄、現場單列表的 SQL 條數不會隨歷史資料增加，新增頁面或改查詢時跑這支測試確認沒有退化（Checks 頁的「量測」註記會列出各頁 SQL 條數與載入筆數）
+- **只查需要的資料**：首頁與手機版今日頁只查「今天」與「待確認」的預約（`getForAdminBetween`、`getPendingConfirmForAdminFrom`），今日營收只查今天付款的交易與現場單，會員數用 COUNT；單筆預約用 `getForAdmin(id)`，不要撈全部再篩選
+- **尚未處理**：網頁版預約列表、手機版預約列表、財務報表、現場單列表仍會載入全部歷史資料（查詢條數固定，但資料量會隨時間變大），需要時再改成依篩選條件查詢或分頁
+- 效能問題排查流程見第七節，完整排查記錄見 `docs/疑難排解與環境設定指南.md` 第十四節
 
 ## 七、給接手對話的操作提醒（每次改動都要遵守）
 

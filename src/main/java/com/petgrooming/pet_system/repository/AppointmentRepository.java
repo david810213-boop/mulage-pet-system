@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.repository;
 
+import java.util.Optional;
+import org.springframework.data.repository.query.Param;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.model.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -59,4 +61,30 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             "LEFT JOIN FETCH a.selectedItems " +
             "ORDER BY a.id DESC")
     List<Appointment> findAllWithUserAndItems();
+
+    // 後台只需要一部分預約時（某段日期、待確認、單筆），不要撈全部歷史再在記憶體篩選；
+    // 跟 findAllWithUserAndItems() 一樣 JOIN FETCH 使用者與選擇項目，一條 SQL 查完。
+    @Query(
+            "SELECT DISTINCT a FROM Appointment a " +
+            "LEFT JOIN FETCH a.user " +
+            "LEFT JOIN FETCH a.selectedItems " +
+            "WHERE a.date BETWEEN :from AND :to " +
+            "ORDER BY a.id DESC")
+    List<Appointment> findWithUserAndItemsByDateBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query(
+            "SELECT DISTINCT a FROM Appointment a " +
+            "LEFT JOIN FETCH a.user " +
+            "LEFT JOIN FETCH a.selectedItems " +
+            "WHERE a.status = :status AND a.date >= :from " +
+            "ORDER BY a.id DESC")
+    List<Appointment> findWithUserAndItemsByStatusFrom(@Param("status") AppointmentStatus status,
+                                                       @Param("from") LocalDate from);
+
+    @Query(
+            "SELECT DISTINCT a FROM Appointment a " +
+            "LEFT JOIN FETCH a.user " +
+            "LEFT JOIN FETCH a.selectedItems " +
+            "WHERE a.id = :id")
+    Optional<Appointment> findWithUserAndItemsById(@Param("id") Long id);
 }

@@ -4,7 +4,6 @@ import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.MobileAppointmentCard;
-import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.model.User;
@@ -68,9 +67,11 @@ public class MobileMvcController {
 
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
-        List<AppointmentAdminResponse> all = appointmentQueryService.getAllForAdmin();
+        // 只查今天的預約與待確認的預約，不撈全部歷史
+        List<AppointmentAdminResponse> todays = appointmentQueryService.getForAdminBetween(today, today);
+        List<AppointmentAdminResponse> pending = appointmentQueryService.getPendingConfirmForAdminFrom(today);
 
-        List<MobileAppointmentCard> todayCards = all.stream()
+        List<MobileAppointmentCard> todayCards = todays.stream()
                 .filter(a -> !a.isCancelled() && a.getDate().isEqual(today))
                 .sorted(Comparator.comparing(AppointmentAdminResponse::getStartTime))
                 .map(a -> cards.toCard(a, today))
@@ -79,8 +80,7 @@ public class MobileMvcController {
         int nowIndex = cards.nowIndex(todayCards, now);
 
         // 之後日期的待確認預約（今天的已經在時間軸裡，不重複列）
-        List<MobileAppointmentCard> upcomingPending = all.stream()
-                .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
+        List<MobileAppointmentCard> upcomingPending = pending.stream()
                 .filter(a -> a.getDate().isAfter(today))
                 .sorted(Comparator.comparing(AppointmentAdminResponse::getDate)
                         .thenComparing(AppointmentAdminResponse::getStartTime))
@@ -88,10 +88,7 @@ public class MobileMvcController {
                 .map(a -> cards.toCard(a, today))
                 .toList();
 
-        long pendingConfirmCount = all.stream()
-                .filter(a -> !a.isCancelled() && a.getStatus() == AppointmentStatus.PENDING_CONFIRM)
-                .filter(a -> !a.getDate().isBefore(today))
-                .count();
+        long pendingConfirmCount = pending.size();
         long lowStockCount = retailProductService.listActive().stream()
                 .filter(p -> p.getStockQuantity() <= 5)
                 .count();

@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.service;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.RegisterRequest;
@@ -206,6 +208,16 @@ public class UserService {
 
     public List<User> getAllCustomers() {
         return userRepository.findByRole(UserRole.CUSTOMER);
+    }
+
+    public long countCustomers() {
+        return userRepository.countByRole(UserRole.CUSTOMER);
+    }
+
+    /** 依建立順序（id 由小到大）的前 limit 位會員，跟 getAllCustomers() 的順序相同。 */
+    public List<User> firstCustomers(int limit) {
+        return userRepository.findByRole(UserRole.CUSTOMER,
+                PageRequest.of(0, limit, Sort.by("id")));
     }
 
     // 需求：現場開單時依姓名/帳號搜尋會員（解決 LINE 登入會員帳號是 line_xxx 內碼，

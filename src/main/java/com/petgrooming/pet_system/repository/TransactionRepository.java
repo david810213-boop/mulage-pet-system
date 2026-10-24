@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +28,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     // 查所有已付款交易（財務報告用）
     List<Transaction> findByPaidTrue();
+
+    // 首頁今日營收：只查付款時間在指定區間內的已付款交易，不撈全部歷史
+    List<Transaction> findByPaidTrueAndPaymentTimeGreaterThanEqualAndPaymentTimeLessThan(LocalDateTime from, LocalDateTime to);
 }

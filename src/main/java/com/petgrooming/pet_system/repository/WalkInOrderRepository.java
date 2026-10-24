@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.model.WalkInOrder;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -20,4 +21,7 @@ public interface WalkInOrderRepository extends JpaRepository<WalkInOrder, Long> 
 
     // 需求（追加，2026-09-08）：手動綁定既有匯入資料——過戶這個會員名下所有現場單
     List<WalkInOrder> findByMemberId(Long memberId);
+
+    // 首頁今日營收：只查付款時間在指定區間內的已付款現場單，不撈全部歷史
+    List<WalkInOrder> findByPaidTrueAndPaymentTimeGreaterThanEqualAndPaymentTimeLessThan(LocalDateTime from, LocalDateTime to);
 }

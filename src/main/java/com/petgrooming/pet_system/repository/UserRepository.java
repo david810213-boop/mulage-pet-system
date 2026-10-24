@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.repository;
 
+import org.springframework.data.domain.Pageable;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,6 +21,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 依角色查詢
     List<User> findByRole(UserRole role);
+
+    // 首頁只需要會員總數與前幾筆，不撈全部會員
+    long countByRole(UserRole role);
+
+    List<User> findByRole(UserRole role, Pageable pageable);
 
     // 需求（追加）：既有會員資料匯入 + 顧客用電話認領帳號
     Optional<User> findByPhone(String phone);

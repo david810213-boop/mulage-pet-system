@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.config.BusinessHours;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
@@ -132,8 +133,26 @@ public class AppointmentQueryService {
     // 一次查完；待對帳交易改成 findByAppointmentIdIn() 一次撈出全部再用 id
     // 分組，迴圈內只查 Map，不再另外打資料庫。
     public List<AppointmentAdminResponse> getAllForAdmin() {
-        List<Appointment> appointments = appointmentRepository.findAllWithUserAndItems();
-        // 需求（追加，2026-08-26 修正）：同 getAllAppointments() 的說明，批次撈核對後項目。
+        return toAdminResponses(appointmentRepository.findAllWithUserAndItems());
+    }
+
+    /** 單筆預約（後台格式）；找不到時是空值。 */
+    public Optional<AppointmentAdminResponse> getForAdmin(Long id) {
+        return appointmentRepository.findWithUserAndItemsById(id)
+                .map(a -> toAdminResponses(List.of(a)).get(0));
+    }
+
+    /** 日期介於 from～to（含頭尾）的預約，新的在前。 */
+    public List<AppointmentAdminResponse> getForAdminBetween(LocalDate from, LocalDate to) {
+        return toAdminResponses(appointmentRepository.findWithUserAndItemsByDateBetween(from, to));
+    }
+
+    /** 日期不早於 from 的待確認預約，新的在前。 */
+    public List<AppointmentAdminResponse> getPendingConfirmForAdminFrom(LocalDate from) {
+        return toAdminResponses(appointmentRepository.findWithUserAndItemsByStatusFrom(AppointmentStatus.PENDING_CONFIRM, from));
+    }
+
+    private List<AppointmentAdminResponse> toAdminResponses(List<Appointment> appointments) {
         Map<Long, List<AppointmentItem>> checkinItemsByAppt =
                 appointmentItemRepository.findByAppointmentIdIn(
                                 appointments.stream().map(Appointment::getId).toList())

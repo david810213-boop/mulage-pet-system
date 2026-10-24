@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,7 @@ public class DashboardService {
 
     public record StaffDashboard(
             LocalDate today,
-            List<AppointmentAdminResponse> appointments,
+            List<AppointmentAdminResponse> appointments, // 今天的預約
             long todayCount,
             int todayRevenue,
             long pendingConfirmCount,
@@ -49,18 +50,18 @@ public class DashboardService {
 
     public StaffDashboard staffDashboard() {
         LocalDate today = LocalDate.now();
-        List<AppointmentAdminResponse> allAdmin = appointmentQueryService.getAllForAdmin();
-        List<AppointmentAdminResponse> upcomingPending = upcomingPendingConfirm(allAdmin, today);
-        List<User> allCustomers = userService.getAllCustomers();
-        List<User> recentCustomers = allCustomers.stream().limit(PREVIEW_SIZE).toList();
+        // 只查今天的預約與待確認的預約，不撈全部歷史
+        List<AppointmentAdminResponse> todays = appointmentQueryService.getForAdminBetween(today, today);
+        List<AppointmentAdminResponse> upcomingPending = appointmentQueryService.getPendingConfirmForAdminFrom(today);
+        List<User> recentCustomers = userService.firstCustomers(PREVIEW_SIZE);
         List<RetailProduct> activeRetailProducts = retailProductService.listActive().stream()
                 .sorted(Comparator.comparingInt(RetailProduct::getStockQuantity))
                 .toList();
 
         return new StaffDashboard(
                 today,
-                allAdmin,
-                allAdmin.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(today)).count(),
+                todays,
+                todays.stream().filter(a -> !a.isCancelled()).count(),
                 todayRevenue(today),
                 upcomingPending.size(),
                 upcomingPending.stream()
@@ -69,7 +70,7 @@ public class DashboardService {
                         .limit(PREVIEW_SIZE)
                         .toList(),
                 topUpService.pending(),
-                allCustomers.size(),
+                (int) userService.countCustomers(),
                 recentCustomers,
                 walletsOf(recentCustomers),
                 activeRetailProducts.stream().limit(PREVIEW_SIZE).toList(),
@@ -78,27 +79,16 @@ public class DashboardService {
     }
 
     /**
-     * 待確認且日期不早於今天的預約。已經過了日期卻一直沒確認的舊預約不列入
-     * （預約本身不受影響，仍可在預約列表查到）。
-     */
-    private static List<AppointmentAdminResponse> upcomingPendingConfirm(List<AppointmentAdminResponse> all, LocalDate today) {
-        return all.stream()
-                .filter(a -> !a.isCancelled() && a.getStatus().name().equals("PENDING_CONFIRM"))
-                .filter(a -> !a.getDate().isBefore(today))
-                .toList();
-    }
-
-    /**
      * 今日營收：預約結帳與現場單當日已付款的實收金額加總，以付款時間為準（與財務報表一致）。
      * 首頁與預約列表的「今日營收」都用這個數字。
      */
     public int todayRevenue(LocalDate today) {
-        int appointmentRevenue = paymentService.findPaidTransactions().stream()
-                .filter(t -> t.getPaymentTime() != null && t.getPaymentTime().toLocalDate().isEqual(today))
+        LocalDateTime from = today.atStartOfDay();
+        LocalDateTime to = today.plusDays(1).atStartOfDay();
+        int appointmentRevenue = paymentService.findPaidTransactionsBetween(from, to).stream()
                 .mapToInt(t -> t.getFinalAmount())
                 .sum();
-        int walkInRevenue = walkInOrderService.findAllOrders().stream()
-                .filter(w -> w.isPaid() && w.getPaymentTime() != null && w.getPaymentTime().toLocalDate().isEqual(today))
+        int walkInRevenue = walkInOrderService.findPaidOrdersBetween(from, to).stream()
                 .mapToInt(w -> w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount())
                 .sum();
         return appointmentRevenue + walkInRevenue;

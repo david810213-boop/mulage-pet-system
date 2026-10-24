@@ -503,9 +503,6 @@ public class MobileAppointmentController {
     }
 
     private AppointmentAdminResponse findAppointment(Long id) {
-        return appointmentQueryService.getAllForAdmin().stream()
-                .filter(x -> x.getId().equals(id))
-                .findFirst()
-                .orElse(null);
+        return appointmentQueryService.getForAdmin(id).orElse(null);
     }
 }
