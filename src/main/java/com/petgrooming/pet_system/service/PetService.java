@@ -373,6 +373,7 @@ public class PetService {
                 .petName(p.getName())
                 .petType(p.getPetType() != null ? p.getPetType().name() : null)
                 .breed(p.getBreed())
+                .ownerId(p.getOwner().getId())
                 .ownerUsername(p.getOwner().getUsername())
                 .ownerName(p.getOwner().getName())
                 .ownerPhone(p.getOwnerPhone())

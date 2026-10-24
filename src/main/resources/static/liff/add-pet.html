@@ -538,7 +538,7 @@
       // 貿然開放容易產生不一致的歷史資料）。
       async function enterEditMode() {
         try {
-          const res = await fetch("/api/pets/my", {
+          const res = await fetch("/api/me/pets", {
             headers: { Authorization: "Bearer " + jwtToken },
           });
           const pets = await res.json();

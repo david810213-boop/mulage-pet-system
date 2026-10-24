@@ -499,7 +499,7 @@
 
       async function checkPets() {
         try {
-          const res = await fetch("/api/pets/my", { headers: authHeaders() });
+          const res = await fetch("/api/me/pets", { headers: authHeaders() });
           if (!res.ok) return;
           const pets = await res.json();
           petDone = !!(pets && pets.length > 0);

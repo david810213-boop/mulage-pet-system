@@ -14,6 +14,7 @@ public class PetSearchResponse {
     private String petName;
     private String petType;
     private String breed;
+    private Long ownerId;
     private String ownerUsername;
     private String ownerName;
     private String ownerPhone;

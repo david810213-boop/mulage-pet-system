@@ -279,7 +279,7 @@
       // --- 載入毛孩資料 ---
       async function loadPets() {
         try {
-          const res = await fetch("/api/pets/my", {
+          const res = await fetch("/api/me/pets", {
             headers: {
               Authorization: "Bearer " + jwtToken,
               "ngrok-skip-browser-warning": "true", // 防止 ngrok 阻擋

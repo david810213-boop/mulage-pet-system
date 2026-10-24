@@ -29,6 +29,7 @@
 - **店家/員工**：帳號密碼登入網頁版，JWT 存在 Cookie，`LoginInterceptor` + `RoleInterceptor`（搭配 `@RequireRole` 註解）做權限控管
 - **會員（顧客）**：透過 LINE LIFF 頁面，`liff.getIDToken()` 驗證後換發 JWT
 - **⚠️ 重要**：新增任何 `/api/**` 端點，如果是要給「未登入狀態」呼叫的（例如 LINE 登入/綁定），**一定要手動加進 `WebConfig` 攔截器的白名單**（踩過這個坑：`/api/line/bind` 一開始漏加）
+- **API 路徑規則**：資源名稱用複數（`/api/top-ups`）、登入者自己的資料放 `/api/me/**`、管理功能放 `/api/admin/**`（`RoleInterceptor` 另外以路徑限制員工角色，與 `@RequireRole` 雙重保護）、網址以數字 id 識別會員而非帳號、URL 不放動詞（用 HTTP 方法表達，狀態轉換如 `/confirm`、`/cancel` 除外）。改路徑時舊路徑先保留並登記在 `DeprecatedApiInterceptor`，log 不再出現「已淘汰的 API」後再移除
 - 老客戶用電話號碼自助認領既有匯入資料（既有會員資料匯入功能，見 `docs/功能總覽與測試手冊.md` 七之一）
 
 ## 四、Java 特殊符號編碼踩坑（教訓成本很高，務必詳讀）

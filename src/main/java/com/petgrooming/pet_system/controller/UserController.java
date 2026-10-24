@@ -19,7 +19,6 @@ import java.util.List;
 
 // UserController 只保留「需要登入後」才能使用的端點
 @RestController
-@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -28,7 +27,7 @@ public class UserController {
 
     // ── GET /api/users/me ──────────────────────────────────────────────────
     // 查詢自己的資料，身分取自 JWT（店家帳密登入或顧客 LINE 登入皆適用）
-    @GetMapping("/me")
+    @GetMapping("/api/users/me")
     public ResponseEntity<?> getMe(@CurrentUser String username) {
         UserResponse res = userService.getMe(username);
         return ResponseEntity.ok(res);
@@ -36,34 +35,34 @@ public class UserController {
 
     // ── PUT /api/users/me ───────────────────────────────────────────────────
     // 會員編輯自己的基本資料（年齡／職業／居住區域／得知來源），身分取自 JWT
-    @PutMapping("/me")
+    @PutMapping("/api/users/me")
     public ResponseEntity<?> updateMe(@Valid @RequestBody UpdateProfileRequest req, @CurrentUser String username) {
         UserResponse res = userService.updateProfile(username, req);
         operationLogService.logByUsername(username, "CUSTOMER", "UPDATE_PROFILE", "會員 " + username, null);
         return ResponseEntity.ok(res);
     }
 
-    // ── GET /api/users ─────────────────────────────────────────────────────
+    // ── GET /api/admin/users ─────────────────────────────────────────────────────
     // 查詢所有使用者（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
-    @GetMapping
+    @GetMapping({"/api/admin/users", "/api/users"})
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    // ── GET /api/users/staff ───────────────────────────────────────────────
+    // ── GET /api/admin/staff ───────────────────────────────────────────────
     // 查詢所有員工清單（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
-    @GetMapping("/staff")
+    @GetMapping({"/api/admin/staff", "/api/users/staff"})
     public ResponseEntity<List<UserResponse>> getAllStaff() {
         return ResponseEntity.ok(userService.getAllStaff());
     }
 
-    // ── POST /api/users/staff ──────────────────────────────────────────────
+    // ── POST /api/admin/staff ──────────────────────────────────────────────
     // 新增員工帳號（ADMIN 限定）
     @RequireRole(UserRole.ADMIN)
     @RequireCsrf
-    @PostMapping("/staff")
+    @PostMapping({"/api/admin/staff", "/api/users/staff"})
     public ResponseEntity<?> createStaff(@Valid @RequestBody CreateStaffRequest req, @CurrentUser String username) {
         UserResponse res = userService.createStaff(req);
         operationLogService.logByUsername(username,

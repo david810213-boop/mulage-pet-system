@@ -37,7 +37,7 @@ public class AdminPetController {
 
     /** 成犬結帳核對時，店員選出真正對應的套餐項目後鎖定，之後不用再重複選單。 */
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PutMapping("/{petId}/lock-grooming-item")
+    @PutMapping({"/{petId}/locked-item", "/{petId}/lock-grooming-item"})
     public ResponseEntity<?> lockGroomingItem(@PathVariable Long petId,
                                                @Valid @RequestBody LockGroomingItemRequest body) {
         return ResponseEntity.ok(petService.lockGroomingItem(petId, body.groomingItemId()));
@@ -45,9 +45,16 @@ public class AdminPetController {
 
     /** 狗狗生病消瘦、換季毛況差很多、或當初選錯了，店員手動解鎖，恢復依體重自動篩選。 */
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @PutMapping("/{petId}/unlock-grooming-item")
+    @DeleteMapping("/{petId}/locked-item")
     public ResponseEntity<?> unlockGroomingItem(@PathVariable Long petId) {
         return ResponseEntity.ok(petService.unlockGroomingItem(petId));
+    }
+
+    // 舊路徑，改用 DELETE /api/admin/pets/{petId}/locked-item
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PutMapping("/{petId}/unlock-grooming-item")
+    public ResponseEntity<?> unlockGroomingItemLegacy(@PathVariable Long petId) {
+        return unlockGroomingItem(petId);
     }
 
     /** 結帳完成後提醒店員更新的體重，寫入這裡（同時會重新計算體型分類）。 */

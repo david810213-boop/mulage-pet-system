@@ -94,7 +94,7 @@ class RequestValidationTest extends IntegrationTestBase {
     void lockingGroomingItemRequiresItemId() throws Exception {
         PetResponse dog = testData.dog(testData.customer());
 
-        mvc.perform(put("/api/admin/pets/{id}/lock-grooming-item", dog.getId()).header("Authorization", bearer(UserRole.STAFF))
+        mvc.perform(put("/api/admin/pets/{id}/locked-item", dog.getId()).header("Authorization", bearer(UserRole.STAFF))
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("請提供 groomingItemId"));

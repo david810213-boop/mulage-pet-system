@@ -20,9 +20,9 @@
   <button onclick="initAndLogin()">1. 初始化並登入</button>
 
   <button onclick="callApi('/api/users/me', 'GET')">2. 查詢我的會員資料 /api/users/me</button>
-  <button onclick="callApi('/api/pets/my', 'GET')">3. 查詢我的寵物 /api/pets/my</button>
+  <button onclick="callApi('/api/me/pets', 'GET')">3. 查詢我的寵物 /api/me/pets</button>
   <button onclick="addPet()">4. 新增一隻測試寵物</button>
-  <button onclick="callApi('/api/appointments/my', 'GET')">5. 查詢我的預約 /api/appointments/my</button>
+  <button onclick="callApi('/api/me/appointments', 'GET')">5. 查詢我的預約 /api/me/appointments</button>
 
   <h3>結果</h3>
   <pre id="log">尚未執行</pre>

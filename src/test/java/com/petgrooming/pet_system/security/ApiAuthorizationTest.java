@@ -66,8 +66,10 @@ class ApiAuthorizationTest extends IntegrationTestBase {
             "/api/admin/appointments",
             "/api/admin/walk-in-orders",
             "/api/admin/topup/pending",
+            "/api/admin/top-ups/pending",
             "/api/appointments",
-            "/api/payments/transactions"
+            "/api/payments/transactions",
+            "/api/admin/payments/transactions"
     })
     void staffEndpointsRejectAnonymousAndCustomers(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isUnauthorized());
@@ -76,7 +78,8 @@ class ApiAuthorizationTest extends IntegrationTestBase {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/payments/report", "/api/users", "/api/users/staff"})
+    @ValueSource(strings = {"/api/payments/report", "/api/users", "/api/users/staff",
+            "/api/admin/payments/report", "/api/admin/users", "/api/admin/staff"})
     void adminOnlyEndpointsRejectStaff(String path) throws Exception {
         mvc.perform(get(path).header("Authorization", bearer(UserRole.STAFF))).andExpect(status().isForbidden());
         mvc.perform(get(path).header("Authorization", bearer(UserRole.ADMIN))).andExpect(status().isOk());

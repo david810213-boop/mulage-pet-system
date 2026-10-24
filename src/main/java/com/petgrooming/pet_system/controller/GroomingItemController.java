@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -21,13 +22,16 @@ public class GroomingItemController {
     // ── GET /api/grooming-items ─────────────────────────────────────────────
     // LIFF 預約頁只顯示「可線上預約」的主項目
     // （大美容 / 小美容 / 精緻洗 / 定製洗），其餘調理項目留給現場開單。
+    // includeNonBookable=true：後台 / 現場開單用，回傳所有上架項目（含不可預約的調理項目）
     @GetMapping
-    public ResponseEntity<List<GroomingItemResponse>> getBookableItems() {
-        return ResponseEntity.ok(groomingService.getBookableItems());
+    public ResponseEntity<List<GroomingItemResponse>> getItems(
+            @RequestParam(defaultValue = "false") boolean includeNonBookable) {
+        return ResponseEntity.ok(includeNonBookable
+                ? groomingService.getAllItems()
+                : groomingService.getBookableItems());
     }
 
-    // ── GET /api/grooming-items/all ─────────────────────────────────────────
-    // 後台 / 現場開單用：回傳所有上架項目（含不可預約的調理項目）
+    // 舊路徑，改用 GET /api/grooming-items?includeNonBookable=true
     @GetMapping("/all")
     public ResponseEntity<List<GroomingItemResponse>> getAllItems() {
         return ResponseEntity.ok(groomingService.getAllItems());

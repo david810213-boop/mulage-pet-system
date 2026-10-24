@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 
@@ -32,7 +31,7 @@ public class PaymentController {
     // LIFF「線上儲值」頁面讀取匯款帳號資訊 + 收款 QR Code
     // LIFF 儲值一律用「儲值金收款（大額專用）」帳戶，跟現場/預約結帳帳戶分開，
     // 任何已登入使用者皆可查（顧客儲值前本來就需要看到這份資訊，不需要限定店家/員工）
-    @GetMapping("/bank-account")
+    @GetMapping("/api/payments/bank-account")
     public ResponseEntity<?> getBankAccountInfo() {
         var info = storeSettingsService.getBankAccountInfo(BankAccountPurpose.TOPUP);
         return ResponseEntity.ok(Map.of(
@@ -45,7 +44,7 @@ public class PaymentController {
 
     // ── POST /api/payments/{appointmentId}/checkout ────────────────────────
     // 結帳，appointmentId = 要結哪一筆預約的帳
-    @PostMapping("/{appointmentId}/checkout")
+    @PostMapping("/api/payments/{appointmentId}/checkout")
     public ResponseEntity<?> checkout(
             @PathVariable Long appointmentId,
             @RequestBody CheckoutRequest req,
@@ -54,25 +53,25 @@ public class PaymentController {
         return ResponseEntity.ok(res);
     }
 
-    // ── GET /api/payments/my ───────────────────────────────────────────────
+    // ── GET /api/me/transactions ───────────────────────────────────────────────
     // 查詢自己的交易紀錄
-    @GetMapping("/my")
+    @GetMapping({"/api/me/transactions", "/api/payments/my"})
     public ResponseEntity<List<TransactionResponse>> getMyTransactions(@CurrentUser String username) {
         return ResponseEntity.ok(paymentService.getMyTransactions(username));
     }
 
-    // ── GET /api/payments/transactions ────────────────────────────────────
+    // ── GET /api/admin/payments/transactions ────────────────────────────────────
     // 查詢所有交易（STAFF / ADMIN）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/transactions")
+    @GetMapping({"/api/admin/payments/transactions", "/api/payments/transactions"})
     public ResponseEntity<List<TransactionResponse>> getAllTransactions() {
         return ResponseEntity.ok(paymentService.getAllTransactions());
     }
 
-    // ── GET /api/payments/report ───────────────────────────────────────────
+    // ── GET /api/admin/payments/report ───────────────────────────────────────────
     // 財務報告（ADMIN）
     @RequireRole(UserRole.ADMIN)
-    @GetMapping("/report")
+    @GetMapping({"/api/admin/payments/report", "/api/payments/report"})
     public ResponseEntity<FinancialReportResponse> getFinancialReport() {
         return ResponseEntity.ok(financialReportService.getFinancialReport());
     }

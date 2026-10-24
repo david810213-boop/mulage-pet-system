@@ -1244,8 +1244,8 @@
           return;
         try {
           const res = await fetch(
-            "/api/admin/pets/" + petId + "/unlock-grooming-item",
-            { method: "PUT" },
+            "/api/admin/pets/" + petId + "/locked-item",
+            { method: "DELETE" },
           );
           if (!res.ok) {
             alert("解鎖失敗，請重試");
@@ -1299,7 +1299,7 @@
         const url =
           sourceType === "WALKIN"
             ? "/api/admin/walk-in-orders/" + recordId
-            : "/api/appointments/" + recordId + "/detail";
+            : "/api/appointments/" + recordId;
 
         try {
           const res = await fetch(url, {

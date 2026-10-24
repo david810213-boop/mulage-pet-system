@@ -755,7 +755,7 @@
         const num = document.getElementById("petsCount");
         const cap = document.getElementById("petsCap");
         try {
-          const res = await fetch("/api/pets/my", { headers: authHeaders() });
+          const res = await fetch("/api/me/pets", { headers: authHeaders() });
           if (!res.ok) throw new Error();
           const pets = await res.json();
           if (pets.length) {
@@ -775,7 +775,7 @@
         const num = document.getElementById("apptCount");
         const cap = document.getElementById("apptCap");
         try {
-          const res = await fetch("/api/appointments/my", {
+          const res = await fetch("/api/me/appointments", {
             headers: authHeaders(),
           });
           if (!res.ok) throw new Error();

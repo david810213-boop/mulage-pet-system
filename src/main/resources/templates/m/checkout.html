@@ -179,7 +179,7 @@
         var box = document.getElementById("lockBox");
         if (!window.confirm("鎖定後，這隻狗下次預約、開單都會直接帶出這個套餐，確定嗎？")) return;
         lockBtn.disabled = true;
-        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/lock-grooming-item", {
+        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/locked-item", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ groomingItemId: Number(box.dataset.itemId) })
