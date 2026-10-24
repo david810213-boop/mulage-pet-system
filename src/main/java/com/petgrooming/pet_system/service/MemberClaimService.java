@@ -285,4 +285,8 @@ public class MemberClaimService {
     private record TransferSummary(
             List<Pet> pets, List<WalkInOrder> orders, List<Appointment> appointments, List<TopUpRequest> topUps) {
     }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
 }
