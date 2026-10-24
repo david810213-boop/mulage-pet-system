@@ -27,7 +27,7 @@ public class MemberConsumptionService {
 
     private final TransactionRepository transactionRepository;
     private final WalkInOrderRepository walkInOrderRepository;
-    private final AppointmentService appointmentService;
+    private final AppointmentDetailService appointmentDetailService;
     private final WalkInOrderService walkInOrderService;
 
     /**
@@ -44,7 +44,7 @@ public class MemberConsumptionService {
             List<ConsumptionRecordResponse.Item> items = List.of();
             if (t.getAppointment() != null && viewerUsername != null) {
                 try {
-                    var detail = appointmentService.getAppointmentDetail(t.getAppointment().getId(), viewerUsername);
+                    var detail = appointmentDetailService.getAppointmentDetail(t.getAppointment().getId(), viewerUsername);
                     items = detail.getItems().stream()
                             .map(di -> ConsumptionRecordResponse.Item.builder()
                                     .name(di.getName())

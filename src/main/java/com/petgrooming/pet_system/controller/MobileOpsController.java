@@ -6,12 +6,12 @@ import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.TopUpService;
-import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,7 +31,7 @@ import java.util.List;
  *
  * 待補經手人：預約單跟現場單合在同一頁，一張單一張卡片、一個項目一列選經手人，
  * 按一次「儲存」全部寫入（跟網頁版矩陣表單的「統一儲存」同樣概念），
- * 分別呼叫既有的 AppointmentService.fillItemOperator() / WalkInOrderService.fillOperator()。
+ * 分別呼叫既有的 AppointmentItemService.fillItemOperator() / WalkInOrderOperatorService.fillOperator()。
  *
  * 儲值審核：顧客在 LINE 送出的轉帳儲值申請，確認入帳或駁回，
  * 呼叫既有的 TopUpService.confirm() / reject()。店家手動加值仍在網頁版（有 CSRF 保護）。
@@ -46,8 +46,8 @@ public class MobileOpsController {
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
 
     private final PendingOperatorMatrixService pendingOperatorMatrixService;
-    private final AppointmentService appointmentService;
-    private final WalkInOrderService walkInOrderService;
+    private final AppointmentItemService appointmentItemService;
+    private final WalkInOrderOperatorService walkInOrderOperatorService;
     private final TopUpService topUpService;
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
@@ -97,11 +97,11 @@ public class MobileOpsController {
             Long staffId2 = s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null;
             try {
                 if ("A".equals(kinds.get(i))) {
-                    appointmentService.fillItemOperator(itemId, staffId, staffId2);
+                    appointmentItemService.fillItemOperator(itemId, staffId, staffId2);
                     operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
                             "項目 #" + itemId, "指定經手人 #" + staffId + "（手機版）");
                 } else {
-                    walkInOrderService.fillOperator(itemId, staffId, staffId2);
+                    walkInOrderOperatorService.fillOperator(itemId, staffId, staffId2);
                     operationLogService.log(user, "WALKIN", "FILL_OPERATOR",
                             "項目 #" + itemId, "指定經手人 #" + staffId + "（手機版）");
                 }

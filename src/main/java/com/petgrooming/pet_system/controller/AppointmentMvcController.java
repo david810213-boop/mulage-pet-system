@@ -14,11 +14,12 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentListService;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.SlotCapacityService;
@@ -46,6 +47,7 @@ import java.util.List;
 public class AppointmentMvcController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentItemService appointmentItemService;
     private final AppointmentListService appointmentListService;
     private final GroomingService groomingItemService;
     private final UserService userService;
@@ -53,7 +55,7 @@ public class AppointmentMvcController {
     private final OperationLogService operationLogService;
     private final SlotCapacityService slotCapacityService;
     private final ClosedDateService closedDateService; // 需求 16：公休日設定
-    private final PaymentService paymentService;
+    private final StoreSettingsService storeSettingsService;
     private final RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
     private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
     private final GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
@@ -219,7 +221,7 @@ public class AppointmentMvcController {
                                           RedirectAttributes redirectAttributes,
                                           @CurrentUser User user) {
         try {
-            appointmentService.fillItemOperator(itemId, staffId);
+            appointmentItemService.fillItemOperator(itemId, staffId);
             operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
                     "項目 #" + itemId, "指定經手人 #" + staffId);
             redirectAttributes.addFlashAttribute("successMsg", "已補填經手人");
@@ -244,7 +246,7 @@ public class AppointmentMvcController {
             try {
                 Long staffId = Long.valueOf(staffIdStr);
                 String s2 = staffIds2 != null && i < staffIds2.size() ? staffIds2.get(i) : null;
-                appointmentService.fillItemOperator(itemIds.get(i), staffId,
+                appointmentItemService.fillItemOperator(itemIds.get(i), staffId,
                         s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null);
                 operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
                         "項目 #" + itemIds.get(i), "指定經手人 #" + staffId);
@@ -308,7 +310,7 @@ public class AppointmentMvcController {
             return "redirect:/appointments?status=IN_PROGRESS";
         }
         model.addAttribute("appointment", target);
-        model.addAttribute("checkinItems", appointmentService.getCheckinItems(id));
+        model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id));
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
         var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
@@ -335,7 +337,7 @@ public class AppointmentMvcController {
                     .findFirst().orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
-            model.addAttribute("checkinItems", appointmentService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
+            model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
             boolean isExisting1 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting1, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
@@ -356,7 +358,7 @@ public class AppointmentMvcController {
                     .findFirst().orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
-            model.addAttribute("checkinItems", appointmentService.getCheckinItems(id)); // 需求（追加）修正：同上
+            model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：同上
             boolean isExisting2 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting2, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
@@ -414,7 +416,7 @@ public class AppointmentMvcController {
         model.addAttribute("myPets", myPets);
         model.addAttribute("appointmentRequest", new AppointmentRequest());
         model.addAttribute("groomingItems", availableServices);
-        model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+        model.addAttribute("companySignatureImage", storeSettingsService.getCompanySignatureImage());
         // 代客建立時，畫面要顯示「正在為誰建立」，送出時也要帶著這個值
         model.addAttribute("forUsername", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUsername : null);
         model.addAttribute("targetMemberName", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUser.getName() : null);
@@ -470,7 +472,7 @@ public class AppointmentMvcController {
             model.addAttribute("user", user);
             model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
-            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("companySignatureImage", storeSettingsService.getCompanySignatureImage());
             model.addAttribute("forUsername", forUsername);
             model.addAttribute("targetMemberName", targetMemberName);
             String firstError = bindingResult.getAllErrors().stream()
@@ -494,7 +496,7 @@ public class AppointmentMvcController {
             model.addAttribute("user", user);
             model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
-            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("companySignatureImage", storeSettingsService.getCompanySignatureImage());
             model.addAttribute("forUsername", forUsername);
             model.addAttribute("targetMemberName", targetMemberName);
             model.addAttribute("errorMsg", e.getMessage());

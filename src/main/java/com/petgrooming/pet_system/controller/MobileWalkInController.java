@@ -15,11 +15,13 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
+import com.petgrooming.pet_system.service.WalkInPaymentService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,12 +67,14 @@ public class MobileWalkInController {
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
 
     private final WalkInOrderService walkInOrderService;
+    private final WalkInOrderOperatorService walkInOrderOperatorService;
+    private final WalkInPaymentService walkInPaymentService;
     private final UserService userService;
     private final PetService petService;
     private final GroomingService groomingItemService;
     private final GroomingMenuFilter groomingMenuFilter;
     private final RetailProductService retailProductService;
-    private final PaymentService paymentService;
+    private final StoreSettingsService storeSettingsService;
     private final WalletService walletService;
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
@@ -253,14 +257,14 @@ public class MobileWalkInController {
     @PostMapping("/{id}/confirm-wire")
     public String confirmWire(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
         return runAction(id, request, ra, "CONFIRM_WIRE_TRANSFER", "已確認收款",
-                u -> walkInOrderService.confirmWireTransferPayment(id, u.getUsername()), "/m/walk-in/" + id);
+                u -> walkInPaymentService.confirmWireTransferPayment(id, u.getUsername()), "/m/walk-in/" + id);
     }
 
     @PostMapping("/{id}/refund")
     public String refund(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
         // 退款會直接刪除這張現場單，成功後回列表
         return runAction(id, request, ra, "REFUND", "已退款並刪除這張現場單",
-                u -> walkInOrderService.refund(id, u.getUsername()), "/m/walk-in");
+                u -> walkInPaymentService.refund(id, u.getUsername()), "/m/walk-in");
     }
 
     @PostMapping("/{id}/items/{itemId}/operator")
@@ -277,7 +281,7 @@ public class MobileWalkInController {
             return "redirect:/m/walk-in/" + id;
         }
         try {
-            walkInOrderService.fillOperator(itemId, staffId, staffId2);
+            walkInOrderOperatorService.fillOperator(itemId, staffId, staffId2);
             operationLogService.log(user, "WALKIN", "FILL_OPERATOR", "項目 #" + itemId,
                     "指定經手人 #" + staffId + "（手機版）");
             ra.addFlashAttribute("toast", "已補填經手人");
@@ -410,7 +414,7 @@ public class MobileWalkInController {
         }
         PetResponse pet = safePet(id);
         Map<String, Object> row = toRow(o);
-        Integer walletAmount = walkInOrderService.previewWalletAmount(id);
+        Integer walletAmount = walkInPaymentService.previewWalletAmount(id);
 
         model.addAttribute("user", user);
         model.addAttribute("base", "/m/walk-in/" + id);
@@ -420,7 +424,7 @@ public class MobileWalkInController {
         model.addAttribute("avInitial", row.get("initial"));
         model.addAttribute("lines", view.fromWalkIn(o.getItems(), true));
         model.addAttribute("baseAmount", o.getTotalAmount());
-        model.addAttribute("standardAmount", walkInOrderService.previewStandardAmount(id));
+        model.addAttribute("standardAmount", walkInPaymentService.previewStandardAmount(id));
         model.addAttribute("walletAmount", walletAmount);
         model.addAttribute("walletEnough", false);
         model.addAttribute("walletBalance", 0);
@@ -432,7 +436,7 @@ public class MobileWalkInController {
             model.addAttribute("walletDiscountLabel", wallet.isCardActive() && wallet.getDiscount() < 1.0
                     ? wallet.getCardTierLabel() + " " + view.formatDiscount(wallet.getDiscount()) : null);
         }
-        model.addAttribute("bank", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("bank", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive());
 
         // 鎖定固定套餐：狗狗、還沒鎖定、單子裡有帶體重級距的套餐項目
@@ -467,7 +471,7 @@ public class MobileWalkInController {
             return "redirect:/m/walk-in/" + id + "/checkout";
         }
         try {
-            var result = walkInOrderService.checkout(id, paymentMethod, user.getUsername());
+            var result = walkInPaymentService.checkout(id, paymentMethod, user.getUsername());
             operationLogService.log(user, "WALKIN", "CHECKOUT", "現場單 #" + id,
                     result.getPaymentMethodLabel() + "（手機版）");
 

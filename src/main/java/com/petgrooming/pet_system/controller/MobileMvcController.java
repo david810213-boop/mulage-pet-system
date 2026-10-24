@@ -20,11 +20,14 @@ import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentListService;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentDetailService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
@@ -78,6 +81,8 @@ public class MobileMvcController {
     private static final long VIEW_MODE_MAX_AGE = 60L * 60 * 24 * 365;
 
     private final AppointmentService appointmentService;
+    private final AppointmentDetailService appointmentDetailService;
+    private final AppointmentItemService appointmentItemService;
     private final AppointmentListService appointmentListService;
     private final UserService userService;
     private final TopUpService topUpService;
@@ -86,6 +91,7 @@ public class MobileMvcController {
     private final GroomingService groomingItemService;
     private final GroomingMenuFilter groomingMenuFilter;
     private final PaymentService paymentService;
+    private final StoreSettingsService storeSettingsService;
     private final WalletService walletService;
     private final MobileViewHelper view;
     private final WalkInOrderService walkInOrderService;
@@ -410,7 +416,7 @@ public class MobileMvcController {
         if (a.isFinalCheckDone() || a.getStatus() != AppointmentStatus.IN_PROGRESS || !a.isServiceEndedDone()) {
             return "redirect:/m/appointments/" + id;
         }
-        List<AppointmentItem> items = appointmentService.getCheckinItems(id);
+        List<AppointmentItem> items = appointmentItemService.getCheckinItems(id);
         // 跟網頁版核對頁同一套：只篩「僅限既有客戶」＋「適用物種」，不篩體型，
         // 讓店員現場可以補任何尺寸的項目
         boolean isExisting = appointmentService.isExistingCustomerPet(id);
@@ -477,7 +483,7 @@ public class MobileMvcController {
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入項目",
-                user -> appointmentService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername()));
+                user -> appointmentItemService.addGroomingItem(id, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername()));
     }
 
     @PostMapping("/appointments/{id}/items/custom")
@@ -489,7 +495,7 @@ public class MobileMvcController {
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入「" + itemName + "」",
-                user -> appointmentService.addCustomItem(id, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername()));
+                user -> appointmentItemService.addCustomItem(id, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername()));
     }
 
     // 經手人下拉選單的值（空字串＝稍後補填）轉成 id 清單，順序跟 itemCodes 一致
@@ -508,7 +514,7 @@ public class MobileMvcController {
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已加入商品",
-                user -> appointmentService.addRetailItem(id, retailProductId, quantity, user.getUsername()));
+                user -> appointmentItemService.addRetailItem(id, retailProductId, quantity, user.getUsername()));
     }
 
     @PostMapping("/appointments/{id}/items/{itemId}/remove")
@@ -516,7 +522,7 @@ public class MobileMvcController {
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return editItems(id, from, request, redirectAttributes, "已移除項目",
-                user -> appointmentService.removeItem(id, itemId, user.getUsername()));
+                user -> appointmentItemService.removeItem(id, itemId, user.getUsername()));
     }
 
     // ── 結帳 ────────────────────────────────────────────────────────────
@@ -535,7 +541,7 @@ public class MobileMvcController {
             return "redirect:/m/appointments/" + id;
         }
 
-        var detail = appointmentService.getAppointmentDetail(id, user.getUsername());
+        var detail = appointmentDetailService.getAppointmentDetail(id, user.getUsername());
         var wallet = walletService.getWallet(a.getOwnerEmail());
         int balance = wallet.getBalance() == null ? 0 : wallet.getBalance();
         int walletAmount = paymentService.previewWalletAmount(id);
@@ -568,7 +574,7 @@ public class MobileMvcController {
         model.addAttribute("walletEnough", balance >= walletAmount);
         model.addAttribute("walletDiscountLabel", wallet.isCardActive() && wallet.getDiscount() < 1.0
                 ? wallet.getCardTierLabel() + " " + view.formatDiscount(wallet.getDiscount()) : null);
-        model.addAttribute("bank", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("bank", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive());
         if (lockable != null) {
             model.addAttribute("lockPetId", pet.getId());

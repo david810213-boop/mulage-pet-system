@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.AuthException;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentDetailService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentDetailService appointmentDetailService;
     private final OperationLogService operationLogService;
     private final ClosedDateService closedDateService; // 需求 16
 
@@ -129,6 +131,6 @@ public class AppointmentController {
     // 取得某筆預約的完整消費明細（服務項目、金額、付款方式、經手人等），供 LIFF 點擊查看用
     @GetMapping("/{id}/detail")
     public ResponseEntity<?> getDetail(@PathVariable Long id, @CurrentUser String username) {
-        return ResponseEntity.ok(appointmentService.getAppointmentDetail(id, username));
+        return ResponseEntity.ok(appointmentDetailService.getAppointmentDetail(id, username));
     }
 }

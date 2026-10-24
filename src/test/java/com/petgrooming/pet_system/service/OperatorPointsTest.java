@@ -25,9 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 經手人與績效積分：每個項目可選一或兩位經手人，兩位時積分各半；不得重複計分。
  */
 class OperatorPointsTest extends IntegrationTestBase {
-
-    @Autowired
-    private AppointmentService appointmentService;
+    @Autowired private AppointmentItemService appointmentItemService;
 
     @Autowired
     private AppointmentRepository appointmentRepository;
@@ -46,7 +44,7 @@ class OperatorPointsTest extends IntegrationTestBase {
         User staff = testData.staff();
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
 
-        appointmentService.fillItemOperator(item.getId(), staff.getId());
+        appointmentItemService.fillItemOperator(item.getId(), staff.getId());
 
         List<PerformanceRecord> records = recordsFor(item);
         assertThat(records).hasSize(1);
@@ -60,7 +58,7 @@ class OperatorPointsTest extends IntegrationTestBase {
         User second = testData.staff();
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
 
-        appointmentService.fillItemOperator(item.getId(), first.getId(), second.getId());
+        appointmentItemService.fillItemOperator(item.getId(), first.getId(), second.getId());
 
         assertThat(recordsFor(item))
                 .extracting(PerformanceRecord::getPoints)
@@ -71,9 +69,9 @@ class OperatorPointsTest extends IntegrationTestBase {
     void pointsAreNotAwardedTwice() {
         User staff = testData.staff();
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
-        appointmentService.fillItemOperator(item.getId(), staff.getId());
+        appointmentItemService.fillItemOperator(item.getId(), staff.getId());
 
-        appointmentService.awardPendingItemPointsForAppointment(item.getAppointment().getId());
+        appointmentItemService.awardPendingItemPointsForAppointment(item.getAppointment().getId());
 
         assertThat(recordsFor(item)).hasSize(1);
     }
@@ -82,9 +80,9 @@ class OperatorPointsTest extends IntegrationTestBase {
     void operatorCannotBeFilledTwice() {
         User staff = testData.staff();
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
-        appointmentService.fillItemOperator(item.getId(), staff.getId());
+        appointmentItemService.fillItemOperator(item.getId(), staff.getId());
 
-        assertThatThrownBy(() -> appointmentService.fillItemOperator(item.getId(), testData.staff().getId()))
+        assertThatThrownBy(() -> appointmentItemService.fillItemOperator(item.getId(), testData.staff().getId()))
                 .isInstanceOf(AppointmentException.class);
     }
 
@@ -93,7 +91,7 @@ class OperatorPointsTest extends IntegrationTestBase {
         User staff = testData.staff();
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
 
-        assertThatThrownBy(() -> appointmentService.fillItemOperator(item.getId(), staff.getId(), staff.getId()))
+        assertThatThrownBy(() -> appointmentItemService.fillItemOperator(item.getId(), staff.getId(), staff.getId()))
                 .isInstanceOf(AppointmentException.class);
         assertThat(recordsFor(item)).isEmpty();
     }
@@ -102,7 +100,7 @@ class OperatorPointsTest extends IntegrationTestBase {
     void secondOperatorRequiresFirst() {
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
 
-        assertThatThrownBy(() -> appointmentService.fillItemOperator(item.getId(), null, testData.staff().getId()))
+        assertThatThrownBy(() -> appointmentItemService.fillItemOperator(item.getId(), null, testData.staff().getId()))
                 .isInstanceOf(AppointmentException.class);
     }
 
@@ -110,7 +108,7 @@ class OperatorPointsTest extends IntegrationTestBase {
     void customerCannotBeAnOperator() {
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.BATH_SMALL);
 
-        assertThatThrownBy(() -> appointmentService.fillItemOperator(item.getId(), testData.customer().getId()))
+        assertThatThrownBy(() -> appointmentItemService.fillItemOperator(item.getId(), testData.customer().getId()))
                 .isInstanceOf(AppointmentException.class)
                 .hasMessageContaining("員工");
     }
@@ -119,7 +117,7 @@ class OperatorPointsTest extends IntegrationTestBase {
     void itemsInOtherCategoryEarnNoPoints() {
         AppointmentItem item = pendingItem(3.0, PerformanceCategory.OTHER);
 
-        appointmentService.fillItemOperator(item.getId(), testData.staff().getId());
+        appointmentItemService.fillItemOperator(item.getId(), testData.staff().getId());
 
         assertThat(recordsFor(item)).isEmpty();
     }

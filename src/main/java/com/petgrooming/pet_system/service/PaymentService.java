@@ -1,58 +1,35 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.CheckoutRequest;
-import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
-import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
-import com.petgrooming.pet_system.enums.TopUpStatus;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.AppointmentItem;
-import com.petgrooming.pet_system.model.BankAccountInfo;
-import com.petgrooming.pet_system.model.CompanySignature;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.PerformanceRecord;
-import com.petgrooming.pet_system.model.PricingSettings;
-import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.model.WalkInOrder;
-import com.petgrooming.pet_system.model.WalkInOrderItem;
 import com.petgrooming.pet_system.repository.AppointmentItemRepository;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
-import com.petgrooming.pet_system.repository.BankAccountInfoRepository;
-import com.petgrooming.pet_system.repository.CompanySignatureRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
-import com.petgrooming.pet_system.repository.PricingSettingsRepository;
-import com.petgrooming.pet_system.repository.RetailProductRepository;
-import com.petgrooming.pet_system.repository.SupplyUsageRecordRepository;
-import com.petgrooming.pet_system.repository.TopUpRequestRepository;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.enums.PaymentMethod;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import com.petgrooming.pet_system.service.discount.DiscountCalculator;
 import com.petgrooming.pet_system.service.discount.EligibleOffers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -65,19 +42,11 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
     private final WalletService walletService;
-    private final AppointmentService appointmentService;
+    private final AppointmentItemService appointmentItemService;
     private final AppointmentItemRepository appointmentItemRepository;
     private final PerformanceRecordRepository performanceRecordRepository;
-    private final BankAccountInfoRepository bankAccountInfoRepository;
-    private final CloudinaryService cloudinaryService; // 需求 21：匯款/儲值 QR Code 上傳
-    private final CompanySignatureRepository companySignatureRepository;
-    private final PricingSettingsRepository pricingSettingsRepository; // 需求（追加）：體重定價門檻
     private final GroomingItemRepository groomingItemRepository;
     private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
-    private final WalkInOrderRepository walkInOrderRepository; // 需求 6
-    private final TopUpRequestRepository topUpRequestRepository; // 需求 6
-    private final RetailProductRepository retailProductRepository; // 需求 6
-    private final SupplyUsageRecordRepository supplyUsageRecordRepository; // 需求 6
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品，結帳時扣庫存
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
@@ -217,8 +186,8 @@ public class PaymentService {
                                               boolean isStaffOrAdmin) {
         // 若此預約已透過「現場開單（依預約編號）」確認過服務項目，
         // 積分改依各項目個別指定的經手人計算，不再整包算給單一 appointment.staff。
-        if (appointmentService.hasCheckinOrderItems(appointment.getId())) {
-            appointmentService.awardPendingItemPointsForAppointment(appointment.getId());
+        if (appointmentItemService.hasCheckinOrderItems(appointment.getId())) {
+            appointmentItemService.awardPendingItemPointsForAppointment(appointment.getId());
         } else {
             // 舊版相容邏輯：沒有現場開單項目的預約（例如舊資料），維持原本整包算給
             // appointment.staff（或操作結帳的店家/員工）的方式，避免破壞既有資料。
@@ -339,196 +308,6 @@ public class PaymentService {
                 .stream().map(TransactionResponse::from).toList();
     }
 
-    // ── 4. 財務報告（ADMIN）────────────────────────────────────────────────
-    // ── 財務報表 ─────────────────────────────────────────────────────────
-    /**
-     * 當日與當月的業績、儲值、零售營收與成本。
-     * 業績只算已結帳的預約與現場單（匯款待對帳不算）；儲值是預收款，另列不計入業績。
-     */
-    @Transactional(readOnly = true)
-    public FinancialReportResponse getFinancialReport() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
-        LocalDateTime monthStart = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
-        List<PaidOrder> orders = paidOrders(retailUnitCosts());
-        List<TopUpRequest> topUps = topUpRequestRepository.findByStatusOrderByCreatedAtAsc(TopUpStatus.CONFIRMED);
-        int monthRetailCost = sumSince(orders, monthStart, PaidOrder::retailCost);
-        int monthSupplyCost = supplyUsageRecordRepository.findByUsedAtBetween(monthStart, now).stream()
-                .mapToInt(u -> u.getUnitCostSnapshot() * u.getQuantity())
-                .sum();
-        int monthRevenue = sumSince(orders, monthStart, PaidOrder::amount);
-
-        FinancialReportResponse report = new FinancialReportResponse();
-        report.setGeneratedAt(now);
-        report.setTodayRevenueTotal(sumSince(orders, todayStart, PaidOrder::amount));
-        report.setTodayRevenueWallet(sumSince(orders, todayStart, PaidOrder::walletAmount));
-        report.setTodayRevenueNonWallet(sumSince(orders, todayStart, PaidOrder::nonWalletAmount));
-        report.setTodayOrderCount(sumSince(orders, todayStart, o -> 1));
-        report.setTodayTopupCollected(topUpsSince(topUps, todayStart));
-        report.setTodayRetailRevenue(sumSince(orders, todayStart, PaidOrder::retailRevenue));
-        report.setMonthRevenueTotal(monthRevenue);
-        report.setMonthRevenueWallet(sumSince(orders, monthStart, PaidOrder::walletAmount));
-        report.setMonthRevenueNonWallet(sumSince(orders, monthStart, PaidOrder::nonWalletAmount));
-        report.setMonthOrderCount(sumSince(orders, monthStart, o -> 1));
-        report.setMonthTopupCollected(topUpsSince(topUps, monthStart));
-        report.setMonthRetailRevenue(sumSince(orders, monthStart, PaidOrder::retailRevenue));
-        report.setMonthRetailCostEstimate(monthRetailCost);
-        report.setMonthSupplyCost(monthSupplyCost);
-        report.setMonthTotalCost(monthRetailCost + monthSupplyCost);
-        report.setMonthEstimatedProfit(monthRevenue - monthRetailCost - monthSupplyCost);
-        report.setTodayDiscounts(discountSummary(orders, todayStart));
-        report.setMonthDiscounts(discountSummary(orders, monthStart));
-        report.setDetails(orders.stream()
-                .sorted(Comparator.comparing(PaidOrder::paidAt).reversed())
-                .map(PaidOrder::toDetailLine)
-                .toList());
-        return report;
-    }
-
-    /**
-     * 一筆已結帳的訂單（預約結帳或現場單）。
-     * 零售營收以售價加總；零售成本以商品「目前」進貨單價估算（賣出當下沒有成本快照，因此是近似值）。
-     */
-    private record PaidOrder(String source, String code, LocalDateTime paidAt, PaymentMethod method,
-                             int baseAmount, int amount, String handledBy, int retailRevenue, int retailCost) {
-
-        /** 實收低於帳面金額時，回傳實收占帳面的百分比（四捨五入到整數）；沒有折扣時回傳空值。 */
-        Optional<Integer> discountPercent() {
-            if (baseAmount <= 0 || amount >= baseAmount) {
-                return Optional.empty();
-            }
-            return Optional.of((int) Math.round(amount * 100.0 / baseAmount));
-        }
-
-        int walletAmount() {
-            return method == PaymentMethod.WALLET ? amount : 0;
-        }
-
-        int nonWalletAmount() {
-            return method == PaymentMethod.WALLET ? 0 : amount;
-        }
-
-        FinancialReportResponse.RevenueDetailLine toDetailLine() {
-            return new FinancialReportResponse.RevenueDetailLine(source, code, paidAt,
-                    method != null ? method.getDisplayName() : "—", method == PaymentMethod.WALLET, amount, handledBy);
-        }
-    }
-
-    private List<PaidOrder> paidOrders(Map<Long, Integer> retailUnitCosts) {
-        List<Transaction> transactions = transactionRepository.findByPaidTrue().stream()
-                .filter(t -> t.getPaymentTime() != null)
-                .toList();
-        Map<Long, List<AppointmentItem>> itemsByAppointment = appointmentItemRepository.findByAppointmentIdIn(
-                        transactions.stream().filter(t -> t.getAppointment() != null)
-                                .map(t -> t.getAppointment().getId()).toList())
-                .stream()
-                .collect(Collectors.groupingBy(item -> item.getAppointment().getId()));
-
-        List<PaidOrder> orders = new ArrayList<>();
-        for (Transaction t : transactions) {
-            List<AppointmentItem> retailItems = t.getAppointment() == null ? List.of()
-                    : itemsByAppointment.getOrDefault(t.getAppointment().getId(), List.of()).stream()
-                            .filter(i -> i.getRetailProductId() != null).toList();
-            orders.add(new PaidOrder("預約結帳",
-                    t.getAppointment() != null ? String.format("AP%03d", t.getAppointment().getId()) : "—",
-                    t.getPaymentTime(), t.getPaymentMethod(), t.getBaseAmount(), t.getFinalAmount(), t.getHandledBy(),
-                    retailItems.stream().mapToInt(AppointmentItem::getPrice).sum(),
-                    estimatedCost(retailItems.stream().map(AppointmentItem::getRetailProductId).toList(), retailUnitCosts)));
-        }
-        for (WalkInOrder w : walkInOrderRepository.findAll()) {
-            if (!w.isPaid() || w.getPaymentTime() == null) continue;
-            List<WalkInOrderItem> retailItems = w.getItems().stream()
-                    .filter(i -> i.getRetailProductId() != null).toList();
-            orders.add(new PaidOrder("現場開單", "現場單#" + w.getId(), w.getPaymentTime(), w.getPaymentMethod(),
-                    w.getTotalAmount(), w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount(), w.getCreatedBy(),
-                    retailItems.stream().mapToInt(WalkInOrderItem::getPrice).sum(),
-                    estimatedCost(retailItems.stream().map(WalkInOrderItem::getRetailProductId).toList(), retailUnitCosts)));
-        }
-        return orders;
-    }
-
-    private Map<Long, Integer> retailUnitCosts() {
-        Map<Long, Integer> costs = new HashMap<>();
-        retailProductRepository.findAll().forEach(p -> costs.put(p.getId(), p.getUnitCost()));
-        return costs;
-    }
-
-    private static int estimatedCost(List<Long> retailProductIds, Map<Long, Integer> unitCosts) {
-        return retailProductIds.stream().mapToInt(id -> unitCosts.getOrDefault(id, 0)).sum();
-    }
-
-    private static int sumSince(List<PaidOrder> orders, LocalDateTime from, ToIntFunction<PaidOrder> value) {
-        return orders.stream().filter(o -> !o.paidAt().isBefore(from)).mapToInt(value).sum();
-    }
-
-    /**
-     * 期間內有折扣的訂單（實收低於帳面），依折數分組，折扣少的排前面（例如 95折、9折、88折）。
-     * 一張訂單只有部分項目打折時，折數是整張單的實收比例，可能出現 93折 這類非整數折扣。
-     */
-    private static List<FinancialReportResponse.DiscountSummary> discountSummary(List<PaidOrder> orders, LocalDateTime from) {
-        Map<Integer, List<PaidOrder>> byPercent = orders.stream()
-                .filter(o -> !o.paidAt().isBefore(from) && o.discountPercent().isPresent())
-                .collect(Collectors.groupingBy(o -> o.discountPercent().get()));
-        return byPercent.entrySet().stream()
-                .sorted(Map.Entry.<Integer, List<PaidOrder>>comparingByKey().reversed())
-                .map(e -> new FinancialReportResponse.DiscountSummary(
-                        discountLabel(e.getKey()),
-                        e.getKey(),
-                        e.getValue().size(),
-                        e.getValue().stream().mapToInt(o -> o.baseAmount() - o.amount()).sum()))
-                .toList();
-    }
-
-    /** 90 → 「9折」、88 → 「88折」。 */
-    static String discountLabel(int percent) {
-        return (percent % 10 == 0 ? String.valueOf(percent / 10) : String.valueOf(percent)) + "折";
-    }
-
-    private static int topUpsSince(List<TopUpRequest> topUps, LocalDateTime from) {
-        return topUps.stream()
-                .filter(t -> t.getReviewedAt() != null && !t.getReviewedAt().isBefore(from))
-                .mapToInt(TopUpRequest::getAmount)
-                .sum();
-    }
-
-    // ── 店家匯款帳號資訊（依用途分開：結帳收款 / 儲值金收款大額專用）────
-    // 需求（追加）：LIFF 儲值金常有大額匯款，跟現場結帳的日常小額收款要分開帳戶方便對帳。
-    public BankAccountInfo getBankAccountInfo(
-            BankAccountPurpose purpose) {
-        return bankAccountInfoRepository.findByPurpose(purpose)
-                .orElse(BankAccountInfo.builder()
-                        .purpose(purpose)
-                        .bankName("尚未設定").accountNumber("尚未設定").accountHolder("尚未設定").build());
-    }
-
-    @Transactional
-    public void updateBankAccountInfo(BankAccountPurpose purpose,
-                                      String bankName, String accountNumber, String accountHolder) {
-        BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
-                .orElse(BankAccountInfo.builder().purpose(purpose).build());
-        info.setBankName(bankName);
-        info.setAccountNumber(accountNumber);
-        info.setAccountHolder(accountHolder);
-        bankAccountInfoRepository.save(info);
-    }
-
-    // ── 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立一張）──────────
-    @Transactional
-    public void updateBankAccountQrCode(BankAccountPurpose purpose,
-                                        MultipartFile file) {
-        BankAccountInfo info = bankAccountInfoRepository.findByPurpose(purpose)
-                .orElse(BankAccountInfo.builder().purpose(purpose).build());
-
-        CloudinaryService.UploadResult result = cloudinaryService.upload(file, "bank-account");
-
-        String oldPublicId = info.getQrCodePublicId();
-        info.setQrCodeUrl(result.url());
-        info.setQrCodePublicId(result.publicId());
-        bankAccountInfoRepository.save(info);
-
-        cloudinaryService.deleteQuietly(oldPublicId);
-    }
-
     // ── 需求（2026-09-24）：員工手機版結帳頁的金額預覽 ─────────────────────
     // 直接呼叫 checkout() 實際扣款用的同兩支計算方法，確保畫面上的預覽金額
     // 跟實際結帳金額一定一致，不另外在 controller 重算一份。純讀取，不寫入資料。
@@ -596,41 +375,6 @@ public class PaymentService {
                 .mapToDouble(line -> offers.resolve(line.price(), line.category(), false, 1.0).price())
                 .sum();
         return (int) Math.round(total);
-    }
-
-    // ── 需求 22：乙方（店家）固定電子簽名檔，顯示在顧客端契約最下方 ──────
-    public String getCompanySignatureImage() {
-        return companySignatureRepository.findFirstByOrderByIdDesc()
-                .map(CompanySignature::getSignatureImage)
-                .orElse(null);
-    }
-
-    @Transactional
-    public void updateCompanySignature(String base64Image) {
-        CompanySignature sig = companySignatureRepository.findFirstByOrderByIdDesc()
-                .orElse(CompanySignature.builder().build());
-        sig.setSignatureImage(base64Image);
-        companySignatureRepository.save(sig);
-    }
-
-    // ── 需求（追加）：體重定價門檻設定（單例，同 CompanySignature 做法）─────
-    public PricingSettings getPricingSettings() {
-        return pricingSettingsRepository.findFirstByOrderByIdDesc()
-                .orElse(PricingSettings.builder().build());
-    }
-
-    @Transactional
-    public void updatePricingSettings(PricingSettings updated) {
-        PricingSettings settings = pricingSettingsRepository.findFirstByOrderByIdDesc()
-                .orElse(PricingSettings.builder().build());
-        settings.setCatBaseWeightLimit(updated.getCatBaseWeightLimit());
-        settings.setCatMidWeightLimit(updated.getCatMidWeightLimit());
-        settings.setCatMidSurcharge(updated.getCatMidSurcharge());
-        settings.setCatHighWeightLimit(updated.getCatHighWeightLimit());
-        settings.setCatHighSurcharge(updated.getCatHighSurcharge());
-        settings.setDogLongCoatWeightLimit(updated.getDogLongCoatWeightLimit());
-        settings.setDogShortCoatWeightLimit(updated.getDogShortCoatWeightLimit());
-        pricingSettingsRepository.save(settings);
     }
 
     /** 已付款的預約結帳交易（不含待確認的匯款）。 */

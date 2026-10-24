@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.*;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ import java.util.List;
 public class WalkInOrderController {
 
     private final WalkInOrderService walkInOrderService;
+    private final WalkInOrderOperatorService walkInOrderOperatorService;
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @PostMapping
@@ -49,21 +51,21 @@ public class WalkInOrderController {
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/pending-operator")
     public ResponseEntity<List<WalkInOrderResponse.ItemLine>> pendingOperator() {
-        return ResponseEntity.ok(walkInOrderService.pendingOperatorItems());
+        return ResponseEntity.ok(walkInOrderOperatorService.pendingOperatorItems());
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @PutMapping("/items/{itemId}/operator")
     public ResponseEntity<?> fillOperator(@PathVariable Long itemId,
             @Valid @RequestBody FillOperatorRequest req) {
-        walkInOrderService.fillOperator(itemId, req.getStaffId());
+        walkInOrderOperatorService.fillOperator(itemId, req.getStaffId());
         return ResponseEntity.ok().build();
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping("/points-report")
     public ResponseEntity<List<OperatorPointsResponse>> pointsReport() {
-        return ResponseEntity.ok(walkInOrderService.operatorPointsReport());
+        return ResponseEntity.ok(walkInOrderOperatorService.operatorPointsReport());
     }
 
 }

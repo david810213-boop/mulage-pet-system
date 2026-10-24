@@ -8,7 +8,7 @@ import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
 import com.petgrooming.pet_system.export.ExcelSupport;
 import com.petgrooming.pet_system.export.FinancialReportExcel;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.FinancialReportService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
@@ -32,7 +32,7 @@ import java.time.LocalDate;
 public class AdminMvcController {
 
     private final UserService userService;
-    private final PaymentService paymentService;
+    private final FinancialReportService financialReportService;
     private final GroomingService groomingService;
 
     /**
@@ -190,7 +190,7 @@ public class AdminMvcController {
     public String report(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (!isAdmin(request)) return "redirect:/dashboard";
         model.addAttribute("user", user);
-        model.addAttribute("report", paymentService.getFinancialReport());
+        model.addAttribute("report", financialReportService.getFinancialReport());
         return "admin/report";
     }
 
@@ -202,7 +202,7 @@ public class AdminMvcController {
             response.sendRedirect("/dashboard");
             return;
         }
-        var report = paymentService.getFinancialReport();
+        var report = financialReportService.getFinancialReport();
         try (var workbook = FinancialReportExcel.build(report)) {
             ExcelSupport.writeXlsx(response, "財務報表_" + LocalDate.now() + ".xlsx", workbook);
         }

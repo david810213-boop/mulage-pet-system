@@ -8,6 +8,8 @@ import com.petgrooming.pet_system.dto.TransactionResponse;
 import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
+import com.petgrooming.pet_system.service.FinancialReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,13 +24,17 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
+    private final StoreSettingsService storeSettingsService;
+
+    private final FinancialReportService financialReportService;
+
     // ── GET /api/payments/bank-account ──────────────────────────────────
     // 需求 21：LIFF「線上儲值」頁面讀取匯款帳號資訊 + 收款 QR Code
     // 需求（追加）：LIFF 儲值一律用「儲值金收款（大額專用）」帳戶，跟現場/預約結帳帳戶分開，
     // 任何已登入使用者皆可查（顧客儲值前本來就需要看到這份資訊，不需要限定店家/員工）
     @GetMapping("/bank-account")
     public ResponseEntity<?> getBankAccountInfo() {
-        var info = paymentService.getBankAccountInfo(BankAccountPurpose.TOPUP);
+        var info = storeSettingsService.getBankAccountInfo(BankAccountPurpose.TOPUP);
         return ResponseEntity.ok(Map.of(
                 "bankName", info.getBankName() != null ? info.getBankName() : "",
                 "accountNumber", info.getAccountNumber() != null ? info.getAccountNumber() : "",
@@ -68,6 +74,6 @@ public class PaymentController {
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/report")
     public ResponseEntity<FinancialReportResponse> getFinancialReport() {
-        return ResponseEntity.ok(paymentService.getFinancialReport());
+        return ResponseEntity.ok(financialReportService.getFinancialReport());
     }
 }

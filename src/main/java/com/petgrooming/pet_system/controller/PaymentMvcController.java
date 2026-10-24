@@ -13,11 +13,14 @@ import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentDetailService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.CheckoutPreviewService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
@@ -40,8 +43,12 @@ import java.util.Map;
 public class PaymentMvcController {
 
     private final PaymentService paymentService;
+
+    private final StoreSettingsService storeSettingsService;
     private final OperationLogService operationLogService;
     private final AppointmentService appointmentService;
+    private final AppointmentDetailService appointmentDetailService;
+    private final AppointmentItemService appointmentItemService;
     private final CheckoutPreviewService checkoutPreviewService;
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
@@ -91,7 +98,7 @@ public class PaymentMvcController {
         model.addAttribute("user", user);
         model.addAttribute("appointmentId", appointmentId);
         model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
-        model.addAttribute("bankAccountInfo", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("bankAccountInfo", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
         // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", PerformanceCategory.values());
@@ -110,7 +117,7 @@ public class PaymentMvcController {
                 groomingService.getAllItems(), isExisting, petType, pet));
         model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
 
-        var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
+        var detail = appointmentDetailService.getAppointmentDetail(appointmentId, user.getUsername());
         model.addAttribute("detailItems", detail.getItems());
         Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
         if (appointment != null && appointment.getUser() != null) {
@@ -132,7 +139,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
+            appointmentItemService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -155,7 +162,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
+            appointmentItemService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -178,7 +185,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
+            appointmentItemService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
             redirectAttributes.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
@@ -198,7 +205,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.removeItem(appointmentId, itemId, user.getUsername());
+            appointmentItemService.removeItem(appointmentId, itemId, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -312,9 +319,9 @@ public class PaymentMvcController {
     public String bankAccountForm(Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
         model.addAttribute("checkoutInfo",
-                paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+                storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("topupInfo",
-                paymentService.getBankAccountInfo(BankAccountPurpose.TOPUP));
+                storeSettingsService.getBankAccountInfo(BankAccountPurpose.TOPUP));
         return "payments/bank-account";
     }
 
@@ -325,7 +332,7 @@ public class PaymentMvcController {
                                     @RequestParam String accountNumber,
                                     @RequestParam String accountHolder, RedirectAttributes ra,
                                     @CurrentUser User user) {
-        paymentService.updateBankAccountInfo(purpose, bankName, accountNumber, accountHolder);
+        storeSettingsService.updateBankAccountInfo(purpose, bankName, accountNumber, accountHolder);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT",
                 purpose.getLabel() + " 帳號設定", null);
         ra.addFlashAttribute("successMsg", "已更新「" + purpose.getLabel() + "」帳號資訊");
@@ -340,7 +347,7 @@ public class PaymentMvcController {
                                           @RequestParam("file") MultipartFile file, RedirectAttributes ra,
                                           @CurrentUser User user) {
         try {
-            paymentService.updateBankAccountQrCode(purpose, file);
+            storeSettingsService.updateBankAccountQrCode(purpose, file);
             operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT_QR",
                     purpose.getLabel() + " 收款 QR Code", null);
             ra.addFlashAttribute("successMsg", "已更新「" + purpose.getLabel() + "」的收款 QR Code");
@@ -356,7 +363,7 @@ public class PaymentMvcController {
     @GetMapping("/company-signature")
     public String companySignatureForm(Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
-        model.addAttribute("signatureImage", paymentService.getCompanySignatureImage());
+        model.addAttribute("signatureImage", storeSettingsService.getCompanySignatureImage());
         return "payments/company-signature";
     }
 
@@ -367,7 +374,7 @@ public class PaymentMvcController {
             ra.addFlashAttribute("errorMsg", "請上傳有效的圖片檔案");
             return "redirect:/payments/company-signature";
         }
-        paymentService.updateCompanySignature(signatureImage);
+        storeSettingsService.updateCompanySignature(signatureImage);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_COMPANY_SIGNATURE", "乙方電子簽名檔", null);
         ra.addFlashAttribute("successMsg", "已更新乙方電子簽名檔");
         return "redirect:/payments/company-signature";
@@ -382,7 +389,7 @@ public class PaymentMvcController {
     @GetMapping("/api/company-signature")
     @ResponseBody
     public Map<String, String> getCompanySignatureApi() {
-        String image = paymentService.getCompanySignatureImage();
+        String image = storeSettingsService.getCompanySignatureImage();
         return Collections.singletonMap("signatureImage", image);
     }
 
@@ -392,14 +399,14 @@ public class PaymentMvcController {
     @GetMapping("/pricing-settings")
     public String pricingSettingsForm(Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
-        model.addAttribute("settings", paymentService.getPricingSettings());
+        model.addAttribute("settings", storeSettingsService.getPricingSettings());
         return "payments/pricing-settings";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/pricing-settings")
     public String updatePricingSettings(@ModelAttribute PricingSettings settings, RedirectAttributes ra, @CurrentUser User user) {
-        paymentService.updatePricingSettings(settings);
+        storeSettingsService.updatePricingSettings(settings);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_PRICING_SETTINGS", "體重定價門檻設定", null);
         ra.addFlashAttribute("successMsg", "已更新體重定價門檻");
         return "redirect:/payments/pricing-settings";
