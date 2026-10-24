@@ -9,12 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 服務項目菜單篩選。
- *
- * 原本寫在 AppointmentMvcController 的兩支 private 方法，員工手機版的
- * 「到店開單」也要用同一套篩選規則；為了避免同一套業務邏輯複製成兩份、
- * 日後改一邊漏改另一邊（claimByPhone 那次的教訓），抽成共用元件，
- * 網頁版跟手機版都呼叫這裡。邏輯內容跟原本完全相同，沒有任何行為變更。
+ * 服務項目菜單篩選：網頁版與手機版的開單、結帳、現場單共用同一套規則，避免改一邊漏改另一邊。
  */
 @Component
 public class GroomingMenuFilter {

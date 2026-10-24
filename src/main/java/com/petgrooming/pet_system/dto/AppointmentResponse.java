@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-// API 回傳給前端的格式（對應原本 AppointmentReceipt.toString()）
+// API 回傳給前端的預約資料
 @Data
 public class AppointmentResponse {
     private Long id;

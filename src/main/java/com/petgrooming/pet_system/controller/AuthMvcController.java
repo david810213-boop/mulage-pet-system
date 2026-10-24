@@ -96,8 +96,8 @@ public class AuthMvcController {
             operationLogService.log(user, "AUTH", "LOGIN", user.getUsername(), null);
 
             // 5. 將 Token 包進 Cookie 中送給瀏覽器
-            // 資安修正：改用 CookieUtils 手動組 Set-Cookie 標頭，帶上 SameSite=Lax
-            // （jakarta.servlet.http.Cookie 這個舊版 API 不支援設定 SameSite）。
+            // 用 CookieUtils 手動組 Set-Cookie 標頭，帶上 SameSite=Lax
+            // （jakarta.servlet.http.Cookie 不支援設定 SameSite）。
             response.addHeader("Set-Cookie",
                     CookieUtils.buildJwtCookieHeader(
                             "JWT_TOKEN", token, 86400, cookieSecure));

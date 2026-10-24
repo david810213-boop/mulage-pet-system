@@ -14,9 +14,8 @@ import lombok.*;
  * operatorStaff 為 null 代表「未填寫」，開單當下可以先不指定是誰做的，
  * 之後再從待補清單選人補上，補上的瞬間就會建立一筆績效紀錄。
  *
- * 注意：資料庫裡原本還留有一欄舊的 varchar `operator`（早期自由輸入文字版本），
- * 這裡改用新的 `operator_staff_id` 欄位，舊欄位變成沒用到的孤兒欄位，
- * 不影響功能，確認新版運作正常後可以手動下 SQL 刪除：
+ * 注意：資料庫裡可能還留有一欄已不再使用的 varchar `operator`（早期自由輸入文字版本），
+ * 不影響功能，可以手動下 SQL 刪除：
  *   ALTER TABLE walk_in_order_items DROP COLUMN operator;
  */
 @Entity

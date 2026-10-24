@@ -189,8 +189,8 @@ public class PaymentService {
         if (appointmentItemService.hasCheckinOrderItems(appointment.getId())) {
             appointmentItemService.awardPendingItemPointsForAppointment(appointment.getId());
         } else {
-            // 舊版相容邏輯：沒有現場開單項目的預約（例如舊資料），維持原本整包算給
-            // appointment.staff（或操作結帳的店家/員工）的方式，避免破壞既有資料。
+            // 沒有現場開單項目的預約（例如舊資料）：整包積分算給 appointment.staff
+            // （或操作結帳的店家/員工），避免破壞既有資料。
             // 決定績效歸屬的員工
             User staff = appointment.getStaff();
             if (staff == null && isStaffOrAdmin) {

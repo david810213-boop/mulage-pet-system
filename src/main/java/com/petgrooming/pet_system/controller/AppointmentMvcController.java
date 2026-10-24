@@ -136,10 +136,7 @@ public class AppointmentMvcController {
         model.addAttribute("appointment", target);
         // 僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
-        // 店家反饋現場加單流程要加快，不要整份菜單都列出來，
-        // 改成只顯示符合這隻寵物體型的項目——跟結帳頁（PaymentMvcController.checkoutPage）
-        // 的狗狗體重篩選是同一套邏輯，這裡額外把貓咪毛髮分類篩選也一併補上
-        // （結帳頁目前只做了狗狗，沒做貓咪，是既有的缺口，先不動它，只在這裡補齊）。
+        // 只顯示符合這隻寵物體型的項目（狗狗體重級距、貓咪毛髮分類），規則見 GroomingMenuFilter
         var pet = appointmentQueryService.getPetForAppointment(id);
         model.addAttribute("pet", pet); // 頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
         model.addAttribute("groomingItems", filterItemsForPetShape(
@@ -156,9 +153,7 @@ public class AppointmentMvcController {
         return groomingMenuFilter.filterFor(items, isExisting, petType);
     }
 
-    // 在 filterItemsFor() 的基礎上，再依這隻寵物的體型
-    // （狗狗體重級距／貓咪毛髮分類）進一步篩選，只給現場加單頁面用——結帳頁維持
-    // 原本只做狗狗那一版，避免這次順手擴大改動範圍影響到已經在正常運作的結帳流程。
+    // 在 filterItemsFor() 的基礎上再依這隻寵物的體型篩選，規則見 GroomingMenuFilter.filterForPetShape()
     private List<GroomingItemResponse> filterItemsForPetShape(
             List<GroomingItemResponse> items, boolean isExisting,
             String petType, PetResponse pet) {

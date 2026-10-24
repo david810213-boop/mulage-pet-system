@@ -17,7 +17,7 @@ public enum PaymentMethod {
 
     public String getDisplayName() { return displayName; }
 
-    // 計算最終金額（對應原本各 PaymentSystem.calculateTotal）
+    // 計算最終金額（加上付款方式的手續費率）
     public int calculateFinalAmount(int baseAmount) {
         return (int) (baseAmount * (1 + feeRate));
     }

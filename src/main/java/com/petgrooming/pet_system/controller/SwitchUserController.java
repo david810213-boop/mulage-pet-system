@@ -79,13 +79,10 @@ public class SwitchUserController {
             return "redirect:/auth/switch-user";
         }
 
-        // 驗證通過：直接簽發目標帳號的 JWT，換掉目前的登入 Cookie
-        // CSRF Token 防護——切換使用者也要重新產生
-        // csrfToken 並更新 XSRF-TOKEN Cookie，否則切換後的帳號在鎖定的高風險
-        // 操作（密碼變更、帳號合併、手動儲值、刪除操作）上會因為 tokenCsrf
-        // 對不上而被一律擋下，直到重新登出登入為止。順手改用跟登入流程一致的
-        // CookieUtils（帶 SameSite=Lax），原本這裡是用舊版 Cookie API 直接
-        // addCookie()，沒有這層保護。
+        // 驗證通過：直接簽發目標帳號的 JWT，換掉目前的登入 Cookie。
+        // 同時重新產生 csrfToken 並更新 XSRF-TOKEN Cookie，否則切換後的帳號在高風險操作
+        // （密碼變更、帳號合併、手動儲值、刪除）上會因為 token 對不上被擋下；Cookie 一律用
+        // CookieUtils 寫入（帶 SameSite=Lax），跟登入流程一致。
         String csrfToken = UUID.randomUUID().toString();
         String token = jwtUtils.generateToken(target.getUsername(), target.getRole().name(), "WEB", csrfToken);
 

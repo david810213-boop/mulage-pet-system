@@ -78,7 +78,7 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // 一般網頁路徑（店家後台）：維持原本導回登入頁的行為
+        // 一般網頁路徑（店家後台）：導回登入頁
         response.sendRedirect("/auth/login?redirect=" + uri);
         return false;
     }

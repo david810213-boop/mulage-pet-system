@@ -15,7 +15,7 @@ import java.util.List;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    // 查某使用者的所有預約（對應原本 getReceiptsByUser）
+    // 查某使用者的所有預約
     List<Appointment> findByUserUsername(String username);
 
     // 手動綁定既有匯入資料——過戶這個會員名下所有預約
@@ -48,13 +48,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 同一隻毛孩是否已經有一筆還沒完成的「初次・現場評估」預約
     List<Appointment> findByUserIdAndPetNameAndFirstVisitAssessmentTrueAndPaidFalse(Long userId, String petName);
 
-    // N+1 查詢優化。getAllForAdmin()/getAllAppointments()
-    // 原本用 findAll() 撈全部預約，DTO 轉換時逐筆存取 a.getUser()（LAZY）跟
-    // a.getSelectedItems()（雖然是 EAGER，但預設用逐筆 SELECT 撈，不是 JOIN），
-    // 資料一多，每次載入預約列表都會觸發幾百條額外 SQL。改用 JOIN FETCH 把
-    // user、selectedItems 併進同一條查詢一次撈出來，只需要 1 條 SQL（selectedItems
-    // 是多對多，JOIN 之後同一筆預約會因為對應多個項目重複出現，用 DISTINCT
-    // 讓 Hibernate 在組裝結果時把同一筆預約的重複列合併回一筆）。
+    // 用 JOIN FETCH 把 user、selectedItems 併進同一條查詢（避免 N+1）。selectedItems 是多對多，
+    // JOIN 之後同一筆預約會重複出現，用 DISTINCT 讓 Hibernate 合併回一筆。
     @Query(
             "SELECT DISTINCT a FROM Appointment a " +
             "LEFT JOIN FETCH a.user " +

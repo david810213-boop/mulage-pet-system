@@ -385,7 +385,7 @@ public class MemberImportService {
     // 台灣手機號碼長相」（9 碼、以 9 開頭），就自動補回開頭的 0，減少店家因為
     // Excel 存檔習慣而匯入失敗或資料錯誤的機率。只處理這一種明確的情況，避免
     // 誤判其他本來就不到 10 碼的市話號碼或其他格式。
-    // 改成 public static，UserService 填資料防重複也要用同一套正規化
+    // public static：UserService 填資料防重複也用同一套正規化
     public static String normalizePhone(String raw) {
         if (raw == null) return "";
         String cleaned = raw.trim().replaceAll("[\\s\\-()]", "");

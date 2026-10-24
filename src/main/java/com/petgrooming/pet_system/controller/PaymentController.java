@@ -44,7 +44,7 @@ public class PaymentController {
     }
 
     // ── POST /api/payments/{appointmentId}/checkout ────────────────────────
-    // 結帳（對應原本 processPayment），appointmentId = 要結哪一筆預約的帳
+    // 結帳，appointmentId = 要結哪一筆預約的帳
     @PostMapping("/{appointmentId}/checkout")
     public ResponseEntity<?> checkout(
             @PathVariable Long appointmentId,
@@ -55,7 +55,7 @@ public class PaymentController {
     }
 
     // ── GET /api/payments/my ───────────────────────────────────────────────
-    // 查詢自己的交易紀錄（對應原本 queryTransactions）
+    // 查詢自己的交易紀錄
     @GetMapping("/my")
     public ResponseEntity<List<TransactionResponse>> getMyTransactions(@CurrentUser String username) {
         return ResponseEntity.ok(paymentService.getMyTransactions(username));
@@ -70,7 +70,7 @@ public class PaymentController {
     }
 
     // ── GET /api/payments/report ───────────────────────────────────────────
-    // 財務報告（ADMIN，對應原本 generateFinancialReport）
+    // 財務報告（ADMIN）
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/report")
     public ResponseEntity<FinancialReportResponse> getFinancialReport() {

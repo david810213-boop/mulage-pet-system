@@ -109,7 +109,7 @@ public class AppointmentCheckInService {
         appointment.setServiceEndedAt(LocalDateTime.now());
         Appointment saved = appointmentRepository.save(appointment);
 
-        // 誰點結束服務，「完成」積分就記給誰（原本掛在結帳時發放，現在改到這一步）
+        // 誰點結束服務，「完成」積分就記給誰
         performanceService.addRecord(
                 staff.getId(),
                 appointment.getId(),
@@ -191,10 +191,8 @@ public class AppointmentCheckInService {
                 throw new AppointmentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法選擇此項目");
             }
 
-            // 主項目本身掛的積分分類（例如 BATH_CAT_S）如果有副組成，
-            // 名稱後面比照副組成加上分類標籤（例如「（洗（小貓））」），店家在待補
-            // 經手人矩陣表單才看得出「這行就是洗澡的積分」，不會誤以為 BATH 沒出現
-            // （這行其實一直都有記錄，只是原本沒有標籤，容易被誤認成普通項目名稱）。
+            // 主項目本身掛的積分分類（例如 BATH_CAT_S）如果有副組成，名稱後面比照副組成加上分類標籤
+            // （例如「（洗（小貓））」），店家在待補經手人矩陣才看得出這行就是洗澡的積分。
             var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
             String mainItemName = itemComponents.isEmpty()
                     ? gi.getName()

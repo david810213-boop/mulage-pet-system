@@ -28,7 +28,7 @@ public class GroomingItemRequest {
     private Boolean bookable = false;
 
     // 是否可享會員儲值折扣/回洗優惠——像清潔費這種帶懲罰性質的附加費用，
-    // 店家不希望被折扣掉，所以開放建立時就能決定要不要參與折扣，預設維持原本行為（可享）。
+    // 店家不希望被折扣掉，所以開放建立時就能決定要不要參與折扣，預設可享。
     private Boolean discountEligible = true;
 
     // 可享折扣/回洗優惠/首次體驗優惠都要看這個分類判斷，

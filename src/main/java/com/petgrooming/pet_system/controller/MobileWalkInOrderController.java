@@ -387,6 +387,4 @@ public class MobileWalkInOrderController {
             return null;
         }
     }
-
-    // 開單失敗時帶回原本的 member / pet / guest 參數，只允許這三個參數，避免被塞入其他內容
 }

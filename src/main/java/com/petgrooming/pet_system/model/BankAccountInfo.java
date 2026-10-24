@@ -5,8 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 // 店家匯款帳號資訊，顧客/店員選「匯款」付款方式時自動帶出顯示。
-// 改成依用途各存一筆——「結帳收款」與「儲值金收款（大額專用）」是不同帳戶，
-// 不再是單例設定，改用 purpose 欄位區分，每種用途各自最多一筆。
+// 依用途（purpose）各存一筆：「結帳收款」與「儲值金收款（大額專用）」是不同帳戶，每種用途最多一筆。
 @Entity
 @Table(name = "bank_account_info")
 @Data
