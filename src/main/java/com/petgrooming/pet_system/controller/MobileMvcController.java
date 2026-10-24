@@ -33,14 +33,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 員工手機版（需求，2026-09-24）。
- * 網頁版後台完全保留不動，手機版是另一組獨立頁面，路徑統一在 /m 底下，
- * 後端 service 跟網頁版共用。
+ * 員工手機版（需求，2026-09-24）：今日、預約列表、更多、切換網頁版／手機版。
+ * 網頁版後台完全保留不動，手機版是另一組獨立頁面，路徑統一在 /m 底下，後端 service 跟網頁版共用。
  *
- * 第一批：今日、更多、切換網頁版/手機版
- * 第二批：預約列表、預約詳情（確認／開始服務／結束服務／取消／確認匯款／退款）、到店開單
- * 第三批：核對（改項目、自訂金額加購、零售加購、備注、家長簽名）、結帳
- * 第四批：核對、結帳樣板改成預約／現場單共用（現場單另見 MobileWalkInController）
+ * 預約詳情與流程（開單、核對、結帳）見 MobileAppointmentController；
+ * 現場單見 MobileWalkInController（列表、開單）與 MobileWalkInOrderController（明細與流程）。
  */
 @Controller
 @RequestMapping("/m")
