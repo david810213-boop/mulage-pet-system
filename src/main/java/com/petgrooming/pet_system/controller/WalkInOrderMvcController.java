@@ -16,6 +16,7 @@ import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalkInOrderCheckService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
 import com.petgrooming.pet_system.service.WalkInPaymentService;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 public class WalkInOrderMvcController {
 
     private final WalkInOrderService walkInOrderService;
+    private final WalkInOrderCheckService walkInOrderCheckService;
     private final WalkInOrderOperatorService walkInOrderOperatorService;
     private final WalkInPaymentService walkInPaymentService;
     private final GroomingService groomingService;
@@ -401,7 +403,7 @@ public class WalkInOrderMvcController {
     @PostMapping("/{id}/end-service")
     public String endService(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
         try {
-            walkInOrderService.endService(id, user.getUsername());
+            walkInOrderCheckService.endService(id, user.getUsername());
             operationLogService.log(user, "WALKIN", "END_SERVICE", "現場單 #" + id, null);
             ra.addFlashAttribute("successMsg", "已結束服務，已通知家長來店接寵物");
         } catch (IllegalArgumentException e) {
@@ -420,7 +422,7 @@ public class WalkInOrderMvcController {
                              @RequestParam(required = false) List<String> photoPublicIds, RedirectAttributes ra,
                              @CurrentUser User user) {
         try {
-            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername(), photoUrls, photoPublicIds);
+            walkInOrderCheckService.finalCheck(id, note, signatureData, user.getUsername(), photoUrls, photoPublicIds);
             operationLogService.log(user, "WALKIN", "FINAL_CHECK", "現場單 #" + id, note);
             ra.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
         } catch (IllegalArgumentException e) {
