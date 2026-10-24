@@ -14,7 +14,10 @@ import java.time.LocalDateTime;
  * 避免之後進貨單價調整了，回頭去算以前月份的成本卻用了錯的價格。
  */
 @Entity
-@Table(name = "supply_usage_records")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "supply_usage_records", indexes = {
+        @Index(name = "idx_supply_usage_records_used_at", columnList = "used_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

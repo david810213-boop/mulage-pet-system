@@ -15,7 +15,10 @@ import java.time.LocalDateTime;
  * 店家於後台核對銀行入帳後按「確認入帳」，才真正呼叫 WalletService.deposit() 加值。
  */
 @Entity
-@Table(name = "topup_requests")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "topup_requests", indexes = {
+        @Index(name = "idx_topup_requests_status_created", columnList = "status, created_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

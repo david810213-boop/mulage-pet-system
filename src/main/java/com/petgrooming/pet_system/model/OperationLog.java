@@ -12,7 +12,11 @@ import java.util.Map;
 // 操作紀錄（僅供 ADMIN 查看）：記錄誰在什麼時候對什麼資料做了什麼操作
 // 保留 60 天，由排程自動清除超過期限的舊紀錄
 @Entity
-@Table(name = "operation_logs")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "operation_logs", indexes = {
+        @Index(name = "idx_operation_logs_created_at", columnList = "created_at"),
+        @Index(name = "idx_operation_logs_category_created", columnList = "category, created_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

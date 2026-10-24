@@ -21,7 +21,12 @@ import java.util.List;
  *   因此獨立成 WalkInOrder，不動既有結帳流程，避免破壞相容性。
  */
 @Entity
-@Table(name = "walk_in_orders")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "walk_in_orders", indexes = {
+        @Index(name = "idx_walk_in_orders_paid_time", columnList = "paid, payment_time"),
+        @Index(name = "idx_walk_in_orders_created_at", columnList = "created_at"),
+        @Index(name = "idx_walk_in_orders_member_pet", columnList = "member_id, pet_name")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
