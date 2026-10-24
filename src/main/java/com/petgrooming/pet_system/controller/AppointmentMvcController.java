@@ -18,7 +18,7 @@ import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.DefaultSlotCapacityTemplateService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.SlotCapacityService;
@@ -53,7 +53,7 @@ public class AppointmentMvcController {
     private final OperationLogService operationLogService;
     private final SlotCapacityService slotCapacityService;
     private final ClosedDateService closedDateService; // 需求 16：公休日設定
-    private final PaymentService paymentService;
+    private final StoreSettingsService storeSettingsService;
     private final RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
     private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
     private final GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
@@ -414,7 +414,7 @@ public class AppointmentMvcController {
         model.addAttribute("myPets", myPets);
         model.addAttribute("appointmentRequest", new AppointmentRequest());
         model.addAttribute("groomingItems", availableServices);
-        model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+        model.addAttribute("companySignatureImage", storeSettingsService.getCompanySignatureImage());
         // 代客建立時，畫面要顯示「正在為誰建立」，送出時也要帶著這個值
         model.addAttribute("forUsername", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUsername : null);
         model.addAttribute("targetMemberName", (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) ? targetUser.getName() : null);
@@ -470,7 +470,7 @@ public class AppointmentMvcController {
             model.addAttribute("user", user);
             model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
-            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("companySignatureImage", storeSettingsService.getCompanySignatureImage());
             model.addAttribute("forUsername", forUsername);
             model.addAttribute("targetMemberName", targetMemberName);
             String firstError = bindingResult.getAllErrors().stream()
@@ -494,7 +494,7 @@ public class AppointmentMvcController {
             model.addAttribute("user", user);
             model.addAttribute("myPets", petService.getMyPets(bookingUsername));
             model.addAttribute("groomingItems", groomingItemService.getAllItems());
-            model.addAttribute("companySignatureImage", paymentService.getCompanySignatureImage());
+            model.addAttribute("companySignatureImage", storeSettingsService.getCompanySignatureImage());
             model.addAttribute("forUsername", forUsername);
             model.addAttribute("targetMemberName", targetMemberName);
             model.addAttribute("errorMsg", e.getMessage());

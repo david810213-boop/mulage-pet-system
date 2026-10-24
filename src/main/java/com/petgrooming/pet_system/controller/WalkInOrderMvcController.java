@@ -12,7 +12,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.CheckoutPreviewService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
@@ -43,7 +43,7 @@ public class WalkInOrderMvcController {
     private final UserService userService;
     private final OperationLogService operationLogService;
     private final CheckoutPreviewService checkoutPreviewService; // 需求 15：儲值金折扣預覽
-    private final PaymentService paymentService; // 需求 15 修正：借用匯款帳號資訊
+    private final StoreSettingsService storeSettingsService;
     private final RetailProductService retailProductService; // 需求 7-1
     private final PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
     private final GroomingMenuFilter groomingMenuFilter;
@@ -227,7 +227,7 @@ public class WalkInOrderMvcController {
                     : groomingMenuFilter.filterForOptionalPetType(allGroomingItems, isExisting, petType));
             model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
             model.addAttribute("bankAccountInfo",
-                    paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT)); // 需求 15 修正
+                    storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT)); // 需求 15 修正
             // 需求 10：跟預約結帳一致，不提供「信用卡」選項；需求 15 修正：匯款有待對帳流程，保留在選單
             model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
 

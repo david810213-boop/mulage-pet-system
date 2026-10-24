@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.page;
 
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.FinancialReportService;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
 import com.petgrooming.pet_system.utils.JwtUtils;
@@ -41,7 +41,7 @@ class ExcelExportTest extends IntegrationTestBase {
     @Autowired private WebApplicationContext context;
     @Autowired private JwtUtils jwtUtils;
     @Autowired private TestData testData;
-    @Autowired private PaymentService paymentService;
+    @Autowired private FinancialReportService financialReportService;
     @Autowired private TransactionTemplate transactionTemplate;
 
     private MockMvc mvc;
@@ -56,7 +56,7 @@ class ExcelExportTest extends IntegrationTestBase {
         User admin = testData.admin();
         MockHttpServletResponse response = download(admin, "/admin/report/export.xlsx");
         assertAttachment(response, "財務報表_" + LocalDate.now() + ".xlsx");
-        var report = transactionTemplate.execute(s -> paymentService.getFinancialReport());
+        var report = transactionTemplate.execute(s -> financialReportService.getFinancialReport());
 
         try (Workbook workbook = open(response)) {
             Sheet summary = workbook.getSheet("業績彙總");

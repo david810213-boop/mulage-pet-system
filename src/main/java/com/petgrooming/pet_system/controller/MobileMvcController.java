@@ -25,6 +25,7 @@ import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
@@ -46,7 +47,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -86,6 +86,7 @@ public class MobileMvcController {
     private final GroomingService groomingItemService;
     private final GroomingMenuFilter groomingMenuFilter;
     private final PaymentService paymentService;
+    private final StoreSettingsService storeSettingsService;
     private final WalletService walletService;
     private final MobileViewHelper view;
     private final WalkInOrderService walkInOrderService;
@@ -568,7 +569,7 @@ public class MobileMvcController {
         model.addAttribute("walletEnough", balance >= walletAmount);
         model.addAttribute("walletDiscountLabel", wallet.isCardActive() && wallet.getDiscount() < 1.0
                 ? wallet.getCardTierLabel() + " " + view.formatDiscount(wallet.getDiscount()) : null);
-        model.addAttribute("bank", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("bank", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive());
         if (lockable != null) {
             model.addAttribute("lockPetId", pet.getId());

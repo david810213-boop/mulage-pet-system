@@ -15,7 +15,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
@@ -70,7 +70,7 @@ public class MobileWalkInController {
     private final GroomingService groomingItemService;
     private final GroomingMenuFilter groomingMenuFilter;
     private final RetailProductService retailProductService;
-    private final PaymentService paymentService;
+    private final StoreSettingsService storeSettingsService;
     private final WalletService walletService;
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
@@ -432,7 +432,7 @@ public class MobileWalkInController {
             model.addAttribute("walletDiscountLabel", wallet.isCardActive() && wallet.getDiscount() < 1.0
                     ? wallet.getCardTierLabel() + " " + view.formatDiscount(wallet.getDiscount()) : null);
         }
-        model.addAttribute("bank", paymentService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("bank", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("retailProducts", retailProductService.listActive());
 
         // 鎖定固定套餐：狗狗、還沒鎖定、單子裡有帶體重級距的套餐項目

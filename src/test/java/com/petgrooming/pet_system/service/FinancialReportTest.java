@@ -40,6 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FinancialReportTest extends IntegrationTestBase {
 
     @Autowired private PaymentService paymentService;
+
+    @Autowired private FinancialReportService financialReportService;
     @Autowired private WalletService walletService;
     @Autowired private TopUpService topUpService;
     @Autowired private RetailProductService retailProductService;
@@ -132,10 +134,10 @@ class FinancialReportTest extends IntegrationTestBase {
 
     @Test
     void discountLabelUsesChineseDiscountWording() {
-        assertThat(PaymentService.discountLabel(90)).isEqualTo("9折");
-        assertThat(PaymentService.discountLabel(88)).isEqualTo("88折");
-        assertThat(PaymentService.discountLabel(85)).isEqualTo("85折");
-        assertThat(PaymentService.discountLabel(50)).isEqualTo("5折");
+        assertThat(FinancialReportService.discountLabel(90)).isEqualTo("9折");
+        assertThat(FinancialReportService.discountLabel(88)).isEqualTo("88折");
+        assertThat(FinancialReportService.discountLabel(85)).isEqualTo("85折");
+        assertThat(FinancialReportService.discountLabel(50)).isEqualTo("5折");
     }
 
     private static int discountCount(List<FinancialReportResponse.DiscountSummary> discounts, String label) {
@@ -149,7 +151,7 @@ class FinancialReportTest extends IntegrationTestBase {
     }
 
     private FinancialReportResponse report() {
-        return transactionTemplate.execute(status -> paymentService.getFinancialReport());
+        return transactionTemplate.execute(status -> financialReportService.getFinancialReport());
     }
 
     private Appointment appointment(User customer, int total) {
