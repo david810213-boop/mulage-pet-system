@@ -7,6 +7,7 @@ import com.petgrooming.pet_system.dto.AppointmentNoteRequest;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.ConfirmAppointmentRequest;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +28,13 @@ import java.util.List;
 public class AppointmentAdminController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
 
     // 需求 7：後台清單，含 internalNote
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
     public ResponseEntity<List<AppointmentAdminResponse>> getAll() {
-        return ResponseEntity.ok(appointmentService.getAllForAdmin());
+        return ResponseEntity.ok(appointmentQueryService.getAllForAdmin());
     }
 
     // 需求 3：確認預約並敲定最後時間

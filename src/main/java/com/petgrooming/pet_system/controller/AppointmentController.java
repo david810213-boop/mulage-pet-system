@@ -9,6 +9,7 @@ import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.AuthException;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.AppointmentDetailService;
 import com.petgrooming.pet_system.service.ClosedDateService;
@@ -27,6 +28,7 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final AppointmentDetailService appointmentDetailService;
     private final OperationLogService operationLogService;
     private final ClosedDateService closedDateService; // 需求 16
@@ -47,7 +49,7 @@ public class AppointmentController {
     // 查詢自己的預約紀錄（對應原本 viewAppointments）
     @GetMapping("/my")
     public ResponseEntity<List<AppointmentResponse>> getMyAppointments(@CurrentUser String username) {
-        return ResponseEntity.ok(appointmentService.getMyAppointments(username));
+        return ResponseEntity.ok(appointmentQueryService.getMyAppointments(username));
     }
 
     // ── GET /api/appointments ──────────────────────────────────────────────
@@ -55,7 +57,7 @@ public class AppointmentController {
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> getAllAppointments() {
-        return ResponseEntity.ok(appointmentService.getAllAppointments());
+        return ResponseEntity.ok(appointmentQueryService.getAllAppointments());
     }
 
     // ── POST /api/appointments/{id}/cancel ─────────────────────────────────
@@ -94,7 +96,7 @@ public class AppointmentController {
         if (date.isBefore(LocalDate.now())) {
             return ResponseEntity.ok(List.of());
         }
-        return ResponseEntity.ok(appointmentService.getAvailableSlots(date, parsedPetType));
+        return ResponseEntity.ok(appointmentQueryService.getAvailableSlots(date, parsedPetType));
     }
 
     // ── GET /api/appointments/first-visit?petId= ─────────────────────────
@@ -105,7 +107,7 @@ public class AppointmentController {
         if (username == null) {
             throw new AuthException("請先登入");
         }
-        return ResponseEntity.ok(appointmentService.firstVisitStatus(username, petId));
+        return ResponseEntity.ok(appointmentQueryService.firstVisitStatus(username, petId));
     }
 
     // ── GET /api/appointments/closed-dates ───────────────────────────────
@@ -124,7 +126,7 @@ public class AppointmentController {
     // 可以隨時查看這筆預約簽署的契約紀錄（簽名、時間、版本）；店員也可以查。
     @GetMapping("/{id}/contract")
     public ResponseEntity<?> getContract(@PathVariable Long id, @CurrentUser String username) {
-        return ResponseEntity.ok(appointmentService.getContractRecord(id, username));
+        return ResponseEntity.ok(appointmentQueryService.getContractRecord(id, username));
     }
 
     // ── GET /api/appointments/{id}/detail ──────────────────────────────────

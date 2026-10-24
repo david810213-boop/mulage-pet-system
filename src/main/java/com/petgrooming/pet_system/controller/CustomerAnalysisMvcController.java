@@ -8,7 +8,7 @@ import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.CustomerAnalysisService;
 import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
@@ -39,7 +39,7 @@ public class CustomerAnalysisMvcController {
     private final UserService userService;
     private final PetService petService;
     private final WalletService walletService;
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
     private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
 
@@ -80,7 +80,7 @@ public class CustomerAnalysisMvcController {
         User customer = userService.getUserEntityByUsername(username);
         model.addAttribute("customer", customer);
         model.addAttribute("wallet", walletService.getWallet(username));
-        model.addAttribute("appointments", appointmentService.getMyAppointments(username));
+        model.addAttribute("appointments", appointmentQueryService.getMyAppointments(username));
 
         // 需求（2026-09-24）：消費紀錄彙整邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
         List<ConsumptionRecordResponse> records =

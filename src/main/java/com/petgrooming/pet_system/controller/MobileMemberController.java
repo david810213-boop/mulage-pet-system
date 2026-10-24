@@ -9,7 +9,7 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
@@ -55,7 +55,7 @@ public class MobileMemberController {
     private final UserService userService;
     private final PetService petService;
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final MemberConsumptionService memberConsumptionService;
     private final WalletService walletService;
     private final MobileViewHelper view;
@@ -278,7 +278,7 @@ public class MobileMemberController {
     // 今天以後、還沒取消的預約；petName 為 null 時不篩毛孩
     private List<Map<String, Object>> upcomingAppointments(String username, String petName) {
         LocalDate today = LocalDate.now();
-        List<AppointmentResponse> list = appointmentService.getMyAppointments(username);
+        List<AppointmentResponse> list = appointmentQueryService.getMyAppointments(username);
         return list.stream()
                 .filter(a -> !a.isCancelled() && a.getDate() != null && !a.getDate().isBefore(today))
                 .filter(a -> petName == null || petName.equals(a.getPetName()))

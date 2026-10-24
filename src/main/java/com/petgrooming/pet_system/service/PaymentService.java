@@ -223,7 +223,7 @@ public class PaymentService {
             }
         }
 
-        // 「完成」積分現在改由「結束服務」步驟發放（見 AppointmentService.endService），
+        // 「完成」積分現在改由「結束服務」步驟發放（見 AppointmentCheckInService.endService），
         // 結帳這裡不再重複發放，避免同一筆預約算兩次完成積分。
 
         log.info("預約 #{} 結帳後自動建立績效紀錄", appointment.getId());
