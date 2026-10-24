@@ -6,7 +6,7 @@ import org.hibernate.stat.Statistics;
 import org.springframework.stereotype.Component;
 
 /**
- * 計算一段程式實際送出幾條 SQL（Hibernate 統計，測試設定檔已開啟 generate_statistics）。
+ * 計算一段程式實際送出幾條 SQL（Hibernate 統計，只在測試中開啟）。
  * 用來驗證 N+1 查詢：資料筆數增加時，查詢次數不應跟著增加。
  */
 @Component
@@ -16,6 +16,7 @@ public class QueryCounter {
 
     public QueryCounter(EntityManagerFactory entityManagerFactory) {
         this.statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        this.statistics.setStatisticsEnabled(true);
     }
 
     @FunctionalInterface
