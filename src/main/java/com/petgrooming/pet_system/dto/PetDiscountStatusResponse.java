@@ -12,7 +12,7 @@ import java.util.List;
  *
  * 三種折扣（首次體驗優惠／90 天回洗優惠／會員儲值折扣）互斥擇優，這裡把
  * 「特殊優惠」（首次體驗/回洗，兩者本身也互斥）跟「會員儲值折扣」分開回傳，
- * 前端渲染時兩者取較優惠者，邏輯跟後端 resolvePreferredDiscount() 一致。
+ * 前端渲染時兩者取較優惠者，邏輯跟後端 DiscountCalculator.resolve() 一致。
  */
 @Data
 @AllArgsConstructor

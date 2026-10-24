@@ -12,6 +12,7 @@ import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import lombok.RequiredArgsConstructor;
+import com.petgrooming.pet_system.service.discount.SpecialDiscountPolicy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -48,7 +49,7 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
-public class CatRewashDiscountService {
+public class CatRewashDiscountService implements SpecialDiscountPolicy {
 
     public static final int REWASH_WINDOW_DAYS = 90;
     public static final double REWASH_DISCOUNT_RATE = 0.9; // 9 折
@@ -174,35 +175,30 @@ public class CatRewashDiscountService {
         return result;
     }
 
-    /**
-     * 需求 8-1 修正：90 天回洗優惠與會員儲值折扣「只能擇一」，不疊加。
-     * 兩者都符合資格時，取對顧客較優惠（折扣後金額較低）的那一個；
-     * 只符合其中一種就用那一種；都不符合就是原價。
-     *
-     * @param price                     這個項目的原價
-     * @param rewashApplicable          這個項目是否符合回洗優惠資格（貓咪洗澡項目 + 距上次洗澡未滿90天）
-     * @param memberDiscountApplicable  這個項目是否可享會員折扣（GroomingItem.discountEligible）且本次是儲值金付款
-     * @param memberDiscountRate        會員折扣率（例如 0.9 代表 9 折）；不適用會員折扣時可傳 1.0，不影響結果
-     */
-    public DiscountResolution resolvePreferredDiscount(double price,
-                                                        boolean rewashApplicable,
-                                                        boolean memberDiscountApplicable,
-                                                        double memberDiscountRate) {
-        if (rewashApplicable && memberDiscountApplicable) {
-            double rewashPrice = price * REWASH_DISCOUNT_RATE;
-            double memberPrice = price * memberDiscountRate;
-            return rewashPrice <= memberPrice
-                    ? new DiscountResolution(rewashPrice, DiscountType.REWASH)
-                    : new DiscountResolution(memberPrice, DiscountType.MEMBER);
-        }
-        if (rewashApplicable) {
-            return new DiscountResolution(price * REWASH_DISCOUNT_RATE, DiscountType.REWASH);
-        }
-        if (memberDiscountApplicable) {
-            return new DiscountResolution(price * memberDiscountRate, DiscountType.MEMBER);
-        }
-        return new DiscountResolution(price, DiscountType.NONE);
+    // ── SpecialDiscountPolicy：貓咪 90 天回洗優惠（擇優規則見 DiscountCalculator）──
+
+    @Override
+    public DiscountType type() {
+        return DiscountType.REWASH;
     }
 
-    public record DiscountResolution(double price, DiscountType type) {}
+    @Override
+    public double rate() {
+        return REWASH_DISCOUNT_RATE;
+    }
+
+    @Override
+    public boolean appliesTo(PerformanceCategory category) {
+        return isCatBathCategory(category);
+    }
+
+    @Override
+    public boolean isEligible(Appointment appointment) {
+        return isRewashEligible(appointment);
+    }
+
+    @Override
+    public boolean isEligible(WalkInOrder order) {
+        return isRewashEligible(order);
+    }
 }

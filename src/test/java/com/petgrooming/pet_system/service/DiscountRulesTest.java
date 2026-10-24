@@ -2,11 +2,17 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.enums.MemberCardTier;
 import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.enums.DiscountType;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
+import com.petgrooming.pet_system.service.discount.DiscountCalculator;
+import com.petgrooming.pet_system.service.discount.EligibleOffers;
+import com.petgrooming.pet_system.service.discount.SpecialDiscountPolicy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -23,39 +29,66 @@ class DiscountRulesTest {
 
     @Test
     void firstVisitWinsWhenMemberDiscountIsSmaller() {
-        var result = dogFirstVisit.resolvePreferredDiscount(1000, true, true, MemberCardTier.NORMAL.getDiscount());
+        var result = DiscountCalculator.resolve(1000, dogFirstVisit, true, MemberCardTier.NORMAL.getDiscount());
 
         assertThat(result.price()).isCloseTo(900, within(0.001));
+        assertThat(result.type()).isEqualTo(DiscountType.FIRST_VISIT);
     }
 
     @Test
     void memberDiscountWinsWhenLarger() {
-        var result = dogFirstVisit.resolvePreferredDiscount(1000, true, true, MemberCardTier.VIP.getDiscount());
+        var result = DiscountCalculator.resolve(1000, dogFirstVisit, true, MemberCardTier.VIP.getDiscount());
 
         assertThat(result.price()).isCloseTo(850, within(0.001));
+        assertThat(result.type()).isEqualTo(DiscountType.MEMBER);
+    }
+
+    @Test
+    void specialOfferWinsATie() {
+        var result = DiscountCalculator.resolve(1000, catRewash, true, MemberCardTier.GOLD.getDiscount());
+
+        assertThat(result.type()).isEqualTo(DiscountType.REWASH);
+        assertThat(result.price()).isCloseTo(900, within(0.001));
     }
 
     @Test
     void discountsAreNeverStacked() {
         double vip = MemberCardTier.VIP.getDiscount();
 
-        assertThat(dogFirstVisit.resolvePreferredDiscount(1000, true, true, vip).price()).isNotCloseTo(1000 * 0.9 * vip, within(0.001));
-        assertThat(catFirstVisit.resolvePreferredDiscount(1000, true, true, vip).price()).isNotCloseTo(1000 * 0.9 * vip, within(0.001));
-        assertThat(catRewash.resolvePreferredDiscount(1000, true, true, vip).price()).isNotCloseTo(1000 * 0.9 * vip, within(0.001));
+        for (SpecialDiscountPolicy policy : List.of(dogFirstVisit, catFirstVisit, catRewash)) {
+            assertThat(DiscountCalculator.resolve(1000, policy, true, vip).price())
+                    .isNotCloseTo(1000 * 0.9 * vip, within(0.001));
+        }
     }
 
     @Test
-    void itemsNotEligibleForMemberDiscountKeepFullPrice() {
-        var result = dogFirstVisit.resolvePreferredDiscount(1000, false, false, MemberCardTier.VIP.getDiscount());
+    void itemsNotEligibleForAnyDiscountKeepFullPrice() {
+        var result = DiscountCalculator.resolve(1000, null, false, MemberCardTier.VIP.getDiscount());
 
         assertThat(result.price()).isCloseTo(1000, within(0.001));
+        assertThat(result.type()).isEqualTo(DiscountType.NONE);
     }
 
     @Test
     void catRewashAppliesTenPercentOffWhenNoMemberDiscount() {
-        var result = catRewash.resolvePreferredDiscount(1000, true, false, 1.0);
+        var result = DiscountCalculator.resolve(1000, catRewash, false, 1.0);
 
         assertThat(result.price()).isCloseTo(900, within(0.001));
+    }
+
+    @Test
+    void eachOfferAppliesOnlyToItsCategories() {
+        var offers = new EligibleOffers(List.of(dogFirstVisit, catFirstVisit, catRewash));
+
+        assertThat(offers.offerFor(PerformanceCategory.BATH_SMALL)).contains(dogFirstVisit);
+        assertThat(offers.offerFor(PerformanceCategory.BATH_LARGE)).contains(dogFirstVisit);
+        assertThat(offers.offerFor(PerformanceCategory.BATH_CAT_S)).contains(catFirstVisit); // 首次體驗優先於回洗
+        assertThat(offers.offerFor(PerformanceCategory.TRIM)).isEmpty();
+        assertThat(offers.applies(DiscountType.FIRST_VISIT, PerformanceCategory.BATH_CAT_L)).isTrue();
+        assertThat(offers.applies(DiscountType.REWASH, PerformanceCategory.BATH_SMALL)).isFalse();
+        assertThat(new EligibleOffers(List.of(catRewash)).offerFor(PerformanceCategory.BATH_CAT_L)).contains(catRewash);
+        assertThat(EligibleOffers.NONE.resolve(1000, PerformanceCategory.BATH_SMALL, false, 1.0).price())
+                .isCloseTo(1000, within(0.001));
     }
 
     @ParameterizedTest(name = "單筆儲值 {0} → {1}")

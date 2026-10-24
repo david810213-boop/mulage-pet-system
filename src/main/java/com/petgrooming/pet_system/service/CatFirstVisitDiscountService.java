@@ -8,6 +8,7 @@ import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
+import com.petgrooming.pet_system.service.discount.SpecialDiscountPolicy;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumSet;
@@ -30,11 +31,11 @@ import java.util.Set;
  * PaymentService/WalkInOrderService 裡跟狗狗首次體驗優惠並列的既有寫法）。
  *
  * 跟會員儲值折扣一樣「只能擇一」，取對顧客較優惠的那個，不疊加——這部分邏輯
- * 跟 DogFirstVisitDiscountService 完全一致，直接照抄同一套 resolvePreferredDiscount。
+ * 跟 DogFirstVisitDiscountService 完全一致，擇優規則統一由 DiscountCalculator 計算。
  */
 @Service
 @RequiredArgsConstructor
-public class CatFirstVisitDiscountService {
+public class CatFirstVisitDiscountService implements SpecialDiscountPolicy {
 
     public static final double FIRST_VISIT_DISCOUNT_RATE = 0.9; // 9 折
 
@@ -70,29 +71,30 @@ public class CatFirstVisitDiscountService {
                 order.getMember().getId(), order.getPetName(), order.getId());
     }
 
-    /**
-     * 首次體驗優惠與會員儲值折扣「只能擇一」，取對顧客較優惠的那個；跟
-     * DogFirstVisitDiscountService.resolvePreferredDiscount 完全同樣的邏輯。
-     */
-    public DiscountResolution resolvePreferredDiscount(double price,
-                                                        boolean firstVisitApplicable,
-                                                        boolean memberDiscountApplicable,
-                                                        double memberDiscountRate) {
-        if (firstVisitApplicable && memberDiscountApplicable) {
-            double firstVisitPrice = price * FIRST_VISIT_DISCOUNT_RATE;
-            double memberPrice = price * memberDiscountRate;
-            return firstVisitPrice <= memberPrice
-                    ? new DiscountResolution(firstVisitPrice, DiscountType.FIRST_VISIT)
-                    : new DiscountResolution(memberPrice, DiscountType.MEMBER);
-        }
-        if (firstVisitApplicable) {
-            return new DiscountResolution(price * FIRST_VISIT_DISCOUNT_RATE, DiscountType.FIRST_VISIT);
-        }
-        if (memberDiscountApplicable) {
-            return new DiscountResolution(price * memberDiscountRate, DiscountType.MEMBER);
-        }
-        return new DiscountResolution(price, DiscountType.NONE);
+    // ── SpecialDiscountPolicy：貓咪首次體驗優惠（擇優規則見 DiscountCalculator）──
+
+    @Override
+    public DiscountType type() {
+        return DiscountType.FIRST_VISIT;
     }
 
-    public record DiscountResolution(double price, DiscountType type) {}
+    @Override
+    public double rate() {
+        return FIRST_VISIT_DISCOUNT_RATE;
+    }
+
+    @Override
+    public boolean appliesTo(PerformanceCategory category) {
+        return isCatBathCategory(category);
+    }
+
+    @Override
+    public boolean isEligible(Appointment appointment) {
+        return isFirstVisitEligible(appointment);
+    }
+
+    @Override
+    public boolean isEligible(WalkInOrder order) {
+        return isFirstVisitEligible(order);
+    }
 }

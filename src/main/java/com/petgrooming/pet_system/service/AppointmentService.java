@@ -39,6 +39,8 @@ import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.utils.ContractInfo;
+import com.petgrooming.pet_system.service.discount.DiscountCalculator;
+import com.petgrooming.pet_system.service.discount.EligibleOffers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -76,9 +78,7 @@ public class AppointmentService {
     private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：核對照片
     private final PerformanceService performanceService; // 進行中核對：接待送出積分
     private final AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
-    private final CatRewashDiscountService catRewashDiscountService; // 需求 8-1：貓咪 90 天回洗優惠
-    private final DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）：狗狗首次體驗優惠
-    private final CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠（取代初體驗價目表）
+    private final DiscountCalculator discountCalculator; // 消費明細標示實際套用的折扣
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
     private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
     private final WalletService walletService; // 需求 8-1：消費明細顯示實際套用的折扣種類需要會員折扣率
@@ -1329,8 +1329,7 @@ public class AppointmentService {
      * 判斷各項目實際套用哪一種折扣所需的資訊。會員折扣只有儲值金付款才有，
      * 且與首次體驗、貓咪回洗擇優不疊加，因此要先知道這筆預約用什麼方式付款。
      */
-    private record DiscountContext(boolean paid, boolean paidByWallet, double memberRate,
-                                   boolean rewash, boolean dogFirstVisit, boolean catFirstVisit) {
+    private record DiscountContext(boolean paid, boolean paidByWallet, double memberRate, EligibleOffers offers) {
     }
 
     private DiscountContext discountContext(Appointment appointment, Optional<Transaction> transaction) {
@@ -1339,9 +1338,7 @@ public class AppointmentService {
                 ? walletService.getWallet(appointment.getUser().getUsername()).getDiscount()
                 : 1.0;
         return new DiscountContext(transaction.isPresent(), paidByWallet, memberRate,
-                catRewashDiscountService.isRewashEligible(appointment),
-                dogFirstVisitDiscountService.isFirstVisitEligible(appointment),
-                catFirstVisitDiscountService.isFirstVisitEligible(appointment));
+                discountCalculator.eligibleOffers(appointment));
     }
 
     /** 有到店開單項目時以開單項目為準（含經手人與加購商品），否則列出預約時選的項目。 */
@@ -1372,24 +1369,34 @@ public class AppointmentService {
                                     .price(ci.getPrice())
                                     .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
                                     .retailItem(ci.getRetailProductId() != null),
-                            ci.getPerformanceCategory(), source == null || source.isDiscountEligible(), discounts);
+                            ci.getPerformanceCategory(), memberDiscountEligible(ci, source), discounts);
                 })
                 .toList();
     }
 
+    /**
+     * 開單項目可否享會員折扣，跟結帳扣款（PaymentService）同一套規則：以服務項目目前的設定為準；
+     * 零售商品、自訂項目（沒有對應服務項目）不打折；服務項目已被刪除時視為可打折。
+     */
+    private static boolean memberDiscountEligible(AppointmentItem item, GroomingItem source) {
+        return item.getGroomingItemId() != null && (source == null || source.isDiscountEligible());
+    }
+
+    /**
+     * 只回傳「實際套用哪一種折扣」的標籤，不重算金額（金額以結帳當下存入 Transaction.finalAmount 的為準），
+     * 用跟結帳相同的擇優規則反推標籤；未結帳（尚未決定付款方式）則不填。
+     */
     private AppointmentDetailResponse.DetailItem withDiscounts(AppointmentDetailResponse.DetailItem.DetailItemBuilder item,
                                                                 PerformanceCategory category, boolean memberEligible,
                                                                 DiscountContext discounts) {
-        boolean rewash = discounts.rewash() && catRewashDiscountService.isCatBathCategory(category);
-        boolean dogFirstVisit = discounts.dogFirstVisit() && dogFirstVisitDiscountService.isDogPackageCategory(category);
-        boolean catFirstVisit = discounts.catFirstVisit() && catFirstVisitDiscountService.isCatBathCategory(category);
+        EligibleOffers offers = discounts.offers();
         return item
                 .discountEligible(memberEligible)
-                .rewashEligible(rewash)
-                .firstVisitEligible(dogFirstVisit || catFirstVisit)
+                .rewashEligible(offers.applies(DiscountType.REWASH, category))
+                .firstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category))
                 .appliedDiscountType(discounts.paid()
-                        ? resolveAppliedDiscountType(rewash, dogFirstVisit, catFirstVisit,
-                                memberEligible && discounts.paidByWallet(), discounts.memberRate())
+                        ? offers.resolve(100.0, category, memberEligible && discounts.paidByWallet(),
+                                discounts.memberRate()).type()
                         : null)
                 .build();
     }
@@ -1401,30 +1408,6 @@ public class AppointmentService {
             urls.addAll(groomingNotePhotoService.photoUrls(note));
         }
         return urls;
-    }
-
-    // 需求 8-1 修正：只回傳「實際套用哪一種折扣」的標籤，不重算金額
-    // （金額計算仍以 PaymentService.checkout() 當下算出、存入 Transaction.finalAmount 的為準，
-    // 這裡只是為了消費明細顯示用途、用同一套「擇一」規則反推標籤）。
-    // 需求（追加）：firstVisitApplicable 為 true 時優先用狗狗首次體驗優惠的判斷結果
-    // （跟 calculateAmountWithRewashDiscount 一致：一個項目不可能同時符合兩種資格，
-    // 因為分屬貓/狗互斥的品種分類，這裡優先分支不影響正確性）。
-    private DiscountType resolveAppliedDiscountType(
-            boolean rewashApplicable, boolean firstVisitApplicable, boolean catFirstVisitApplicable,
-            boolean memberApplicable, double memberDiscountRate) {
-        if (firstVisitApplicable) {
-            return dogFirstVisitDiscountService
-                    .resolvePreferredDiscount(100.0, true, memberApplicable, memberDiscountRate)
-                    .type();
-        }
-        if (catFirstVisitApplicable) {
-            return catFirstVisitDiscountService
-                    .resolvePreferredDiscount(100.0, true, memberApplicable, memberDiscountRate)
-                    .type();
-        }
-        return catRewashDiscountService
-                .resolvePreferredDiscount(100.0, rewashApplicable, memberApplicable, memberDiscountRate)
-                .type();
     }
 
     public Optional<Appointment> findAppointment(Long appointmentId) {

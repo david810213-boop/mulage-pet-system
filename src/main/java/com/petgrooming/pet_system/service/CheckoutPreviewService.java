@@ -2,6 +2,8 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem;
 import com.petgrooming.pet_system.dto.WalkInOrderResponse.ItemLine;
+import com.petgrooming.pet_system.service.discount.DiscountCalculator;
+import com.petgrooming.pet_system.service.discount.SpecialDiscountPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -55,16 +57,11 @@ public class CheckoutPreviewService {
                 (int) Math.round(total));
     }
 
+    /** 跟實際結帳相同的擇優規則（DiscountCalculator）；首次體驗優惠依物種用狗狗或貓咪的規則。 */
     private double linePrice(Line line, boolean isDog, double discount) {
-        if (line.firstVisitEligible() && isDog) {
-            return dogFirstVisitDiscountService.resolvePreferredDiscount(
-                    line.price(), true, line.discountEligible(), discount).price();
-        }
-        if (line.firstVisitEligible()) {
-            return catFirstVisitDiscountService.resolvePreferredDiscount(
-                    line.price(), true, line.discountEligible(), discount).price();
-        }
-        return catRewashDiscountService.resolvePreferredDiscount(
-                line.price(), line.rewashEligible(), line.discountEligible(), discount).price();
+        SpecialDiscountPolicy special = line.firstVisitEligible()
+                ? (isDog ? dogFirstVisitDiscountService : catFirstVisitDiscountService)
+                : line.rewashEligible() ? catRewashDiscountService : null;
+        return DiscountCalculator.resolve(line.price(), special, line.discountEligible(), discount).price();
     }
 }
