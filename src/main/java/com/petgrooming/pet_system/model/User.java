@@ -10,7 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "users")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "users", indexes = {
+        @Index(name = "idx_users_phone", columnList = "phone"),
+        @Index(name = "idx_users_role", columnList = "role")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
