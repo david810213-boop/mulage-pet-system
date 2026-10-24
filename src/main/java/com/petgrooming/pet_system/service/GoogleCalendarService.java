@@ -36,8 +36,9 @@ public class GoogleCalendarService {
     @Value("${google.calendar.service-account-json-base64:}")
     private String serviceAccountJsonBase64;
 
+    // 初始化時會在 synchronized 區塊內去掉前後空白，之後在其他執行緒讀取，所以宣告 volatile
     @Value("${google.calendar.calendar-id:}")
-    private String calendarId;
+    private volatile String calendarId;
 
     private Calendar calendarClient; // 延遲初始化，第一次真正用到才建立
     private boolean initAttempted = false;

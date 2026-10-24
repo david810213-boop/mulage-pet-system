@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.List;
@@ -35,7 +36,8 @@ public class WalkInOrderCreateRequest {
         private String itemCode;
         // 經手人：實際員工帳號 id（選填；不填則為「未填寫」，之後從待補清單選人補上）
         private Long operatorStaffId;
-        private Long operatorStaffId2; // 第二經手人（選填）
+        @Schema(description = "第二經手人（選填）")
+        private Long operatorStaffId2;
     }
 
     @Data

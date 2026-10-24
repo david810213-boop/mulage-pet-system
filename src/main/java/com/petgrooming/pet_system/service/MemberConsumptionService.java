@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberConsumptionService {
 
     private final TransactionRepository transactionRepository;
@@ -49,8 +51,9 @@ public class MemberConsumptionService {
                                     .price(di.getPrice())
                                     .build())
                             .toList();
-                } catch (Exception ignored) {
+                } catch (Exception e) {
                     // 找不到明細（例如舊資料）就顯示空清單，不影響整頁其他內容
+                    log.debug("預約 #{} 消費明細無法組出，顯示空清單：{}", t.getAppointment().getId(), e.getMessage());
                 }
             }
             records.add(ConsumptionRecordResponse.builder()
@@ -83,8 +86,9 @@ public class MemberConsumptionService {
                                 .price(il.getPrice())
                                 .build())
                         .toList();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // 找不到明細就顯示空清單，不影響整頁其他內容
+                log.debug("現場單 #{} 消費明細無法組出，顯示空清單：{}", w.getId(), e.getMessage());
             }
             records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("現場開單")

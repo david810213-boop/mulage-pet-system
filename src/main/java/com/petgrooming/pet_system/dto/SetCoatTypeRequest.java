@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.petgrooming.pet_system.enums.CoatType;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -10,5 +11,6 @@ import lombok.Data;
 @Data
 public class SetCoatTypeRequest {
     @NotNull(message = "請選擇毛長")
-    private CoatType coatType; // SHORT / MEDIUM / LONG
+    @Schema(description = "SHORT / MEDIUM / LONG")
+    private CoatType coatType;
 }

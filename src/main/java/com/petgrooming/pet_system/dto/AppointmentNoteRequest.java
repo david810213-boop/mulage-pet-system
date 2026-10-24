@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -9,6 +10,8 @@ import lombok.Data;
  */
 @Data
 public class AppointmentNoteRequest {
-    private String internalNote; // 店家內部備注（例：耳朵加強去油、造型需求）
-    private String memberNote;   // 會員可見備注
+    @Schema(description = "店家內部備注（例：耳朵加強去油、造型需求）")
+    private String internalNote;
+    @Schema(description = "會員可見備注")
+    private String memberNote;
 }

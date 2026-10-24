@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 // UserController 只保留「需要登入後」才能使用的端點
+@Tag(name = "使用者", description = "個人資料、會員清單、員工帳號")
 @RestController
 @RequiredArgsConstructor
 public class UserController {

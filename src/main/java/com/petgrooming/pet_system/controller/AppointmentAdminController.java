@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
@@ -22,6 +23,7 @@ import java.util.List;
  * POST /api/admin/appointments/{id}/confirm  確認預約並敲定最後時間
  * PUT  /api/admin/appointments/{id}/notes    設定備注（internalNote / memberNote）
  */
+@Tag(name = "管理端：預約", description = "預約清單、確認預約、備註")
 @RestController
 @RequestMapping("/api/admin/appointments")
 @RequiredArgsConstructor

@@ -42,11 +42,13 @@
 | 後端框架 | Spring Boot 4 (Java 17)、Spring MVC、Spring Data JPA |
 | 資料庫 | MySQL 8（本機 Docker 開發，正式環境 Railway 託管），種子資料以 Flyway 管理 |
 | 認證 / 授權 | JWT + 自訂 Interceptor 角色權限機制、BCrypt 密碼雜湊 |
-| 資安 | CSRF Token（高風險端點）、登入失敗次數鎖定、自助認領查詢次數限制 |
+| 資安 | CSRF Token（所有以 Cookie 登入的寫入請求）、金流防重複送出（狀態列加鎖＋Idempotency-Key）、登入失敗次數鎖定、自助認領查詢次數限制 |
 | 前端 | Thymeleaf（後台網頁版＋員工手機版 PWA）、LINE LIFF SDK + 原生 HTML/CSS/JS（顧客端） |
 | 第三方整合 | LINE Login、LINE Messaging API、Cloudinary（圖片雲端儲存）、Google Calendar API |
 | 檔案匯出 | Apache POI（財務報表 Excel 匯出） |
 | 監控與維運 | Sentry 錯誤追蹤、Spring Boot Actuator 健康檢查、Dependabot 每週掃描依賴版本 |
+| 品質與測試 | 200 多項整合測試（Testcontainers 啟動 MySQL 8，含並發與 SQL 查詢條數測試）、ArchUnit 分層規則、GitHub Actions CI、Checkstyle／SpotBugs 靜態分析 |
+| API 文件 | springdoc-openapi（Swagger UI，僅開發環境開放） |
 | 部署 | Railway（App + MySQL），連動 GitHub 推送後自動部署 |
 
 ---
@@ -119,6 +121,23 @@
 
 **解法**：查證官方文件後發現 Spring Boot 4 對應的模組是 `sentry-spring-boot-4`，而非沿用 Boot 2/3 慣例的 `-starter` 後綴，兩者是不同模組。修正後另外只對外開放 Actuator 的 `health` 端點（供 Railway 部署健康檢查與 Uptime 監控），其餘可能洩漏環境變數的端點一律不公開。
 
+### 12. 在功能完全不變的前提下分階段重構
+
+**問題**：系統邊開發邊上線，累積出 1,400 多行的 Service、散落各處的折扣判斷、命名不一致的 API 路徑，以及記錄「哪天改了什麼」的註解。所有功能都是店家實際在用的，重構不能改變任何行為。
+
+**解法**：先補整合測試把現有行為固定下來，再依風險由低到高分批進行，每批一個 PR、CI 通過才合併：
+- **拆分職責**：大型 Service 與 Controller 依功能拆分（查詢、報到、通知、結帳預覽、財務報表等），由 ArchUnit 強制「Controller 不碰 Repository」
+- **折扣策略化**：首次體驗、回洗優惠、會員折扣抽象成同一介面，由單一計算器逐項擇優
+- **效能**：以 Hibernate Statistics 寫成「SQL 條數不隨歷史資料增加」的測試，並依實際查詢條件補上索引
+- **API 一致化**：統一錯誤格式（`code` 供前端判斷）、狀態碼語意（201／204／404／403）、路徑命名（複數、`/api/me`、`/api/admin`、以 id 取代帳號）。LINE 內建瀏覽器可能快取舊頁面，所以新舊路徑並存，舊路徑被呼叫時記 log，確認歸零後才移除
+- **註解與文件**：變更歷史移到 commit 訊息，重要設計決策整理成架構決策紀錄（`docs/adr/`）
+
+### 13. 並發測試抓到的重複入帳
+
+**問題**：結帳、儲值審核都有「已處理過就擋下」的檢查，但寫法是先讀狀態再寫入。補並發測試時發現，兩位員工同時按「確認入帳」會重複入帳，現場單儲值金結帳連點會重複扣款；舊測試沒抓到，是因為測試會員剛好沒有錢包，同時建立錢包撞到唯一鍵擋下了。
+
+**解法**：有狀態可判斷的操作，先以 `SELECT ... FOR UPDATE` 鎖住該筆、讀回最新狀態再判斷；沒有狀態可判斷的手動儲值與儲值申請，由前端帶請求識別碼（`Idempotency-Key`），寫入有唯一索引的資料表，與操作同一交易，失敗時跟著回滾、可安全重試。拿掉鎖重跑測試確認會失敗，證明測試真的能抓到問題。
+
 ---
 
 ## 業務邏輯複雜度（節選）
@@ -142,14 +161,15 @@
 ```
 src/main/java/com/petgrooming/pet_system/
 ├── controller/     REST API（顧客端）+ MVC Controller（後台頁面）
-├── service/        商業邏輯層
+├── service/        商業邏輯層（discount/ 為折扣策略）
+├── export/         Excel 匯出（財務報表、員工業績、回洗清單）
 ├── model/          JPA Entity
 ├── dto/            Request / Response 物件，嚴格區分內外部可見欄位
 ├── repository/     Spring Data JPA Repository
 ├── enums/          狀態機、角色、付款方式、折扣類型、會員等級等列舉
 ├── exception/      分業務例外類別（BusinessException 子類別）
 ├── interceptor/    JWT 驗證、角色權限、CSRF、觸控裝置導向手機版
-├── annotation/     自訂註解（角色權限、CSRF 保護）
+├── annotation/     自訂註解（角色權限、登入者注入、略過 CSRF）
 ├── notification/   LINE 推播整合
 ├── utils/          共用工具
 └── config/         啟動設定、資料回填邏輯
@@ -160,7 +180,10 @@ src/main/resources/
 ├── db/migration/   Flyway 種子資料遷移檔案
 ├── static/liff/    LIFF 顧客端頁面（各自對應獨立 LIFF App，ID 集中於 liff-config.js）
 ├── static/pwa/     手機版 PWA manifest、Service Worker、圖示
-└── static/js/      掃碼、美容照片上傳等共用腳本
+└── static/js/      CSRF token 自動補上、掃碼、美容照片上傳等共用腳本
+
+docs/adr/           架構決策紀錄（悲觀鎖、例外設計、折扣擇優、防重複送出等）
+config/             Checkstyle、SpotBugs 設定
 ```
 
 ---
@@ -179,6 +202,13 @@ mvn spring-boot:run
 ```
 
 應用程式預設運行於 `http://localhost:8081`，員工手機版位於 `/m`，健康檢查位於 `/actuator/health`。
+
+API 文件預設關閉；本機開發時設定環境變數 `API_DOCS_ENABLED=true`，登入後可在 `/swagger-ui.html` 瀏覽（正式站不設定，不對外公開）。
+
+```bash
+# 測試（需要 Docker，Testcontainers 會自動啟動 MySQL 8）＋靜態分析報告
+mvn verify
+```
 
 ---
 

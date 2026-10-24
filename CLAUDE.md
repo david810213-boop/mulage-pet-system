@@ -18,6 +18,8 @@
 
 - **GitHub**：`david810213-boop/mulage-pet-system`，開發分支 **`redesign`**，正式部署分支 **`main`**（Railway 自動部署 `main`；`redesign` 開發完成、CI 通過後合併至 `main` 才會上線）。重構等較大的工作另開 `refactor/*` 分支，CI 通過後再合併回 `redesign`
 - **CI**：GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`、`redesign`、`refactor/**`、`feature/**`、`perf/**` 時執行 `mvn verify`；測試以 Testcontainers 啟動 MySQL 8，本機跑測試需要 Docker。測試結果與失敗原因會以註記（annotation）顯示在 GitHub 的 Checks 頁
+- **靜態分析**：`mvn verify` 同時執行 Checkstyle（`config/checkstyle/checkstyle.xml`，Google Style 為基礎、縮排 4 格）與 SpotBugs（排除規則見 `config/spotbugs/exclude.xml`），Checks 頁會列出各規則件數。**SpotBugs 已清到 0 件，有新問題會讓建置失敗**；Checkstyle 目前只產生報告，新寫的程式不要增加件數，某條規則清到 0 件後把它的 severity 改成 error 鎖住
+- **API 文件**：springdoc-openapi，預設關閉；本機設定環境變數 `API_DOCS_ENABLED=true` 後登入，開 `/swagger-ui.html`。REST controller 用 `@Tag` 分組，請求 DTO 欄位用 `@Schema(description = ...)` 說明（取代欄位後面的行尾註解）
 - **正式環境**：Railway，`MySQL` 服務 + `mulage-pet-system`（App）服務，兩者已同區域（跨區延遲問題已解決，查詢效能現況見第六節）
 - **本機資料庫**：Docker 容器 `pet-mysql`，對外 **port 3307**（容器內部仍是 3306）；⚠️ 這台電腦另外還有一個**原生 MySQL（port 3306）**，連線前務必先確認 port
 - **連線正式環境資料庫**：`railway link` → `railway connect MySQL`（走 SSH tunnel，不用開 Public Networking）

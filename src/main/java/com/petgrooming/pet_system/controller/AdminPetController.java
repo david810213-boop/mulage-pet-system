@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.LockGroomingItemRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * PUT /api/admin/pets/{petId}/coat-type   由店家定義毛長並寫入資料庫
  */
+@Tag(name = "管理端：寵物", description = "毛長、套餐鎖定、體重、刪除")
 @RestController
 @RequestMapping("/api/admin/pets")
 @RequiredArgsConstructor

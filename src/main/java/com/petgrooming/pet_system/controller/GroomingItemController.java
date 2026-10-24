@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 // 提供美容服務項目清單的公開查詢 API，供 LIFF 預約頁面（或其他前端）選擇服務項目時使用
+@Tag(name = "服務項目", description = "可預約與全部上架的美容服務項目")
 @RestController
 @RequestMapping("/api/grooming-items")
 @RequiredArgsConstructor

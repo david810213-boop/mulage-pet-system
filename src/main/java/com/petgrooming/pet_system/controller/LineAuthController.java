@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.ClaimByPhoneRequest;
 import com.petgrooming.pet_system.dto.LineBindRequest;
@@ -49,6 +50,7 @@ import java.util.Map;
  * 5. 簽發本系統 JWT，回傳給前端（同時也寫進 Cookie，方便日後切到一般瀏覽器頁面）
  */
 @Slf4j
+@Tag(name = "LINE 登入", description = "LIFF 登入、員工綁定、老客戶認領")
 @RestController
 @RequestMapping("/api/line")
 @RequiredArgsConstructor

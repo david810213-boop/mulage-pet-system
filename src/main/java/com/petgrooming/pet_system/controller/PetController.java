@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
@@ -21,6 +22,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "寵物", description = "顧客的寵物資料、照片、美容紀錄、折扣狀態")
 @RestController
 @RequiredArgsConstructor
 public class PetController {

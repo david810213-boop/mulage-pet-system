@@ -33,7 +33,7 @@ spring:
     cache: false
     encoding: UTF-8
 
-  # 需求 17/18：寵物照片上傳，預設 1MB 太小，放寬到 10MB
+  # 寵物照片上傳，預設 1MB 太小，放寬到 10MB
   servlet:
     multipart:
       max-file-size: 10MB
@@ -48,6 +48,14 @@ logging:
 
 server:
   port: 8081
+
+# API 文件（Swagger UI：/swagger-ui.html）：預設關閉，開發時設定 API_DOCS_ENABLED=true 才開放，正式站不設定
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+  paths-to-match: /api/**
 
 # LINE Login 設定（在 LINE Developers Console 建立 LINE Login Channel 後取得）
 line:

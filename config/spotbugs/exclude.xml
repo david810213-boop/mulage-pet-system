@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  排除與本專案寫法衝突、不代表實際問題的規則：
+  - EI_EXPOSE_REP／EI_EXPOSE_REP2：JPA 實體與 Lombok DTO 的 getter／setter 直接傳遞可變物件（List、Date）是框架慣例
+  - CT_CONSTRUCTOR_THROW：Spring 元件建構子丟例外由容器處理，不會留下半初始化的物件
+  - VA_FORMAT_STRING_USES_NEWLINE：LINE 推播訊息的換行必須是 \n，不能隨作業系統變成 %n
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,CT_CONSTRUCTOR_THROW,VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+</FindBugsFilter>

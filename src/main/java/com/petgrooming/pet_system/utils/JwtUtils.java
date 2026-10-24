@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -33,7 +34,7 @@ public class JwtUtils {
             log.warn("尚未設定環境變數 JWT_SECRET，目前使用不安全的預設密鑰！" +
                     "正式環境請務必設定一組隨機產生、至少 32 字元的 JWT_SECRET，否則任何人都能偽造登入憑證。");
         }
-        this.key = Keys.hmacShaKeyFor(secretString.getBytes());
+        this.key = Keys.hmacShaKeyFor(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
     // Token 有效時間：設定為 24 小時（單位：毫秒）
