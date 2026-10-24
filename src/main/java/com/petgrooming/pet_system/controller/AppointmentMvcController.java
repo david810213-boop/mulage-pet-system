@@ -129,10 +129,7 @@ public class AppointmentMvcController {
     public String checkinOrderForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
 
-        var target = appointmentQueryService.getAllForAdmin().stream()
-                .filter(a -> a.getId().equals(id))
-                .findFirst()
-                .orElse(null);
+        var target = appointmentQueryService.getForAdmin(id).orElse(null);
         if (target == null) {
             return "redirect:/appointments?status=CONFIRMED";
         }
@@ -292,10 +289,7 @@ public class AppointmentMvcController {
     public String finalCheckForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
 
-        var target = appointmentQueryService.getAllForAdmin().stream()
-                .filter(a -> a.getId().equals(id))
-                .findFirst()
-                .orElse(null);
+        var target = appointmentQueryService.getForAdmin(id).orElse(null);
         if (target == null) {
             return "redirect:/appointments?status=IN_PROGRESS";
         }
@@ -322,9 +316,7 @@ public class AppointmentMvcController {
                                    @CurrentUser User user) {
 
         if (bindingResult.hasErrors()) {
-            var target = appointmentQueryService.getAllForAdmin().stream()
-                    .filter(a -> a.getId().equals(id))
-                    .findFirst().orElse(null);
+            var target = appointmentQueryService.getForAdmin(id).orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
             model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
@@ -343,9 +335,7 @@ public class AppointmentMvcController {
             redirectAttributes.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
             return "redirect:/appointments?status=IN_PROGRESS";
         } catch (IllegalArgumentException e) {
-            var target = appointmentQueryService.getAllForAdmin().stream()
-                    .filter(a -> a.getId().equals(id))
-                    .findFirst().orElse(null);
+            var target = appointmentQueryService.getForAdmin(id).orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
             model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：同上

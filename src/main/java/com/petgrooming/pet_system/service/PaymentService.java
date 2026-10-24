@@ -377,8 +377,8 @@ public class PaymentService {
         return (int) Math.round(total);
     }
 
-    /** 已付款的預約結帳交易（不含待確認的匯款）。 */
-    public List<Transaction> findPaidTransactions() {
-        return transactionRepository.findByPaidTrue();
+    /** 付款時間在 from（含）～to（不含）之間的已付款預約結帳交易（不含待確認的匯款）。 */
+    public List<Transaction> findPaidTransactionsBetween(LocalDateTime from, LocalDateTime to) {
+        return transactionRepository.findByPaidTrueAndPaymentTimeGreaterThanEqualAndPaymentTimeLessThan(from, to);
     }
 }

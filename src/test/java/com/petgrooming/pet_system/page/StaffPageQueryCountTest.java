@@ -29,11 +29,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 員工常用頁面的 SQL 查詢次數：加入更多歷史預約後，查詢次數不應跟著變多（N+1 查詢）。
+ * 員工常用頁面的 SQL 查詢次數：加入更多歷史預約後，查詢次數不應跟著變多（N+1 查詢）；
+ * 首頁、手機版今日頁、預約明細只載入需要的預約，不撈全部歷史。
  */
 class StaffPageQueryCountTest extends IntegrationTestBase {
 
@@ -53,21 +55,37 @@ class StaffPageQueryCountTest extends IntegrationTestBase {
     }
 
     @Test
-    void measure() throws Exception {
+    void queryCountDoesNotGrowWithHistory() throws Exception {
         User staff = testData.staff();
         Long detailId = history(1).get(0);
-        Map<String, long[]> counts = new LinkedHashMap<>();
-        String[] pages = {"/dashboard", "/appointments", "/m/today", "/m/appointments", "/m/appointments/" + detailId,
+        String[] pages = {"/dashboard", "/m/today", "/m/appointments/" + detailId, "/appointments", "/m/appointments",
                 "/payments", "/admin/walk-in-orders"};
-        for (String page : pages) counts.put(page, new long[2]);
-        for (String page : pages) counts.get(page)[0] = count(staff, page);
+        Map<String, QueryCounter.Usage> before = new LinkedHashMap<>();
+        for (String page : pages) before.put(page, measure(staff, page));
         history(15);
-        for (String page : pages) counts.get(page)[1] = count(staff, page);
-        counts.forEach((page, c) -> System.out.println("[量測] " + page + "：加入 15 筆歷史預約前 " + c[0] + " 條 SQL，之後 " + c[1] + " 條"));
+        for (String page : pages) {
+            QueryCounter.Usage after = measure(staff, page);
+            System.out.println("[量測] " + page + "：加入 15 筆歷史預約前 " + before.get(page).statements() + " 條 SQL／載入 "
+                    + before.get(page).entitiesLoaded() + " 筆資料，之後 " + after.statements() + " 條／" + after.entitiesLoaded() + " 筆");
+            assertThat(after.statements()).as(page + " 的 SQL 條數").isLessThanOrEqualTo(before.get(page).statements());
+        }
     }
 
-    private long count(User staff, String url) throws Exception {
-        return queryCounter.count(() -> mvc.perform(get(url).cookie(new Cookie("JWT_TOKEN",
+    @Test
+    void dashboardTodayAndDetailDoNotLoadHistory() throws Exception {
+        User staff = testData.staff();
+        Long detailId = history(1).get(0);
+        for (String page : new String[]{"/dashboard", "/m/today", "/m/appointments/" + detailId}) {
+            measure(staff, page); // 先跑一次，排除第一次載入的快取差異
+            QueryCounter.Usage before = measure(staff, page);
+            history(10);
+            QueryCounter.Usage after = measure(staff, page);
+            assertThat(after.entitiesLoaded()).as(page + " 載入的資料筆數").isLessThanOrEqualTo(before.entitiesLoaded());
+        }
+    }
+
+    private QueryCounter.Usage measure(User staff, String url) throws Exception {
+        return queryCounter.measure(() -> mvc.perform(get(url).cookie(new Cookie("JWT_TOKEN",
                 jwtUtils.generateToken(staff.getUsername(), staff.getRole().name())))).andExpect(status().isOk()));
     }
 

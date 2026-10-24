@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -426,6 +427,11 @@ public class WalkInOrderService {
         WalkInOrderResponse res = WalkInOrderResponse.from(order);
         walkInPaymentService.populateDiscountInfo(res, order);
         return res;
+    }
+
+    /** 付款時間在 from（含）～to（不含）之間的已付款現場單（實體）。 */
+    public List<WalkInOrder> findPaidOrdersBetween(LocalDateTime from, LocalDateTime to) {
+        return orderRepository.findByPaidTrueAndPaymentTimeGreaterThanEqualAndPaymentTimeLessThan(from, to);
     }
 
     /** 全部現場單（實體），新的在前；報表與營收計算用。 */
