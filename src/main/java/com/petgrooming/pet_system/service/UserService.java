@@ -35,6 +35,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
 
+    /** 會員搜尋最多回傳的筆數。 */
+    private static final int SEARCH_LIMIT = 20;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final PetRepository petRepository; // 會員搜尋支援寵物名
@@ -233,7 +236,7 @@ public class UserService {
                         || u.getUsername().toLowerCase().contains(kw)
                         || (digits.length() >= 3 && u.getPhone() != null
                                 && u.getPhone().replaceAll("[^0-9]", "").contains(digits)))
-                .limit(20)
+                .limit(SEARCH_LIMIT)
                 .toList();
     }
 

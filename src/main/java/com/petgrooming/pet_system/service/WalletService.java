@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.dto.WalletTransactionResponse;
@@ -31,8 +32,6 @@ public class WalletService {
     private final UserService userService;
     private final EntityManager entityManager;
 
-    public static final int MIN_DEPOSIT = 5000; // 單筆儲值下限（店家規定）
-
     // ── 查詢錢包 ────────────────────────────────────────────────────────────
     public WalletResponse getWallet(String username) {
         Wallet wallet = getOrCreateWallet(username);
@@ -52,7 +51,7 @@ public class WalletService {
     public WalletResponse deposit(String username, DepositRequest req) {
         int amount = req.getAmount() != null ? req.getAmount() : 0;
         // 不開放單筆 5,000 以下的儲值
-        if (amount < MIN_DEPOSIT) {
+        if (amount < StoreRules.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
         Wallet wallet = lockWallet(username);
@@ -64,13 +63,13 @@ public class WalletService {
         recordTransaction(wallet, WalletTransactionType.DEPOSIT, amount,
                 req.getNote() != null ? req.getNote() : "儲值 $" + amount);
 
-        // 3. 村民優惠方案：單筆儲值落在村民級距（5,000～7,999）每次都贈 200 元
-        //    （2026-10-02 店家確認：不限第一次）
+        // 3. 村民優惠方案：單筆儲值落在村民級距（5,000～7,999）每次都贈點
         MemberCardTier newTier = MemberCardTier.fromAmount(amount);
         if (newTier == MemberCardTier.VILLAGE) {
-            wallet.setBalance(wallet.getBalance() + 200);
-            recordTransaction(wallet, WalletTransactionType.DEPOSIT_BONUS, 200, "村民優惠方案贈點 $200");
-            log.info("使用者 {} 單筆儲值村民方案，贈送 200 元", username);
+            wallet.setBalance(wallet.getBalance() + StoreRules.VILLAGE_DEPOSIT_BONUS);
+            recordTransaction(wallet, WalletTransactionType.DEPOSIT_BONUS, StoreRules.VILLAGE_DEPOSIT_BONUS,
+                    "村民優惠方案贈點 $" + StoreRules.VILLAGE_DEPOSIT_BONUS);
+            log.info("使用者 {} 單筆儲值村民方案，贈送 {} 元", username, StoreRules.VILLAGE_DEPOSIT_BONUS);
         }
 
         // 4. 依本次單筆儲值金額更新會員卡等級與有效期限

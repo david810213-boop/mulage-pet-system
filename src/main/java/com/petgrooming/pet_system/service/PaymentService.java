@@ -49,9 +49,6 @@ public class PaymentService {
     private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
     private final RetailProductService retailProductService; // 預約結帳頁加購零售商品，結帳時扣庫存
 
-    // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
-    public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
-
     // ── 1. 結帳 ────────────────────────────────────────────────────────────
     /**
      * 預約結帳。匯款先進入「待對帳」（交易未付款、預約維持未完成），等店家確認收款後才完成；

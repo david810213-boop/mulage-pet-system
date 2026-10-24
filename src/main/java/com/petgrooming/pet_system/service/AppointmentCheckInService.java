@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.FinalCheckRequest;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
@@ -251,7 +252,7 @@ public class AppointmentCheckInService {
         }
 
         String signatureData = req.getSignatureData() == null ? "" : req.getSignatureData().trim();
-        if (signatureData.isEmpty() || !signatureData.startsWith("data:image") || signatureData.length() < 1000) {
+        if (signatureData.isEmpty() || !signatureData.startsWith("data:image") || signatureData.length() < StoreRules.MIN_SIGNATURE_LENGTH) {
             throw new AppointmentException("請請家長於簽名板完成簽名確認");
         }
 

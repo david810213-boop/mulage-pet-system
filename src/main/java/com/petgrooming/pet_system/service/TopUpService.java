@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestCreate;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
@@ -43,7 +44,7 @@ public class TopUpService {
     public TopUpRequestResponse submit(String username, TopUpRequestCreate req) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到使用者"));
-        if (req.getAmount() == null || req.getAmount() < WalletService.MIN_DEPOSIT) {
+        if (req.getAmount() == null || req.getAmount() < StoreRules.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
 

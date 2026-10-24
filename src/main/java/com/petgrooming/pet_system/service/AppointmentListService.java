@@ -22,6 +22,11 @@ public class AppointmentListService {
     private static final Comparator<AppointmentAdminResponse> BY_DATE_TIME =
             Comparator.comparing(AppointmentAdminResponse::getDate)
                     .thenComparing(AppointmentAdminResponse::getStartTime);
+    /** 手機版各分頁最多列出的筆數，避免歷史資料多時一次渲染太多卡片。 */
+    private static final int MOBILE_KEYWORD_LIMIT = 100;
+    private static final int MOBILE_LIST_LIMIT = 150;
+    private static final int MOBILE_CANCELLED_LIMIT = 50;
+    private static final int MOBILE_PAST_DAYS = 60;
     private final AppointmentQueryService appointmentQueryService;
     private final DashboardService dashboardService;
 
@@ -93,7 +98,7 @@ public class AppointmentListService {
         if (!kw.isEmpty()) {
             picked = all.stream()
                     .filter(a -> matchesKeyword(kw, a.getAppointmentCode(), a.getId(), a.getOwnerName(), a.getPetName()))
-                    .sorted(BY_DATE_TIME.reversed()).limit(100).toList();
+                    .sorted(BY_DATE_TIME.reversed()).limit(MOBILE_KEYWORD_LIMIT).toList();
         } else if (date != null) {
             picked = all.stream().filter(a -> a.getDate().isEqual(date)).sorted(BY_DATE_TIME).toList();
         } else {
@@ -106,14 +111,14 @@ public class AppointmentListService {
                         .sorted(BY_DATE_TIME).toList();
                 case "past" -> all.stream()
                         .filter(a -> !a.isCancelled() && a.getDate().isBefore(today)
-                                && !a.getDate().isBefore(today.minusDays(60)))
-                        .sorted(BY_DATE_TIME.reversed()).limit(150).toList();
+                                && !a.getDate().isBefore(today.minusDays(MOBILE_PAST_DAYS)))
+                        .sorted(BY_DATE_TIME.reversed()).limit(MOBILE_LIST_LIMIT).toList();
                 case "cancelled" -> all.stream()
                         .filter(AppointmentAdminResponse::isCancelled)
-                        .sorted(BY_DATE_TIME.reversed()).limit(50).toList();
+                        .sorted(BY_DATE_TIME.reversed()).limit(MOBILE_CANCELLED_LIMIT).toList();
                 default -> all.stream()
                         .filter(a -> !a.isCancelled() && !a.getDate().isBefore(today))
-                        .sorted(BY_DATE_TIME).limit(150).toList();
+                        .sorted(BY_DATE_TIME).limit(MOBILE_LIST_LIMIT).toList();
             };
         }
 

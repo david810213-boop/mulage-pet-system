@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.config.BusinessHours;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.AppointmentRequest;
@@ -56,7 +57,6 @@ public class AppointmentService {
     // 營業時間／時段格線（共用 BusinessHours）
     private static final LocalTime OPENING = BusinessHours.OPENING;
     private static final LocalTime CLOSING = BusinessHours.CLOSING;
-    private static final int MIN_SIGNATURE_LENGTH = 1000;
 
     @Transactional
     public AppointmentResponse book(AppointmentRequest req, String username) {
@@ -139,7 +139,7 @@ public class AppointmentService {
      */
     private static String requireContractSignature(String signatureData) {
         String signature = signatureData == null ? "" : signatureData.trim();
-        if (!signature.startsWith("data:image") || signature.length() < MIN_SIGNATURE_LENGTH) {
+        if (!signature.startsWith("data:image") || signature.length() < StoreRules.MIN_SIGNATURE_LENGTH) {
             throw new AppointmentException("請詳閱定型化契約，並在簽名板上親筆簽名後再送出預約");
         }
         return signature;
