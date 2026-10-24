@@ -388,7 +388,7 @@
           petType === 'CAT' && pet.catCoatCategory ? String(pet.catCoatCategory).toUpperCase() : null;
 
         // 需求（追加，2026-09-08）：狗狗依「體重＋毛長」篩選，補齊跟結帳頁／
-        // 預約現場加單頁（AppointmentMvcController.filterItemsForPetShape()）
+        // 預約現場加單頁（GroomingMenuFilter.filterForPetShape()）
         // 同一套邏輯——這裡是「建立新單」頁面原本唯一還沒做完整篩選的地方
         // （見《功能總覽》已知限制第2點）。已鎖定固定套餐的狗只顯示那一項；
         // 沒鎖定則先比體重級距，毛長已定義（短毛/長毛/中長毛）才再篩到唯一
