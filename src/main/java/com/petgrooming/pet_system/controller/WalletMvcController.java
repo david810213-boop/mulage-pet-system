@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.exception.DuplicateRequestException;
+import java.util.UUID;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
@@ -99,6 +101,8 @@ public class WalletMvcController {
         model.addAttribute("wallet", walletService.getWallet(username));
         model.addAttribute("transactions", walletService.getTransactions(username));
         model.addAttribute("depositRequest", new DepositRequest());
+        // 每次載入頁面產生新的識別碼，同一份表單重複送出只會儲值一次
+        model.addAttribute("depositKey", UUID.randomUUID().toString());
         // 該會員的寵物清單，供店家設定毛長
         var pets = petService.getMyPets(username);
         model.addAttribute("pets", pets);
@@ -277,6 +281,9 @@ public class WalletMvcController {
             ra.addFlashAttribute("successMsg",
                     "儲值成功！目前餘額 $" + result.getBalance() +
                     "，會員等級：" + result.getCardTierLabel());
+        } catch (DuplicateRequestException e) {
+            // 連點時瀏覽器只會顯示最後一次的回應，前一次其實已經儲值成功，不能顯示成失敗
+            ra.addFlashAttribute("successMsg", "此筆儲值已完成，重複送出的請求已略過，未重複入帳");
         } catch (Exception e) {
             ra.addFlashAttribute("errorMsg", "儲值失敗：" + e.getMessage());
         }

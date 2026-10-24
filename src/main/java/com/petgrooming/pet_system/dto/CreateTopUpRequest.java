@@ -20,4 +20,7 @@ public class CreateTopUpRequest {
 
     // 轉帳時間 / 備註
     private String remitNote;
+
+    // 防重複送出的識別碼（由 Idempotency-Key 標頭帶入），見 IdempotencyService
+    private String idempotencyKey;
 }

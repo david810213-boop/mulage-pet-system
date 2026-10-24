@@ -56,12 +56,13 @@ public class PaymentService {
      */
     @Transactional
     public TransactionResponse checkout(Long appointmentId, CheckoutRequest req, String username) {
+        boolean paid = lockPaid(appointmentId);
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到使用者"));
         boolean isOwner = appointment.getUser().getId().equals(user.getId());
-        ensureCheckoutAllowed(appointment, user, isOwner);
+        ensureCheckoutAllowed(appointment, paid, user, isOwner);
 
         deductRetailStock(appointmentId);
         PaymentMethod method = req.getPaymentMethod();
@@ -89,12 +90,18 @@ public class PaymentService {
         return TransactionResponse.from(transaction);
     }
 
+    /** 鎖住這筆預約並讀回最新的付款狀態，連點或兩台裝置同時操作時依序執行，避免重複扣款／退款。 */
+    private boolean lockPaid(Long appointmentId) {
+        return appointmentRepository.lockPaidById(appointmentId)
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
+    }
+
     /** 只有預約本人或員工能結帳；必須尚未付款、已完成現場核對（美容狀況備註＋家長簽名），且沒有交易紀錄。 */
-    private void ensureCheckoutAllowed(Appointment appointment, User user, boolean isOwner) {
+    private void ensureCheckoutAllowed(Appointment appointment, boolean paid, User user, boolean isOwner) {
         if (!isOwner && !user.isStaffOrAdmin()) {
             throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：只能結自己的帳");
         }
-        if (appointment.isPaid()) {
+        if (paid) {
             throw new PaymentException("此預約已完成結帳");
         }
         if (!appointment.isFinalCheckDone()) {
@@ -144,6 +151,7 @@ public class PaymentService {
             throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可確認收款");
         }
 
+        boolean paid = lockPaid(appointmentId);
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
@@ -153,7 +161,7 @@ public class PaymentService {
         if (transaction.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
             throw new PaymentException("此交易不是匯款付款，無需確認收款");
         }
-        if (transaction.isPaid()) {
+        if (paid || transaction.isPaid()) {
             throw new PaymentException("此筆匯款已確認收款過，請勿重複操作");
         }
 
@@ -240,10 +248,11 @@ public class PaymentService {
             throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作退款");
         }
 
+        boolean paid = lockPaid(appointmentId);
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到該預約"));
 
-        if (!appointment.isPaid()) {
+        if (!paid) {
             throw new PaymentException("此預約尚未結帳，無法退款");
         }
 

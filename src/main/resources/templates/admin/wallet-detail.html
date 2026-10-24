@@ -187,6 +187,8 @@
               <!-- CSRF Token 防護，這是真的會異動
                    金額的操作，值由頁面底部 script 讀取 XSRF-TOKEN Cookie 帶入 -->
               <input type="hidden" name="_csrf" id="depositCsrfField" />
+              <!-- 防重複送出：同一份表單連點只會儲值一次 -->
+              <input type="hidden" name="idempotencyKey" th:value="${depositKey}" />
               <!-- 快速金額按鈕 -->
               <div style="display: flex; gap: 6px; flex-wrap: wrap">
                 <button

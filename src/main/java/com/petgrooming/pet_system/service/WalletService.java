@@ -31,6 +31,7 @@ public class WalletService {
     private final WalletTransactionRepository txRepository;
     private final UserService userService;
     private final EntityManager entityManager;
+    private final IdempotencyService idempotencyService;
 
     // ── 查詢錢包 ────────────────────────────────────────────────────────────
     public WalletResponse getWallet(String username) {
@@ -54,6 +55,7 @@ public class WalletService {
         if (amount < StoreRules.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
+        idempotencyService.claim("DEPOSIT", req.getIdempotencyKey());
         Wallet wallet = lockWallet(username);
 
         // 1. 加入儲值金額

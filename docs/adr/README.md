@@ -12,5 +12,6 @@
 | [0005](0005-snapshot-and-pet-pairing.md) | 項目名稱存快照；以（會員, 寵物名）識別同一隻寵物 |
 | [0006](0006-varchar-enum.md) | 列舉一律存成 VARCHAR，不用 MySQL 原生 ENUM |
 | [0007](0007-csv-encoding.md) | CSV 匯入先偵測編碼（UTF-8 BOM／UTF-8／Big5／GBK） |
+| [0008](0008-duplicate-submission.md) | 金流操作防重複送出：狀態列加鎖＋請求識別碼 |
 
 新增 ADR：複製任一份的格式（背景、決策、後果），編號接續，並更新上表。

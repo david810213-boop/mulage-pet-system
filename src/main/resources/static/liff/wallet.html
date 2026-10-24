@@ -542,7 +542,7 @@
                         <input id="topupNote" type="text" placeholder="轉帳時間 / 備註（例：01/15 14:30）"
                             style="width:100%; padding:11px 13px; border:1px solid var(--line-soft); border-radius:var(--radius-sm); font-size:14.5px; font-family:'Huninn','PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;" />
                     </div>
-                    <button onclick="submitTopUp()"
+                    <button id="topupSubmitBtn" onclick="submitTopUp()"
                         style="width:100%; padding:13px; background:linear-gradient(135deg,var(--gold-light),var(--gold)); color:#3a2d16; border:none; border-radius:999px; font-size:14px; font-weight:600; font-family:'Bricolage Grotesque','Huninn','PingFang TC','Microsoft JhengHei',sans-serif; letter-spacing:0.3px; box-shadow:0 6px 14px rgba(198,160,99,0.4);">
                         送出儲值申請
                     </button>
@@ -568,8 +568,19 @@
                 </div>`;
       }
 
+      // 防重複送出：同一份申請沿用同一個識別碼，連點或網路重送時後端只會建立一筆；送出成功後換新的
+      function newIdempotencyKey() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+        return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+      }
+      let topUpKey = newIdempotencyKey();
+      let topUpSubmitting = false;
+
       // 送出線上轉帳儲值申請（餘額不會立即變動，待店家核帳）
       async function submitTopUp() {
+        if (topUpSubmitting) return;
         const amount = parseInt(
           document.getElementById("topupAmount").value,
           10,
@@ -580,12 +591,16 @@
           showToast("請選擇儲值金額");
           return;
         }
+        const btn = document.getElementById("topupSubmitBtn");
+        topUpSubmitting = true;
+        if (btn) btn.disabled = true;
         try {
           const res = await fetch("/api/top-ups", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: "Bearer " + jwtToken,
+              "Idempotency-Key": topUpKey,
             },
             body: JSON.stringify({
               amount,
@@ -594,9 +609,13 @@
             }),
           });
           if (!res.ok) {
-            showToast((await res.text()) || "送出失敗");
+            const text = await res.text();
+            let msg = text;
+            try { msg = JSON.parse(text).message || text; } catch (e) { /* 純文字錯誤訊息，直接用 */ }
+            showToast(msg || "送出失敗");
             return;
           }
+          topUpKey = newIdempotencyKey();
           document.getElementById("topupAmount").value = "";
           document.getElementById("topupLast5").value = "";
           document.getElementById("topupNote").value = "";
@@ -604,6 +623,9 @@
           loadMyTopUps();
         } catch (e) {
           showToast("送出失敗，請稍後再試");
+        } finally {
+          topUpSubmitting = false;
+          if (btn) btn.disabled = false;
         }
       }
 

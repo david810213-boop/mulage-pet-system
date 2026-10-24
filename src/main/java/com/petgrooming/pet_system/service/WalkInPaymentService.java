@@ -45,10 +45,11 @@ public class WalkInPaymentService {
     public WalkInOrderResponse checkout(Long orderId,
             PaymentMethod paymentMethod,
             String staffUsername) {
+        boolean paid = lockPaid(orderId);
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
-        if (order.isPaid()) {
+        if (paid) {
             throw new PaymentException("此單已完成結帳");
         }
         // 純零售商品訂單（沒有任何美容服務項目）不需要「結束服務」「核對」這兩步——
@@ -125,13 +126,14 @@ public class WalkInPaymentService {
             throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可確認收款");
         }
 
+        boolean paid = lockPaid(orderId);
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
         if (order.getPaymentMethod() != PaymentMethod.WIRE_TRANSFER) {
             throw new PaymentException("此單不是匯款付款，無需確認收款");
         }
-        if (order.isPaid()) {
+        if (paid) {
             throw new PaymentException("此單已確認收款過，請勿重複操作");
         }
 
@@ -145,6 +147,12 @@ public class WalkInPaymentService {
         return res;
     }
 
+    /** 鎖住這張現場單並讀回最新的付款狀態，連點或兩台裝置同時操作時依序執行，避免重複扣款／退款。 */
+    private boolean lockPaid(Long orderId) {
+        return orderRepository.lockPaidById(orderId)
+                .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
+    }
+
     // ── 退款：僅限「已結帳」的現場單 ──────────────────────────────────
     // 退款後直接刪除這筆現場單（含底下所有項目），積分全部刪除、
     // 儲值金付款的補回餘額，之後店家重新開一張全新的單即可。
@@ -156,10 +164,11 @@ public class WalkInPaymentService {
             throw new PaymentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可操作退款");
         }
 
+        boolean paid = lockPaid(orderId);
         WalkInOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到現場單 #" + orderId));
 
-        if (!order.isPaid()) {
+        if (!paid) {
             throw new PaymentException("此單尚未結帳，無法退款");
         }
 
