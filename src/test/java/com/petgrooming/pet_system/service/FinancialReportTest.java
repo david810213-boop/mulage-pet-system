@@ -3,7 +3,7 @@ package com.petgrooming.pet_system.service;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
-import com.petgrooming.pet_system.dto.TopUpRequestCreate;
+import com.petgrooming.pet_system.dto.CreateTopUpRequest;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.PaymentMethod;
 import com.petgrooming.pet_system.model.Appointment;
@@ -213,8 +213,8 @@ class FinancialReportTest extends IntegrationTestBase {
         return req;
     }
 
-    private static TopUpRequestCreate topUpRequest(int amount) {
-        TopUpRequestCreate req = new TopUpRequestCreate();
+    private static CreateTopUpRequest topUpRequest(int amount) {
+        CreateTopUpRequest req = new CreateTopUpRequest();
         req.setAmount(amount);
         return req;
     }

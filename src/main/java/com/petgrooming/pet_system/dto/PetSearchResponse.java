@@ -9,7 +9,7 @@ import lombok.Data;
  */
 @Data
 @Builder
-public class PetSearchResult {
+public class PetSearchResponse {
     private Long petId;
     private String petName;
     private String petType;

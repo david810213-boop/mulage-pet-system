@@ -9,7 +9,7 @@ import lombok.Data;
  */
 @Data
 @Builder
-public class MobileAppointmentCard {
+public class MobileAppointmentCardView {
     private Long id;
     private String dateLabel;   // 例如「9/25 週五」
     private String time;        // 例如「13:30」

@@ -11,7 +11,7 @@ import lombok.Data;
  */
 @Data
 @Builder
-public class MobileLineItem {
+public class MobileLineItemView {
     private Long id;             // 可移除時才有值（AppointmentItem / WalkInOrderItem 的流水號）
     private String name;
     private int price;

@@ -1,6 +1,6 @@
 package com.petgrooming.pet_system.page;
 
-import com.petgrooming.pet_system.dto.MobileAppointmentCard;
+import com.petgrooming.pet_system.dto.MobileAppointmentCardView;
 import com.petgrooming.pet_system.dto.WalkInOrderCreateRequest;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.model.Appointment;
@@ -110,7 +110,7 @@ class StaffPagesSmokeTest extends IntegrationTestBase {
 
         Map<String, Object> model = page(staff, get("/m/appointments/" + appointment.getId()), "m/appointment-detail");
 
-        MobileAppointmentCard card = (MobileAppointmentCard) model.get("card");
+        MobileAppointmentCardView card = (MobileAppointmentCardView) model.get("card");
         assertThat(card.getId()).isEqualTo(appointment.getId());
         assertThat(card.getStage()).isEqualTo("confirm");
         assertThat(card.getStageLabel()).isEqualTo("待確認");

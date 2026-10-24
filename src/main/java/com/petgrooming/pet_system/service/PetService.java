@@ -2,7 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
-import com.petgrooming.pet_system.dto.PetSearchResult;
+import com.petgrooming.pet_system.dto.PetSearchResponse;
 import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
@@ -356,7 +356,7 @@ public class PetService {
 
     /** 依寵物名稱搜尋（店員用），同名寵物以家長姓名與電話末四碼區分，最多 20 筆。 */
     @Transactional(readOnly = true)
-    public List<PetSearchResult> searchForStaff(String keyword) {
+    public List<PetSearchResponse> searchForStaff(String keyword) {
         return searchByName(keyword.trim()).stream()
                 .filter(p -> p.getOwner() != null)
                 .limit(STAFF_SEARCH_LIMIT)
@@ -364,11 +364,11 @@ public class PetService {
                 .toList();
     }
 
-    private static PetSearchResult toSearchResult(Pet p) {
+    private static PetSearchResponse toSearchResult(Pet p) {
         String phone = p.getOwnerPhone() != null && p.getOwnerPhone().length() >= 4
                 ? p.getOwnerPhone().substring(p.getOwnerPhone().length() - 4)
                 : "未填";
-        return PetSearchResult.builder()
+        return PetSearchResponse.builder()
                 .petId(p.getId())
                 .petName(p.getName())
                 .petType(p.getPetType() != null ? p.getPetType().name() : null)

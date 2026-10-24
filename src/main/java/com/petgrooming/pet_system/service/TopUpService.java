@@ -2,7 +2,7 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.DepositRequest;
-import com.petgrooming.pet_system.dto.TopUpRequestCreate;
+import com.petgrooming.pet_system.dto.CreateTopUpRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.TopUpStatus;
 import com.petgrooming.pet_system.exception.ErrorCode;
@@ -41,7 +41,7 @@ public class TopUpService {
 
     // ── 顧客送出轉帳儲值申請 ────────────────────────────────────────────────
     @Transactional
-    public TopUpRequestResponse submit(String username, TopUpRequestCreate req) {
+    public TopUpRequestResponse submit(String username, CreateTopUpRequest req) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到使用者"));
         if (req.getAmount() == null || req.getAmount() < StoreRules.MIN_DEPOSIT) {

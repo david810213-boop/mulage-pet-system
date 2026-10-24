@@ -129,7 +129,7 @@ public class AppointmentQueryService {
     }
 
     /** 單筆預約（後台格式）；找不到時是空值。 */
-    public Optional<AppointmentAdminResponse> getForAdmin(Long id) {
+    public Optional<AppointmentAdminResponse> findForAdmin(Long id) {
         return appointmentRepository.findWithUserAndItemsById(id)
                 .map(a -> toAdminResponses(List.of(a)).get(0));
     }
