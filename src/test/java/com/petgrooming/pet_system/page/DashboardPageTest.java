@@ -2,7 +2,7 @@ package com.petgrooming.pet_system.page;
 
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
-import com.petgrooming.pet_system.dto.TopUpRequestCreate;
+import com.petgrooming.pet_system.dto.CreateTopUpRequest;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.PaymentMethod;
@@ -81,7 +81,7 @@ class DashboardPageTest extends IntegrationTestBase {
         paymentService.checkout(paid.getId(), cash(), staff.getUsername());
         walkInOrderRepository.save(WalkInOrder.builder().petName("現場").totalAmount(500).chargedAmount(450)
                 .paid(true).paymentMethod(PaymentMethod.CASH).paymentTime(LocalDateTime.now()).build());
-        TopUpRequestCreate topUp = new TopUpRequestCreate();
+        CreateTopUpRequest topUp = new CreateTopUpRequest();
         topUp.setAmount(5000);
         topUpService.submit(customer.getUsername(), topUp);
         RetailProduct lowStock = retailProductService.create("首頁測試商品-" + UUID.randomUUID().toString().substring(0, 6),

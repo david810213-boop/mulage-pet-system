@@ -1,6 +1,6 @@
 package com.petgrooming.pet_system.service;
 
-import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
+import com.petgrooming.pet_system.dto.MobilePendingOperatorGroupView;
 import com.petgrooming.pet_system.dto.PendingOperatorMatrixResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.model.AppointmentItem;
@@ -88,8 +88,8 @@ public class PendingOperatorMatrixService {
     // 跟上面兩支矩陣方法同一份資料來源（未填經手人、且有積分的項目），
     // 以「一張單一組、一個項目一列」呈現，預約單跟現場單合在一起、新的排前面。
     @Transactional(readOnly = true)
-    public List<MobilePendingOperatorGroup> buildMobileGroups() {
-        List<MobilePendingOperatorGroup> result = new ArrayList<>();
+    public List<MobilePendingOperatorGroupView> buildMobileGroups() {
+        List<MobilePendingOperatorGroupView> result = new ArrayList<>();
 
         Map<Long, List<AppointmentItem>> byAppointment = appointmentItemRepository.findByOperatorStaffIsNull()
                 .stream()
@@ -99,14 +99,14 @@ public class PendingOperatorMatrixService {
             var appointment = appointmentRepository.findById(entry.getKey()).orElse(null);
             if (appointment == null || appointment.isCancelled())
                 continue;
-            result.add(MobilePendingOperatorGroup.builder()
+            result.add(MobilePendingOperatorGroupView.builder()
                     .kind("A")
                     .orderId(appointment.getId())
                     .code(String.format("AP%03d", appointment.getId()))
                     .petName(appointment.getPetName())
                     .date(appointment.getDate())
                     .lines(entry.getValue().stream()
-                            .map(i -> MobilePendingOperatorGroup.Line.builder()
+                            .map(i -> MobilePendingOperatorGroupView.Line.builder()
                                     .itemId(i.getId())
                                     .itemName(i.getItemName())
                                     .categoryLabel(i.getPerformanceCategory() != null ? i.getPerformanceCategory().getLabel() : "")
@@ -125,14 +125,14 @@ public class PendingOperatorMatrixService {
             var order = walkInOrderRepository.findById(entry.getKey()).orElse(null);
             if (order == null)
                 continue;
-            result.add(MobilePendingOperatorGroup.builder()
+            result.add(MobilePendingOperatorGroupView.builder()
                     .kind("W")
                     .orderId(order.getId())
                     .code("現場單#" + order.getId())
                     .petName(order.getPetName())
                     .date(order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : null)
                     .lines(entry.getValue().stream()
-                            .map(i -> MobilePendingOperatorGroup.Line.builder()
+                            .map(i -> MobilePendingOperatorGroupView.Line.builder()
                                     .itemId(i.getId())
                                     .itemName(i.getItemName())
                                     .categoryLabel(i.getPerformanceCategory() != null ? i.getPerformanceCategory().getLabel() : "")
@@ -143,7 +143,7 @@ public class PendingOperatorMatrixService {
                     .build());
         }
 
-        result.sort(Comparator.comparing(MobilePendingOperatorGroup::getDate,
+        result.sort(Comparator.comparing(MobilePendingOperatorGroupView::getDate,
                 Comparator.nullsLast(Comparator.reverseOrder())));
         return result;
     }

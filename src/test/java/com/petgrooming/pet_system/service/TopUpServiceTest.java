@@ -1,6 +1,6 @@
 package com.petgrooming.pet_system.service;
 
-import com.petgrooming.pet_system.dto.TopUpRequestCreate;
+import com.petgrooming.pet_system.dto.CreateTopUpRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.TopUpStatus;
 import com.petgrooming.pet_system.exception.WalletException;
@@ -83,8 +83,8 @@ class TopUpServiceTest extends IntegrationTestBase {
         assertThat(balanceOf(customer)).isEqualTo(8000);
     }
 
-    private static TopUpRequestCreate request(int amount) {
-        TopUpRequestCreate req = new TopUpRequestCreate();
+    private static CreateTopUpRequest request(int amount) {
+        CreateTopUpRequest req = new CreateTopUpRequest();
         req.setAmount(amount);
         req.setLastFiveDigits("12345");
         return req;

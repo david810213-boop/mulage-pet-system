@@ -4,7 +4,7 @@ import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
-import com.petgrooming.pet_system.dto.MobileAppointmentCard;
+import com.petgrooming.pet_system.dto.MobileAppointmentCardView;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.model.User;
@@ -74,7 +74,7 @@ public class MobileMvcController {
         List<AppointmentAdminResponse> todays = appointmentQueryService.getForAdminBetween(today, today);
         List<AppointmentAdminResponse> pending = appointmentQueryService.getPendingConfirmForAdminFrom(today);
 
-        List<MobileAppointmentCard> todayCards = todays.stream()
+        List<MobileAppointmentCardView> todayCards = todays.stream()
                 .filter(a -> !a.isCancelled() && a.getDate().isEqual(today))
                 .sorted(Comparator.comparing(AppointmentAdminResponse::getStartTime))
                 .map(a -> cards.toCard(a, today))
@@ -83,7 +83,7 @@ public class MobileMvcController {
         int nowIndex = cards.nowIndex(todayCards, now);
 
         // 之後日期的待確認預約（今天的已經在時間軸裡，不重複列）
-        List<MobileAppointmentCard> upcomingPending = pending.stream()
+        List<MobileAppointmentCardView> upcomingPending = pending.stream()
                 .filter(a -> a.getDate().isAfter(today))
                 .sorted(Comparator.comparing(AppointmentAdminResponse::getDate)
                         .thenComparing(AppointmentAdminResponse::getStartTime))

@@ -9,7 +9,7 @@ import lombok.Data;
  * 顧客送出線上轉帳儲值申請的輸入
  */
 @Data
-public class TopUpRequestCreate {
+public class CreateTopUpRequest {
 
     @NotNull(message = "儲值金額不能為空")
     @Min(value = StoreRules.MIN_DEPOSIT, message = "單筆儲值最低 $5,000")

@@ -2,7 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
-import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
+import com.petgrooming.pet_system.dto.MobilePendingOperatorGroupView;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
@@ -58,7 +58,7 @@ public class MobileOpsController {
         if (user == null) {
             return "redirect:/auth/login";
         }
-        List<MobilePendingOperatorGroup> groups = pendingOperatorMatrixService.buildMobileGroups();
+        List<MobilePendingOperatorGroupView> groups = pendingOperatorMatrixService.buildMobileGroups();
         model.addAttribute("user", user);
         model.addAttribute("groups", groups);
         model.addAttribute("lineCount", groups.stream().mapToInt(g -> g.getLines().size()).sum());

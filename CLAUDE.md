@@ -54,7 +54,7 @@
 ## 六、效能：查詢次數與載入範圍
 
 - **N+1 查詢已解決**：後台預約清單（`AppointmentQueryService` 的 `getAllForAdmin()` 等）用 JOIN FETCH 一次查出預約、使用者、選擇項目，開單項目與交易紀錄批次查詢。`StaffPageQueryCountTest` 會檢查首頁、預約列表、手機版今日頁、預約明細、交易紀錄、現場單列表的 SQL 條數不會隨歷史資料增加，新增頁面或改查詢時跑這支測試確認沒有退化（Checks 頁的「量測」註記會列出各頁 SQL 條數與載入筆數）
-- **只查需要的資料**：首頁與手機版今日頁只查「今天」與「待確認」的預約（`getForAdminBetween`、`getPendingConfirmForAdminFrom`），今日營收只查今天付款的交易與現場單，會員數用 COUNT；單筆預約用 `getForAdmin(id)`，不要撈全部再篩選
+- **只查需要的資料**：首頁與手機版今日頁只查「今天」與「待確認」的預約（`getForAdminBetween`、`getPendingConfirmForAdminFrom`），今日營收只查今天付款的交易與現場單，會員數用 COUNT；單筆預約用 `findForAdmin(id)`，不要撈全部再篩選
 - **尚未處理**：網頁版預約列表、手機版預約列表、財務報表、現場單列表仍會載入全部歷史資料（查詢條數固定，但資料量會隨時間變大），需要時再改成依篩選條件查詢或分頁
 - 效能問題排查流程見第七節，完整排查記錄見 `docs/疑難排解與環境設定指南.md` 第十四節
 
@@ -69,6 +69,7 @@
 - `fetch()` 呼叫一律預期後端可能回傳純文字錯誤，不要寫死用 `res.json()` 解析，先讀 `res.text()` 能解析成 JSON 才當 JSON 用
 - **API 錯誤一律丟業務例外，不要在 controller 自己組錯誤回應**：`throw new XxxException(ErrorCode.NOT_FOUND, "找不到…")`（不帶 ErrorCode 時預設 `BUSINESS_RULE`／400）。回應格式由 `GlobalApiExceptionHandler` 統一產生：`{ status, detail, code, message, errors? }`，前端讀 `message`、依 `code` 判斷。`BusinessException` 刻意繼承 `IllegalArgumentException`（網頁版 MVC controller 有上百處 `catch (IllegalArgumentException e)` 依賴它），不要改成 `RuntimeException`
 - **請求內容一律用 DTO（新寫的用 `record`）＋ Bean Validation 接收**，不要用 `@RequestBody Map`
+- **命名規則**：查詢單筆找不到會丟例外用 `getXxx`，回傳 `Optional` 用 `findXxx`；DTO 命名為 `XxxRequest`（請求）、`XxxResponse`（API 回應）、`XxxView`（只給畫面用的輕量物件）
 - **分層規則（ArchUnit 測試強制）**：Controller 不得注入或呼叫 Repository，查詢一律寫成 Service 方法；Service 不得依賴 Controller。取得登入者用 `@CurrentUser String username` 或 `@CurrentUser User user`，不要讀 `request.getAttribute("tokenUsername")`
 - Service 方法若會讀取實體的延遲載入關聯（例如 `pet.getOwner()`），要加 `@Transactional(readOnly = true)`，不要依賴請求層級的資料庫連線；但方法內若會呼叫 `walletService.getWallet()`（顧客還沒有錢包時會順便建立）等會寫入的方法，改用一般的 `@Transactional`，唯讀交易會讓寫入失敗
 - 合併 Git 分支衝突時，如果雙方版本內容差異很大，一定要問清楚使用者要保留哪一版，不要自己選

@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
-import com.petgrooming.pet_system.dto.MobileAppointmentCard;
+import com.petgrooming.pet_system.dto.MobileAppointmentCardView;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.service.MobileViewHelper;
@@ -34,7 +34,7 @@ public class MobileAppointmentCards {
     private final WalkInOrderService walkInOrderService;
 
     /** 「現在」紅線要插在第一筆開始時間晚於現在的卡片前面；全部都過了就放最後。 */
-    public int nowIndex(List<MobileAppointmentCard> todayCards, LocalTime now) {
+    public int nowIndex(List<MobileAppointmentCardView> todayCards, LocalTime now) {
         for (int i = 0; i < todayCards.size(); i++) {
             if (LocalTime.parse(todayCards.get(i).getTime(), TIME_FMT).isAfter(now)) {
                 return i;
@@ -66,8 +66,8 @@ public class MobileAppointmentCards {
     }
 
     /** 依日期分組（保留排序），今天、明天另外標註。 */
-    public Map<String, List<MobileAppointmentCard>> groupByDate(List<AppointmentAdminResponse> picked, LocalDate today) {
-        Map<String, List<MobileAppointmentCard>> groups = new LinkedHashMap<>();
+    public Map<String, List<MobileAppointmentCardView>> groupByDate(List<AppointmentAdminResponse> picked, LocalDate today) {
+        Map<String, List<MobileAppointmentCardView>> groups = new LinkedHashMap<>();
         for (AppointmentAdminResponse a : picked) {
             String key = a.getDate().isEqual(today) ? "今天 " + dateLabel(a.getDate())
                     : a.getDate().isEqual(today.plusDays(1)) ? "明天 " + dateLabel(a.getDate())
@@ -139,7 +139,7 @@ public class MobileAppointmentCards {
         return d.getMonthValue() + "/" + d.getDayOfMonth() + " " + weekdayLabel(d.getDayOfWeek());
     }
 
-    public MobileAppointmentCard toCard(AppointmentAdminResponse a, LocalDate today) {
+    public MobileAppointmentCardView toCard(AppointmentAdminResponse a, LocalDate today) {
         String species = speciesKey(a.getPetType());
         String items;
         if (a.getDisplayItemNames() != null && !a.getDisplayItemNames().isEmpty()) {
@@ -151,7 +151,7 @@ public class MobileAppointmentCards {
         }
         String petName = a.getPetName() == null ? "" : a.getPetName();
         String stage = stageKey(a);
-        return MobileAppointmentCard.builder()
+        return MobileAppointmentCardView.builder()
                 .id(a.getId())
                 .dateLabel(dateLabel(a.getDate()))
                 .time(a.getStartTime().format(TIME_FMT))

@@ -8,7 +8,7 @@ import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinalCheckRequest;
 import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.PetResponse;
-import com.petgrooming.pet_system.dto.MobileAppointmentCard;
+import com.petgrooming.pet_system.dto.MobileAppointmentCardView;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.PaymentMethod;
@@ -101,7 +101,7 @@ public class MobileAppointmentController {
         } catch (IllegalArgumentException e) {
             // 找不到寵物檔案（例如寵物已刪除）不影響顯示預約本身
         }
-        MobileAppointmentCard card = cards.toCard(a, LocalDate.now());
+        MobileAppointmentCardView card = cards.toCard(a, LocalDate.now());
 
         model.addAttribute("user", user);
         model.addAttribute("a", a);
@@ -249,7 +249,7 @@ public class MobileAppointmentController {
         boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
         List<GroomingItemResponse> addable = groomingMenuFilter.filterFor(
                 groomingItemService.getAllItems(), isExisting, a.getPetType());
-        MobileAppointmentCard card = cards.toCard(a, LocalDate.now());
+        MobileAppointmentCardView card = cards.toCard(a, LocalDate.now());
 
         model.addAttribute("user", user);
         // 核對頁樣板預約、現場單共用，網址前綴跟頁首資訊由 controller 決定
@@ -384,7 +384,7 @@ public class MobileAppointmentController {
                         .filter(it -> it.getGroomingItemId() != null && it.getDogWeightTier() != null)
                         .findFirst().orElse(null)
                 : null;
-        MobileAppointmentCard card = cards.toCard(a, LocalDate.now());
+        MobileAppointmentCardView card = cards.toCard(a, LocalDate.now());
 
         model.addAttribute("user", user);
         // 結帳頁樣板預約、現場單共用
@@ -503,6 +503,6 @@ public class MobileAppointmentController {
     }
 
     private AppointmentAdminResponse findAppointment(Long id) {
-        return appointmentQueryService.getForAdmin(id).orElse(null);
+        return appointmentQueryService.findForAdmin(id).orElse(null);
     }
 }

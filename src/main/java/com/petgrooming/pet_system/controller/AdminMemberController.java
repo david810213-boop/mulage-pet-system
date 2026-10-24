@@ -5,7 +5,7 @@ import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.MemberMergeRequest;
 import com.petgrooming.pet_system.dto.MemberNoteRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
-import com.petgrooming.pet_system.dto.PetSearchResult;
+import com.petgrooming.pet_system.dto.PetSearchResponse;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.MemberClaimService;
@@ -62,12 +62,12 @@ public class AdminMemberController {
     // 若有同名寵物，displayLabel 會附上家長姓名＋電話末四碼方便店員辨識選對象。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/search-by-pet")
-    public ResponseEntity<List<PetSearchResult>> searchByPet(
+    public ResponseEntity<List<PetSearchResponse>> searchByPet(
             @RequestParam String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return ResponseEntity.ok(List.of());
         }
-        List<PetSearchResult> results = petService.searchForStaff(keyword);
+        List<PetSearchResponse> results = petService.searchForStaff(keyword);
         return ResponseEntity.ok(results);
     }
 

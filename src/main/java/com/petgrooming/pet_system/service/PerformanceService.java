@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PerformanceMatrixResponse;
-import com.petgrooming.pet_system.dto.StaffMatrixRow;
+import com.petgrooming.pet_system.dto.StaffMatrixRowView;
 import com.petgrooming.pet_system.dto.StaffProgressResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.ErrorCode;
@@ -301,7 +301,7 @@ public class PerformanceService {
         Map<Long, List<PerformanceRecord>> byStaff = allRecords.stream()
                 .collect(Collectors.groupingBy(r -> r.getStaff().getId()));
 
-        List<StaffMatrixRow> rows = new ArrayList<>();
+        List<StaffMatrixRowView> rows = new ArrayList<>();
         Map<PerformanceCategory, Double> columnTotalsPoints = new EnumMap<>(PerformanceCategory.class);
         for (PerformanceCategory c : categories) columnTotalsPoints.put(c, 0.0);
         double grandTotal = 0;
@@ -314,7 +314,7 @@ public class PerformanceService {
 
         for (Map.Entry<Long, List<PerformanceRecord>> entry : sortedEntries) {
             List<PerformanceRecord> records = entry.getValue();
-            StaffMatrixRow row = buildStaffMatrixRow(records, categories);
+            StaffMatrixRowView row = buildStaffMatrixRow(records, categories);
             rows.add(row);
             grandTotal += row.getTotalPoints();
             for (PerformanceCategory c : categories) {
@@ -334,7 +334,7 @@ public class PerformanceService {
             }
         }
 
-        StaffMatrixRow totalsRow = StaffMatrixRow.builder()
+        StaffMatrixRowView totalsRow = StaffMatrixRowView.builder()
                 .staffId(null)
                 .staffName("合計")
                 .countByCategory(columnTotalsCount)
@@ -351,7 +351,7 @@ public class PerformanceService {
     }
 
     // ── 月報「明細」按鈕直接顯示該員工的積分項目統計（矩陣的單一列）──
-    public StaffMatrixRow getStaffMonthlyBreakdown(
+    public StaffMatrixRowView getStaffMonthlyBreakdown(
             Long staffId, int year, int month) {
         YearMonth ym = YearMonth.of(year, month);
         List<PerformanceCategory> categories = Arrays.stream(PerformanceCategory.values())
@@ -363,7 +363,7 @@ public class PerformanceService {
     }
 
     // ── 私有：把一位員工當月的績效紀錄，依項目分類彙整成矩陣的一列 ─────
-    private StaffMatrixRow buildStaffMatrixRow(
+    private StaffMatrixRowView buildStaffMatrixRow(
             List<PerformanceRecord> records, List<PerformanceCategory> categories) {
         Map<PerformanceCategory, Double> pointsByCategory = new EnumMap<>(PerformanceCategory.class);
         Map<PerformanceCategory, Double> countByCategory = new EnumMap<>(PerformanceCategory.class);
@@ -383,7 +383,7 @@ public class PerformanceService {
         }
 
         User staff = records.isEmpty() ? null : records.get(0).getStaff();
-        return StaffMatrixRow.builder()
+        return StaffMatrixRowView.builder()
                 .staffId(staff != null ? staff.getId() : null)
                 .staffName(staff != null ? staff.getName() : null)
                 .countByCategory(countByCategory)

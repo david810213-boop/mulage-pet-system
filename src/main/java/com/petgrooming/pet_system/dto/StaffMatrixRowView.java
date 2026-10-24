@@ -12,7 +12,7 @@ import java.util.Map;
  */
 @Data
 @Builder
-public class StaffMatrixRow {
+public class StaffMatrixRowView {
     private Long staffId;
     private String staffName;
     private Map<PerformanceCategory, Double> countByCategory;  // 各項目換算後的隻數/次數

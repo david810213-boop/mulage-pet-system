@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PetResponse;
-import com.petgrooming.pet_system.dto.PetSearchResult;
+import com.petgrooming.pet_system.dto.PetSearchResponse;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
@@ -32,7 +32,7 @@ class PetSearchTest extends IntegrationTestBase {
         userRepository.save(owner);
         PetResponse dog = testData.dog(owner);
 
-        List<PetSearchResult> results = petService.searchForStaff("  " + dog.getName() + " ");
+        List<PetSearchResponse> results = petService.searchForStaff("  " + dog.getName() + " ");
 
         assertThat(results).singleElement().satisfies(r -> {
             assertThat(r.getPetId()).isEqualTo(dog.getId());

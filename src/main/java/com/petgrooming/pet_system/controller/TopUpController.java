@@ -2,7 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
-import com.petgrooming.pet_system.dto.TopUpRequestCreate;
+import com.petgrooming.pet_system.dto.CreateTopUpRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.dto.TopUpReviewRequest;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -35,7 +35,7 @@ public class TopUpController {
 
     // ── 顧客送出申請 ────────────────────────────────────────────────────────
     @PostMapping("/api/topup")
-    public ResponseEntity<?> submit(@Valid @RequestBody TopUpRequestCreate req, @CurrentUser String username) {
+    public ResponseEntity<?> submit(@Valid @RequestBody CreateTopUpRequest req, @CurrentUser String username) {
         var res = topUpService.submit(username, req);
         operationLogService.logByUsername(username, "WALLET", "TOPUP_REQUEST",
                 "會員 " + username, "+$" + req.getAmount() + "（末五碼 " + req.getLastFiveDigits() + "）");

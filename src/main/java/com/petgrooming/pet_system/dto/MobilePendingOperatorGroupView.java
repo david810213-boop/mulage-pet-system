@@ -13,7 +13,7 @@ import java.util.List;
  */
 @Data
 @Builder
-public class MobilePendingOperatorGroup {
+public class MobilePendingOperatorGroupView {
     private String kind;        // A = 預約（AppointmentItem）、W = 現場單（WalkInOrderItem）
     private Long orderId;       // 預約 id 或現場單 id
     private String code;        // 「AP017」或「現場單#4」
