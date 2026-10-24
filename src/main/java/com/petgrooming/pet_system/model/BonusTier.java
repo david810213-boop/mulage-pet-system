@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// 需求 3：積分門檻對應獎勵金，改成可在後台編輯，不用再改程式碼重新部署
+// 積分門檻對應獎勵金，改成可在後台編輯，不用再改程式碼重新部署
 @Entity
 @Table(name = "bonus_tiers")
 @Data

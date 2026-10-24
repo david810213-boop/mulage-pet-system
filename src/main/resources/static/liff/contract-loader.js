@@ -1,5 +1,5 @@
 /*
- * 需求（追加，2026-10-02）：定型化契約全文只有一份（/liff/contract-body.html），
+ * 定型化契約全文只有一份（/liff/contract-body.html），
  * 預約頁、代客預約頁、公開契約頁、我的預約「查看契約」都用這支載入，避免各頁條文不一致。
  * 用法：MulageContract.load(容器元素) → Promise（成功時回傳契約版本字串）
  */

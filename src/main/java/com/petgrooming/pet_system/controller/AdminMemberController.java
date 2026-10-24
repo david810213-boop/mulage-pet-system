@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 需求 8：店家後台備注會員特殊資訊
+ * 店家後台備注會員特殊資訊
  *
  * GET /api/admin/members/{username}/note   取得會員備注
  * PUT /api/admin/members/{username}/note   設定會員備注
@@ -40,7 +40,7 @@ public class AdminMemberController {
     // 現場開單：依姓名/帳號搜尋會員，解決 LINE 登入會員帳號是 line_xxx 內碼問題
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/search")
-    // 需求（追加，2026-10-02）：withPets=true 時連寵物名一起搜，結果帶 matchedPetNames。
+    // withPets=true 時連寵物名一起搜，結果帶 matchedPetNames。
     // 現場開單、代客預約另外有 search-by-pet 分區顯示，所以預設不開，避免同一位會員出現兩次。
     public ResponseEntity<List<UserResponse>> search(@RequestParam String keyword,
             @RequestParam(defaultValue = "false") boolean withPets) {
@@ -58,7 +58,7 @@ public class AdminMemberController {
     }
 
     // ── GET /api/admin/members/search-by-pet?keyword=xxx ────────────────────
-    // 需求 9：依寵物名稱搜尋，自動對應所屬家長姓名/電話/寵物完整資料。
+    // 依寵物名稱搜尋，自動對應所屬家長姓名/電話/寵物完整資料。
     // 若有同名寵物，displayLabel 會附上家長姓名＋電話末四碼方便店員辨識選對象。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/search-by-pet")
@@ -99,7 +99,7 @@ public class AdminMemberController {
     }
 
     // ── POST /api/admin/members/merge ───────────────────────────────────────
-    // 需求（追加，2026-09-08）：手動綁定既有匯入資料。用在顧客的 LINE 帳號
+    // 手動綁定既有匯入資料。用在顧客的 LINE 帳號
     // 自己已經先填過資料，導致 claimByPhone() 的防呆擋下自動認領時，由店家
     // 人工判斷後手動合併。importedUsername 必須是 imported_ 開頭的匯入暫時
     // 帳號，targetUsername 是要合併過去的真正會員帳號（通常是 line_ 開頭）。

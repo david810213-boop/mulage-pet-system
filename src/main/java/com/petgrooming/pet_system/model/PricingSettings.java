@@ -3,7 +3,7 @@ package com.petgrooming.pet_system.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-// 需求（追加）：體重相關定價門檻，後台可調整，不寫死在程式碼裡。
+// 體重相關定價門檻，後台可調整，不寫死在程式碼裡。
 // 只會有一列資料（單例設定），跟 CompanySignature 同樣的做法。
 //
 // 貓咪：體重加價目前是「參考金額」，由店員在核對/結帳時依店家截圖裡的門檻

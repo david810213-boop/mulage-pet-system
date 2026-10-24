@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
  * 這個 Runner 開機時執行一次，等同一份輕量 migration。
  *
  * 內容：
- *  1) 需求 3：依既有「未取消」預約，重建 slot_capacity 計數，讓時段名額正確。
- *  2) 需求 4：把名稱含「大美容 / 小美容 / 精緻洗 / 定製洗」的項目標記為可線上預約。
+ *  1) 依既有「未取消」預約，重建 slot_capacity 計數，讓時段名額正確。
+ *  2) 把名稱含「大美容 / 小美容 / 精緻洗 / 定製洗」的項目標記為可線上預約。
  *
  * 冪等：可重複執行。跑過並確認資料無誤後，可移除本類別。
  */
@@ -50,7 +50,7 @@ public class DataBackfillRunner implements CommandLineRunner {
         backfillBookableItems();
     }
 
-    // 需求 3：重建時段計數
+    // 重建時段計數
     private void backfillSlotCapacity() {
         List<Appointment> active = appointmentRepository.findAll().stream()
                 .filter(a -> !a.isCancelled())
@@ -85,7 +85,7 @@ public class DataBackfillRunner implements CommandLineRunner {
         if (created > 0) log.info("[Backfill] slot_capacity 重建 {} 個時段計數", created);
     }
 
-    // 需求 4：標記可預約主項目
+    // 標記可預約主項目
     private void backfillBookableItems() {
         List<GroomingItem> items = groomingItemRepository.findByIsDeletedFalse();
         int marked = 0;

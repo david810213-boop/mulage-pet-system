@@ -17,12 +17,12 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
 
     Optional<Pet> findByOwnerUsernameAndName(String username, String petName);
 
-    // 需求 9：依寵物名稱模糊搜尋（現場開單/預約用，自動對應家長）
+    // 依寵物名稱模糊搜尋（現場開單/預約用，自動對應家長）
     List<Pet> findByNameContainingIgnoreCase(String namePart);
 
-    // 需求 8-2：查所有貓咪（回洗優惠名單篩選用）
+    // 查所有貓咪（回洗優惠名單篩選用）
     List<Pet> findByPetType(PetType petType);
 
-    // 需求（追加，2026-09-06）：寵物信息管理頁面用——列出所有未刪除的寵物，依名字排序
+    // 寵物信息管理頁面用——列出所有未刪除的寵物，依名字排序
     List<Pet> findByIsDeletedFalseOrderByNameAsc();
 }

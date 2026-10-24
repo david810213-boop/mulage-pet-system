@@ -11,7 +11,7 @@ import lombok.Data;
 @Data
 public class UpdateProfileRequest {
 
-    // 需求（追加，配合定型化契約家長資料）：姓名、電話改為必填
+    // 姓名、電話改為必填
     @NotBlank(message = "請填寫姓名")
     private String name;
 
@@ -29,7 +29,7 @@ public class UpdateProfileRequest {
 
     private CustomerSource source;
 
-    // ── 需求 19：定型化契約要求蒐集的資料 ─────────────────────────────
+    // ── 定型化契約要求蒐集的資料 ─────────────────────────────
     // 通訊地址、緊急聯絡人姓名/電話/關係全部改為必填（配合定型化契約規定）。
     @NotBlank(message = "請填寫通訊地址")
     private String mailingAddress;

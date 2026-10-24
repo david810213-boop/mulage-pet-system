@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 
 /**
- * 核對頁的美容狀況照片上傳（需求，2026-09-29）。網頁版與員工手機版共用，
+ * 核對頁的美容狀況照片上傳。網頁版與員工手機版共用，
  * 前端會先把照片壓縮再逐張上傳，拿到網址後放進核對表單的隱藏欄位。
  */
 @RestController

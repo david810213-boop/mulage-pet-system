@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 /**
- * 現場開單的單一項目（需求 5 / 6）。
+ * 現場開單的單一項目。
  *
  * 經手人（operatorStaff）綁定實際員工帳號（User），而非自由輸入文字，
  * 這樣選定後才能直接寫進既有的績效系統（PerformanceRecord），而不是自成一套、
@@ -40,7 +40,7 @@ public class WalkInOrderItem {
     @Column(name = "grooming_item_id")
     private Long groomingItemId;
 
-    // 需求 7-1：對應的零售商品 id（可為 null）。有值代表這一列是零售商品加購，
+    // 對應的零售商品 id（可為 null）。有值代表這一列是零售商品加購，
     // 不是美容服務項目——不計積分、不用經手人、不參與折扣，結帳時會扣這個商品的庫存。
     @Column(name = "retail_product_id")
     private Long retailProductId;
@@ -70,7 +70,7 @@ public class WalkInOrderItem {
     @ToString.Exclude
     private User operatorStaff;
 
-    // 需求（追加，2026-10-02 店家確認 5）：第二經手人（選填）。兩位經手人時積分各拿一半，
+    // 第二經手人（選填）。兩位經手人時積分各拿一半，
     // 第二筆績效紀錄掛成第一筆的拆分紀錄，所以兩筆都不能再「拆給同事」。
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "operator_staff2_id")
@@ -82,7 +82,7 @@ public class WalkInOrderItem {
     @Builder.Default
     private boolean pointsAwarded = false;
 
-    // 需求 5：折扣資格快照（開單當下從 GroomingItem 複製），供結帳計算與消費明細顯示，
+    // 折扣資格快照（開單當下從 GroomingItem 複製），供結帳計算與消費明細顯示，
     // 比照 price/points 的快照做法，避免項目日後改設定影響到已經開好的舊單。
     @Column(name = "discount_eligible", nullable = false, columnDefinition = "boolean default true")
     @Builder.Default

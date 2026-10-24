@@ -19,7 +19,7 @@
             </p>
           </div>
 
-          <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——已鎖定固定套餐提示 -->
+          <!-- 狗狗定價流程簡化——已鎖定固定套餐提示 -->
           <div class="card" th:if="${pet != null and pet.lockedGroomingItemId != null}"
                style="margin-bottom: 1rem; background:#fff8e6; border:1px solid #e6c366;">
             <p style="margin: 0; font-size: 13px;">
@@ -31,7 +31,7 @@
             </button>
           </div>
 
-          <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——尚未鎖定的成犬/幼犬，
+          <!-- 狗狗定價流程簡化——尚未鎖定的成犬/幼犬，
                結帳核對這一項的同時，可以把它鎖定成這隻狗以後的固定套餐 -->
           <div class="card" th:if="${pet != null and pet.lockedGroomingItemId == null and pet.petType.name() == 'DOG'}"
                style="margin-bottom: 1rem;">
@@ -68,7 +68,7 @@
             </p>
           </div>
 
-          <!-- 需求 15：結帳前逐項目消費明細，跟預約結帳同樣風格 -->
+          <!-- 結帳前逐項目消費明細，跟預約結帳同樣風格 -->
           <div class="card" th:if="${order.items != null and !order.items.isEmpty()}" style="margin-bottom: 1rem;">
             <h3 style="font-size: 15px; margin-bottom: 10px;">📋 消費明細</h3>
             <table>
@@ -110,14 +110,14 @@
             </p>
           </div>
 
-          <!-- 需求（2026-08-26 修正）：新增服務項目／自訂金額加購已搬到「核對」頁面
+          <!-- 新增服務項目／自訂金額加購已搬到「核對」頁面
                （walk-in-order-final-check.html），結帳頁只負責收款，不再提供編輯
                項目的入口。 -->
 
-          <!-- 需求 7-1：結帳前直接加購零售商品 -->
+          <!-- 結帳前直接加購零售商品 -->
           <div class="card" style="margin-bottom: 1rem;">
             <h3 style="font-size: 15px; margin-bottom: 10px;">🛍️ 加購商品</h3>
-            <!-- 需求（2026-10-02）：掃碼加入零售商品（掃碼槍掃完會自動送出） -->
+            <!-- 掃碼加入零售商品（掃碼槍掃完會自動送出） -->
             <div data-scan-box th:if="${retailProducts != null and !retailProducts.isEmpty()}"
                  style="display:flex; gap:8px; align-items:center; margin:8px 0; font-size:13px;">
               <span>📷 掃碼加入</span>
@@ -164,7 +164,7 @@
                 </p>
               </div>
 
-              <!-- 需求 15 修正：選「匯款」時自動顯示店家帳號資訊，選其他方式則隱藏 -->
+              <!-- 選「匯款」時自動顯示店家帳號資訊，選其他方式則隱藏 -->
               <div
                 id="wioWireTransferInfo"
                 style="display: none; margin-top: 10px; padding: 12px 14px; background: var(--cream-100); border: 1px solid var(--cream-300); border-radius: var(--radius-sm);"
@@ -175,7 +175,7 @@
                 <p style="font-size: 13px; margin: 2px 0;">銀行：<span th:text="${bankAccountInfo.bankName}"></span></p>
                 <p style="font-size: 13px; margin: 2px 0;">帳號：<span th:text="${bankAccountInfo.accountNumber}"></span></p>
                 <p style="font-size: 13px; margin: 2px 0;">戶名：<span th:text="${bankAccountInfo.accountHolder}"></span></p>
-                <!-- 需求 21：有設定 QR Code 就顯示，方便掃碼轉帳 -->
+                <!-- 有設定 QR Code 就顯示，方便掃碼轉帳 -->
                 <img
                   th:if="${bankAccountInfo.qrCodeUrl != null}"
                   th:src="${bankAccountInfo.qrCodeUrl}"
@@ -202,12 +202,12 @@
       </div>
     </div>
 
-    <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——鎖定/解鎖按鈕邏輯 -->
+    <!-- 狗狗定價流程簡化——鎖定/解鎖按鈕邏輯 -->
     <script th:inline="javascript">
       const PET = /*[[${pet}]]*/ null;
       const ORDER_ITEMS = /*[[${order != null ? order.items : null}]]*/ [];
 
-      // 需求（2026-08-24 修正）：直接看這張單每個項目自帶的 dogWeightTier 標記，
+      // 直接看這張單每個項目自帶的 dogWeightTier 標記，
       // 不用再跟「新增服務項目」下拉選單那份清單比對——原本的做法會因為那份清單
       // 是依「目前」體重篩選出來的，如果狗的體重資料跟這張單當初選定的體重級距
       // 對不上（例如體重還沒更新），會找不到對應項目、誤判成「沒有可鎖定的項目」。

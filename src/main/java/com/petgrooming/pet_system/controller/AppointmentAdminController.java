@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 店家後台預約管理 API（需求 3、7）
+ * 店家後台預約管理 API
  *
  * GET  /api/admin/appointments               所有預約（含店家內部備注）
  * POST /api/admin/appointments/{id}/confirm  確認預約並敲定最後時間
@@ -30,14 +30,14 @@ public class AppointmentAdminController {
     private final AppointmentService appointmentService;
     private final AppointmentQueryService appointmentQueryService;
 
-    // 需求 7：後台清單，含 internalNote
+    // 後台清單，含 internalNote
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping
     public ResponseEntity<List<AppointmentAdminResponse>> getAll() {
         return ResponseEntity.ok(appointmentQueryService.getAllForAdmin());
     }
 
-    // 需求 3：確認預約並敲定最後時間
+    // 確認預約並敲定最後時間
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/confirm")
     public ResponseEntity<?> confirm(@PathVariable Long id,
@@ -48,7 +48,7 @@ public class AppointmentAdminController {
         return ResponseEntity.ok(res);
     }
 
-    // 需求 7：設定雙可見性備注
+    // 設定雙可見性備注
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PutMapping("/{id}/notes")
     public ResponseEntity<?> setNotes(@PathVariable Long id,

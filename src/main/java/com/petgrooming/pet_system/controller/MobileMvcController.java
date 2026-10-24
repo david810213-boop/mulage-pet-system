@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 員工手機版（需求，2026-09-24）：今日、預約列表、更多、切換網頁版／手機版。
+ * 員工手機版：今日、預約列表、更多、切換網頁版／手機版。
  * 網頁版後台完全保留不動，手機版是另一組獨立頁面，路徑統一在 /m 底下，後端 service 跟網頁版共用。
  *
  * 預約詳情與流程（開單、核對、結帳）見 MobileAppointmentController；

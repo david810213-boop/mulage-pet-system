@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
- * 需求（追加，2026-08-24）：Google 日曆串接——店家一個共用 Google 日曆帳號，
+ * Google 日曆串接——店家一個共用 Google 日曆帳號，
  * 預約「已確認」時自動同步一筆日曆事件，取消時自動刪除。
  *
  * 跟 CloudinaryService、LineMessagingService 用同一套「還沒設定好就優雅跳過」
@@ -54,7 +54,7 @@ public class GoogleCalendarService {
             return false;
         }
 
-        // 需求（2026-09-29）：Railway 貼上環境變數時，值的結尾可能夾帶換行或空白，
+        // Railway 貼上環境變數時，值的結尾可能夾帶換行或空白，
         // 日曆 ID 帶到換行會讓 Google API 回 404（網址變成 ...gmail.com%0A），
         // 所以兩個值一律先去掉前後空白；Base64 改用 MIME 解碼器，中間夾到換行也能解。
         calendarId = calendarId.trim();
@@ -152,7 +152,7 @@ public class GoogleCalendarService {
             sb.append("服務項目：").append(items).append("\n");
         }
         if (appointment.isFirstVisitAssessment() && !appointment.isCheckinOrderConfirmed()) {
-            // 需求（2026-10-02）：初次預約沒有選項目，到店後開單報價
+            // 初次預約沒有選項目，到店後開單報價
             sb.append("服務項目：初次・現場評估（到店後開單報價）\n");
         } else {
             sb.append("金額：$").append(appointment.getTotalAmount()).append("\n");

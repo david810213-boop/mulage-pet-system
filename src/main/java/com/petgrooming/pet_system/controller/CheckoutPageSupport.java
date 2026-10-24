@@ -14,7 +14,7 @@ import java.util.List;
  */
 final class CheckoutPageSupport {
 
-    /** 需求 10：結帳畫面不提供「信用卡」選項（歷史資料仍保留該列舉值，僅畫面隱藏）。 */
+    /** 結帳畫面不提供「信用卡」選項（歷史資料仍保留該列舉值，僅畫面隱藏）。 */
     static final List<PaymentMethod> CHECKOUT_PAYMENT_METHODS = Arrays.stream(PaymentMethod.values())
             .filter(m -> m != PaymentMethod.CREDIT_CARD)
             .toList();
@@ -31,7 +31,7 @@ final class CheckoutPageSupport {
     }
 
     /**
-     * 需求（2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗還沒鎖定固定套餐
+     * 狗狗定價流程簡化——結帳完成後，如果這隻狗還沒鎖定固定套餐
      * （幼犬、或成犬還沒被判定定型），跳提醒請店員記得更新體重，因為體重是下次開單自動篩選菜單的依據。
      * 已鎖定的狗不需要提醒。結帳後導向的頁面都有放這個彈窗，讀 flash attribute 顯示。
      */

@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 員工手機版：毛孩、會員（需求，2026-09-24 第五批）。
+ * 員工手機版：毛孩、會員。
  *
  * 以查詢為主的頁面：毛孩檔案（美容紀錄、消費紀錄、即將到來的預約）、會員資料
  * （儲值金、名下毛孩、消費紀錄、店家備注）。現場最常改的三件事可以直接在手機上改：
@@ -54,7 +54,7 @@ public class MobileMemberController {
 
     private final UserService userService;
     private final PetService petService;
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
+    private final GroomingNotePhotoService groomingNotePhotoService;
     private final AppointmentQueryService appointmentQueryService;
     private final MemberConsumptionService memberConsumptionService;
     private final WalletService walletService;
@@ -121,7 +121,7 @@ public class MobileMemberController {
 
         List<PetGroomingNote> noteEntities = petService.getGroomingNotes(id)
                 .stream().limit(10).toList();
-        // 需求（2026-09-29）：每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
+        // 每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
         Map<Long, List<String>> photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(noteEntities);
         List<Map<String, Object>> notes = noteEntities.stream().<Map<String, Object>>map(n -> {
             Map<String, Object> m = noteRow(n);
@@ -159,7 +159,7 @@ public class MobileMemberController {
         String kw = q == null ? "" : q.trim().toLowerCase();
         String digits = kw.replaceAll("[^0-9]", "");
         List<User> all = userService.getAllCustomers();
-        // 需求（追加，2026-10-02）：也能用寵物名搜
+        // 也能用寵物名搜
         Map<String, String> petMatches = userService.petNamesMatching(kw);
         List<Map<String, Object>> rows = all.stream()
                 .filter(u -> kw.isEmpty()

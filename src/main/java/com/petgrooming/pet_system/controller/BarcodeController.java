@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 需求（追加，2026-10-02 店家確認 7）：條碼查詢、補產生條碼、列印條碼標籤。
+ * 條碼查詢、補產生條碼、列印條碼標籤。
  * 掃碼槍等同鍵盤輸入，各頁面的掃碼框（/js/barcode-scan.js）都打 lookup API 查商品。
  */
 @Controller

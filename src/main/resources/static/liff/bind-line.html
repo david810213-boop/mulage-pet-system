@@ -191,7 +191,7 @@
             body: JSON.stringify({ idToken: idToken, code: code }),
           });
 
-          // 需求（追加）：後端失敗時回傳的是純文字（不是 JSON），先讀成文字，
+          // 後端失敗時回傳的是純文字（不是 JSON），先讀成文字，
           // 能解析成 JSON 就當 JSON 用，不能解析就直接顯示原始文字——
           // 不要再吞掉真正的錯誤原因，永遠只顯示同一句備援文字。
           const rawText = await res.text();

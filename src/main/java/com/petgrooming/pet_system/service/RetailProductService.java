@@ -13,26 +13,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 需求 7-1：零售商品管理。
+ * 零售商品管理。
  */
 @Service
 @RequiredArgsConstructor
 public class RetailProductService {
 
     private final RetailProductRepository retailProductRepository;
-    private final BarcodeService barcodeService; // 需求（2026-10-02）：條碼
+    private final BarcodeService barcodeService; // 條碼
     private final EntityManager entityManager;
 
     public List<RetailProduct> listActive() {
         return retailProductRepository.findByIsDeletedFalseOrderByNameAsc();
     }
 
-    // 需求（追加）：成本回填清單，只列出 unitCost 還是 0 的上架商品
+    // 成本回填清單，只列出 unitCost 還是 0 的上架商品
     public List<RetailProduct> listPendingCostBackfill() {
         return retailProductRepository.findByIsDeletedFalseAndUnitCostOrderByNameAsc(0);
     }
 
-    // 需求（追加）：批次回填成本——一次送整頁的 id→成本 對照表，逐筆寫入。
+    // 批次回填成本——一次送整頁的 id→成本 對照表，逐筆寫入。
     // 跳過負數（防呆，理論上前端 input min="0" 已經擋掉，這裡後端再擋一次）
     // 跟金額沒填/沒改的（維持 0，不強迫店家一定要填滿整頁才能送出，可以分批補）。
     // 回傳實際更新的筆數，讓畫面能提示店家「這次補了幾筆」。
@@ -61,7 +61,7 @@ public class RetailProductService {
         return create(name, price, stockQuantity, description, unitCost, null);
     }
 
-    // 需求（2026-10-02 店家確認 7-2-C）：有原廠條碼就填，沒填由系統產生店內條碼
+    // 有原廠條碼就填，沒填由系統產生店內條碼
     @Transactional
     public RetailProduct create(String name, int price, int stockQuantity, String description, int unitCost,
             String barcode) {
@@ -91,7 +91,7 @@ public class RetailProductService {
         update(id, name, price, description, unitCost, getById(id).getBarcode());
     }
 
-    // 需求（2026-10-02）：可修改條碼（留空＝改回系統產生的店內條碼）
+    // 可修改條碼（留空＝改回系統產生的店內條碼）
     @Transactional
     public void update(Long id, String name, int price, String description, int unitCost, String barcode) {
         RetailProduct product = getById(id);
@@ -119,7 +119,7 @@ public class RetailProductService {
         retailProductRepository.save(product);
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點——輸入實際數量，回傳差額 ──
+    // ── 盤點——輸入實際數量，回傳差額 ──
     @Transactional
     public int stocktake(Long id, int actual) {
         if (actual < 0) throw new InventoryException("實際數量不可為負數");
@@ -154,7 +154,7 @@ public class RetailProductService {
     }
 
     // ── 結帳扣庫存 ──────────────────────────────────────────────────────
-    // 需求 7-1：結帳成功才真的扣庫存（避免開單到一半、還沒結帳就先扣掉，
+    // 結帳成功才真的扣庫存（避免開單到一半、還沒結帳就先扣掉，
     // 之後如果這筆訂單被取消或一直沒結帳，庫存會對不上）。
     @Transactional
     public void deductStock(Long id, int quantity) {

@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * 需求 7-1：零售商品（店家自訂的可販售商品，例如零食、玩具、清潔用品）。
+ * 零售商品（店家自訂的可販售商品，例如零食、玩具、清潔用品）。
  * 跟美容服務項目（GroomingItem）是兩套獨立體系：
  *   - GroomingItem：計積分的美容服務，員工績效依此結算
  *   - RetailProduct：純粹販售的商品，不計積分，結帳時直接扣庫存
@@ -29,8 +29,8 @@ public class RetailProduct {
     @Column(nullable = false)
     private int price;
 
-    // 需求 6：進貨成本單價（供財務報表計算毛利用；跟 price 賣價是不同概念）
-    // 原本需求 7-1 沒有要求記錄成本，這裡是財務報表需要才補上的欄位，預設 0
+    // 進貨成本單價（供財務報表計算毛利用；跟 price 賣價是不同概念）
+    // 進貨成本，財務報表估算零售成本用，預設 0
     // （代表還沒設定成本，財務報表上會顯示成本為 0，不影響其他既有功能運作）。
     @Column(name = "unit_cost", nullable = false, columnDefinition = "int default 0")
     @Builder.Default
@@ -44,7 +44,7 @@ public class RetailProduct {
     @Column(length = 300)
     private String description;
 
-    // 需求（追加，2026-10-02 店家確認 7）：條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
+    // 條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
     // 零售商品與店用洗劑之間也不能重複（BarcodeService 檢查）。
     @Column(length = 32, unique = true)
     private String barcode;

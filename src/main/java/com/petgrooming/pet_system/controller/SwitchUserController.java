@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 新需求：共用平板（例如店內 iPad）快速切換使用者。
+ * 共用平板（例如店內 iPad）快速切換使用者。
  *
  * 安全設計重點：
  * - 這條路徑本身要求「目前裝置已經是某個店家/員工帳號登入狀態」才能使用
@@ -80,7 +80,7 @@ public class SwitchUserController {
         }
 
         // 驗證通過：直接簽發目標帳號的 JWT，換掉目前的登入 Cookie
-        // 需求（追加，2026-09-17）：CSRF Token 防護——切換使用者也要重新產生
+        // CSRF Token 防護——切換使用者也要重新產生
         // csrfToken 並更新 XSRF-TOKEN Cookie，否則切換後的帳號在鎖定的高風險
         // 操作（密碼變更、帳號合併、手動儲值、刪除操作）上會因為 tokenCsrf
         // 對不上而被一律擋下，直到重新登出登入為止。順手改用跟登入流程一致的

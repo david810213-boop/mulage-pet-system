@@ -195,7 +195,7 @@ public class AdminMvcController {
     }
 
     // ── GET /admin/report/export.xlsx ───────────────────────────────────
-    // 需求 6：財務報表匯出 Excel（當日/當月彙總 + 成本毛利 + 逐筆明細，三個工作表）
+    // 財務報表匯出 Excel（當日/當月彙總 + 成本毛利 + 逐筆明細，三個工作表）
     @GetMapping("/report/export.xlsx")
     public void exportReport(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!isAdmin(request)) {

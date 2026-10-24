@@ -61,7 +61,7 @@ public class LineAuthController {
     private final OperationLogService operationLogService;
     private final LineBindService lineBindService; // 店員綁定 LINE 用
     private final MemberClaimService memberClaimService;
-    private final ClaimAttemptLimiter claimAttemptLimiter; // 需求（追加，2026-09-30）：查詢／認領次數限制
+    private final ClaimAttemptLimiter claimAttemptLimiter; // 查詢／認領次數限制
 
     // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
     @Value("${COOKIE_SECURE:false}")
@@ -150,7 +150,7 @@ public class LineAuthController {
     }
 
     // ── POST /api/line/member-lookup ────────────────────────────────────
-    // 需求（追加，2026-09-30）：新客報到第一步——輸入電話，判斷是既有會員（走認領）
+    // 新客報到第一步——輸入電話，判斷是既有會員（走認領）
     // 還是新客（走填資料）。用 POST 不用 GET，避免電話出現在網址／存取紀錄裡。
     // 每個 LINE 帳號 10 分鐘最多 5 次（跟認領共用），避免有人拿來一直換號碼試。
     @PostMapping("/member-lookup")
@@ -170,12 +170,12 @@ public class LineAuthController {
     }
 
     // ── POST /api/line/claim-by-phone ───────────────────────────────────
-    // 需求（追加）：老客戶用 LINE 登入後（系統會自動幫他建一筆空白新帳號，這是
+    // 老客戶用 LINE 登入後（系統會自動幫他建一筆空白新帳號，這是
     // 既有機制，這裡不動），如果他填了電話號碼，比對到店家批次匯入的舊資料，
     // 就把舊資料（姓名、寵物）整批過戶到目前這筆帳號上，並清掉那筆匯入用的
     // 暫時帳號，避免一個人對應兩筆重複的會員資料。
     // 需要先登入（LoginInterceptor 驗證 JWT），從 request 屬性拿目前登入的 username。
-    // 需求（追加，2026-09-30）：多一個 verification（毛孩名字或姓名），規則見
+    // 多一個 verification（毛孩名字或姓名），規則見
     // MemberImportService#claimByPhone；確認失敗也算一次嘗試，跟查詢共用次數限制。
     @PostMapping("/claim-by-phone")
     public ResponseEntity<?> claimByPhone(@Valid @RequestBody ClaimByPhoneRequest body, @CurrentUser String username) {

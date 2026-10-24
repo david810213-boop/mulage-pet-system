@@ -19,7 +19,7 @@ public class PetResponse {
     private String petTypeLabel;
     private String breed;
     private Double weight;
-    private Double age; // 需求（追加）：允許小數（例如 5.5 歲）
+    private Double age; // 允許小數（例如 5.5 歲）
     private String ownerName;
 
     // 新增欄位
@@ -27,23 +27,23 @@ public class PetResponse {
     private String sizeCategoryLabel;           // 體型中文顯示
     private CoatType coatType;                  // 毛長
     private String coatTypeLabel;                // 毛長中文
-    // 需求（追加）：菜單簡化——貓咪毛髮分類（單層毛/雙層毛/長毛），依品種自動判斷，
+    // 菜單簡化——貓咪毛髮分類（單層毛/雙層毛/長毛），依品種自動判斷，
     // LIFF 預約頁靠這個欄位篩選對應的套餐選單。狗/特殊貓種是 null。
     private CatCoatCategory catCoatCategory;
     private String catCoatCategoryLabel;
     private Boolean hasSeparationAnxiety;       // 分離焦慮
     private String ownerPhone;                  // 家長手機
     private String notes;                       // 注意事項
-    private String photoUrl;                    // 需求 17：寵物照片（大頭照）
+    private String photoUrl;                    // 寵物照片（大頭照）
 
     // 系統根據體型自動推薦的服務 itemCode（預約時直接帶入）
     private List<String> recommendedItemCodes;
 
-    // 需求（追加）：這隻寵物是不是既有客戶（有沒有任何一筆已結帳消費紀錄），
+    // 這隻寵物是不是既有客戶（有沒有任何一筆已結帳消費紀錄），
     // 供預約表單 JS 判斷「僅限既有客戶」的項目要不要顯示在選單裡。
     private Boolean isExistingCustomer;
 
-    // 需求（追加，2026-08-24）：狗狗定價流程簡化——鎖定的固定套餐。
+    // 狗狗定價流程簡化——鎖定的固定套餐。
     // lockedGroomingItemId 為 null 代表還沒鎖定（LIFF/店員開單依體重自動篩選）；
     // 有值的話，lockedItemName/lockedItemPrice 是為了讓前端不用再多打一次 API
     // 查這個項目的名稱/價格，直接從這裡拿（PetService 組裝時一併查好塞進來）。
@@ -51,7 +51,7 @@ public class PetResponse {
     private String lockedItemName;
     private Double lockedItemPrice;
 
-    // 需求（追加，2026-08-24 修正）：需求19定型化契約蒐集的寵物資料，原本這個
+    // 定型化契約蒐集的寵物資料，原本這個
     // DTO 完全沒有暴露這幾個欄位，導致 LIFF 編輯毛孩再次打開編輯畫面時，這些
     // 欄位永遠看起來是空的（不是前端沒填，是後端 API 本來就沒有把資料吐出來）。
     private String gender;
@@ -96,7 +96,7 @@ public class PetResponse {
             res.setLockedItemName(lockedItem.getName());
             res.setLockedItemPrice(lockedItem.getPrice());
         }
-        // 需求（追加，2026-08-24 修正）：補上定型化契約蒐集的欄位
+        // 補上定型化契約蒐集的欄位
         res.setGender(pet.getGender());
         res.setIsNeutered(pet.getIsNeutered());
         res.setHasChip(pet.isHasChip());

@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 需求（追加，2026-08-24）：後台「完整編輯寵物資料」頁面。原本「會員信息」
+ * 後台「完整編輯寵物資料」頁面。原本「會員信息」
  * 寵物分頁裡的快速編輯表單只有名字/品種/體重/年齡，跟 LIFF「新增/編輯毛孩」
  * 蒐集的完整資料（性別、絕育、晶片、個性、病史、指定獸醫院）對不上，店家在
  * 後台看不到、也改不了這些欄位。這裡新增一個獨立頁面，內容跟 LIFF 那份
@@ -49,7 +49,7 @@ public class PetEditMvcController {
         model.addAttribute("healthOptions", List.of(
                 "心臟病", "氣喘", "氣管塌陷", "白內障", "癲癇", "心絲蟲", "艾利希體", "腹膜炎",
                 "腹積水", "手術外傷未癒合", "髖關節問題", "骨折", "腸炎", "血便", "血尿", "懷孕", "傳染性疾病"));
-        // 需求（2026-08-24 修正）：原本畫面上用 Thymeleaf 的
+        // 原本畫面上用 Thymeleaf 的
         // #strings.arraySplit(...).?[...] 這種選擇運算式去判斷「這個標籤有沒有
         // 被勾選過」，執行時很容易噴例外（例如 personalityTags 是空字串時的邊界
         // 情況處理不夠穩健），一旦噴例外，Thymeleaf 串流輸出模式下畫面會從那個
@@ -84,7 +84,7 @@ public class PetEditMvcController {
         return "redirect:" + (returnTo != null && !returnTo.isBlank() ? returnTo : "/admin/pets/" + id + "/edit");
     }
 
-    // 需求（追加，2026-08-24 修正）：把逗號分隔字串轉成 List<String>，null/空字串
+    // 把逗號分隔字串轉成 List<String>，null/空字串
     // 都回傳空 List（不是 null），避免 Thymeleaf 樣板裡還要另外判斷 null。
     private List<String> splitToList(String commaSeparated) {
         if (commaSeparated == null || commaSeparated.isBlank()) {

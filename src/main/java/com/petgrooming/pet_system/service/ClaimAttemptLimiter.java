@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 需求（追加，2026-09-30）：新客報到「電話查詢」與「認領確認」的次數限制。
+ * 新客報到「電話查詢」與「認領確認」的次數限制。
  *
  * 每個 LINE 帳號（username）在 10 分鐘內最多 5 次，查詢與認領共用額度；
  * 認領成功就清掉紀錄。存在記憶體裡，重新部署會歸零——目前 Railway 只跑一個

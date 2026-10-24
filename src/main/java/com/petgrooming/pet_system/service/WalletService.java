@@ -51,7 +51,7 @@ public class WalletService {
     @Transactional
     public WalletResponse deposit(String username, DepositRequest req) {
         int amount = req.getAmount() != null ? req.getAmount() : 0;
-        // 需求（追加，2026-10-02 店家確認）：不開放單筆 5,000 以下的儲值
+        // 不開放單筆 5,000 以下的儲值
         if (amount < MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
@@ -87,7 +87,7 @@ public class WalletService {
         deduct(username, amount, appointmentId, "預約 #" + appointmentId + " 消費扣款");
     }
 
-    // 需求：現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
+    // 現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
     // （例如「現場單 #5 消費扣款」），避免顯示成看起來像 bug 的「預約 #null」。
     @Transactional
     public void deduct(String username, int amount, Long appointmentId, String note) {
@@ -137,6 +137,7 @@ public class WalletService {
      * 鎖定讀取永遠讀最新已提交資料（含本交易自己的寫入），也不會拿到快取中的舊值。
      * 不可改用 refresh：實體已持有鎖時 Hibernate 會改發一般查詢，在 MySQL 可重複讀隔離層級下
      * 只讀到交易開始時的快照；也不可只用鎖定查詢：實體已在快取中時 Hibernate 會回傳舊值。
+     * 時段名額、零售庫存同一套做法，見 docs/adr/0002-pessimistic-locking.md。
      */
     private Wallet lockWallet(String username) {
         Wallet cached = getOrCreateWallet(username);

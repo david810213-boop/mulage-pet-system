@@ -47,7 +47,7 @@
 
     <div class="empty" th:if="${mainItems.isEmpty()}">沒有符合這隻毛孩的服務項目，請到網頁版確認體重、毛長設定。</div>
 
-    <!-- 需求（2026-10-02）：比照現場開單，每個勾選的項目都能選經手人（預設稍後補填） -->
+    <!-- 比照現場開單，每個勾選的項目都能選經手人（預設稍後補填） -->
     <div class="pick-wrap" th:each="item : ${mainItems}">
     <label class="pick">
       <input type="checkbox" name="itemCodes" th:value="${item.itemCode}"

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * 員工手機版：帳號設定（需求，2026-09-24 第九批）。
+ * 員工手機版：帳號設定。
  *
  * 修改密碼、設定 PIN 碼、綁定 LINE（收新預約／低庫存通知用），跟網頁版
  * AccountMvcController 呼叫同樣的 service。修改密碼跟網頁版一樣要求 CSRF token

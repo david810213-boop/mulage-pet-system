@@ -87,7 +87,7 @@
           th:text="${successMsg}"
         ></div>
 
-        <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後的體重更新提醒彈窗 -->
+        <!-- 狗狗定價流程簡化——結帳完成後的體重更新提醒彈窗 -->
         <div id="weightReminderModal" th:if="${weightReminderPetId != null}"
              style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
           <div style="background:white; border-radius:12px; padding:24px; max-width:380px; width:90%;">
@@ -572,7 +572,7 @@
                       th:text="${#temporals.format(a.confirmedTime, 'MM/dd HH:mm')}"
                     ></span>
                   </div>
-                  <!-- 需求 7：會員可見備注，所有角色都能看到自己收到的備注 -->
+                  <!-- 會員可見備注，所有角色都能看到自己收到的備注 -->
                   <div
                     th:if="${a.memberNote != null and !a.memberNote.isEmpty()}"
                     style="
@@ -590,7 +590,7 @@
                     th:if="${!a.cancelled}"
                     style="display: flex; flex-direction: column; gap: 4px"
                   >
-                    <!-- 需求 3：店家確認預約 -->
+                    <!-- 店家確認預約 -->
                     <form
                       th:if="${user.staffOrAdmin and a.status.name() == 'PENDING_CONFIRM'}"
                       th:action="@{/appointments/{id}/confirm(id=${a.id})}"
@@ -605,7 +605,7 @@
                         ✓ 確認預約
                       </button>
                     </form>
-                    <!-- 需求（追加，2026-08-27）：移除「編輯備注」——會員信息頁、服務結束核對流程
+                    <!-- 移除「編輯備注」——會員信息頁、服務結束核對流程
                          都已經能編輯內部備注/會員可見備注，這裡重複多餘，直接拿掉。 -->
                     <!-- 現場開單（依預約編號）：已確認但尚未開單 -->
                     <a
@@ -666,7 +666,7 @@
                       style="font-size: 11px; color: var(--brown-light)"
                       >請先結束服務才能核對</span
                     >
-                    <!-- 需求（追加，2026-08-27）：結帳按鈕改成跟現場開單一致的按鈕樣式（原本是純文字底線連結） -->
+                    <!-- 結帳按鈕改成跟現場開單一致的按鈕樣式（原本是純文字底線連結） -->
                     <a
                       th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
                       th:href="@{/payments/checkout/{id}(id=${a.id})}"
@@ -737,7 +737,7 @@
                         💸 退款
                       </button>
                     </form>
-                    <!-- 需求 10：選了匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
+                    <!-- 選了匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
                     <div
                       th:if="${user.staffOrAdmin and a.pendingWireTransfer}"
                       style="

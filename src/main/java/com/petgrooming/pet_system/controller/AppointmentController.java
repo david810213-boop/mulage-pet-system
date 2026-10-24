@@ -31,7 +31,7 @@ public class AppointmentController {
     private final AppointmentQueryService appointmentQueryService;
     private final AppointmentDetailService appointmentDetailService;
     private final OperationLogService operationLogService;
-    private final ClosedDateService closedDateService; // 需求 16
+    private final ClosedDateService closedDateService;
 
     // ── POST /api/appointments ─────────────────────────────────────────────
     // 建立預約（對應原本 bookAppointment），身分取自 JWT，店家網頁與顧客 LINE 共用
@@ -76,7 +76,7 @@ public class AppointmentController {
 
     // ── GET /api/appointments/slots?date=2025-06-01[&petType=DOG] ──────────
     // 查詢某天可預約時段（對應原本 generateDailySlots + getAvailableSlots）。
-    // 需求（追加，2026-09-08）：帶入 petType 時，該時段限定的物種跟這隻寵物不符
+    // 帶入 petType 時，該時段限定的物種跟這隻寵物不符
     // 也會反映在 available 上；petType 格式不合法（不是 DOG/CAT）就當作沒帶，
     // 不讓前端傳壞值時整支 API 500。
     @GetMapping("/slots")
@@ -91,7 +91,7 @@ public class AppointmentController {
                 // 不合法的值當作沒帶，不篩選物種
             }
         }
-        // 需求（追加，2026-10-02）：過去的日期一律沒有可預約時段（預約頁專用；
+        // 過去的日期一律沒有可預約時段（預約頁專用；
         // 員工時段管理走 MobileScheduleController，不受影響）
         if (date.isBefore(LocalDate.now())) {
             return ResponseEntity.ok(List.of());
@@ -100,7 +100,7 @@ public class AppointmentController {
     }
 
     // ── GET /api/appointments/first-visit?petId= ─────────────────────────
-    // 需求（追加，2026-10-02）：LIFF 預約頁選好毛孩後查詢是不是初次預約
+    // LIFF 預約頁選好毛孩後查詢是不是初次預約
     // （初次只選時段，不選服務項目）。
     @GetMapping("/first-visit")
     public ResponseEntity<?> firstVisit(@RequestParam Long petId, @CurrentUser String username) {
@@ -111,7 +111,7 @@ public class AppointmentController {
     }
 
     // ── GET /api/appointments/closed-dates ───────────────────────────────
-    // 需求 16：查詢今天以後的公休日清單，供 LIFF 預約頁在選日期後即時提示「公休」，
+    // 查詢今天以後的公休日清單，供 LIFF 預約頁在選日期後即時提示「公休」，
     // 不用等 /slots 回傳空清單才知道，UX 更明確。
     @GetMapping("/closed-dates")
     public ResponseEntity<List<String>> getClosedDates() {
@@ -122,7 +122,7 @@ public class AppointmentController {
     }
 
     // ── GET /api/appointments/{id}/contract ────────────────────────────────
-    // 需求（追加，2026-10-02）：契約副本——「雙方各執一份契約正本」，顧客在 LIFF「我的預約」
+    // 契約副本——「雙方各執一份契約正本」，顧客在 LIFF「我的預約」
     // 可以隨時查看這筆預約簽署的契約紀錄（簽名、時間、版本）；店員也可以查。
     @GetMapping("/{id}/contract")
     public ResponseEntity<?> getContract(@PathVariable Long id, @CurrentUser String username) {

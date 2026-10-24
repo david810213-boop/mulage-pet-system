@@ -27,7 +27,7 @@ public class PetController {
 
     private final PetService petService;
     private final OperationLogService operationLogService;
-    private final PetDiscountStatusService petDiscountStatusService; // 需求（追加，2026-09-04）：寵物折扣狀態查詢
+    private final PetDiscountStatusService petDiscountStatusService; // 寵物折扣狀態查詢
 
     // ── POST /api/pets ─────────────────────────────────────────────────────
     // 新增寵物，以 JWT 解析出的 username 識別飼主
@@ -43,7 +43,7 @@ public class PetController {
     }
 
     // ── PUT /api/pets/{petId} ────────────────────────────────────────────────
-    // 需求（追加）：顧客在 LIFF「我的寵物」編輯自己的寵物資料。
+    // 顧客在 LIFF「我的寵物」編輯自己的寵物資料。
     // 物種（petType）不開放修改，PetRequest 裡即使傳了也會被忽略——
     // 實際更新邏輯（PetService.updatePet）只採用 name/breed/weight/age 等欄位，
     // 物種沿用資料庫既有值。
@@ -60,7 +60,7 @@ public class PetController {
     }
 
     // ── DELETE /api/pets/{petId} ──────────────────────────────────────────
-    // 需求（追加，2026-08-26）：顧客自己在 LIFF「我的毛孩」刪除自己的寵物。
+    // 顧客自己在 LIFF「我的毛孩」刪除自己的寵物。
     // 有預約或消費紀錄的話會被 PetService.deletePet() 擋下（見該方法說明）。
     @DeleteMapping("/{petId}")
     public ResponseEntity<?> deletePet(@PathVariable Long petId, @CurrentUser String username) {
@@ -72,7 +72,7 @@ public class PetController {
     }
 
     // ── GET /api/pets/cat-breeds ────────────────────────────────────────────
-    // 需求（追加）：LIFF「新增毛孩」頁面貓咪品種下拉選單資料來源，不需要特別檢查
+    // LIFF「新增毛孩」頁面貓咪品種下拉選單資料來源，不需要特別檢查
     // 身分是誰（只是回傳一份對照表清單，不含任何使用者個資），有登入即可呼叫。
     @GetMapping("/cat-breeds")
     public ResponseEntity<?> listCatBreeds() {
@@ -93,7 +93,7 @@ public class PetController {
     }
 
     // ── POST /api/pets/{id}/photo ────────────────────────────────────────
-    // 需求 17：LIFF「我的毛孩」上傳/更換寵物照片。只能傳自己名下的寵物。
+    // LIFF「我的毛孩」上傳/更換寵物照片。只能傳自己名下的寵物。
     @PostMapping("/{id}/photo")
     public ResponseEntity<?> uploadPhoto(
             @PathVariable Long id,
@@ -110,7 +110,7 @@ public class PetController {
     }
 
     // ── GET /api/pets/{petId}/grooming-history ────────────────────────────
-    // 需求（2026-09-29）：LIFF「我的毛孩」查看每次美容的狀況備註與照片
+    // LIFF「我的毛孩」查看每次美容的狀況備註與照片
     @GetMapping("/{petId}/grooming-history")
     public ResponseEntity<?> getGroomingHistory(@PathVariable Long petId, @CurrentUser String username) {
         petService.assertOwnership(petId, username);
@@ -122,7 +122,7 @@ public class PetController {
     @GetMapping("/{petId}/discount-status")
     public ResponseEntity<?> getDiscountStatus(
             @PathVariable Long petId,
-            // 需求（追加，2026-09-06）：距上次洗澡幾天／是否符合定期養護禮遇資格，
+            // 距上次洗澡幾天／是否符合定期養護禮遇資格，
             // 應該用「顧客實際選的預約日期」去算，不是永遠用「今天」——
             // 例如顧客選好幾個月後的日期，等到那天早就超過90天，不該還顯示
             // 符合資格。前端在選好日期後會帶這個參數重新查一次；還沒選日期時

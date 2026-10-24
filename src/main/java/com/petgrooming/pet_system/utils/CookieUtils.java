@@ -37,7 +37,7 @@ public final class CookieUtils {
     }
 
     /**
-     * 需求（追加，2026-09-17）：CSRF Token 專用 Cookie，刻意不帶 HttpOnly——
+     * CSRF Token 專用 Cookie，刻意不帶 HttpOnly——
      * 前端 JS 需要讀出這個值，才能在高風險操作（密碼變更、建立員工帳號、
      * 帳號合併、手動儲值、刪除操作）送出時一併帶上，讓後端 CsrfInterceptor
      * 核對跟 JWT 裡內嵌的 csrf claim 是否一致。跨站的攻擊頁面讀不到這個

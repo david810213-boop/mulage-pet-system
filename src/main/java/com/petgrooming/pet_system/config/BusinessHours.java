@@ -3,7 +3,7 @@ package com.petgrooming.pet_system.config;
 import java.time.LocalTime;
 
 /**
- * 需求（追加，2026-08-27）：時段容量範本功能新增。
+ * 時段容量範本功能新增。
  *
  * 原本營業時間／時段格線常數（OPENING/CLOSING/時段長度）寫死在 AppointmentService 裡，
  * 但新增的「預設時段容量範本」（DefaultSlotCapacityTemplateService）也需要同一份格線，
@@ -26,7 +26,7 @@ public final class BusinessHours {
 
     /**
      * 每個時段格線的長度（分鐘）。
-     * 需求（2026-08-27）：從原本固定 2 小時（120分鐘）改成 30 分鐘一格，
+     * 從原本固定 2 小時（120分鐘）改成 30 分鐘一格，
      * 讓店家可以用「預設時段容量範本」對每個 30 分鐘區間分別設定可接組數。
      */
     public static final int SLOT_MINUTES = 30;

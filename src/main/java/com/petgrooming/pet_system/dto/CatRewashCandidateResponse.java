@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 需求 8-2：貓咪回洗優惠名單，供店家篩選＋手動聯繫（匯出 Excel/CSV）用。
+ * 貓咪回洗優惠名單，供店家篩選＋手動聯繫（匯出 Excel/CSV）用。
  */
 @Data
 @AllArgsConstructor

@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 員工手機版：現場開單（需求，2026-09-24 第四批）。
+ * 員工手機版：現場開單。
  *
  * 流程跟網頁版現場開單完全相同：開單 → 結束服務 → 核對（家長簽名）→ 結帳；
  * 純零售單（沒有美容服務項目）開單後直接結帳。後端全部呼叫既有的
@@ -155,7 +155,7 @@ public class MobileWalkInController {
             @RequestParam(required = false) String note,
             @RequestParam(required = false) List<String> itemCodes,
             @RequestParam(required = false) List<String> operatorStaffIds,
-            @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）：第二經手人
+            @RequestParam(required = false) List<String> operatorStaffIds2, // 第二經手人
             @RequestParam(required = false) List<String> retailProductIds,
             @RequestParam(required = false) List<String> retailQuantities,
             @RequestParam(required = false) String backQuery,

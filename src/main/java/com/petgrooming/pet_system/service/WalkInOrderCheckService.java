@@ -31,9 +31,9 @@ public class WalkInOrderCheckService {
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
     private final LineMessagingService lineMessagingService;
-    private final PetRepository petRepository; // 需求（追加）：查現場單寵物物種
-    private final PetGroomingNoteRepository petGroomingNoteRepository; // 需求（2026-09-29）：現場單核對也寫入美容紀錄
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：核對照片
+    private final PetRepository petRepository; // 查現場單寵物物種
+    private final PetGroomingNoteRepository petGroomingNoteRepository; // 現場單核對也寫入美容紀錄
+    private final GroomingNotePhotoService groomingNotePhotoService; // 核對照片
 
     // ── 結束服務：服務項目全部做完（比照預約單邏輯）─────────────────────
     // 狀態不影響 paid，只記錄「誰結束的」+ 完成積分，並強制之後的核對必須先做這一步。
@@ -69,7 +69,7 @@ public class WalkInOrderCheckService {
                 "結束服務：現場單 #" + order.getId());
 
         // 若這張單有綁定會員，通知家長可以來接寵物了
-        // 需求（追加，2026-08-30）：文案改版（店家指定新內容），跟 AppointmentService
+        // 文案改版（店家指定新內容），跟 AppointmentService
         // 同一份模板同步更新，避免只改一處造成兩個通知來源文字不一致。
         // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免這幾個生僻
         // Unicode 符號在存檔/複製貼上過程中位元組被弄壞，導致編譯器解析失敗
@@ -96,7 +96,7 @@ public class WalkInOrderCheckService {
         return finalCheck(orderId, note, signatureData, username, null, null);
     }
 
-    // 需求（2026-09-29）：核對時可附上美容狀況照片（最多 5 張）。會員單會把備註＋照片
+    // 核對時可附上美容狀況照片（最多 5 張）。會員單會把備註＋照片
     // 寫進毛孩的美容紀錄（跟預約單一樣），顧客在 LIFF「我的毛孩」看得到；
     // 非會員單沒有毛孩檔案，不能附照片。
     @Transactional
@@ -142,7 +142,7 @@ public class WalkInOrderCheckService {
         order.setFinalCheckAt(LocalDateTime.now());
         WalkInOrder saved = orderRepository.save(order);
 
-        // 需求（2026-09-29）：會員單的核對備註＋照片也寫進毛孩美容紀錄
+        // 會員單的核對備註＋照片也寫進毛孩美容紀錄
         if (pet != null) {
             PetGroomingNote historyNote = petGroomingNoteRepository.save(
                     PetGroomingNote.builder()

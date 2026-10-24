@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 需求 16：公休日設定。
+ * 公休日設定。
  * 兩套機制並存，只要符合任一條件就是公休日：
  *   1. ClosedDate：單一天公休（國定假日、臨時店休）
  *   2. WeeklyClosureSetting：每週固定公休星期（例如每週四、五）

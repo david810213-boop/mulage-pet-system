@@ -15,7 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 員工手機版自動導向（需求，2026-09-24）。
+ * 員工手機版自動導向。
  *
  * 規則：
  * 1. 只處理 GET、非 /api 的頁面請求，且只對 ADMIN / STAFF 生效（顧客不受影響）

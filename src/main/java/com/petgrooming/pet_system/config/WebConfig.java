@@ -26,9 +26,9 @@ import java.util.List;
  * order(1) LoginInterceptor → 確認是否登入
  * order(2) RoleInterceptor → 確認角色是否有權限（讀 @RequireRole）
  * order(3) CsrfInterceptor → 確認 CSRF token 是否正確（讀 @RequireCsrf，
- *          只標在高風險端點上，需求見 2026-09-17 追加說明）
+ *          只標在高風險端點上）
  * order(4) MobileRedirectInterceptor → 員工用手機開啟有手機版的頁面時，
- *          自動導向 /m 底下的對應頁面（需求，2026-09-24）
+ *          自動導向 /m 底下的對應頁面
  */
 @Configuration
 @RequiredArgsConstructor
@@ -59,7 +59,7 @@ public class WebConfig implements WebMvcConfigurer {
                 return bean;
         }
 
-        // 需求（2026-09-24）：員工手機版 PWA 的 service worker 檔案放在 /pwa/sw.js，
+        // 員工手機版 PWA 的 service worker 檔案放在 /pwa/sw.js，
         // 預設只能控制 /pwa/ 底下的頁面；加上這個 header，允許它控制 /m/ 底下的手機版頁面。
         @Bean
         public FilterRegistrationBean<Filter> serviceWorkerScopeFilter() {

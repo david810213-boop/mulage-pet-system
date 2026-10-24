@@ -19,17 +19,17 @@ public class WalkInOrderResponse {
     private String memberName;
     private String petName;
     private int totalAmount;
-    private Integer chargedAmount; // 需求 5：實際扣款金額（打折後），null 代表跟 totalAmount 相同或尚未結帳
+    private Integer chargedAmount; // 實際扣款金額（打折後），null 代表跟 totalAmount 相同或尚未結帳
     private String createdBy;
     private String note;
     private LocalDateTime createdAt;
     private boolean paid;
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
-    private boolean pendingWireTransfer; // 需求 15 修正：已選匯款但店家尚未確認收款（比照需求10 Appointment 的待對帳機制）
+    private boolean pendingWireTransfer; // 已選匯款但店家尚未確認收款（比照預約的待對帳機制）
     private boolean serviceEndedDone;
     private boolean finalCheckDone;
-    // 需求 7-1 修正：這張單是否含有美容服務項目——true 才需要走「結束服務→核對」流程，
+    // 這張單是否含有美容服務項目——true 才需要走「結束服務→核對」流程，
     // 純零售商品訂單（false）可以直接結帳。
     private boolean requiresServiceFlow;
     private List<ItemLine> items;
@@ -44,14 +44,14 @@ public class WalkInOrderResponse {
         private Long operatorStaffId;
         private String operator;        // 經手人姓名（顯示用）
         private boolean operatorFilled;
-        private boolean discountEligible; // 需求 5：是否可享會員儲值金折扣
-        // 需求 8 修正：回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
+        private boolean discountEligible; // 是否可享會員儲值金折扣
+        // 回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
         private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（僅限有綁定會員、且該會員的貓距上次洗澡未滿90天）
-        private boolean firstVisitEligible; // 需求（追加）：這個項目是否符合狗狗首次體驗優惠資格
+        private boolean firstVisitEligible; // 這個項目是否符合狗狗首次體驗優惠資格
         private DiscountType appliedDiscountType; // 已結帳才有值；未結帳為 null
-        private Long retailProductId; // 需求 7-1：非 null 代表這一列是零售商品加購
+        private Long retailProductId; // 非 null 代表這一列是零售商品加購
         private boolean retailItem;   // 方便前端判斷是不是零售商品（不用另外判斷 groomingItemId == null 這種間接方式）
-        // 需求（追加，2026-08-24 修正）：這個項目本身的體重級距（SMALL~EXTRA_LARGE/null）。
+        // 這個項目本身的體重級距（SMALL~EXTRA_LARGE/null）。
         // 修正前，結帳頁的「鎖定為固定套餐」按鈕是拿「新增服務項目」下拉選單那份
         // 已經依目前體重篩過的清單去反查這張單裡的項目，如果狗的體重資料跟這張單
         // 當初選的體重級距對不上（例如體重還沒更新），會篩選失敗、鎖定按鈕誤判成
@@ -69,7 +69,7 @@ public class WalkInOrderResponse {
             if (oi.getOperatorStaff() != null) {
                 l.setOperatorStaffId(oi.getOperatorStaff().getId());
                 l.setOperator(oi.getOperatorStaff().getName()
-                        + (oi.getOperatorStaff2() != null ? "、" + oi.getOperatorStaff2().getName() : "")); // 需求（2026-10-02）：雙人經手
+                        + (oi.getOperatorStaff2() != null ? "、" + oi.getOperatorStaff2().getName() : "")); // 雙人經手
             }
             l.setOperatorFilled(oi.isOperatorFilled());
             l.setDiscountEligible(oi.isDiscountEligible());

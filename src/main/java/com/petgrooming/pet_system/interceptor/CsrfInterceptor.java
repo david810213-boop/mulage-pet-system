@@ -10,7 +10,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 需求（追加，2026-09-17）：CSRF Token 防護攔截器。
+ * CSRF Token 防護攔截器。
  *
  * 運作方式：
  * 1. 只處理有 @RequireCsrf 的方法（見該注解說明，只標在高風險端點上）

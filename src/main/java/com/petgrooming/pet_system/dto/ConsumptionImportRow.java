@@ -3,7 +3,7 @@ package com.petgrooming.pet_system.dto;
 import lombok.Data;
 
 /**
- * 需求（追加）：既有消費紀錄批次匯入——CSV 一列代表一筆歷史消費。
+ * 既有消費紀錄批次匯入——CSV 一列代表一筆歷史消費。
  */
 @Data
 public class ConsumptionImportRow {

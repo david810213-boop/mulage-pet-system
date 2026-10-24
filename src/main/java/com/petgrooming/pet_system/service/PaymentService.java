@@ -47,7 +47,7 @@ public class PaymentService {
     private final PerformanceRecordRepository performanceRecordRepository;
     private final GroomingItemRepository groomingItemRepository;
     private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
-    private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品，結帳時扣庫存
+    private final RetailProductService retailProductService; // 預約結帳頁加購零售商品，結帳時扣庫存
 
     // 儲值金餘額低於此金額時，於後台顯示提醒店家「該通知會員儲值」的警示門檻
     public static final int WALLET_LOW_BALANCE_THRESHOLD = 2000;
@@ -308,7 +308,7 @@ public class PaymentService {
                 .stream().map(TransactionResponse::from).toList();
     }
 
-    // ── 需求（2026-09-24）：員工手機版結帳頁的金額預覽 ─────────────────────
+    // ── 員工手機版結帳頁的金額預覽 ─────────────────────
     // 直接呼叫 checkout() 實際扣款用的同兩支計算方法，確保畫面上的預覽金額
     // 跟實際結帳金額一定一致，不另外在 controller 重算一份。純讀取，不寫入資料。
 
@@ -355,7 +355,7 @@ public class PaymentService {
                 .toList();
     }
 
-    /** 儲值金付款（需求 5、8-1）：逐項目在服務促銷與會員折扣之間擇優，不疊加。 */
+    /** 儲值金付款：逐項目在服務促銷與會員折扣之間擇優，不疊加。 */
     private int calculateWalletAmountPerItem(Appointment appointment, double memberDiscountRate) {
         EligibleOffers offers = discountCalculator.eligibleOffers(appointment);
         double total = priceLines(appointment).stream()
@@ -365,7 +365,7 @@ public class PaymentService {
         return (int) Math.round(total);
     }
 
-    /** 非儲值金付款（需求 8-1）：只套用服務促銷；沒有任何促銷資格時就是預約金額。 */
+    /** 非儲值金付款：只套用服務促銷；沒有任何促銷資格時就是預約金額。 */
     private int calculateAmountWithRewashDiscount(Appointment appointment) {
         EligibleOffers offers = discountCalculator.eligibleOffers(appointment);
         if (offers.isEmpty()) {

@@ -48,11 +48,11 @@ public class AppointmentQueryService {
     private final UserRepository userRepository;
     private final PetRepository petRepository;
     private final GroomingItemRepository groomingItemRepository; // 服務項目價格
-    private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
-    private final ClosedDateService closedDateService; // 需求 16：公休日設定
+    private final SlotCapacityService slotCapacityService; // 時段名額控管
+    private final ClosedDateService closedDateService; // 公休日設定
     private final AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final CompanySignatureRepository companySignatureRepository; // 需求（2026-10-02）：契約副本
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
+    private final CompanySignatureRepository companySignatureRepository; // 契約副本
 
     // 營業時間／時段格線（共用 BusinessHours，跟預設時段容量範本同一份）
     private static final LocalTime OPENING = BusinessHours.OPENING;
@@ -69,7 +69,7 @@ public class AppointmentQueryService {
     // ── 查詢所有預約（STAFF/ADMIN）────────────────────────────────────────
     public List<AppointmentResponse> getAllAppointments() {
         List<Appointment> appointments = appointmentRepository.findAllWithUserAndItems();
-        // 需求（追加，2026-08-26 修正）：批次撈出所有這些預約核對後的實際項目，
+        // 批次撈出所有這些預約核對後的實際項目，
         // 一次查完分組好，不要在迴圈裡一筆一筆查（避免 N+1）。
         Map<Long, List<AppointmentItem>> checkinItemsByAppt =
                 appointmentItemRepository.findByAppointmentIdIn(
@@ -87,7 +87,7 @@ public class AppointmentQueryService {
                 .toList();
     }
 
-    // 需求（追加，2026-08-26 修正）：核對過（有 AppointmentItem 紀錄）就用核對
+    // 核對過（有 AppointmentItem 紀錄）就用核對
     // 後的實際項目名稱（只取有計價的主項目，$0 的副組成拆分明細不放進列表摘要，
     // 那些本來就是給待補經手人矩陣拆積分用的，不是給顧客/店員看「選了什麼」的）；
     // 還沒核對過（checkinItems 是 null 或空）就照舊用 selectedItems 的名稱。
@@ -100,14 +100,14 @@ public class AppointmentQueryService {
                     .toList();
         }
         if (a.isFirstVisitAssessment() && (a.getSelectedItems() == null || a.getSelectedItems().isEmpty())) {
-            return List.of("初次・現場評估"); // 需求（2026-10-02）：還沒到店開單前的顯示文字
+            return List.of("初次・現場評估"); // 還沒到店開單前的顯示文字
         }
         return a.getSelectedItems().stream()
                 .map(GroomingItem::getName)
                 .toList();
     }
 
-    // ── 需求（追加，2026-10-02）：LIFF 預約頁選好毛孩後，判斷是不是初次預約 ──
+    // ── LIFF 預約頁選好毛孩後，判斷是不是初次預約 ──
     // 初次＝這隻毛孩沒有已付款紀錄；另外回傳是否已經有一筆未完成的初次預約。
     public Map<String, Object> firstVisitStatus(String username, Long petId) {
         User user = userRepository.findByUsername(username)
@@ -122,8 +122,8 @@ public class AppointmentQueryService {
         return Map.of("firstVisit", firstVisit, "pendingAssessment", pending);
     }
 
-    // ── 店家後台查詢所有預約（含內部備注，需求 7）──────────────────────────
-    // 需求（修正，2026-09-13，N+1 查詢優化）：這支方法是專案裡已知效能問題
+    // ── 店家後台查詢所有預約（含內部備注）──────────────────────────
+    // 這支方法是專案裡已知效能問題
     // （Dashboard/預約列表載入慢）的根本原因。原本 findAll() 之後，DTO 轉換
     // 逐筆存取 a.getUser()（觸發一次額外查詢）、a.getSelectedItems()（EAGER
     // 多對多，也是逐筆額外查詢），加上迴圈內對每一筆預約各呼叫一次
@@ -160,7 +160,7 @@ public class AppointmentQueryService {
                         .collect(Collectors.groupingBy(
                                 ci -> ci.getAppointment().getId()));
 
-        // 需求（追加，2026-09-13）：批次撈出全部預約對應的交易紀錄，取代原本
+        // 批次撈出全部預約對應的交易紀錄，取代原本
         // 迴圈內逐筆呼叫 transactionRepository.findByAppointmentId() 的寫法。
         // 一筆預約理論上最多一筆交易（結帳時建立），用 id 分組後每組取第一筆即可。
         Map<Long, Transaction> transactionByAppt =
@@ -176,7 +176,7 @@ public class AppointmentQueryService {
                 .map(a -> {
                     var res = AppointmentAdminResponse.from(a);
                     res.setDisplayItemNames(buildDisplayItemNames(a, checkinItemsByAppt.get(a.getId())));
-                    // 需求 10：查這筆預約有沒有「待對帳」的匯款交易（已建立交易但尚未確認收款）
+                    // 查這筆預約有沒有「待對帳」的匯款交易（已建立交易但尚未確認收款）
                     var tx = transactionByAppt.get(a.getId());
                     if (tx != null
                             && tx.getPaymentMethod() == PaymentMethod.WIRE_TRANSFER
@@ -189,19 +189,19 @@ public class AppointmentQueryService {
                 .toList();
     }
 
-    // ── 查詢可預約時段（需求 3：回傳每個時段剩餘名額，上限 5）──────────────
+    // ── 查詢可預約時段（回傳每個時段剩餘名額，上限 5）──────────────
     public List<TimeSlotResponse> getAvailableSlots(LocalDate date) {
         return getAvailableSlots(date, null);
     }
 
-    // 需求（追加，2026-09-08）：時段可以限定只開放特定物種預約（避免同時段狗貓混雜，
+    // 時段可以限定只開放特定物種預約（避免同時段狗貓混雜，
     // 造成寵物緊迫）。帶入 petType 時，該時段限定的物種跟這隻寵物不符的話，一併反映在
     // available 上（不只是名額滿）；不管有沒有帶 petType，allowedPetType 都會回傳，
     // 讓前端可以標示提示文字（例如「🐕限定」），不用等使用者選到寵物才看得出限制。
     public List<TimeSlotResponse> getAvailableSlots(LocalDate date, PetType petType) {
         List<TimeSlotResponse> allSlots = new ArrayList<>();
 
-        // 需求 16：公休日當天不開放任何時段，直接回傳空清單
+        // 公休日當天不開放任何時段，直接回傳空清單
         // （不動 SlotCapacity 底下各時段的 capacity 數字，公休日設定解除後名額設定自動還原）
         if (closedDateService.isClosed(date)) {
             return allSlots;
@@ -228,7 +228,7 @@ public class AppointmentQueryService {
         return allSlots;
     }
 
-    // ── 需求（追加）：這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
+    // ── 這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
     public boolean isExistingCustomerPet(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
@@ -236,14 +236,14 @@ public class AppointmentQueryService {
                 appointment.getUser().getId(), appointment.getPetName(), appointmentId);
     }
 
-    // 需求（追加）：這筆預約的寵物種類（供畫面過濾「適用物種」項目用）
+    // 這筆預約的寵物種類（供畫面過濾「適用物種」項目用）
     public String getPetTypeForAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"))
                 .getPetType();
     }
 
-    // 需求（追加，2026-08-24）：狗狗定價流程簡化——這筆預約對應的完整寵物資料
+    // 狗狗定價流程簡化——這筆預約對應的完整寵物資料
     // （含目前體重、鎖定的固定套餐），供結帳完成後的體重提醒彈窗使用。
     // 查不到對應寵物（理論上不該發生，預約一定綁著某隻已建檔的寵物）就回傳 null。
     public PetResponse getPetForAppointment(Long appointmentId) {
@@ -260,7 +260,7 @@ public class AppointmentQueryService {
 
     // ── 2. 取得使用者的寵物清單（預約表單下拉選單用）──────────────────
     public List<Pet> getMyPetsForBooking(String username) {
-        // 需求（追加，2026-08-26 修正）：軟刪除的寵物不出現在預約下拉選單裡
+        // 軟刪除的寵物不出現在預約下拉選單裡
         return petRepository.findByOwnerUsername(username).stream()
                 .filter(pet -> !pet.isDeleted())
                 .toList();
@@ -268,7 +268,7 @@ public class AppointmentQueryService {
 
     // ── 取得某筆預約的完整消費明細（供 LIFF「我的預約」點擊查看用）──────
     // 權限：本人（該預約的顧客）或店家/員工皆可查看
-    // ── 需求（追加，2026-10-02）：契約副本——顧客（或店員）查看這筆預約簽署的契約紀錄 ──
+    // ── 契約副本——顧客（或店員）查看這筆預約簽署的契約紀錄 ──
     // 契約全文由前端載入 /liff/contract-body.html（同一版本），這裡只回傳簽署證明：
     // 版本、簽署時間、甲方簽名、乙方簽名檔、影像使用同意，以及雙方基本資料。
     public Map<String, Object> getContractRecord(Long appointmentId, String username) {

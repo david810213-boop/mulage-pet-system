@@ -68,7 +68,7 @@ public class MemberCsvParser {
         return idx < cols.length ? cols[idx].trim() : "";
     }
 
-    // 需求（追加）：儲值餘額 CSV 解析。欄位順序：電話,儲值餘額,會員等級,到期日（後兩欄選填）
+    // 儲值餘額 CSV 解析。欄位順序：電話,儲值餘額,會員等級,到期日（後兩欄選填）
     // 編碼同 parseCsv，交給 CsvImportFileReader 偵測，不假設一定是 UTF-8。
     public List<WalletImportRow> parseWalletCsv(MultipartFile file) throws IOException {
         List<WalletImportRow> rows = new ArrayList<>();
@@ -93,7 +93,7 @@ public class MemberCsvParser {
         return rows;
     }
 
-    // 需求（追加）：消費紀錄 CSV 解析。欄位順序：電話,毛孩名字,消費日期,金額,備註
+    // 消費紀錄 CSV 解析。欄位順序：電話,毛孩名字,消費日期,金額,備註
     // 編碼同 parseCsv，交給 CsvImportFileReader 偵測，不假設一定是 UTF-8。
     public List<ConsumptionImportRow> parseConsumptionCsv(MultipartFile file) throws IOException {
         List<ConsumptionImportRow> rows = new ArrayList<>();

@@ -4,7 +4,7 @@
     <!-- 用法完全不變：<div th:replace="~{fragments/nav :: nav}"></div>
          目前頁面的高亮由下方小段 script 依網址自動判斷，模板不用改。 -->
     <nav th:fragment="nav" class="nav-side">
-      <!-- 需求（追加，2026-09-22）：平板專用的收合/展開按鈕。觸控裝置沒有
+      <!-- 平板專用的收合/展開按鈕。觸控裝置沒有
            滑鼠 hover，收合交給「點一下」控制。按鈕本身是 position: fixed，
            對應的 CSS 只在平板寬度範圍（641px~1194px）顯示，桌面/手機看不到。 -->
       <button
@@ -120,7 +120,7 @@
 
       <script th:inline="none">
         (function () {
-          // 需求（修正，2026-09-22 第二次）：平板收合按鈕邏輯，記住上次選擇。
+          // 平板收合按鈕邏輯，記住上次選擇。
           // 改成把 class 加在 <html> 根節點上（document.documentElement），
           // 不是 .page-wrapper——因為「這台裝置是不是觸控裝置」是裝置層級
           // 的屬性，跟目前在哪個頁面無關，掛在 <html> 上最單純，一定是

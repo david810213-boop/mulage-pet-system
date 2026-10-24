@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 結帳折扣的統一規則（需求 8-1）：服務促銷與會員儲值折扣「擇優不疊加」，逐項目計算。
+ * 結帳折扣的統一規則：服務促銷與會員儲值折扣「擇優不疊加」，逐項目計算。
  *
  * <ul>
  *   <li>服務促銷依優先順序：狗狗首次體驗 → 貓咪首次體驗 → 貓咪 90 天回洗。
@@ -19,6 +19,8 @@ import java.util.List;
  *   <li>會員折扣只限儲值金付款，且項目本身可享會員折扣（GroomingItem.discountEligible）</li>
  *   <li>兩者都適用時取價格較低者；同價時以服務促銷計</li>
  * </ul>
+ *
+ * 背景與取捨見 docs/adr/0004-discount-strategy.md。
  */
 @Component
 public class DiscountCalculator {

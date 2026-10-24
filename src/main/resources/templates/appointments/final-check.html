@@ -131,7 +131,7 @@
             </table>
           </div>
 
-          <!-- 需求（追加）：編輯訂單——核對過程中就能補漏開/開錯的項目，不用等核對完到結帳頁才能改 -->
+          <!-- 編輯訂單——核對過程中就能補漏開/開錯的項目，不用等核對完到結帳頁才能改 -->
           <div class="card" style="margin-bottom: 1.25rem">
             <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 12px">✏️ 編輯本次服務項目</h3>
             <div th:each="ci : ${checkinItems}" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:13px;">
@@ -143,7 +143,7 @@
               </form>
             </div>
             <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--cream-200);">
-              <!-- 需求（追加，2026-08-26）：自訂價格改從結帳頁搬到核對頁——核對才是
+              <!-- 自訂價格改從結帳頁搬到核對頁——核對才是
                    店員實際判斷這次要收多少錢的時機點，結帳頁只負責收款，不應該還能
                    改項目/改價格。 -->
               <form th:if="${groomingItems != null and !groomingItems.isEmpty()}" method="post"
@@ -179,7 +179,7 @@
               💡 有填自訂價格時，這筆收費金額照你填的數字，但積分仍照這個項目原本設定的值計算，不受改價影響。
             </p>
 
-            <!-- 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式
+            <!-- 自訂金額加購——處理「高階定制調理」開放式
                  報價跟各種浮動加價（厚毛/長毛/特殊剪法/特殊情況），不綁定任何現有
                  服務項目，直接輸入名稱+金額。 -->
             <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--cream-200);">
@@ -220,7 +220,7 @@
               ⚠️ 這種自訂項目不參與任何折扣（會員儲值折扣/回洗優惠等）。
             </p>
             <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-top:8px;">
-              <!-- 需求（2026-10-02）：掃碼加入零售商品（掃碼槍掃完會自動送出） -->
+              <!-- 掃碼加入零售商品（掃碼槍掃完會自動送出） -->
               <div data-scan-box th:if="${retailProducts != null and !retailProducts.isEmpty()}"
                    style="display:flex; gap:8px; align-items:center; margin:8px 0; font-size:13px;">
                 <span>📷 掃碼加入</span>
@@ -278,7 +278,7 @@
               ></textarea>
             </div>
 
-            <!-- 需求（2026-09-29）：核對時可拍照／上傳美容狀況照片（選填，最多 5 張），
+            <!-- 核對時可拍照／上傳美容狀況照片（選填，最多 5 張），
                  照片跟備注一起存進毛孩美容紀錄，家長在 LINE 看得到 -->
             <div class="card" style="margin-bottom: 1rem">
               <h3 style="font-size: 15px; color: var(--brown-dark); margin-bottom: 4px">

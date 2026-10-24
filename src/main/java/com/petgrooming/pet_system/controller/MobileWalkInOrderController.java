@@ -122,7 +122,7 @@ public class MobileWalkInOrderController {
     @PostMapping("/{id}/items/{itemId}/operator")
     public String fillOperator(@PathVariable Long id, @PathVariable Long itemId,
             @RequestParam(required = false) Long staffId,
-            @RequestParam(required = false) Long staffId2, // 需求（2026-10-02）：第二經手人
+            @RequestParam(required = false) Long staffId2, // 第二經手人
              RedirectAttributes ra,
              @CurrentUser User user) {
         if (user == null) {
@@ -174,9 +174,9 @@ public class MobileWalkInOrderController {
                 groomingItemService.getAllItems(), isExisting, petType));
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
-        model.addAttribute("staffOptions", view.staffOptions()); // 需求（2026-10-02）：核對加項目可選經手人
+        model.addAttribute("staffOptions", view.staffOptions()); // 核對加項目可選經手人
         model.addAttribute("activeTab", "walkin");
-        // 需求（2026-09-29）：非會員單沒有毛孩檔案，不開放核對照片
+        // 非會員單沒有毛孩檔案，不開放核對照片
         model.addAttribute("photoEnabled", o.getMemberUsername() != null && !o.getMemberUsername().isBlank());
         return "m/final-check";
     }
@@ -210,7 +210,7 @@ public class MobileWalkInOrderController {
     @PostMapping("/{id}/items/grooming")
     public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
             @RequestParam(required = false) Integer customPrice,
-            @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+            @RequestParam(required = false) Long operatorStaffId, // 空白＝稍後補填
             @RequestParam(required = false) Long operatorStaffId2,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes ra) {

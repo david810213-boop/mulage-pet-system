@@ -50,7 +50,7 @@ public class AuthMvcController {
         return loginView(request);
     }
 
-    // 需求（2026-09-24 第九批）：手機開登入頁時顯示員工手機版的登入畫面，
+    // 手機開登入頁時顯示員工手機版的登入畫面，
     // 表單欄位、送出位置（/auth/login/submit）完全相同，只是換樣板；
     // 判斷規則跟員工手機版自動導向一致（見 MobileRedirectInterceptor.prefersMobile）
     private String loginView(HttpServletRequest request) {
@@ -75,7 +75,7 @@ public class AuthMvcController {
         try {
             userOpt = userService.authenticate(req.getUsername(), req.getPassword());
         } catch (IllegalArgumentException e) {
-            // 需求（追加，2026-09-17）：帳號被鎖定時，UserService.authenticate()
+            // 帳號被鎖定時，UserService.authenticate()
             // 會丟 AuthException 帶友善訊息（含剩餘分鐘數），跟單純密碼錯誤分開
             // 顯示，不要混在一起變成同一句「帳號或密碼錯誤」。
             model.addAttribute("redirect", redirect);
@@ -87,7 +87,7 @@ public class AuthMvcController {
             User user = userOpt.get();
 
             // 4. 關鍵核心：生成 JWT Token
-            // 需求（追加，2026-09-17）：CSRF Token 防護——額外產生一組隨機值
+            // CSRF Token 防護——額外產生一組隨機值
             // 內嵌進 JWT，同時另外用一個可讀 Cookie 存起來，供高風險操作
             // （密碼變更、建立員工帳號、帳號合併、手動儲值、刪除操作）核對用。
             String csrfToken = UUID.randomUUID().toString();
@@ -170,7 +170,7 @@ public class AuthMvcController {
         response.addHeader("Set-Cookie",
                 CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", "", 0, cookieSecure));
-        // 需求（追加，2026-09-17）：CSRF Token 的可讀 Cookie 一併清除
+        // CSRF Token 的可讀 Cookie 一併清除
         response.addHeader("Set-Cookie",
                 CookieUtils.buildReadableCookieHeader(
                         "XSRF-TOKEN", "", 0, cookieSecure));

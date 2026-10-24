@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.utils;
 
 /**
- * 需求（追加，2026-10-02）：定型化契約版本。
+ * 定型化契約版本。
  *
  * 契約全文只放在 static/liff/contract-body.html 一個地方（LIFF 預約頁、代客預約頁、
  * 公開契約頁、我的預約「查看契約」都載入同一份）。每次修改條文，要同步更新這裡的

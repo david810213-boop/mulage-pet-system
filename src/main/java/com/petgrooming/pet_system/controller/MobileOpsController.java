@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 員工手機版：待補經手人、儲值審核（需求，2026-09-24 第六批）。
+ * 員工手機版：待補經手人、儲值審核。
  *
  * 待補經手人：預約單跟現場單合在同一頁，一張單一張卡片、一個項目一列選經手人，
  * 按一次「儲存」全部寫入（跟網頁版矩陣表單的「統一儲存」同樣概念），
@@ -75,7 +75,7 @@ public class MobileOpsController {
             @RequestParam(required = false) List<Long> itemIds,
             @RequestParam(required = false) List<String> staffIds,
             @RequestParam(required = false) List<String> staffIds2,
-            @CurrentUser User user) { // 需求（2026-10-02）：第二經手人
+            @CurrentUser User user) { // 第二經手人
         if (user == null) {
             return "redirect:/auth/login";
         }

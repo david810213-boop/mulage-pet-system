@@ -198,7 +198,7 @@ public class MobileAppointmentController {
         model.addAttribute("otherItems", items.stream()
                 .filter(i -> "OTHER".equals(i.getPerformanceCategory())).toList());
         model.addAttribute("preselected", preselected);
-        model.addAttribute("staffOptions", view.staffOptions()); // 需求（2026-10-02）：開單可選經手人
+        model.addAttribute("staffOptions", view.staffOptions()); // 開單可選經手人
         model.addAttribute("activeTab", "appointments");
         return "m/checkin";
     }
@@ -207,7 +207,7 @@ public class MobileAppointmentController {
     public String checkinSubmit(@PathVariable Long id,
             @RequestParam(required = false) List<String> itemCodes,
             @RequestParam(required = false) List<String> operatorStaffIds,
-            @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）：第二經手人
+            @RequestParam(required = false) List<String> operatorStaffIds2, // 第二經手人
              RedirectAttributes redirectAttributes,
              @CurrentUser User user) {
         if (user == null) {
@@ -263,9 +263,9 @@ public class MobileAppointmentController {
         model.addAttribute("groomingItems", addable);
         model.addAttribute("retailProducts", retailProductService.listActive());
         model.addAttribute("performanceCategories", PerformanceCategory.values());
-        model.addAttribute("staffOptions", view.staffOptions()); // 需求（2026-10-02）：核對加項目可選經手人
+        model.addAttribute("staffOptions", view.staffOptions()); // 核對加項目可選經手人
         model.addAttribute("activeTab", "appointments");
-        model.addAttribute("photoEnabled", true); // 需求（2026-09-29）：核對照片
+        model.addAttribute("photoEnabled", true); // 核對照片
         return "m/final-check";
     }
 
@@ -305,7 +305,7 @@ public class MobileAppointmentController {
     @PostMapping("/appointments/{id}/items/grooming")
     public String addGroomingItem(@PathVariable Long id, @RequestParam Long groomingItemId,
             @RequestParam(required = false) Integer customPrice,
-            @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+            @RequestParam(required = false) Long operatorStaffId, // 空白＝稍後補填
             @RequestParam(required = false) Long operatorStaffId2,
             @RequestParam(defaultValue = "check") String from,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {

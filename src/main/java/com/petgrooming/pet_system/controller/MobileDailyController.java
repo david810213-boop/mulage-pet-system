@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 員工手機版：我的績效、店用洗劑、零售商品庫存（需求，2026-09-24 第七批）。
+ * 員工手機版：我的績效、店用洗劑、零售商品庫存。
  *
  * 只做現場每天會用到的動作：
  * - 我的績效：看今日／本月積分、離下一個獎勵金級距還差多少，把自己的一筆積分對半拆給協助的同事
@@ -99,7 +99,7 @@ public class MobileDailyController {
                     : r.getWalkInOrderId() != null ? "現場單#" + r.getWalkInOrderId() : null);
             m.put("sourceUrl", r.getAppointmentId() != null ? "/m/appointments/" + r.getAppointmentId()
                     : r.getWalkInOrderId() != null ? "/m/walk-in/" + r.getWalkInOrderId() : null);
-            // 需求（2026-10-02）：雙人經手的紀錄另外標示，不顯示成「同事拆分給你」
+            // 雙人經手的紀錄另外標示，不顯示成「同事拆分給你」
             boolean dual = r.getNote() != null && r.getNote().contains("雙人經手");
             m.put("dual", dual);
             m.put("fromSplit", r.getSplitFromRecordId() != null && !dual);
@@ -183,7 +183,7 @@ public class MobileDailyController {
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
         model.addAttribute("lowCount", list.stream().filter(this::isLow).count());
-        model.addAttribute("isAdmin", user.isAdmin()); // 需求（2026-10-02）：盤點只有管理者
+        model.addAttribute("isAdmin", user.isAdmin()); // 盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/supplies";
     }
@@ -226,12 +226,12 @@ public class MobileDailyController {
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
         model.addAttribute("lowCount", list.stream().filter(p -> p.getStockQuantity() <= RETAIL_LOW_STOCK).count());
-        model.addAttribute("isAdmin", user.isAdmin()); // 需求（2026-10-02）：盤點只有管理者
+        model.addAttribute("isAdmin", user.isAdmin()); // 盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/retail";
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）───────────
+    // ── 盤點（只有管理者）───────────
     @PostMapping("/retail/{id}/stocktake")
     public String stocktakeRetail(@PathVariable Long id, RedirectAttributes ra,
             @RequestParam int actual,

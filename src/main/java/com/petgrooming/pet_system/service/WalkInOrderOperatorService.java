@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 現場單項目的經手人與積分（需求 6）：經手人一旦被填上（開單當下直接填，或事後從待補清單補），
+ * 現場單項目的經手人與積分：經手人一旦被填上（開單當下直接填，或事後從待補清單補），
  * 就立刻依該項目快照的 performanceCategory／points 寫入績效紀錄；一筆項目只會計入一次。
  */
 @Slf4j
@@ -30,8 +30,8 @@ public class WalkInOrderOperatorService {
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
 
-    // ── 需求 6：待補經手人清單（operatorStaff 為 null 的項目）──────────────
-    // 需求（追加）：只列出「有積分可算」的項目——零售商品加購（points 固定 0）
+    // ── 待補經手人清單（operatorStaff 為 null 的項目）──────────────
+    // 只列出「有積分可算」的項目——零售商品加購（points 固定 0）
     // 不會產生績效，補了經手人也沒有計算意義，不需要出現在這份待辦清單裡。
     public List<WalkInOrderResponse.ItemLine> pendingOperatorItems() {
         List<WalkInOrderItem> pending = orderItemRepository.findByOperatorStaffIsNull();
@@ -50,13 +50,13 @@ public class WalkInOrderOperatorService {
         return result;
     }
 
-    // ── 需求 6：補填某個項目的經手人（同步寫入績效紀錄）─────────────────────
+    // ── 補填某個項目的經手人（同步寫入績效紀錄）─────────────────────
     @Transactional
     public void fillOperator(Long orderItemId, Long staffId) {
         fillOperator(orderItemId, staffId, null);
     }
 
-    // 需求（2026-10-02 店家確認 5）：待補經手人也可以一次選兩位
+    // 待補經手人也可以一次選兩位
     @Transactional
     public void fillOperator(Long orderItemId, Long staffId, Long staffId2) {
         WalkInOrderItem item = orderItemRepository.findById(orderItemId)
@@ -74,7 +74,7 @@ public class WalkInOrderOperatorService {
                 item.getOperatorStaff2() != null ? "、" + item.getOperatorStaff2().getName() : "");
     }
 
-    // 需求（追加，2026-10-02）：核對加項目時有選經手人的，存檔後立刻寫入積分
+    // 核對加項目時有選經手人的，存檔後立刻寫入積分
     // （用存檔後的項目清單逐一檢查，pointsAwarded 會擋掉已經計過的）
     void awardNewlyAssignedItems(WalkInOrder saved) {
         for (WalkInOrderItem it : saved.getItems()) {
@@ -119,7 +119,7 @@ public class WalkInOrderOperatorService {
                 : LocalDate.now();
 
         if (item.getOperatorStaff2() != null) {
-            // 需求（2026-10-02）：雙人經手，積分各半
+            // 雙人經手，積分各半
             performanceService.addDualRecords(
                     item.getOperatorStaff().getId(), item.getOperatorStaff2().getId(),
                     null, order.getId(), item.getPerformanceCategory(), item.getPoints(), serviceDate,
@@ -138,7 +138,7 @@ public class WalkInOrderOperatorService {
         orderItemRepository.save(item);
     }
 
-    // ── 需求 6：經手人積分結算報表（排除未填寫）────────────────────────────
+    // ── 經手人積分結算報表（排除未填寫）────────────────────────────
     public List<OperatorPointsResponse> operatorPointsReport() {
         List<Object[]> rows = orderItemRepository.sumPointsByOperator();
         List<OperatorPointsResponse> result = new ArrayList<>();

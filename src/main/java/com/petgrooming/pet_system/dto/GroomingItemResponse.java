@@ -13,21 +13,21 @@ public class GroomingItemResponse {
     private String name;
     private String description;
     private Double price;
-    private boolean bookable;   // 需求 4：是否可線上預約
-    private String performanceCategory; // 需求 4：積分分類名稱（例如 OTHER / SPECIAL），供前端判斷是否為特殊/不計分項目
-    private Double points; // 需求（追加）：這個項目實際的積分（已考慮個別覆寫，不是分類預設值）
-    private boolean requiresExistingCustomer; // 需求（追加）：僅限既有客戶
-    private String applicablePetType; // 需求（追加）：適用物種（DOG/CAT/null=兩者皆可）
-    private String catCoatCategory; // 需求（追加）：貓咪毛髮分類（SINGLE_LAYER/DOUBLE_LAYER/LONG_HAIR/null=與毛髮分類無關）
+    private boolean bookable;   // 是否可線上預約
+    private String performanceCategory; // 積分分類名稱（例如 OTHER / SPECIAL），供前端判斷是否為特殊/不計分項目
+    private Double points; // 這個項目實際的積分（已考慮個別覆寫，不是分類預設值）
+    private boolean requiresExistingCustomer; // 僅限既有客戶
+    private String applicablePetType; // 適用物種（DOG/CAT/null=兩者皆可）
+    private String catCoatCategory; // 貓咪毛髮分類（SINGLE_LAYER/DOUBLE_LAYER/LONG_HAIR/null=與毛髮分類無關）
     private String dogWeightTier;
-    // 需求（追加，2026-09-06）：狗狗毛長篩選用
-    private String dogCoatLength; // 需求（追加）：狗狗體重級距（SMALL~EXTRA_LARGE/null=與體重級距無關）
-    // 需求（追加，2026-08-26）：假日限定套餐——這個項目是不是「完整套餐」
+    // 狗狗毛長篩選用
+    private String dogCoatLength; // 狗狗體重級距（SMALL~EXTRA_LARGE/null=與體重級距無關）
+    // 假日限定套餐——這個項目是不是「完整套餐」
     // （有副組成的項目才算），由 GroomingServiceImpl 組裝時額外查好塞進來，
     // 不是從 GroomingItem entity 直接映射（entity 本身沒有這個概念，是從
     // 「有沒有副組成」這個既有訊號動態算出來的）。
     private Boolean isPackage;
-    // 需求（追加，2026-09-04）：LIFF 預約頁要顯示「原價劃掉+折扣價」，
+    // LIFF 預約頁要顯示「原價劃掉+折扣價」，
     // 需要知道這個項目是否參與會員儲值折扣（原本只有後端結帳計算會用到，
     // 沒有暴露給前端）。
     private boolean discountEligible;

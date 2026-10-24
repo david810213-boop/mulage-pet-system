@@ -27,7 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 網頁版建立預約：預約表單（會員自己預約，或店家／員工代客預約，需求 20）、選會員、查空檔、送出。
+ * 網頁版建立預約：預約表單（會員自己預約，或店家／員工代客預約）、選會員、查空檔、送出。
  */
 @Controller
 @RequestMapping("/appointments")
@@ -49,7 +49,7 @@ public class AppointmentBookingMvcController {
                           @RequestParam(required = false) String forUsername,
                           @CurrentUser User user) {
 
-        // 需求 20：店家/員工可代客建立預約——forUsername 有帶值時，
+        // 店家/員工可代客建立預約——forUsername 有帶值時，
         // 幫「那個會員」查寵物清單，而不是查登入者自己的寵物。
         String targetUsername = user.getUsername();
         User targetUser = user;
@@ -78,7 +78,7 @@ public class AppointmentBookingMvcController {
     }
 
     // ── GET /appointments/select-member ──────────────────────────────────
-    // 需求 20：店家代客建立預約——先搜尋/選定要幫哪位會員預約
+    // 店家代客建立預約——先搜尋/選定要幫哪位會員預約
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/select-member")
     public String selectMemberForm(Model model, @CurrentUser User loginUser) {
@@ -108,7 +108,7 @@ public class AppointmentBookingMvcController {
                          @CurrentUser User user) {
 
 
-        // 需求 20：代客建立時，實際預約要歸屬到目標會員，不是登入的店家帳號
+        // 代客建立時，實際預約要歸屬到目標會員，不是登入的店家帳號
         String bookingUsername = user.getUsername();
         String targetMemberName = null;
         if (forUsername != null && !forUsername.isBlank() && user.isStaffOrAdmin()) {

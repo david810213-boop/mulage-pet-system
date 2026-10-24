@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 /**
- * 需求 14：服務項目名稱/金額/描述自主修改。
+ * 服務項目名稱/金額/描述自主修改。
  *
  * 跟 GroomingItemRequest（新增項目用）刻意分開成獨立的 DTO——最關鍵的差異是
  * **這裡完全沒有 itemCode 欄位**。代碼是項目的永久識別（歷史紀錄、績效統計、
@@ -28,16 +28,16 @@ public class UpdateGroomingItemRequest {
     @Positive(message = "價格必須大於 0")
     private Double price;
 
-    // 需求 4：是否可線上預約
+    // 是否可線上預約
     private Boolean bookable = false;
 
-    // 需求（追加）：積分分類，同 GroomingItemRequest 的說明——同一個績效分類底下
+    // 積分分類，同 GroomingItemRequest 的說明——同一個績效分類底下
     // 現在有很多不同價格的項目，積分要能個別調整，不再完全綁死分類固定值。
     private Double points;
 
-    // 需求（追加）：僅限既有客戶
+    // 僅限既有客戶
     private Boolean requiresExistingCustomer = false;
 
-    // 需求（追加）：適用物種
+    // 適用物種
     private PetType applicablePetType;
 }

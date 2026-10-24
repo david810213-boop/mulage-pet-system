@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 需求（追加，2026-08-23）：店家轉型，既有會員資料批次匯入後台頁面。
+ * 店家轉型，既有會員資料批次匯入後台頁面。
  */
 @Controller
 @RequestMapping("/admin/member-import")
@@ -50,7 +50,7 @@ public class MemberImportMvcController {
         return "admin/member-import";
     }
 
-    // ── 需求（追加）：儲值餘額批次匯入 ────────────────────────────────
+    // ── 儲值餘額批次匯入 ────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/upload-wallet")
     public String uploadWallet(@RequestParam MultipartFile file, Model model, @CurrentUser User user) {
@@ -70,7 +70,7 @@ public class MemberImportMvcController {
         return "admin/member-import";
     }
 
-    // ── 需求（追加）：消費紀錄批次匯入 ────────────────────────────────
+    // ── 消費紀錄批次匯入 ────────────────────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/upload-consumption")
     public String uploadConsumption(@RequestParam MultipartFile file, Model model, @CurrentUser User user) {

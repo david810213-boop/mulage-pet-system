@@ -75,7 +75,7 @@ public class PerformanceService {
         return recordRepo.save(record);
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 5）：雙人經手 ──────────────────────
+    // ── 雙人經手 ──────────────────────
     // 兩位經手人各拿一半（四捨五入到小數點第一位，跟「拆給同事」同一套算法）。
     // 第二筆掛 splitFromRecordId＝第一筆，沿用拆分的防呆：兩筆都不能再拆、
     // 次數統計也會各算半次。appointmentId / walkInOrderId 二擇一。
@@ -350,7 +350,7 @@ public class PerformanceService {
                 .build();
     }
 
-    // ── 需求：月報「明細」按鈕直接顯示該員工的積分項目統計（矩陣的單一列）──
+    // ── 月報「明細」按鈕直接顯示該員工的積分項目統計（矩陣的單一列）──
     public StaffMatrixRow getStaffMonthlyBreakdown(
             Long staffId, int year, int month) {
         YearMonth ym = YearMonth.of(year, month);

@@ -184,7 +184,7 @@
               method="post"
               style="display: flex; flex-direction: column; gap: 10px"
             >
-              <!-- 需求（追加，2026-09-17）：CSRF Token 防護，這是真的會異動
+              <!-- CSRF Token 防護，這是真的會異動
                    金額的操作，值由頁面底部 script 讀取 XSRF-TOKEN Cookie 帶入 -->
               <input type="hidden" name="_csrf" id="depositCsrfField" />
               <!-- 快速金額按鈕 -->
@@ -390,7 +390,7 @@
         document.getElementById("amountInput").value = val;
       }
 
-      // 需求（追加，2026-09-17）：CSRF Token 防護，讀取登入時拿到的
+      // CSRF Token 防護，讀取登入時拿到的
       // XSRF-TOKEN Cookie 填進儲值表單的隱藏欄位一起送出。
       (function () {
         const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);

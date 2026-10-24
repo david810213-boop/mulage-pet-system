@@ -33,7 +33,7 @@ import java.util.*;
 import java.util.Map;
 
 /**
- * 需求（追加，2026-08-23）：店家轉型，既有紙本/舊系統會員資料批次匯入。
+ * 店家轉型，既有紙本/舊系統會員資料批次匯入。
  *
  * 匯入邏輯：
  * - CSV 一列＝一隻毛孩，依「電話號碼」分組，同一組只建立一筆會員帳號，底下掛多隻寵物
@@ -54,8 +54,8 @@ public class MemberImportService {
     private final PetRepository petRepository;
     private final PetService petService; // 重用 resolveCatCoatCategory
     private final PasswordEncoder passwordEncoder;
-    private final WalletRepository walletRepository; // 需求（追加）：儲值餘額匯入
-    private final WalkInOrderRepository walkInOrderRepository; // 需求（追加）：消費紀錄匯入
+    private final WalletRepository walletRepository; // 儲值餘額匯入
+    private final WalkInOrderRepository walkInOrderRepository; // 消費紀錄匯入
 
     private static final Set<String> CAT_LABELS = Set.of("貓", "CAT", "cat");
     private static final Set<String> DOG_LABELS = Set.of("狗", "DOG", "dog");
@@ -111,7 +111,7 @@ public class MemberImportService {
             for (MemberImportRow row : petRows) {
                 PetType petType = parsePetType(row.getPetTypeRaw());
                 double weight = Double.parseDouble(row.getWeightRaw().trim());
-                double age = Double.parseDouble(row.getAgeRaw().trim()); // 需求（追加）：允許小數年齡
+                double age = Double.parseDouble(row.getAgeRaw().trim()); // 允許小數年齡
                 boolean anxiety = row.getSeparationAnxietyRaw() != null
                         && TRUE_LABELS.contains(row.getSeparationAnxietyRaw().trim());
 
@@ -145,10 +145,10 @@ public class MemberImportService {
                 .build();
     }
 
-    // ── 需求（追加）：既有儲值餘額批次匯入 ─────────────────────────────
+    // ── 既有儲值餘額批次匯入 ─────────────────────────────
     // CSV 欄位：電話,儲值餘額,會員等級,到期日（後兩欄選填）
     // 這支電話必須是已經匯入過（或本來就存在）的會員，找不到就整列報錯。
-    // 需求（追加，2026-09-30）：既有會員的等級與到期日照店家紙本記錄帶入，
+    // 既有會員的等級與到期日照店家紙本記錄帶入，
     // 等級與到期日是「覆蓋」（不是加總）；只想補等級不想動餘額時，餘額填 0。
     // ⚠️ 用「加總」不是「覆蓋」——避免萬一這支電話的顧客已經自己儲值過（不管是
     // 認領帳號之後自己儲值、或這批匯入分好幾次跑），覆蓋會把顧客已經存進去的
@@ -222,7 +222,7 @@ public class MemberImportService {
                 .build();
     }
 
-    // ── 需求（追加）：既有消費紀錄批次匯入 ─────────────────────────────
+    // ── 既有消費紀錄批次匯入 ─────────────────────────────
     // CSV 欄位：電話,毛孩名字,消費日期(yyyy-MM-dd),金額,備註
     // 電話+毛孩名字都要能對應到已存在的會員/寵物，找不到就整列報錯。
     //
@@ -337,7 +337,7 @@ public class MemberImportService {
             return "體重欄位格式錯誤：" + row.getWeightRaw();
         }
         try {
-            double a = Double.parseDouble(row.getAgeRaw().trim()); // 需求（追加）：允許小數年齡
+            double a = Double.parseDouble(row.getAgeRaw().trim()); // 允許小數年齡
             if (a < 0) return "年齡欄位不能是負數";
         } catch (Exception e) {
             return "年齡欄位格式錯誤：" + row.getAgeRaw();
@@ -378,14 +378,14 @@ public class MemberImportService {
 
     // 電話號碼正規化：去除空白、破折號，統一格式，避免「0912-345-678」跟「0912345678」
     // 被系統當成兩支不同電話（既無法比對到既有會員、認領時也比對不到）。
-    // 需求（修正，2026-09-11）：Excel 儲存格如果設成「一般」或「數字」格式，
+    // Excel 儲存格如果設成「一般」或「數字」格式，
     // 使用者輸入 0917684717 這種台灣手機號碼，Excel 會把它當數字存，開頭的 0
     // 是無意義的前導零直接被吃掉，存成 CSV 時原始內容就已經是 917684717，不是
     // 我們這邊解析錯誤。這裡加一道自動修正：只要格式剛好符合「拿掉開頭 0 後的
     // 台灣手機號碼長相」（9 碼、以 9 開頭），就自動補回開頭的 0，減少店家因為
     // Excel 存檔習慣而匯入失敗或資料錯誤的機率。只處理這一種明確的情況，避免
     // 誤判其他本來就不到 10 碼的市話號碼或其他格式。
-    // 需求（追加，2026-09-30）：改成 public static，UserService 填資料防重複也要用同一套正規化
+    // 改成 public static，UserService 填資料防重複也要用同一套正規化
     public static String normalizePhone(String raw) {
         if (raw == null) return "";
         String cleaned = raw.trim().replaceAll("[\\s\\-()]", "");
@@ -395,7 +395,7 @@ public class MemberImportService {
         return cleaned;
     }
 
-    // 需求（追加）：到期日寬鬆解析——Excel 另存 CSV 常變成 2026/9/30，
+    // 到期日寬鬆解析——Excel 另存 CSV 常變成 2026/9/30，
     // 所以 yyyy-MM-dd、yyyy/M/d、yyyy-M-d 都接受；看不懂回傳 null。
     private LocalDate parseLenientDate(String raw) {
         if (raw == null || raw.isBlank()) return null;

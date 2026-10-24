@@ -10,7 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
- * LIFF 預約頁顯示的寵物折扣資格（需求，2026-09-04）：距上次洗澡幾天、優惠期內或已過期，
+ * LIFF 預約頁顯示的寵物折扣資格：距上次洗澡幾天、優惠期內或已過期，
  * 以及服務項目要不要顯示「原價劃掉＋折扣價」。
  *
  * 三種折扣互斥擇優：首次體驗優惠與 90 天定期養護禮遇（貓咪回洗優惠）兩者本身也互斥，
@@ -26,7 +26,7 @@ public class PetDiscountStatusService {
     private final WalletService walletService;
 
     /**
-     * @param referenceDate 計算距上次洗澡天數的基準日（需求，2026-09-06）：應該用顧客實際選的預約日期，
+     * @param referenceDate 計算距上次洗澡天數的基準日：應該用顧客實際選的預約日期，
      *                      不是永遠用今天——例如選了好幾個月後的日期，到那天早就超過 90 天，不該顯示符合資格
      */
     // 不能用 readOnly：顧客還沒有錢包時，walletService.getWallet() 會順便建立一個
@@ -63,7 +63,7 @@ public class PetDiscountStatusService {
 
     /**
      * 首次體驗跟定期養護禮遇互斥，首次體驗優先（跟結帳時的判斷順序一致：先看是不是首次消費）。
-     * 顧客端一律稱「定期養護禮遇」（需求，2026-09-06），後台管理頁維持「回洗優惠」的用語。
+     * 顧客端一律稱「定期養護禮遇」，後台管理頁維持「回洗優惠」的用語。
      */
     private static SpecialOffer specialOffer(boolean isCat, boolean isDog, boolean firstVisitEligible, boolean rewashEligible) {
         if (isCat && firstVisitEligible) {

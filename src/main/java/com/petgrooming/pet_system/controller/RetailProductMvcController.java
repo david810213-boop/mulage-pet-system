@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 需求 7-1：零售商品後台管理——新增商品、調整售價、補貨/盤點調整庫存、下架。
+ * 零售商品後台管理——新增商品、調整售價、補貨/盤點調整庫存、下架。
  */
 @Controller
 @RequestMapping("/admin/retail-products")
@@ -26,7 +26,7 @@ import java.util.Map;
 public class RetailProductMvcController {
 
     private final RetailProductService retailProductService;
-    private final InventoryImportService inventoryImportService; // 需求（2026-10-02）
+    private final InventoryImportService inventoryImportService;
     private final OperationLogService operationLogService;
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
@@ -37,7 +37,7 @@ public class RetailProductMvcController {
         return "admin/retail-products";
     }
 
-    // 需求（追加）：成本回填專用畫面——只列出還沒設定進貨成本的商品，
+    // 成本回填專用畫面——只列出還沒設定進貨成本的商品，
     // 一次全部填完，不用從完整商品清單裡自己找哪些還是 0。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/cost-backfill")
@@ -79,7 +79,7 @@ public class RetailProductMvcController {
                          @RequestParam(defaultValue = "0") int stockQuantity,
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
-                         @RequestParam(required = false) String barcode, // 需求（2026-10-02）：留空＝系統產生
+                         @RequestParam(required = false) String barcode, // 留空＝系統產生
                          RedirectAttributes ra,
                          @CurrentUser User user) {
         try {
@@ -118,7 +118,7 @@ public class RetailProductMvcController {
         return "redirect:/admin/retail-products";
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）──────────
+    // ── 盤點（只有管理者）──────────
     @RequireRole({UserRole.ADMIN})
     @PostMapping("/{id}/stocktake")
     public String stocktake(@PathVariable Long id,
@@ -135,7 +135,7 @@ public class RetailProductMvcController {
         return "redirect:/admin/retail-products";
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7）：CSV 批次匯入 ──────────────────
+    // ── CSV 批次匯入 ──────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/import")
     public String importCsv(@RequestParam("file") MultipartFile file,
