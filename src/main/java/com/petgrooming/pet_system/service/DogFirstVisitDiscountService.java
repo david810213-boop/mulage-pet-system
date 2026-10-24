@@ -8,13 +8,14 @@ import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
+import com.petgrooming.pet_system.service.discount.SpecialDiscountPolicy;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * 需求（追加）：狗狗首次體驗 9 折。
+ * 狗狗首次體驗 9 折。
  *
  * 規則：這隻狗名下完全沒有任何一筆「已結帳」的預約或現場開單紀錄
  * （不管有沒有洗澡項目，只要曾經消費過一次就不算首次），這次消費的
@@ -31,12 +32,11 @@ import java.util.Set;
  * 資料來源涵蓋範圍：跟 CatRewashDiscountService 一致——預約（Appointment）
  * 與現場開單（WalkInOrder，須有綁定會員）都納入判斷是否為首次消費。
  *
- * 需求（追加）：「是不是既有客戶」的查詢邏輯已抽成 {@link PetConsumptionHistoryService}
- * 共用，這裡不再自己重複實作，改成呼叫共用 service。
+ * 「是不是既有客戶」的查詢邏輯共用 {@link PetConsumptionHistoryService}。
  */
 @Service
 @RequiredArgsConstructor
-public class DogFirstVisitDiscountService {
+public class DogFirstVisitDiscountService implements SpecialDiscountPolicy {
 
     public static final double FIRST_VISIT_DISCOUNT_RATE = 0.9; // 9 折
 
@@ -44,7 +44,7 @@ public class DogFirstVisitDiscountService {
             EnumSet.of(PerformanceCategory.BATH_SMALL, PerformanceCategory.BATH_LARGE);
 
     private final PetRepository petRepository;
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）
+    private final PetConsumptionHistoryService petConsumptionHistoryService;
 
     public boolean isDogPackageItem(GroomingItem item) {
         return item != null && DOG_PACKAGE_CATEGORIES.contains(item.getPerformanceCategory());
@@ -72,31 +72,31 @@ public class DogFirstVisitDiscountService {
                 order.getMember().getId(), order.getPetName(), order.getId());
     }
 
-    /**
-     * 首次體驗優惠與會員儲值折扣「只能擇一」，取對顧客較優惠的那個；跟
-     * CatRewashDiscountService.resolvePreferredDiscount 完全同樣的邏輯，
-     * 只是折扣種類換成 FIRST_VISIT。
-     */
-    public DiscountResolution resolvePreferredDiscount(double price,
-                                                        boolean firstVisitApplicable,
-                                                        boolean memberDiscountApplicable,
-                                                        double memberDiscountRate) {
-        if (firstVisitApplicable && memberDiscountApplicable) {
-            double firstVisitPrice = price * FIRST_VISIT_DISCOUNT_RATE;
-            double memberPrice = price * memberDiscountRate;
-            return firstVisitPrice <= memberPrice
-                    ? new DiscountResolution(firstVisitPrice, DiscountType.FIRST_VISIT)
-                    : new DiscountResolution(memberPrice, DiscountType.MEMBER);
-        }
-        if (firstVisitApplicable) {
-            return new DiscountResolution(price * FIRST_VISIT_DISCOUNT_RATE, DiscountType.FIRST_VISIT);
-        }
-        if (memberDiscountApplicable) {
-            return new DiscountResolution(price * memberDiscountRate, DiscountType.MEMBER);
-        }
-        return new DiscountResolution(price, DiscountType.NONE);
+    // ── SpecialDiscountPolicy：狗狗首次體驗優惠（擇優規則見 DiscountCalculator）──
+
+    @Override
+    public DiscountType type() {
+        return DiscountType.FIRST_VISIT;
     }
 
-    public record DiscountResolution(double price, DiscountType type) {}
+    @Override
+    public double rate() {
+        return FIRST_VISIT_DISCOUNT_RATE;
+    }
+
+    @Override
+    public boolean appliesTo(PerformanceCategory category) {
+        return isDogPackageCategory(category);
+    }
+
+    @Override
+    public boolean isEligible(Appointment appointment) {
+        return isFirstVisitEligible(appointment);
+    }
+
+    @Override
+    public boolean isEligible(WalkInOrder order) {
+        return isFirstVisitEligible(order);
+    }
 }
 

@@ -13,15 +13,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 需求（追加，2026-09-08）：既有資料 CSV 匯入的編碼容錯讀取。
+ * 既有資料 CSV 匯入的編碼容錯讀取。
  *
  * 背景：店家用 Windows Excel「另存 CSV」時常存成 Big5，不是 UTF-8。
- * 舊版三支 parseXxxCsv 直接用 new InputStreamReader(is, UTF_8) 硬讀，Java 遇到
+ * 直接用 new InputStreamReader(is, UTF_8) 讀的話，Java 遇到
  * 不能解碼的 Big5 位元組不會丟例外，會默默換成 U+FFFD（置換字元），造成中文
  * 欄位（物種、品種、注意事項…）整批變亂碼，寵物解析因此連環失敗，但純 ASCII
  * 的欄位（電話、體重、儲值餘額）卻正常匯入，症狀很容易被誤判成別的問題。
  *
- * 這支工具改成：
+ * 做法：
  * 1. 先看 BOM（UTF-8 / UTF-16）決定編碼並去掉 BOM 位元組
  * 2. 沒有 BOM 就用「嚴格模式」依序試 UTF-8 → Big5 → GBK，第一個能完整解碼
  *    （沒有任何非法位元組）的就採用
@@ -31,6 +31,8 @@ import java.util.List;
  *
  * 不引入 juniversalchardet 等外部套件——嚴格解碼逐一嘗試已足夠判斷，也符合
  * 本專案「CSV 手刻、不加函式庫」的既有做法。
+ *
+ * 背景見 docs/adr/0007-csv-encoding.md。
  */
 public final class CsvImportFileReader {
 

@@ -265,7 +265,7 @@
           if (!window.confirm("解鎖後會改回依體重、毛長重新篩選菜單，確定嗎？")) return;
           unlock.disabled = true;
           var petId = document.getElementById("lockBox").dataset.petId;
-          fetch("/api/admin/pets/" + encodeURIComponent(petId) + "/unlock-grooming-item", { method: "PUT" })
+          fetch("/api/admin/pets/" + encodeURIComponent(petId) + "/locked-item", { method: "DELETE" })
             .then(function (res) {
               return res.text().then(function (t) {
                 if (!res.ok) {
@@ -284,5 +284,6 @@
 </th:block>
 
 <script th:replace="~{m/fragments/app :: pwa}"></script>
+  <th:block th:replace="~{fragments/weight-reminder :: weightReminder}"></th:block>
 </body>
 </html>

@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 需求 12：待拆分積分清單的一列，補上寵物名、服務項目名稱，方便快速核對。
+ * 待拆分積分清單的一列，補上寵物名、服務項目名稱，方便快速核對。
  */
 @Data
 @Builder

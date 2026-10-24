@@ -1,10 +1,11 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.service.LineBindService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -22,37 +23,27 @@ public class AccountMvcController {
 
     private final UserService userService;
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.LineBindService lineBindService;
+    private final LineBindService lineBindService;
 
     /** 店員綁定 LINE 用的 LIFF 網址（application.yml 的 line.liff.bind-url） */
     @Value("${line.liff.bind-url}")
     private String bindLiffUrl;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
-
     // ── GET /account/password ──────────────────────────────────────────────
     @GetMapping("/password")
-    public String changePasswordPage(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String changePasswordPage(Model model, @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
         model.addAttribute("user", user);
         return "account/change-password";
     }
 
     // ── POST /account/password ─────────────────────────────────────────────
-    @com.petgrooming.pet_system.annotation.RequireCsrf
     @PostMapping("/password")
     public String changePassword(@RequestParam String oldPassword,
                                  @RequestParam String newPassword,
                                  @RequestParam String confirmPassword,
-                                 HttpServletRequest request,
-                                 Model model) {
-        User user = getLoginUser(request);
+                                 Model model,
+                                 @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
 
         model.addAttribute("user", user);
@@ -76,10 +67,9 @@ public class AccountMvcController {
     }
 
     // ── GET /account/pin ──────────────────────────────────────────────────
-    // 新需求：設定共用平板快速切換使用者用的 PIN 碼
+    // 設定共用平板快速切換使用者用的 PIN 碼
     @GetMapping("/pin")
-    public String setPinPage(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String setPinPage(Model model, @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
         model.addAttribute("user", user);
         model.addAttribute("hasPin", user.getSwitchPin() != null);
@@ -91,9 +81,8 @@ public class AccountMvcController {
     public String setPin(@RequestParam String currentPassword,
                          @RequestParam String pin,
                          @RequestParam String confirmPin,
-                         HttpServletRequest request,
-                         Model model) {
-        User user = getLoginUser(request);
+                         Model model,
+                         @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
 
         model.addAttribute("user", user);
@@ -118,8 +107,7 @@ public class AccountMvcController {
     // ── GET /account/bind-line ───────────────────────────────────────────
     // 店員/店家綁定 LINE 帳號（讓低庫存等通知發得到這支手機）
     @GetMapping("/bind-line")
-    public String bindLinePage(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String bindLinePage(Model model, @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
         model.addAttribute("user", user);
         model.addAttribute("alreadyBound", user.getLineUserId() != null && !user.getLineUserId().isBlank());
@@ -130,8 +118,7 @@ public class AccountMvcController {
     // ── POST /account/bind-line/generate-code ────────────────────────────
     // 產生 6 位數驗證碼，帶去手機的 LIFF 頁面輸入兌換綁定
     @PostMapping("/bind-line/generate-code")
-    public String generateBindCode(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String generateBindCode(Model model, @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";
         model.addAttribute("user", user);
         model.addAttribute("alreadyBound", user.getLineUserId() != null && !user.getLineUserId().isBlank());

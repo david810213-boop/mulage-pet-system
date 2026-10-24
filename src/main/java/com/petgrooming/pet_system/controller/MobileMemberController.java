@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentResponse;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
@@ -8,15 +9,13 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
-import com.petgrooming.pet_system.repository.UserRepository;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
+import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,16 +25,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 員工手機版：毛孩、會員（需求，2026-09-24 第五批）。
+ * 員工手機版：毛孩、會員。
  *
  * 以查詢為主的頁面：毛孩檔案（美容紀錄、消費紀錄、即將到來的預約）、會員資料
  * （儲值金、名下毛孩、消費紀錄、店家備注）。現場最常改的三件事可以直接在手機上改：
@@ -51,35 +52,23 @@ public class MobileMemberController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy/M/d");
     private static final DateTimeFormatter SHORT_DATE_FMT = DateTimeFormatter.ofPattern("M/d");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    /** 會員與寵物頁的美容紀錄、消費紀錄最多列出的筆數。 */
+    private static final int RECENT_RECORD_LIMIT = 10;
 
     private final UserService userService;
-    private final UserRepository userRepository;
     private final PetService petService;
-    private final PetGroomingNoteRepository petGroomingNoteRepository;
-    private final com.petgrooming.pet_system.service.GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
-    private final AppointmentService appointmentService;
+    private final GroomingNotePhotoService groomingNotePhotoService;
+    private final AppointmentQueryService appointmentQueryService;
     private final MemberConsumptionService memberConsumptionService;
     private final WalletService walletService;
     private final MobileViewHelper view;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) {
-            return null;
-        }
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     // ── 毛孩列表 ────────────────────────────────────────────────────────
     @GetMapping("/pets")
-    public String pets(HttpServletRequest request, Model model,
+    public String pets(Model model,
             @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "all") String f) {
-        User user = getLoginUser(request);
+            @RequestParam(defaultValue = "all") String f,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -111,8 +100,7 @@ public class MobileMemberController {
 
     // ── 毛孩檔案 ────────────────────────────────────────────────────────
     @GetMapping("/pets/{id}")
-    public String pet(@PathVariable Long id, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String pet(@PathVariable Long id, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -134,9 +122,9 @@ public class MobileMemberController {
             return "redirect:/m/pets";
         }
 
-        List<PetGroomingNote> noteEntities = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(id)
-                .stream().limit(10).toList();
-        // 需求（2026-09-29）：每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
+        List<PetGroomingNote> noteEntities = petService.getGroomingNotes(id)
+                .stream().limit(RECENT_RECORD_LIMIT).toList();
+        // 每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
         Map<Long, List<String>> photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(noteEntities);
         List<Map<String, Object>> notes = noteEntities.stream().<Map<String, Object>>map(n -> {
             Map<String, Object> m = noteRow(n);
@@ -145,7 +133,7 @@ public class MobileMemberController {
         }).toList();
         List<Map<String, Object>> records = memberConsumptionService.buildPaidRecords(owner, user.getUsername())
                 .stream().filter(r -> pet.getName().equals(r.getPetName()))
-                .limit(10).map(this::recordRow).toList();
+                .limit(RECENT_RECORD_LIMIT).map(this::recordRow).toList();
         List<Map<String, Object>> upcoming = upcomingAppointments(owner, pet.getName());
 
         model.addAttribute("user", user);
@@ -165,16 +153,16 @@ public class MobileMemberController {
 
     // ── 會員列表 ────────────────────────────────────────────────────────
     @GetMapping("/members")
-    public String members(HttpServletRequest request, Model model,
-            @RequestParam(required = false) String q) {
-        User user = getLoginUser(request);
+    public String members(Model model,
+            @RequestParam(required = false) String q,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
         String kw = q == null ? "" : q.trim().toLowerCase();
         String digits = kw.replaceAll("[^0-9]", "");
         List<User> all = userService.getAllCustomers();
-        // 需求（追加，2026-10-02）：也能用寵物名搜
+        // 也能用寵物名搜
         Map<String, String> petMatches = userService.petNamesMatching(kw);
         List<Map<String, Object>> rows = all.stream()
                 .filter(u -> kw.isEmpty()
@@ -208,12 +196,11 @@ public class MobileMemberController {
 
     // ── 會員資料 ────────────────────────────────────────────────────────
     @GetMapping("/members/{username}")
-    public String member(@PathVariable String username, HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String member(@PathVariable String username, Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
-        User customer = userRepository.findByUsername(username).orElse(null);
+        User customer = userService.findByUsername(username).orElse(null);
         if (customer == null || !customer.isCustomer()) {
             return "redirect:/m/members";
         }
@@ -227,13 +214,13 @@ public class MobileMemberController {
         model.addAttribute("initial", view.initial(customer.getName(), "客"));
         model.addAttribute("imported", username.startsWith("imported_"));
         model.addAttribute("sourceLabel", customer.getSource() != null ? customer.getSource().getLabel() : null);
-        model.addAttribute("walletBalance", wallet.getBalance() == null ? 0 : wallet.getBalance());
+        model.addAttribute("walletBalance", Objects.requireNonNullElse(wallet.getBalance(), 0));
         model.addAttribute("walletTier", wallet.isCardActive() ? wallet.getCardTierLabel() : null);
         model.addAttribute("walletDiscount", wallet.isCardActive() && wallet.getDiscount() < 1.0
                 ? view.formatDiscount(wallet.getDiscount()) : null);
         model.addAttribute("totalSpent", records.stream().mapToInt(ConsumptionRecordResponse::getAmount).sum());
         model.addAttribute("orderCount", records.size());
-        model.addAttribute("records", records.stream().limit(10).map(this::recordRow).toList());
+        model.addAttribute("records", records.stream().limit(RECENT_RECORD_LIMIT).map(this::recordRow).toList());
         model.addAttribute("pets", pets);
         model.addAttribute("upcoming", upcomingAppointments(username, null));
         model.addAttribute("adminNote", customer.getAdminNote() == null ? "" : customer.getAdminNote());
@@ -294,12 +281,12 @@ public class MobileMemberController {
     // 今天以後、還沒取消的預約；petName 為 null 時不篩毛孩
     private List<Map<String, Object>> upcomingAppointments(String username, String petName) {
         LocalDate today = LocalDate.now();
-        List<AppointmentResponse> list = appointmentService.getMyAppointments(username);
+        List<AppointmentResponse> list = appointmentQueryService.getMyAppointments(username);
         return list.stream()
                 .filter(a -> !a.isCancelled() && a.getDate() != null && !a.getDate().isBefore(today))
                 .filter(a -> petName == null || petName.equals(a.getPetName()))
                 .sorted(Comparator.comparing(AppointmentResponse::getDate)
-                        .thenComparing(a -> a.getStartTime() == null ? java.time.LocalTime.MIN : a.getStartTime()))
+                        .thenComparing(a -> a.getStartTime() == null ? LocalTime.MIN : a.getStartTime()))
                 .limit(5)
                 .map(a -> {
                     Map<String, Object> m = new LinkedHashMap<>();

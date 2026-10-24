@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 需求 5 / 6：現場開單（到店開單）。
+ * 現場開單（到店開單）。
  *
  * 使用情境：不同寵物有需要調理的項目時，店家現場針對這隻寵物開一張單，
  * 加入一到多個項目（含不可線上預約的調理項目）。這張單本身就是一筆「交易紀錄」，
@@ -20,7 +21,12 @@ import java.util.List;
  *   因此獨立成 WalkInOrder，不動既有結帳流程，避免破壞相容性。
  */
 @Entity
-@Table(name = "walk_in_orders")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "walk_in_orders", indexes = {
+        @Index(name = "idx_walk_in_orders_paid_time", columnList = "paid, payment_time"),
+        @Index(name = "idx_walk_in_orders_created_at", columnList = "created_at"),
+        @Index(name = "idx_walk_in_orders_member_pet", columnList = "member_id, pet_name")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -46,7 +52,7 @@ public class WalkInOrder {
     @Builder.Default
     private int totalAmount = 0;
 
-    // 需求 5：實際結帳扣款金額（若用儲值金付款且套用折扣，這裡會比 totalAmount 小；
+    // 實際結帳扣款金額（若用儲值金付款且套用折扣，這裡會比 totalAmount 小；
     // 其他付款方式或沒打折的話會跟 totalAmount 相同）。退款時要退這個欄位，
     // 不能直接退 totalAmount，否則折扣過的訂單會退超過實際扣款金額。
     @Column(name = "charged_amount")
@@ -60,7 +66,7 @@ public class WalkInOrder {
     @Column(length = 300)
     private String note;
 
-    // ── 需求：現場單串接結帳 ─────────────────────────────────────────────
+    // ── 現場單串接結帳 ─────────────────────────────────────────────
     // 開單當下未付款；paid=true 才代表已完成結帳（跟 Appointment.paid 同樣的語意）。
     // 用 columnDefinition 給資料庫層級預設值，避免既有表加 NOT NULL 欄位時 ALTER 失敗
     // （這是先前 GroomingItem.bookable 踩過的坑，這裡直接照做避開）。
@@ -70,7 +76,7 @@ public class WalkInOrder {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 20)
-    private com.petgrooming.pet_system.enums.PaymentMethod paymentMethod;
+    private PaymentMethod paymentMethod;
 
     @Column(name = "payment_time")
     private LocalDateTime paymentTime;

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.petgrooming.pet_system.enums.TopUpStatus;
 import com.petgrooming.pet_system.model.TopUpRequest;
 import lombok.Data;
@@ -12,8 +13,10 @@ import java.time.LocalDateTime;
 @Data
 public class TopUpRequestResponse {
     private Long id;
-    private String username;      // 申請人帳號（店家端清單顯示用）
-    private String name;          // 申請人姓名（與 UserResponse / WalkInOrderResponse 命名慣例一致）
+    @Schema(description = "申請人帳號（店家端清單顯示用）")
+    private String username;
+    @Schema(description = "申請人姓名（與 UserResponse / WalkInOrderResponse 命名慣例一致）")
+    private String name;
     private Integer amount;
     private String lastFiveDigits;
     private String remitNote;

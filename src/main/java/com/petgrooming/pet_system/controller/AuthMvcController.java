@@ -2,9 +2,11 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.dto.LoginRequest;
 import com.petgrooming.pet_system.dto.RegisterRequest;
+import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.utils.CookieUtils;
 import com.petgrooming.pet_system.utils.JwtUtils; // 1. 引入剛剛修好的 JwtUtils
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/auth")
@@ -47,11 +50,11 @@ public class AuthMvcController {
         return loginView(request);
     }
 
-    // 需求（2026-09-24 第九批）：手機開登入頁時顯示員工手機版的登入畫面，
+    // 手機開登入頁時顯示員工手機版的登入畫面，
     // 表單欄位、送出位置（/auth/login/submit）完全相同，只是換樣板；
     // 判斷規則跟員工手機版自動導向一致（見 MobileRedirectInterceptor.prefersMobile）
     private String loginView(HttpServletRequest request) {
-        return com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor.prefersMobile(request)
+        return MobileRedirectInterceptor.prefersMobile(request)
                 ? "m/login" : "auth/login";
     }
 
@@ -72,7 +75,7 @@ public class AuthMvcController {
         try {
             userOpt = userService.authenticate(req.getUsername(), req.getPassword());
         } catch (IllegalArgumentException e) {
-            // 需求（追加，2026-09-17）：帳號被鎖定時，UserService.authenticate()
+            // 帳號被鎖定時，UserService.authenticate()
             // 會丟 AuthException 帶友善訊息（含剩餘分鐘數），跟單純密碼錯誤分開
             // 顯示，不要混在一起變成同一句「帳號或密碼錯誤」。
             model.addAttribute("redirect", redirect);
@@ -84,24 +87,23 @@ public class AuthMvcController {
             User user = userOpt.get();
 
             // 4. 關鍵核心：生成 JWT Token
-            // 需求（追加，2026-09-17）：CSRF Token 防護——額外產生一組隨機值
-            // 內嵌進 JWT，同時另外用一個可讀 Cookie 存起來，供高風險操作
-            // （密碼變更、建立員工帳號、帳號合併、手動儲值、刪除操作）核對用。
-            String csrfToken = java.util.UUID.randomUUID().toString();
+            // CSRF Token 防護——額外產生一組隨機值內嵌進 JWT，同時另外用一個可讀 Cookie 存起來，
+            // 所有以 Cookie 登入的寫入請求都要帶上這個值（見 CsrfInterceptor）。
+            String csrfToken = UUID.randomUUID().toString();
             String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "WEB", csrfToken);
 
             operationLogService.log(user, "AUTH", "LOGIN", user.getUsername(), null);
 
             // 5. 將 Token 包進 Cookie 中送給瀏覽器
-            // 資安修正：改用 CookieUtils 手動組 Set-Cookie 標頭，帶上 SameSite=Lax
-            // （jakarta.servlet.http.Cookie 這個舊版 API 不支援設定 SameSite）。
+            // 用 CookieUtils 手動組 Set-Cookie 標頭，帶上 SameSite=Lax
+            // （jakarta.servlet.http.Cookie 不支援設定 SameSite）。
             response.addHeader("Set-Cookie",
-                    com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                    CookieUtils.buildJwtCookieHeader(
                             "JWT_TOKEN", token, 86400, cookieSecure));
             // CSRF Token 用可讀 Cookie 存放（不能 HttpOnly，前端 JS 要讀得到），
             // 有效期跟 JWT_TOKEN 一致。
             response.addHeader("Set-Cookie",
-                    com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                    CookieUtils.buildReadableCookieHeader(
                             "XSRF-TOKEN", csrfToken, 86400, cookieSecure));
 
             if (redirect != null && !redirect.isBlank() && !redirect.startsWith("/auth")) {
@@ -165,11 +167,11 @@ public class AuthMvcController {
         // 資安修正：比照登入時的做法，改用 CookieUtils 帶上 SameSite=Lax
         // （屬性要跟登入時設定的一致，瀏覽器才能正確比對並清除）。
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", "", 0, cookieSecure));
-        // 需求（追加，2026-09-17）：CSRF Token 的可讀 Cookie 一併清除
+        // CSRF Token 的可讀 Cookie 一併清除
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                CookieUtils.buildReadableCookieHeader(
                         "XSRF-TOKEN", "", 0, cookieSecure));
 
         return "redirect:/auth/login";

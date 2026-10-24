@@ -275,7 +275,7 @@
               >
             </div>
 
-            <!-- 需求（追加，2026-09-08）：手動綁定既有匯入資料。只有匯入建立的
+            <!-- 手動綁定既有匯入資料。只有匯入建立的
                  暫時帳號（username 以 imported_ 開頭）才會顯示，用在顧客的 LINE
                  帳號自己已經先填過資料、導致無法自動認領這筆匯入資料的情況 -->
             <div
@@ -565,7 +565,7 @@
                     "
                   >
                     <div style="display: flex; align-items: center; gap: 10px">
-                      <!-- 需求 17：寵物大頭照，沒有照片就顯示預設圖示 -->
+                      <!-- 寵物大頭照，沒有照片就顯示預設圖示 -->
                       <img
                         th:if="${p.photoUrl != null}"
                         th:src="${p.photoUrl}"
@@ -622,7 +622,7 @@
                           "
                           >完整編輯</a
                         >
-                        <!-- 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄
+                        <!-- 店家後台刪除寵物。有預約/消費紀錄
                              會被後端擋下並顯示明確錯誤訊息。HTML 表單不支援 DELETE method，
                              改用 JS fetch 呼叫。 -->
                         <button
@@ -669,7 +669,7 @@
                         </form>
                       </div>
                     </div>
-                    <!-- 需求（追加）：貓咪改成編輯毛髮分類（單層毛/雙層毛/長毛/特殊貓種），
+                    <!-- 貓咪改成編輯毛髮分類（單層毛/雙層毛/長毛/特殊貓種），
                          取代原本的「定義毛長」——貓咪的服務項目菜單依這個分類篩選，
                          比通用毛長更有實際用途。多半是新增寵物時依品種自動判斷好的，
                          這裡是給店家在自動判斷抓不到品種（SPECIAL）時手動修正用的。
@@ -754,7 +754,7 @@
                     </form>
                   </div>
 
-                  <!-- 需求（追加，2026-08-28）：後台會員信息目前看不到寵物的固定套餐鎖定狀態，
+                  <!-- 後台會員信息目前看不到寵物的固定套餐鎖定狀態，
                        補上顯示（沿用結帳頁/現場開單結帳頁同一套 API 跟按鈕邏輯）。
                        只有狗狗有這個機制，貓咪沒有。 -->
                   <div
@@ -787,7 +787,7 @@
                     </button>
                   </div>
 
-                  <!-- 需求（追加）：編輯寵物基本資料（名字/品種/體重/年齡），
+                  <!-- 編輯寵物基本資料（名字/品種/體重/年齡），
                        物種不開放修改（見 PetService.updatePet 的說明）。
                        貓咪品種改成下拉選單（跟 LIFF「我的毛孩」編輯一致，選了
                        系統會自動重新判斷毛髮分類），狗狗維持文字輸入。 -->
@@ -957,7 +957,7 @@
                         <span th:text="${n.staff.name}"></span>
                       </div>
                       <div th:text="${n.note}"></div>
-                      <!-- 需求（2026-09-29）：核對時拍的照片（最多 5 張），點照片開原圖 -->
+                      <!-- 核對時拍的照片（最多 5 張），點照片開原圖 -->
                       <th:block th:if="${notePhotosByNoteId != null and notePhotosByNoteId.get(n.id) != null}">
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
                           <a th:each="url : ${notePhotosByNoteId.get(n.id)}" th:href="${url}" target="_blank" rel="noopener">
@@ -966,7 +966,7 @@
                           </a>
                         </div>
                       </th:block>
-                      <!-- 需求 18：美容狀況歷史相簿 -->
+                      <!-- 美容狀況歷史相簿 -->
                       <img
                         th:if="${n.photoUrl != null}"
                         th:src="${n.photoUrl}"
@@ -1023,7 +1023,7 @@
                     尚無美容狀況紀錄
                   </p>
 
-                  <!-- 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁——直接展開列出服務項目，
+                  <!-- 消費項目明細整合顯示在美容歷史卡片旁——直接展開列出服務項目，
                        美容師不用點進去看，一眼就能判斷寵物過往做過什麼、下次該安排什麼 -->
                   <details
                     open
@@ -1177,7 +1177,7 @@
     </div>
 
     <script>
-      // 需求（追加，2026-09-17）：CSRF Token 防護，讀取登入時拿到的
+      // CSRF Token 防護，讀取登入時拿到的
       // XSRF-TOKEN Cookie，高風險操作（例如下方的手動綁定合併）送出時
       // 用 X-CSRF-Token 標頭一起帶上，後端 CsrfInterceptor 會核對。
       function readCsrfCookie() {
@@ -1196,7 +1196,7 @@
         document.getElementById(btn.dataset.tab).classList.add("active");
       }
 
-      // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約/消費紀錄的話後端
+      // 店家後台刪除寵物。有預約/消費紀錄的話後端
       // 會擋下並回傳明確錯誤訊息，這裡直接顯示，不用自己重複判斷邏輯。
       async function deletePetAdmin(petId) {
         if (
@@ -1208,7 +1208,7 @@
         try {
           const res = await fetch("/api/admin/pets/" + petId, {
             method: "DELETE",
-            // 需求（追加，2026-09-17）：CSRF Token 防護，刪除操作不可逆
+            // CSRF Token 防護，刪除操作不可逆
             headers: { "X-CSRF-Token": readCsrfCookie() },
           });
           if (!res.ok) {
@@ -1232,7 +1232,7 @@
         }
       }
 
-      // 需求（追加，2026-08-28）：後台會員信息頁「解鎖，重新報價」——沿用
+      // 後台會員信息頁「解鎖，重新報價」——沿用
       // walk-in-order-checkout.html / payments/checkout.html 同一支既有 API，
       // 不用新增後端端點。
       async function unlockPetAdmin(petId) {
@@ -1244,8 +1244,8 @@
           return;
         try {
           const res = await fetch(
-            "/api/admin/pets/" + petId + "/unlock-grooming-item",
-            { method: "PUT" },
+            "/api/admin/pets/" + petId + "/locked-item",
+            { method: "DELETE" },
           );
           if (!res.ok) {
             alert("解鎖失敗，請重試");
@@ -1299,7 +1299,7 @@
         const url =
           sourceType === "WALKIN"
             ? "/api/admin/walk-in-orders/" + recordId
-            : "/api/appointments/" + recordId + "/detail";
+            : "/api/appointments/" + recordId;
 
         try {
           const res = await fetch(url, {
@@ -1427,7 +1427,7 @@
         if (e.target.id === "cdDetailBackdrop") closeConsumeDetail();
       }
 
-      // 需求（追加，2026-09-08）：手動綁定既有匯入資料——搜尋目標會員帳號
+      // 手動綁定既有匯入資料——搜尋目標會員帳號
       (function initManualMerge() {
         const searchBox = document.getElementById("mergeTargetSearch");
         if (!searchBox) return; // 不是匯入暫時帳號，這個區塊沒有渲染，不用初始化
@@ -1437,7 +1437,7 @@
         );
         const selectedBox = document.getElementById("mergeTargetSelected");
         const confirmBtn = document.getElementById("mergeConfirmBtn");
-        // 需求（修正，2026-09-10）：這個 <script> 標籤原本用 Thymeleaf 內嵌表達式
+        // 這個 <script> 標籤原本用 Thymeleaf 內嵌表達式
         // 語法去讀伺服器端變數，但 Thymeleaf 對 script 標籤預設就會自動嘗試處理
         // 這種內嵌語法（不需要另外宣告才會生效），寫法本身格式不對，會讓樣板
         // 渲染到這裡直接拋例外中斷，後面的內容整段送不出來（包括下面搜尋框的
@@ -1446,7 +1446,7 @@
         // 一樣會被誤判成真正的表達式去解析——只能用文字描述，這裡不示範實際
         // 符號本身。改成讀 HTML 屬性（data-imported-username）避開這整個問題，
         // 這個屬性是用 th:attr 在一般 HTML 渲染階段就設好的，不受這個限制影響。
-        // 需求（防呆補強，2026-09-10）：改用可選鏈，就算這個元素當下抓不到
+        // 改用可選鏈，就算這個元素當下抓不到
         // （例如瀏覽器快取到混合版本的頁面）也不會噴例外中斷整段 script——
         // 這裡如果直接中斷，會連下面搜尋框的事件監聽器都沒機會註冊上去，
         // 造成「打字完全沒反應」，跟現場開單會員搜尋失效是同一種模式的坑。
@@ -1572,7 +1572,7 @@
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              // 需求（追加，2026-09-17）：CSRF Token 防護，這是不可逆的高風險
+              // CSRF Token 防護，這是不可逆的高風險
               // 操作，加上驗證標頭。
               "X-CSRF-Token": readCsrfCookie(),
             },

@@ -1,20 +1,19 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
 import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
 import com.petgrooming.pet_system.service.SlotCapacityService;
-import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.petgrooming.pet_system.service.WalkInOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -35,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 員工手機版：時段管理、交易紀錄（需求，2026-09-24 第八批）。
+ * 員工手機版：時段管理、交易紀錄。
  *
  * 時段管理只做「單日」的調整（名額、限定物種、這天公休與否），這是現場最常改的；
  * 預設時段容量範本、固定公休星期這類長期設定仍在網頁版（連結帶 desktop=1）。
@@ -50,33 +49,19 @@ public class MobileScheduleController {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
-
-    private final UserService userService;
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final SlotCapacityService slotCapacityService;
     private final ClosedDateService closedDateService;
     private final PaymentService paymentService;
-    private final WalkInOrderRepository walkInOrderRepository;
     private final MemberConsumptionService memberConsumptionService;
     private final OperationLogService operationLogService;
-
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) {
-            return null;
-        }
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
+    private final WalkInOrderService walkInOrderService;
 
     // ── 時段管理（單日）────────────────────────────────────────────────
     @GetMapping("/slots")
-    public String slots(HttpServletRequest request, Model model,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        User user = getLoginUser(request);
+    public String slots(Model model,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -90,7 +75,7 @@ public class MobileScheduleController {
         List<Map<String, Object>> slots = new ArrayList<>();
         int totalCap = 0;
         int totalBooked = 0;
-        for (TimeSlotResponse s : appointmentService.getAvailableSlots(d)) {
+        for (TimeSlotResponse s : appointmentQueryService.getAvailableSlots(d)) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("time", s.getStartTime().format(TIME_FMT));
             m.put("iso", s.getStartTime().toString());
@@ -133,12 +118,12 @@ public class MobileScheduleController {
     }
 
     @PostMapping("/slots/update")
-    public String updateSlot(HttpServletRequest request, RedirectAttributes ra,
+    public String updateSlot(RedirectAttributes ra,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
             @RequestParam int capacity,
-            @RequestParam(required = false) String allowedPetType) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String allowedPetType,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -156,11 +141,11 @@ public class MobileScheduleController {
     }
 
     @PostMapping("/slots/closed")
-    public String setClosed(HttpServletRequest request, RedirectAttributes ra,
+    public String setClosed(RedirectAttributes ra,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "true") boolean closed,
-            @RequestParam(required = false) String reason) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String reason,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -181,9 +166,9 @@ public class MobileScheduleController {
     // ── 交易紀錄 ────────────────────────────────────────────────────────
     // r：today 今天（預設）/ yesterday 昨天 / week 本週 / month 本月 / last30 近 30 天
     @GetMapping("/transactions")
-    public String transactions(HttpServletRequest request, Model model,
-            @RequestParam(defaultValue = "today") String r) {
-        User user = getLoginUser(request);
+    public String transactions(Model model,
+            @RequestParam(defaultValue = "today") String r,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -201,7 +186,7 @@ public class MobileScheduleController {
         final LocalDate t = to;
 
         List<ConsumptionRecordResponse> all = memberConsumptionService.buildCombinedRecords(
-                paymentService.getAllTransactions(), walkInOrderRepository.findAllByOrderByCreatedAtDesc());
+                paymentService.getAllTransactions(), walkInOrderService.findAllOrders());
         List<ConsumptionRecordResponse> picked = all.stream()
                 .filter(x -> x.getTime() != null)
                 .filter(x -> !x.getTime().toLocalDate().isBefore(f) && !x.getTime().toLocalDate().isAfter(t))

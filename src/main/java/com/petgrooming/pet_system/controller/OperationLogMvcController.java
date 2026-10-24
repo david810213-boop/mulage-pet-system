@@ -1,11 +1,10 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
-import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,20 +19,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class OperationLogMvcController {
 
     private final OperationLogService operationLogService;
-    private final UserService userService;
-
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
 
     @RequireRole(UserRole.ADMIN)
     @GetMapping
-    public String list(HttpServletRequest request, Model model,
-                       @RequestParam(required = false) String category) {
-        model.addAttribute("user", getLoginUser(request));
+    public String list(Model model,
+                       @RequestParam(required = false) String category,
+                       @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("logs",
                 (category == null || category.isBlank())
                         ? operationLogService.getAll()

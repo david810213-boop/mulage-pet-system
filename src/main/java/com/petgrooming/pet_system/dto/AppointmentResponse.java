@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-// API 回傳給前端的格式（對應原本 AppointmentReceipt.toString()）
+// API 回傳給前端的預約資料
 @Data
 public class AppointmentResponse {
     private Long id;
@@ -24,7 +24,7 @@ public class AppointmentResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private List<GroomingItem> selectedItems;
-    // 需求（追加，2026-08-26 修正）：預約列表頁專用的「實際項目」顯示名稱——
+    // 預約列表頁專用的「實際項目」顯示名稱——
     // 這隻寵物到店核對時如果被店員改過項目（例如從基礎定制調理升級成中階
     // 定制調理），selectedItems 是預約當下的原始選擇，不會跟著核對結果更新，
     // 導致列表頁跟消費明細顯示不一致（明細正確，列表還是舊的）。
@@ -32,13 +32,13 @@ public class AppointmentResponse {
     // 紀錄）就用核對後的實際項目名稱，還沒核對就照舊用 selectedItems 的名稱，
     // 列表頁的畫面改讀這個欄位，不要再直接讀 selectedItems。
     private List<String> displayItemNames;
-    private boolean firstVisitAssessment; // 需求（2026-10-02）：初次・現場評估（金額現場報價）
+    private boolean firstVisitAssessment; // 初次・現場評估（金額現場報價）
     private int totalAmount;
     private boolean paid;
     private AppointmentStatus status;
     private String statusLabel;
-    private LocalDateTime confirmedTime; // 需求 3：店家敲定的最後時間
-    private String memberNote;           // 需求 7：會員可見備注（不含店家內部備注）
+    private LocalDateTime confirmedTime; // 店家敲定的最後時間
+    private String memberNote;           // 會員可見備注（不含店家內部備注）
     private boolean cancelled;
     private LocalDateTime cancelledAt;
     private String cancelReason;
@@ -65,7 +65,7 @@ public class AppointmentResponse {
         res.setStatus(a.getStatus());
         res.setStatusLabel(a.getStatus().getLabel());
         res.setConfirmedTime(a.getConfirmedTime());
-        // ⚠️ 需求 7：只放 memberNote，internalNote 絕不放進顧客可見的 DTO
+        // ⚠️ 只放 memberNote，internalNote 絕不放進顧客可見的 DTO
         res.setMemberNote(a.getMemberNote());
         res.setCancelled(a.isCancelled());
         res.setCancelledAt(a.getCancelledAt());

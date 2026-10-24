@@ -1,19 +1,19 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PetService;
-import com.petgrooming.pet_system.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -22,27 +22,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PetMvcController {
 
     private final PetService petService;
-    private final UserService userService;
     private final OperationLogService operationLogService;
 
-    /**
-     * JWT 版獲取當前登入使用者
-     * 從 LoginInterceptor 存入的 request attribute 拿取 username，
-     * 再用 UserService 查出完整的 User entity，沒有就回傳 null
-     */
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     @GetMapping
-    public String list(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String list(Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         model.addAttribute("pets", petService.getMyPets(user.getUsername()));
@@ -50,8 +33,7 @@ public class PetMvcController {
     }
 
     @GetMapping("/new")
-    public String newForm(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String newForm(Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         model.addAttribute("petRequest", new PetRequest());
@@ -63,13 +45,12 @@ public class PetMvcController {
     @PostMapping("/submit")
     public String submit(@Valid @ModelAttribute PetRequest req,
                          BindingResult bindingResult,
-                         // 需求 2：毛長由店家（後台）定義；此 param 僅後台 Thymeleaf 表單使用
+                         // 毛長由店家（後台）定義；此 param 僅後台 Thymeleaf 表單使用
                          @RequestParam(name = "coatType", required = false) CoatType coatType,
-                         HttpServletRequest request,
                          RedirectAttributes redirectAttributes,
-                         Model model) {
+                         Model model,
+                         @CurrentUser User user) {
 
-        User user = getLoginUser(request);
         if (user == null) return "redirect:/auth/login";
 
         if (bindingResult.hasErrors()) {
@@ -82,11 +63,11 @@ public class PetMvcController {
         try {
             var created = petService.addPet(user.getUsername(), req);
             // 後台建立時若有選毛長，直接由店家定義寫入
-            if (coatType != null && created != null && created.getId() != null) {
+            if (coatType != null && created.getId() != null) {
                 petService.setCoatType(created.getId(), coatType);
             }
             operationLogService.log(user, "CUSTOMER", "ADD_PET",
-                    "寵物 " + (created != null ? created.getName() : "") + " #" + (created != null ? created.getId() : ""),
+                    "寵物 " + created.getName() + " #" + created.getId(),
                     req.getBreed());
             redirectAttributes.addFlashAttribute("successMsg", "寵物新增成功！");
             return "redirect:/pets";
@@ -104,10 +85,9 @@ public class PetMvcController {
     // 因為建立當下還沒有 petId）。只能傳自己名下的寵物。
     @PostMapping("/{id}/photo")
     public String uploadPhoto(@PathVariable Long id,
-                              @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
-                              HttpServletRequest request,
-                              RedirectAttributes ra) {
-        User user = getLoginUser(request);
+                              @RequestParam("file") MultipartFile file,
+                              RedirectAttributes ra,
+                              @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {

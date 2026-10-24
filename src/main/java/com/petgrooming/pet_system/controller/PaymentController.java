@@ -1,38 +1,42 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.PaymentService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.petgrooming.pet_system.service.StoreSettingsService;
+import com.petgrooming.pet_system.service.FinancialReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
+@Tag(name = "付款", description = "結帳、匯款帳戶、交易紀錄、財務報表")
 @RestController
-@RequestMapping("/api/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
 
-    // 從 LoginInterceptor 解析 JWT 後存入的 request attribute 取得目前登入者
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
+    private final StoreSettingsService storeSettingsService;
+
+    private final FinancialReportService financialReportService;
 
     // ── GET /api/payments/bank-account ──────────────────────────────────
-    // 需求 21：LIFF「線上儲值」頁面讀取匯款帳號資訊 + 收款 QR Code
-    // 需求（追加）：LIFF 儲值一律用「儲值金收款（大額專用）」帳戶，跟現場/預約結帳帳戶分開，
+    // LIFF「線上儲值」頁面讀取匯款帳號資訊 + 收款 QR Code
+    // LIFF 儲值一律用「儲值金收款（大額專用）」帳戶，跟現場/預約結帳帳戶分開，
     // 任何已登入使用者皆可查（顧客儲值前本來就需要看到這份資訊，不需要限定店家/員工）
-    @GetMapping("/bank-account")
+    @GetMapping("/api/payments/bank-account")
     public ResponseEntity<?> getBankAccountInfo() {
-        var info = paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP);
-        return ResponseEntity.ok(java.util.Map.of(
+        var info = storeSettingsService.getBankAccountInfo(BankAccountPurpose.TOPUP);
+        return ResponseEntity.ok(Map.of(
                 "bankName", info.getBankName() != null ? info.getBankName() : "",
                 "accountNumber", info.getAccountNumber() != null ? info.getAccountNumber() : "",
                 "accountHolder", info.getAccountHolder() != null ? info.getAccountHolder() : "",
@@ -41,36 +45,36 @@ public class PaymentController {
     }
 
     // ── POST /api/payments/{appointmentId}/checkout ────────────────────────
-    // 結帳（對應原本 processPayment），appointmentId = 要結哪一筆預約的帳
-    @PostMapping("/{appointmentId}/checkout")
+    // 結帳，appointmentId = 要結哪一筆預約的帳
+    @PostMapping("/api/payments/{appointmentId}/checkout")
     public ResponseEntity<?> checkout(
             @PathVariable Long appointmentId,
             @RequestBody CheckoutRequest req,
-            HttpServletRequest request) {
-        TransactionResponse res = paymentService.checkout(appointmentId, req, currentUsername(request));
+            @CurrentUser String username) {
+        TransactionResponse res = paymentService.checkout(appointmentId, req, username);
         return ResponseEntity.ok(res);
     }
 
-    // ── GET /api/payments/my ───────────────────────────────────────────────
-    // 查詢自己的交易紀錄（對應原本 queryTransactions）
-    @GetMapping("/my")
-    public ResponseEntity<List<TransactionResponse>> getMyTransactions(HttpServletRequest request) {
-        return ResponseEntity.ok(paymentService.getMyTransactions(currentUsername(request)));
+    // ── GET /api/me/transactions ───────────────────────────────────────────────
+    // 查詢自己的交易紀錄
+    @GetMapping({"/api/me/transactions", "/api/payments/my"})
+    public ResponseEntity<List<TransactionResponse>> getMyTransactions(@CurrentUser String username) {
+        return ResponseEntity.ok(paymentService.getMyTransactions(username));
     }
 
-    // ── GET /api/payments/transactions ────────────────────────────────────
+    // ── GET /api/admin/payments/transactions ────────────────────────────────────
     // 查詢所有交易（STAFF / ADMIN）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/transactions")
+    @GetMapping({"/api/admin/payments/transactions", "/api/payments/transactions"})
     public ResponseEntity<List<TransactionResponse>> getAllTransactions() {
         return ResponseEntity.ok(paymentService.getAllTransactions());
     }
 
-    // ── GET /api/payments/report ───────────────────────────────────────────
-    // 財務報告（ADMIN，對應原本 generateFinancialReport）
+    // ── GET /api/admin/payments/report ───────────────────────────────────────────
+    // 財務報告（ADMIN）
     @RequireRole(UserRole.ADMIN)
-    @GetMapping("/report")
+    @GetMapping({"/api/admin/payments/report", "/api/payments/report"})
     public ResponseEntity<FinancialReportResponse> getFinancialReport() {
-        return ResponseEntity.ok(paymentService.getFinancialReport());
+        return ResponseEntity.ok(financialReportService.getFinancialReport());
     }
 }

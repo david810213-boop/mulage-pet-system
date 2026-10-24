@@ -6,9 +6,11 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-// 對應原本的 Transaction.java
 @Entity
-@Table(name = "transactions")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "transactions", indexes = {
+        @Index(name = "idx_transactions_paid_time", columnList = "paid, payment_time")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.exception.AppointmentException;
 import com.petgrooming.pet_system.model.SlotCapacity;
 import com.petgrooming.pet_system.repository.SlotCapacityRepository;
@@ -16,7 +17,7 @@ import java.time.LocalTime;
 import java.util.Optional;
 
 /**
- * 需求 3：時段名額控管（同時段最多 5 隻），併發安全。
+ * 時段名額控管（同時段最多 5 隻），併發安全。
  *
  * 兩段式設計：
  *  1) ensureSlot()：以 REQUIRES_NEW 獨立交易「確保這一列存在」。
@@ -31,9 +32,7 @@ import java.util.Optional;
 public class SlotCapacityService {
 
     private final SlotCapacityRepository slotRepo;
-    // 需求（追加，2026-08-27）：時段容量範本——新建立一天的時段計數列時，
-    // 初始上限改成讀這份範本（每個時段可以分別設定不同預設值），
-    // 不再是所有時段統一寫死同一個數字。
+    // 時段容量範本：新建立一天的時段計數列時，初始上限讀這份範本（每個時段可以分別設定不同預設值）
     private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService;
     private final EntityManager entityManager;
 
@@ -49,7 +48,7 @@ public class SlotCapacityService {
                     .slotTime(time)
                     .booked(0)
                     .capacity(defaultSlotCapacityTemplateService.getCapacity(time))
-                    // 需求（追加，2026-09-08）：新建立的一天，物種限制初始值也從範本帶入
+                    // 新建立的一天，物種限制初始值也從範本帶入
                     .allowedPetType(defaultSlotCapacityTemplateService.getAllowedPetType(time))
                     .build());
         } catch (DataIntegrityViolationException e) {
@@ -120,18 +119,18 @@ public class SlotCapacityService {
     }
 
     /**
-     * 需求（追加，2026-09-08）：查某時段目前限定的物種（null＝不限制），該日該時段
+     * 查某時段目前限定的物種（null＝不限制），該日該時段
      * 還沒建立計數列的話，回傳範本裡設定的預設值。
      */
-    public com.petgrooming.pet_system.enums.PetType getAllowedPetType(LocalDate date, LocalTime time) {
+    public PetType getAllowedPetType(LocalDate date, LocalTime time) {
         return slotRepo.findBySlotDateAndSlotTime(date, time)
                 .map(SlotCapacity::getAllowedPetType)
                 .orElseGet(() -> defaultSlotCapacityTemplateService.getAllowedPetType(time));
     }
 
     /**
-     * 需求 1：店家手動調整「特定日期＋特定時段」的名額上限，或直接關閉（設為 0）。
-     * 需求（追加，2026-09-08）：同時可以覆寫這一天這個時段限定的物種（null＝不限制）。
+     * 店家手動調整「特定日期＋特定時段」的名額上限，或直接關閉（設為 0）。
+     * 同時可以覆寫這一天這個時段限定的物種（null＝不限制）。
      * 只影響「剩餘可預約名額」與「這個時段能不能約」，已經預約成功的紀錄（booked 數）
      * 完全不受影響——即使把 capacity 調到比 booked 還低、或改成限定物種跟現有預約的
      * 寵物不符，現有預約仍然有效，只是不能再新增預約進這個時段。
@@ -139,7 +138,7 @@ public class SlotCapacityService {
      */
     @Transactional
     public void setCapacity(LocalDate date, LocalTime time, int newCapacity,
-                             com.petgrooming.pet_system.enums.PetType allowedPetType) {
+                             PetType allowedPetType) {
         if (newCapacity < 0) {
             throw new AppointmentException("名額上限不能小於 0");
         }

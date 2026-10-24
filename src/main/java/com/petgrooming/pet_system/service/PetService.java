@@ -2,46 +2,63 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.PetRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
+import com.petgrooming.pet_system.dto.PetSearchResponse;
+import com.petgrooming.pet_system.enums.CatCoatCategory;
 import com.petgrooming.pet_system.enums.CoatType;
 import com.petgrooming.pet_system.enums.PetSizeCategory;
+import com.petgrooming.pet_system.enums.PetType;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PetException;
+import com.petgrooming.pet_system.model.CatBreedCoatMapping;
+import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
+import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository;
+import com.petgrooming.pet_system.repository.GroomingItemRepository;
+import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class PetService {
 
+    private static final int STAFF_SEARCH_LIMIT = 20;
+
     private final PetRepository petRepository;
     private final UserRepository userRepository;
-    private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
-    private final com.petgrooming.pet_system.repository.PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
-    private final com.petgrooming.pet_system.repository.GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：美容紀錄照片
+    private final CloudinaryService cloudinaryService; // 寵物照片上傳
+    private final PetGroomingNoteRepository petGroomingNoteRepository;
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
+    private final CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 菜單簡化
+    private final GroomingItemRepository groomingItemRepository; // 狗狗鎖定套餐查詢
+    private final GroomingNotePhotoService groomingNotePhotoService; // 美容紀錄照片
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
     public PetResponse addPet(String username, PetRequest req) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PetException("找不到該使用者：" + username));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到該使用者：" + username));
 
         // 自動依 petType + weight 判斷體型分類
         PetSizeCategory sizeCategory = PetSizeCategory.determine(req.getPetType(), req.getWeight());
 
-        // 需求（追加）：菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
+        // 菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
         // LIFF 預約頁靠這個欄位篩選菜單。狗/其他物種、或品種不在對照表裡的特殊貓種，
         // 一律是 null（LIFF 端遇到 null 顯示全部貓咪套餐項目，不擋顧客預約）。
-        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
+        CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
 
         Pet pet = Pet.builder()
                 .name(req.getName())
@@ -50,14 +67,14 @@ public class PetService {
                 .weight(req.getWeight())
                 .age(req.getAge())
                 .sizeCategory(sizeCategory)
-                // 需求 2：毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
+                // 毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
                 .coatType(CoatType.UNDEFINED)
                 .catCoatCategory(catCoatCategory)
                 .hasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety())
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
                 .owner(user)
-                // 需求 19：定型化契約要求蒐集的資料（皆選填）
+                // 定型化契約要求蒐集的資料（皆選填）
                 .gender(req.getGender())
                 .isNeutered(req.getIsNeutered() != null && req.getIsNeutered())
                 .hasChip(req.getHasChip() != null && req.getHasChip())
@@ -75,20 +92,20 @@ public class PetService {
         return PetResponse.from(saved);
     }
 
-    // 需求（追加）：LIFF 新增毛孩頁面的品種下拉選單資料來源
-    public List<com.petgrooming.pet_system.model.CatBreedCoatMapping> listCatBreedOptions() {
+    // LIFF 新增毛孩頁面的品種下拉選單資料來源
+    public List<CatBreedCoatMapping> listCatBreedOptions() {
         return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
     }
 
-    // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
+    // 貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
     // 避免多處各自實作導致行為不一致。
-    public com.petgrooming.pet_system.enums.CatCoatCategory resolveCatCoatCategory(
-            com.petgrooming.pet_system.enums.PetType petType, String breed) {
-        if (petType != com.petgrooming.pet_system.enums.PetType.CAT || breed == null) {
+    public CatCoatCategory resolveCatCoatCategory(
+            PetType petType, String breed) {
+        if (petType != PetType.CAT || breed == null) {
             return null;
         }
         return catBreedCoatMappingRepository.findByBreedName(breed.trim())
-                .map(com.petgrooming.pet_system.model.CatBreedCoatMapping::getCoatCategory)
+                .map(CatBreedCoatMapping::getCoatCategory)
                 .orElse(null);
     }
 
@@ -103,10 +120,10 @@ public class PetService {
     @Transactional
     public PetResponse updatePet(Long petId, PetRequest req) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
 
         PetSizeCategory sizeCategory = PetSizeCategory.determine(pet.getPetType(), req.getWeight());
-        com.petgrooming.pet_system.enums.CatCoatCategory catCoatCategory =
+        CatCoatCategory catCoatCategory =
                 resolveCatCoatCategory(pet.getPetType(), req.getBreed());
 
         pet.setName(req.getName());
@@ -133,7 +150,7 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // 需求（追加）：LIFF 顧客端編輯自己的寵物前，先確認這隻寵物真的是這個 username 的，
+    // LIFF 顧客端編輯自己的寵物前，先確認這隻寵物真的是這個 username 的，
     // 避免會員竄改 API 請求裡的 petId 改到別人的寵物資料。
     public void assertOwnership(Long petId, String username) {
         Pet pet = getPetEntity(petId);
@@ -142,38 +159,36 @@ public class PetService {
         }
     }
 
-    // ── 刪除寵物（2026-08-26 修正：改成軟刪除）─────────────────────────────
-    // 客戶端（LIFF）跟後台都會呼叫這個方法。改成跟 GroomingItem 下架同一套
-    // 邏輯——單純標記 isDeleted=true，不是真的刪除資料列，過往的預約/消費
-    // 紀錄完全不受影響（那些紀錄存的是結帳當下的寵物名字快照，不是即時
-    // 關聯查詢），所以不用再檢查「有沒有消費紀錄」才能刪，任何情況都能刪。
+    // ── 刪除寵物：軟刪除 ─────────────────────────────
+    // 客戶端（LIFF）跟後台都會呼叫。跟 GroomingItem 下架同一套邏輯——只標記 isDeleted=true，
+    // 過往預約/消費紀錄存的是寵物名字快照，不受影響，所以任何情況都能刪。
     @Transactional
     public void deletePet(Long petId) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setDeleted(true);
         petRepository.save(pet);
     }
 
     // ── 2. 查詢自己的所有寵物 ────────────────────────────────────────────
-    // 改用 username 查詢，與 AppointmentService.getMyAppointments() 相同做法
+    // 改用 username 查詢，與 AppointmentQueryService.getMyAppointments() 相同做法
     public List<PetResponse> getMyPets(String username) {
 
         // 確認 user 存在，避免靜默回傳空清單讓呼叫端誤以為「此人只是沒有寵物」
         User owner = userRepository.findByUsername(username)
-                .orElseThrow(() -> new PetException("找不到該使用者：" + username));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到該使用者：" + username));
 
         return petRepository.findByOwnerUsername(username)
                 .stream()
-                .filter(pet -> !pet.isDeleted()) // 需求（追加，2026-08-26 修正）：軟刪除的寵物不出現在清單裡
+                .filter(pet -> !pet.isDeleted()) // 軟刪除的寵物不出現在清單裡
                 .map(pet -> {
-                    // 需求（追加）：已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
+                    // 已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
                     // 前端才不用為了顯示鎖定資訊再多打一次 API。
-                    com.petgrooming.pet_system.model.GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
+                    GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
                             ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
                             : null;
                     PetResponse res = PetResponse.from(pet, lockedItem);
-                    // 需求（追加）：帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
+                    // 帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
                     res.setIsExistingCustomer(
                             petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pet.getName(), null));
                     return res;
@@ -181,7 +196,7 @@ public class PetService {
                 .toList();
     }
 
-    // ── 3. 店家定義寵物毛長（需求 2）────────────────────────────────────────
+    // ── 3. 店家定義寵物毛長────────────────────────────────────────
     // 僅供後台（STAFF / ADMIN）呼叫，由店家實際檢視毛況後設定短毛 / 中長毛 / 長毛。
     @Transactional
     public PetResponse setCoatType(Long petId, CoatType coatType) {
@@ -189,15 +204,13 @@ public class PetService {
             throw new PetException("毛長不能為空");
         }
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setCoatType(coatType);
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // ── 需求（追加，2026-09-06）：寵物信息管理頁面 ──────────────────────────
-    // 用途：後台集中管理所有寵物（跨會員），把原本分散在「會員信息」寵物卡片、
-    // 「現場開單」/「預約現場加單」頁面才看得到的鎖定套餐狀態集中到一頁，
-    // 不用先找到會員、點進去才看得到。
+    // ── 寵物信息管理頁面 ──────────────────────────
+    // 後台集中管理所有寵物（跨會員）與固定套餐鎖定狀態，不用先找到會員、點進去才看得到。
     public List<PetResponse> listAllPets() {
         return petRepository.findByIsDeletedFalseOrderByNameAsc().stream()
                 .map(pet -> {
@@ -215,9 +228,9 @@ public class PetService {
     @Transactional
     public PetResponse lockGroomingItem(Long petId, Long groomingItemId) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         var item = groomingItemRepository.findById(groomingItemId)
-                .orElseThrow(() -> new PetException("找不到服務項目 #" + groomingItemId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到服務項目 #" + groomingItemId));
         pet.setLockedGroomingItemId(groomingItemId);
         petRepository.save(pet);
         return PetResponse.from(pet, item);
@@ -228,7 +241,7 @@ public class PetService {
     @Transactional
     public PetResponse unlockGroomingItem(Long petId) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setLockedGroomingItemId(null);
         petRepository.save(pet);
         return PetResponse.from(pet);
@@ -240,7 +253,7 @@ public class PetService {
     @Transactional
     public PetResponse updateWeight(Long petId, double weight) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setWeight(weight);
         // 體重變了，體型分類（PetSizeCategory，影響貓咪 90 天回洗優惠等其他既有
         // 邏輯）也要跟著重新算一次，維持資料一致。
@@ -258,24 +271,24 @@ public class PetService {
     // 只給貓咪用——狗狗沒有這個分類概念，呼叫端（Controller）應先確認物種是貓
     // 再呼叫這個方法，這裡不重複檢查（避免二次查資料庫），只單純防呆 category 不能空。
     @Transactional
-    public PetResponse setCatCoatCategory(Long petId, com.petgrooming.pet_system.enums.CatCoatCategory category) {
+    public PetResponse setCatCoatCategory(Long petId, CatCoatCategory category) {
         if (category == null) {
             throw new PetException("毛髮分類不能為空");
         }
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         pet.setCatCoatCategory(category);
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // ── 4. 上傳/更換寵物照片（需求 17：LIFF 顧客端 + 店家後台皆可用）───────
+    // ── 4. 上傳/更換寵物照片（LIFF 顧客端 + 店家後台皆可用）───────
     // 權限（會員只能傳自己的寵物、店家可傳任何寵物）由呼叫端（Controller）檢查，
     // 這裡只負責「換照片」這件事本身：先上傳新圖，成功後才刪舊圖並更新資料庫，
     // 順序不能反過來——否則上傳失敗時會先把舊照片刪掉，變成沒有照片可以用。
     @Transactional
-    public PetResponse updatePhoto(Long petId, org.springframework.web.multipart.MultipartFile file) {
+    public PetResponse updatePhoto(Long petId, MultipartFile file) {
         Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
 
         CloudinaryService.UploadResult result = cloudinaryService.upload(file, "pets");
 
@@ -292,15 +305,15 @@ public class PetService {
     // 供 Controller 檢查「這隻寵物是不是這個 username 的」，避免會員上傳到別人的寵物
     public Pet getPetEntity(Long petId) {
         return petRepository.findById(petId)
-                .orElseThrow(() -> new PetException("找不到寵物 #" + petId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
     }
 
-    // ── 5. 上傳美容狀況歷史照片（需求 18：美容歷史相簿）─────────────────
+    // ── 5. 上傳美容狀況歷史照片（美容歷史相簿）─────────────────
     // 僅供店家後台使用（美容狀況備注本身就是店員在核對步驟填寫的，照片同樣由店員事後補上）。
     @Transactional
-    public void uploadGroomingNotePhoto(Long noteId, org.springframework.web.multipart.MultipartFile file) {
+    public void uploadGroomingNotePhoto(Long noteId, MultipartFile file) {
         var note = petGroomingNoteRepository.findById(noteId)
-                .orElseThrow(() -> new PetException("找不到美容狀況紀錄 #" + noteId));
+                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到美容狀況紀錄 #" + noteId));
 
         CloudinaryService.UploadResult result = cloudinaryService.upload(file, "grooming-notes");
 
@@ -312,20 +325,65 @@ public class PetService {
         cloudinaryService.deleteQuietly(oldPublicId);
     }
 
-    // ── 6. 顧客查看自己毛孩的美容紀錄（需求，2026-09-29：LIFF「我的毛孩」）──────
+    // ── 6. 顧客查看自己毛孩的美容紀錄（LIFF「我的毛孩」）──────
     // 備註內容與照片全部開放給顧客看（2026-09-29 店家決定）。呼叫端要先做擁有者檢查。
-    public java.util.List<java.util.Map<String, Object>> getGroomingHistory(Long petId) {
+    public List<Map<String, Object>> getGroomingHistory(Long petId) {
         var notes = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(petId);
         var photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(notes);
-        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (var n : notes) {
-            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", n.getId());
             m.put("serviceDate", n.getServiceDate() != null ? n.getServiceDate().toString() : null);
             m.put("note", n.getNote());
-            m.put("photos", photosByNote.getOrDefault(n.getId(), java.util.List.of()));
+            m.put("photos", photosByNote.getOrDefault(n.getId(), List.of()));
             result.add(m);
         }
         return result;
+    }
+
+    public Optional<Pet> findPet(Long petId) {
+        return petRepository.findById(petId);
+    }
+
+    public List<Pet> findAllByType(PetType petType) {
+        return petRepository.findByPetType(petType);
+    }
+
+    public List<Pet> searchByName(String keyword) {
+        return petRepository.findByNameContainingIgnoreCase(keyword);
+    }
+
+    /** 依寵物名稱搜尋（店員用），同名寵物以家長姓名與電話末四碼區分，最多 20 筆。 */
+    @Transactional(readOnly = true)
+    public List<PetSearchResponse> searchForStaff(String keyword) {
+        return searchByName(keyword.trim()).stream()
+                .filter(p -> p.getOwner() != null)
+                .limit(STAFF_SEARCH_LIMIT)
+                .map(PetService::toSearchResult)
+                .toList();
+    }
+
+    private static PetSearchResponse toSearchResult(Pet p) {
+        String phone = p.getOwnerPhone() != null && p.getOwnerPhone().length() >= 4
+                ? p.getOwnerPhone().substring(p.getOwnerPhone().length() - 4)
+                : "未填";
+        return PetSearchResponse.builder()
+                .petId(p.getId())
+                .petName(p.getName())
+                .petType(p.getPetType() != null ? p.getPetType().name() : null)
+                .breed(p.getBreed())
+                .ownerId(p.getOwner().getId())
+                .ownerUsername(p.getOwner().getUsername())
+                .ownerName(p.getOwner().getName())
+                .ownerPhone(p.getOwnerPhone())
+                .photoUrl(p.getPhotoUrl())
+                .displayLabel(p.getName() + "（家長：" + p.getOwner().getName() + "・電話末四碼 " + phone + "）")
+                .build();
+    }
+
+    /** 寵物的美容紀錄，新的在前。 */
+    public List<PetGroomingNote> getGroomingNotes(Long petId) {
+        return petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(petId);
     }
 }

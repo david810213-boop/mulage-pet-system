@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
- * 需求 6：經手人積分結算報表的一列
+ * 經手人積分結算報表的一列
  */
 @Data
 @AllArgsConstructor

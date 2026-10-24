@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 需求（追加，2026-10-02 店家確認 7）：零售商品／店用洗劑 CSV 批次匯入。
+ * 零售商品／店用洗劑 CSV 批次匯入。
  *
  * 零售商品欄位：名稱,條碼,售價,成本,庫存,說明
  * 店用洗劑欄位：名稱,條碼,庫存,安全庫存,成本
@@ -84,7 +84,7 @@ public class InventoryImportService {
                 errors.add("第 " + rowNo + " 列：" + e.getMessage());
             }
         }
-        log.info("📦 [零售商品匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
+        log.info("[零售商品匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
         return SimpleImportResult.builder().totalRows(rows.size()).succeeded(ok).rowErrors(errors).build();
     }
 
@@ -126,7 +126,7 @@ public class InventoryImportService {
                 errors.add("第 " + rowNo + " 列：" + e.getMessage());
             }
         }
-        log.info("🧴 [店用洗劑匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
+        log.info("[店用洗劑匯入] 新增 {}、更新 {}、錯誤 {}", created, updated, errors.size());
         return SimpleImportResult.builder().totalRows(rows.size()).succeeded(ok).rowErrors(errors).build();
     }
 

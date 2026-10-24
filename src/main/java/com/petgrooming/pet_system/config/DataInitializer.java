@@ -1,12 +1,15 @@
 package com.petgrooming.pet_system.config;
 
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.BankAccountInfo;
 import com.petgrooming.pet_system.model.BonusTier;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.model.WeeklyClosureSetting;
 import com.petgrooming.pet_system.repository.BankAccountInfoRepository;
 import com.petgrooming.pet_system.repository.BonusTierRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
+import com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -15,24 +18,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * 資安修正 / 架構調整（2026-08-22）：服務項目（GroomingItem）相關的種子資料、
- * 套餐組成、以及各種「每次啟動都跑一次」的資料校正邏輯，已經全部搬到 Flyway
- * 遷移檔案（見 src/main/resources/db/migration/V1~V7），改由
- * {@link DataSeedMigrationRunner} 負責執行。
+ * 啟動時建立「建立一次、之後由店家在後台自行調整」的種子資料：預設帳號、積分獎勵金級距、
+ * 匯款收款帳戶、固定公休星期，一律逐筆檢查是否已存在才建立。
  *
- * 搬移原因：這裡原本的寫法（用 groomingItemRepository.count()==0 判斷「只在全新
- * 資料庫時建立」）已經造成過兩次事故——正式站資料庫早就不是空的，count()==0
- * 永遠不成立，新增的種子資料實際上從來沒有真正被種進正式站過，直到改用
- * existsByItemCode() 逐筆檢查才修正。Flyway 用資料庫本身的
- * flyway_schema_history 表追蹤每個遷移檔案「保證只執行一次」，不用再靠
- * 這種手刻的條件判斷去模擬，從根本上解決這個反覆出現的問題。
- *
- * 這個檔案現在只保留「跟 GroomingItem 無關」的種子資料：預設帳號、積分獎勵金
- * 級距、匯款收款帳戶、固定公休星期——這幾項本來就沒有踩過上面那個坑（要嘛用
- * existsByUsername()/findByPurpose().isEmpty() 這種正確的逐筆檢查，要嘛是
- * 「建立一次讓店家後續自行在後台調整」這種真正只需要跑一次的情境，沒有
- * Flyway 要解決的那種「需要持續新增資料」的問題，所以保留原本寫法即可，
- * 不用跟著搬。
+ * 服務項目（GroomingItem）與套餐組成的種子資料由 Flyway 遷移檔管理（db/migration），不要加在這裡：
+ * 用 count()==0 之類的條件判斷「只在全新資料庫建立」，在已有資料的正式站永遠不會成立，
+ * 新種子資料會種不進去。見 docs/adr/0001-flyway-after-hibernate.md。
  */
 @Component
 @RequiredArgsConstructor
@@ -42,7 +33,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final BonusTierRepository bonusTierRepository;
     private final BankAccountInfoRepository bankAccountInfoRepository;
-    private final com.petgrooming.pet_system.repository.WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
+    private final WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -63,7 +54,7 @@ public class DataInitializer implements ApplicationRunner {
         warnIfDefaultPasswordStillActive("staff@pet.com", "staff123", "美容師小洪（STAFF）");
         warnIfDefaultPasswordStillActive("user@pet.com", "user123", "測試會員（CUSTOMER）");
 
-        // 需求 3：積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
+        // 積分獎勵金級距：種子資料，僅在資料表是空的時候建立一次，之後由店家在後台編輯
         if (bonusTierRepository.count() == 0) {
             bonusTierRepository.save(BonusTier.builder().minPoints(3001).maxPoints(3350).bonusAmount(1200).build());
             bonusTierRepository.save(BonusTier.builder().minPoints(3351).maxPoints(3700).bonusAmount(1600).build());
@@ -76,20 +67,20 @@ public class DataInitializer implements ApplicationRunner {
             log.info("積分獎勵金級距種子資料初始化完成");
         }
 
-        // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
-        // 需求（追加）：改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
-        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT).isEmpty()) {
+        // 店家匯款帳號：結帳收款與儲值金收款（大額專用）是兩組獨立帳戶，各自檢查、各自補齊
+        // 預設（佔位）資料，店家再到後台修改
+        if (bankAccountInfoRepository.findByPurpose(BankAccountPurpose.CHECKOUT).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
-                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT)
+                    .purpose(BankAccountPurpose.CHECKOUT)
                     .bankName("請於後台設定銀行名稱")
                     .accountNumber("請於後台設定帳號")
                     .accountHolder("請於後台設定戶名")
                     .build());
             log.info("結帳收款帳號預設資料初始化完成，請記得到後台修改成實際帳號");
         }
-        if (bankAccountInfoRepository.findByPurpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP).isEmpty()) {
+        if (bankAccountInfoRepository.findByPurpose(BankAccountPurpose.TOPUP).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
-                    .purpose(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP)
+                    .purpose(BankAccountPurpose.TOPUP)
                     .bankName("請於後台設定銀行名稱")
                     .accountNumber("請於後台設定帳號")
                     .accountHolder("請於後台設定戶名")
@@ -101,7 +92,7 @@ public class DataInitializer implements ApplicationRunner {
         // （這段文字之前只是契約說明，系統沒有真的去擋，這裡補上讓它成為實際生效的規則）。
         // 只在還沒有任何設定時建立這筆預設值，之後店家在後台改過的設定不會被這段覆蓋。
         if (weeklyClosureSettingRepository.count() == 0) {
-            weeklyClosureSettingRepository.save(com.petgrooming.pet_system.model.WeeklyClosureSetting.builder()
+            weeklyClosureSettingRepository.save(WeeklyClosureSetting.builder()
                     .closedThursday(true)
                     .closedFriday(true)
                     .build());
@@ -115,7 +106,7 @@ public class DataInitializer implements ApplicationRunner {
     private void warnIfDefaultPasswordStillActive(String username, String defaultPassword, String roleDescription) {
         userRepository.findByUsername(username).ifPresent(user -> {
             if (passwordEncoder.matches(defaultPassword, user.getPassword())) {
-                log.warn("⚠️⚠️⚠️ 帳號 {}（{}）目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上，" +
+                log.warn("帳號 {}（{}）目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上，" +
                         "任何人都看得到！請立刻登入後台（帳號設定 → 修改密碼）改成一組別人猜不到的新密碼。",
                         username, roleDescription);
             }

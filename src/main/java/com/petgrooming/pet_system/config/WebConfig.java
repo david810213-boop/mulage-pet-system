@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.config;
 
 import com.petgrooming.pet_system.interceptor.CsrfInterceptor;
+import com.petgrooming.pet_system.interceptor.DeprecatedApiInterceptor;
 import com.petgrooming.pet_system.interceptor.LoginInterceptor;
 import com.petgrooming.pet_system.interceptor.MobileRedirectInterceptor;
 import com.petgrooming.pet_system.interceptor.RoleInterceptor;
@@ -14,18 +15,20 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.List;
 
 /**
  * 攔截順序：
  * order(1) LoginInterceptor → 確認是否登入
  * order(2) RoleInterceptor → 確認角色是否有權限（讀 @RequireRole）
- * order(3) CsrfInterceptor → 確認 CSRF token 是否正確（讀 @RequireCsrf，
- *          只標在高風險端點上，需求見 2026-09-17 追加說明）
+ * order(3) CsrfInterceptor → 以 Cookie 登入的寫入請求確認 CSRF token 是否正確（標 @SkipCsrf 的略過）
  * order(4) MobileRedirectInterceptor → 員工用手機開啟有手機版的頁面時，
- *          自動導向 /m 底下的對應頁面（需求，2026-09-24）
+ *          自動導向 /m 底下的對應頁面
  */
 @Configuration
 @RequiredArgsConstructor
@@ -35,6 +38,13 @@ public class WebConfig implements WebMvcConfigurer {
         private final RoleInterceptor roleInterceptor;
         private final CsrfInterceptor csrfInterceptor;
         private final MobileRedirectInterceptor mobileRedirectInterceptor;
+        private final DeprecatedApiInterceptor deprecatedApiInterceptor;
+        private final CurrentUserArgumentResolver currentUserArgumentResolver;
+
+        @Override
+        public void addArgumentResolvers(@NonNull List<HandlerMethodArgumentResolver> resolvers) {
+                resolvers.add(currentUserArgumentResolver);
+        }
 
         // ngrok 免費版會在第一次訪問時顯示安全警告頁面，加上這個 header 讓 ngrok 跳過該頁面
         // 讓 LIFF webview 能直接載入頁面，不被中途攔截
@@ -50,7 +60,7 @@ public class WebConfig implements WebMvcConfigurer {
                 return bean;
         }
 
-        // 需求（2026-09-24）：員工手機版 PWA 的 service worker 檔案放在 /pwa/sw.js，
+        // 員工手機版 PWA 的 service worker 檔案放在 /pwa/sw.js，
         // 預設只能控制 /pwa/ 底下的頁面；加上這個 header，允許它控制 /m/ 底下的手機版頁面。
         @Bean
         public FilterRegistrationBean<Filter> serviceWorkerScopeFilter() {
@@ -75,6 +85,11 @@ public class WebConfig implements WebMvcConfigurer {
 
         @Override
         public void addInterceptors(@NonNull InterceptorRegistry registry) {
+
+                // 0. 舊 API 路徑使用紀錄（只記 log，不擋請求）
+                registry.addInterceptor(deprecatedApiInterceptor)
+                                .addPathPatterns("/api/**")
+                                .order(0);
 
                 // 1. 登入檢查（優先，所有路徑）
                 registry.addInterceptor(loginInterceptor)
@@ -115,13 +130,12 @@ public class WebConfig implements WebMvcConfigurer {
                                 .order(2);
 
                 // 3. CSRF Token 驗證（在登入/角色檢查之後）
-                // 攔截全部路徑，只對有 @RequireCsrf 的 Controller 方法生效
-                // （目前只標在高風險端點：密碼變更、建立員工帳號、帳號合併、
-                // 手動儲值、刪除操作，見各該注解使用處的說明）
+                // 登入、註冊不經過 LoginInterceptor，沒有登入狀態，CsrfInterceptor 會自動略過；
+                // /auth/switch-user 是已登入的操作，要檢查
+                // 攔截全部路徑，以 Cookie 登入的 POST／PUT／PATCH／DELETE 一律檢查（標 @SkipCsrf 的除外）
                 registry.addInterceptor(csrfInterceptor)
                                 .addPathPatterns("/**")
                                 .excludePathPatterns(
-                                                "/auth/**",
                                                 "/api/line/login",
                                                 "/api/line/bind",
                                                 "/test/**",

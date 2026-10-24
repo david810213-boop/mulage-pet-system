@@ -1,10 +1,12 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.dto.WalletTransactionResponse;
 import com.petgrooming.pet_system.enums.MemberCardTier;
 import com.petgrooming.pet_system.enums.WalletTransactionType;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.WalletException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.Wallet;
@@ -29,8 +31,7 @@ public class WalletService {
     private final WalletTransactionRepository txRepository;
     private final UserService userService;
     private final EntityManager entityManager;
-
-    public static final int MIN_DEPOSIT = 5000; // 單筆儲值下限（店家規定）
+    private final IdempotencyService idempotencyService;
 
     // ── 查詢錢包 ────────────────────────────────────────────────────────────
     public WalletResponse getWallet(String username) {
@@ -50,10 +51,11 @@ public class WalletService {
     @Transactional
     public WalletResponse deposit(String username, DepositRequest req) {
         int amount = req.getAmount() != null ? req.getAmount() : 0;
-        // 需求（追加，2026-10-02 店家確認）：不開放單筆 5,000 以下的儲值
-        if (amount < MIN_DEPOSIT) {
+        // 不開放單筆 5,000 以下的儲值
+        if (amount < StoreRules.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
+        idempotencyService.claim("DEPOSIT", req.getIdempotencyKey());
         Wallet wallet = lockWallet(username);
 
         // 1. 加入儲值金額
@@ -63,13 +65,13 @@ public class WalletService {
         recordTransaction(wallet, WalletTransactionType.DEPOSIT, amount,
                 req.getNote() != null ? req.getNote() : "儲值 $" + amount);
 
-        // 3. 村民優惠方案：單筆儲值落在村民級距（5,000～7,999）每次都贈 200 元
-        //    （2026-10-02 店家確認：不限第一次）
+        // 3. 村民優惠方案：單筆儲值落在村民級距（5,000～7,999）每次都贈點
         MemberCardTier newTier = MemberCardTier.fromAmount(amount);
         if (newTier == MemberCardTier.VILLAGE) {
-            wallet.setBalance(wallet.getBalance() + 200);
-            recordTransaction(wallet, WalletTransactionType.DEPOSIT_BONUS, 200, "村民優惠方案贈點 $200");
-            log.info("使用者 {} 單筆儲值村民方案，贈送 200 元", username);
+            wallet.setBalance(wallet.getBalance() + StoreRules.VILLAGE_DEPOSIT_BONUS);
+            recordTransaction(wallet, WalletTransactionType.DEPOSIT_BONUS, StoreRules.VILLAGE_DEPOSIT_BONUS,
+                    "村民優惠方案贈點 $" + StoreRules.VILLAGE_DEPOSIT_BONUS);
+            log.info("使用者 {} 單筆儲值村民方案，贈送 {} 元", username, StoreRules.VILLAGE_DEPOSIT_BONUS);
         }
 
         // 4. 依本次單筆儲值金額更新會員卡等級與有效期限
@@ -86,7 +88,7 @@ public class WalletService {
         deduct(username, amount, appointmentId, "預約 #" + appointmentId + " 消費扣款");
     }
 
-    // 需求：現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
+    // 現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
     // （例如「現場單 #5 消費扣款」），避免顯示成看起來像 bug 的「預約 #null」。
     @Transactional
     public void deduct(String username, int amount, Long appointmentId, String note) {
@@ -136,6 +138,7 @@ public class WalletService {
      * 鎖定讀取永遠讀最新已提交資料（含本交易自己的寫入），也不會拿到快取中的舊值。
      * 不可改用 refresh：實體已持有鎖時 Hibernate 會改發一般查詢，在 MySQL 可重複讀隔離層級下
      * 只讀到交易開始時的快照；也不可只用鎖定查詢：實體已在快取中時 Hibernate 會回傳舊值。
+     * 時段名額、零售庫存同一套做法，見 docs/adr/0002-pessimistic-locking.md。
      */
     private Wallet lockWallet(String username) {
         Wallet cached = getOrCreateWallet(username);
@@ -143,7 +146,7 @@ public class WalletService {
         entityManager.flush();
         entityManager.detach(cached);
         return walletRepository.lockByUserId(userId)
-                .orElseThrow(() -> new WalletException("找不到錢包"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到錢包"));
     }
 
     // ── 取得或建立錢包（加 @Transactional 防止並發重複建立）──────────────
@@ -161,7 +164,7 @@ public class WalletService {
                 });
     }
 
-    // ── 私有：會員卡等級規則（2026-09-30 依店家確認調整）─────────────────
+    // ── 私有：會員卡等級規則─────────────────
     // 規則：
     //   ① 單筆未滿 5,000（NONE）：不影響等級與期限。
     //   ② 目前沒有卡、或卡已過期：等級直接改成本次單筆金額對應的等級（可能比以前低），
@@ -172,8 +175,7 @@ public class WalletService {
     // 例：2026-09-30 儲值 15,000 → 金卡 9 折，到 2027-09-29
     //     2026-10-30 再儲 5,000 → 維持金卡 9 折，期限仍是 2027-09-29（④），另贈 200 元
     //     2026-10-30 改儲 50,000 → 升 VIP 85 折，期限重算到 2027-10-29（③）
-    // 舊版是「只升不降、到期日只在第一次開卡時設定」，會造成過期後再儲值卡還是過期。
-    //   ⑤ 2026-10-02 店家確認：村民優惠方案沒有折扣，所以「沒有期限」（到期日留空）；
+    //   ⑤ 村民優惠方案沒有折扣，所以「沒有期限」（到期日留空）；
     //      到期日是「起算日＋1 年－1 天」（9/30 儲值 → 隔年 9/29）。
     private void applyTierRule(Wallet wallet, MemberCardTier newTier) {
         if (newTier == MemberCardTier.NONE) return;

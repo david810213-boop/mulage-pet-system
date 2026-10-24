@@ -1,7 +1,5 @@
 package com.petgrooming.pet_system.exception;
 
-import org.springframework.http.HttpStatus;
-
 /**
  * 結帳/交易相關業務錯誤：結帳、折扣計算、財務報表等。用在 PaymentService。
  *
@@ -13,7 +11,7 @@ public class PaymentException extends BusinessException {
         super(message);
     }
 
-    public PaymentException(String message, HttpStatus status) {
-        super(message, status);
+    public PaymentException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
     }
 }

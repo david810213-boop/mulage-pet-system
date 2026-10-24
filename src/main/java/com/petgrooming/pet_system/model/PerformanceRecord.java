@@ -12,7 +12,14 @@ import java.time.LocalDateTime;
  * 一筆預約可產生多筆績效紀錄（每個大項一筆，可拆分給多人）
  */
 @Entity
-@Table(name = "performance_records")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "performance_records", indexes = {
+        @Index(name = "idx_performance_records_date", columnList = "service_date"),
+        @Index(name = "idx_performance_records_staff_date", columnList = "staff_id, service_date"),
+        @Index(name = "idx_performance_records_split_from", columnList = "split_from_record_id"),
+        @Index(name = "idx_performance_records_appointment", columnList = "appointment_id"),
+        @Index(name = "idx_performance_records_walk_in", columnList = "walk_in_order_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -54,7 +61,7 @@ public class PerformanceRecord {
     @Column(length = 200)
     private String note;
 
-    // 需求 12：若這筆是「拆分積分」產生的新紀錄，記錄原始紀錄的 id，
+    // 若這筆是「拆分積分」產生的新紀錄，記錄原始紀錄的 id，
     // 讓「拆分歷史」查詢能追溯「誰拆給了誰」。一般紀錄此欄位為 null。
     @Column(name = "split_from_record_id")
     private Long splitFromRecordId;

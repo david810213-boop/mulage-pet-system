@@ -78,7 +78,7 @@
 </main>
 
 <div class="sheet-dim" id="sheetDim"></div>
-<section class="sheet" id="sheetNote" role="dialog" aria-modal="true" aria-labelledby="hNote" th:attr="data-username=${c.username}">
+<section class="sheet" id="sheetNote" role="dialog" aria-modal="true" aria-labelledby="hNote" th:attr="data-user-id=${c.id}">
   <div class="grab"></div>
   <h3 id="hNote">店家備注</h3>
   <div class="field">
@@ -100,7 +100,7 @@
       var btn = this, err = document.getElementById("noteErr");
       var val = document.getElementById("noteInput").value;
       btn.disabled = true;
-      fetch("/api/admin/members/" + encodeURIComponent(sheet.dataset.username) + "/note", {
+      fetch("/api/admin/members/" + sheet.dataset.userId + "/note", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminNote: val })

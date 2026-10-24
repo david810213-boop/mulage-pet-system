@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.service;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import com.petgrooming.pet_system.dto.ChangePasswordRequest;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.RegisterRequest;
@@ -8,19 +10,24 @@ import com.petgrooming.pet_system.dto.UpdateProfileRequest;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.AuthException;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,11 +35,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
 
+    /** 會員搜尋最多回傳的筆數。 */
+    private static final int SEARCH_LIMIT = 20;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final com.petgrooming.pet_system.repository.PetRepository petRepository; // 需求（2026-10-02）：會員搜尋支援寵物名
+    private final PetRepository petRepository; // 會員搜尋支援寵物名
 
-    // ── 需求（追加，2026-09-17）：登入暴力破解防護 ─────────────────────────
+    // ── 登入暴力破解防護 ─────────────────────────
     // 連續密碼答錯達到這個次數，帳號鎖定一段時間，鎖定期間內即使密碼正確
     // 也一律拒絕，避免帳密被無限次嘗試。用 @Value 讓店家/工程之後可以透過
     // Railway 環境變數調整門檻，不用改程式碼重新部署。只影響帳密登入
@@ -60,9 +70,8 @@ public class UserService {
         if (user.getLockedUntil() != null) {
             if (user.getLockedUntil().isAfter(now)) {
                 long minutesLeft = ChronoUnit.MINUTES.between(now, user.getLockedUntil()) + 1;
-                throw new AuthException(
-                        "登入失敗次數過多，帳號已暫時鎖定，請約 " + minutesLeft + " 分鐘後再試",
-                        HttpStatus.TOO_MANY_REQUESTS);
+                throw new AuthException(ErrorCode.TOO_MANY_REQUESTS,
+                        "登入失敗次數過多，帳號已暫時鎖定，請約 " + minutesLeft + " 分鐘後再試");
             }
             // 鎖定時間已過，清空鎖定狀態，允許重新開始嘗試
             user.setLockedUntil(null);
@@ -93,15 +102,15 @@ public class UserService {
     // ── 2. 查 User entity（AuthMvcController 登入後建立 Session 用）
     public User getUserEntityByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
     }
 
-    // ── 需求 8：店家後台備注會員特殊資訊（後台專用）─────────────────────────
+    // ── 店家後台備注會員特殊資訊（後台專用）─────────────────────────
     public String getAdminNote(String username) {
         return getUserEntityByUsername(username).getAdminNote();
     }
 
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public String setAdminNote(String username, String adminNote) {
         User user = getUserEntityByUsername(username);
         user.setAdminNote(adminNote);
@@ -128,31 +137,31 @@ public class UserService {
     public UserResponse getMe(String username) {
         return userRepository.findByUsername(username)
                 .map(UserResponse::from)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
     }
 
     // ── 4.5 會員編輯自己的基本資料（年齡／職業／居住區域／來源）──────────
     public UserResponse updateProfile(String username, UpdateProfileRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
 
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName().trim());
         }
-        // 需求（追加，2026-09-30）：電話改成店家匯入、還沒被認領的既有會員電話時擋下來，
+        // 電話改成店家匯入、還沒被認領的既有會員電話時擋下來，
         // 避免老客人跳過認領自己重填，產生一人兩筆帳號。只在「電話有改」時檢查，
         // 不然原本就撞號的舊帳號會連其他欄位都改不了。回 409 讓 LIFF 導回新客報到認領。
-        String newPhone = com.petgrooming.pet_system.service.MemberImportService.normalizePhone(req.getPhone());
-        String oldPhone = com.petgrooming.pet_system.service.MemberImportService.normalizePhone(user.getPhone());
+        String newPhone = MemberImportService.normalizePhone(req.getPhone());
+        String oldPhone = MemberImportService.normalizePhone(user.getPhone());
         if (!newPhone.equals(oldPhone)) {
             userRepository.findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(newPhone, UserRole.CUSTOMER)
                     .filter(u -> !u.getId().equals(user.getId()))
                     .ifPresent(u -> {
-                        throw new MemberException("這支電話是本店的既有會員資料，請回到「新客報到」輸入電話直接帶入，"
-                                + "不需要重新填寫（店家代填請改用會員資料頁的手動綁定）", HttpStatus.CONFLICT);
+                        throw new MemberException(ErrorCode.CONFLICT, "這支電話是本店的既有會員資料，請回到「新客報到」輸入電話直接帶入，"
+                                + "不需要重新填寫（店家代填請改用會員資料頁的手動綁定）");
                     });
         }
-        user.setPhone(req.getPhone().trim()); // 需求（追加）：電話改為必填，不再是「填了才更新」
+        user.setPhone(req.getPhone().trim()); // 電話改為必填，不再是「填了才更新」
         if (req.getAge() != null) {
             user.setAge(req.getAge());
         }
@@ -165,7 +174,7 @@ public class UserService {
         if (req.getSource() != null) {
             user.setSource(req.getSource());
         }
-        // 需求 19：定型化契約要求蒐集的資料（皆選填，只需填一次）
+        // 定型化契約要求蒐集的資料（皆選填，只需填一次）
         if (req.getMailingAddress() != null) {
             user.setMailingAddress(req.getMailingAddress().isBlank() ? null : req.getMailingAddress().trim());
         }
@@ -204,28 +213,38 @@ public class UserService {
         return userRepository.findByRole(UserRole.CUSTOMER);
     }
 
-    // 需求：現場開單時依姓名/帳號搜尋會員（解決 LINE 登入會員帳號是 line_xxx 內碼，
+    public long countCustomers() {
+        return userRepository.countByRole(UserRole.CUSTOMER);
+    }
+
+    /** 依建立順序（id 由小到大）的前 limit 位會員，跟 getAllCustomers() 的順序相同。 */
+    public List<User> firstCustomers(int limit) {
+        return userRepository.findByRole(UserRole.CUSTOMER,
+                PageRequest.of(0, limit, Sort.by("id")));
+    }
+
+    // 現場開單時依姓名/帳號搜尋會員（解決 LINE 登入會員帳號是 line_xxx 內碼，
     // 店家不可能知道要打什麼的問題）
     public List<User> searchCustomers(String keyword) {
         if (keyword == null || keyword.isBlank())
             return List.of();
         String kw = keyword.trim().toLowerCase();
-        // 需求（追加，2026-10-02）：電話也能搜（輸入 3 碼以上數字，忽略 - 與空白）
+        // 電話也能搜（輸入 3 碼以上數字，忽略 - 與空白）
         String digits = kw.replaceAll("[^0-9]", "");
         return getAllCustomers().stream()
                 .filter(u -> (u.getName() != null && u.getName().toLowerCase().contains(kw))
                         || u.getUsername().toLowerCase().contains(kw)
                         || (digits.length() >= 3 && u.getPhone() != null
                                 && u.getPhone().replaceAll("[^0-9]", "").contains(digits)))
-                .limit(20)
+                .limit(SEARCH_LIMIT)
                 .toList();
     }
 
-    // ── 需求（追加，2026-10-02）：會員搜尋支援寵物名 ──────────────────────
+    // ── 會員搜尋支援寵物名 ──────────────────────
     // 回傳「會員帳號 → 符合關鍵字的毛孩名字（多隻用、隔開）」，已停用的毛孩不算。
     // 各個會員列表／搜尋共用這一支，搜尋結果可以標出「毛孩：盆莓」方便分辨同名會員。
-    public java.util.Map<String, String> petNamesMatching(String keyword) {
-        java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+    public Map<String, String> petNamesMatching(String keyword) {
+        Map<String, String> result = new LinkedHashMap<>();
         if (keyword == null || keyword.isBlank()) return result;
         for (var pet : petRepository.findByNameContainingIgnoreCase(keyword.trim())) {
             if (pet.isDeleted() || pet.getOwner() == null || pet.getOwner().getRole() != UserRole.CUSTOMER) continue;
@@ -235,29 +254,29 @@ public class UserService {
     }
 
     // 姓名／帳號／電話＋寵物名一起搜，回傳會員與（如果是靠寵物名搜到的）毛孩名字
-    public List<java.util.Map.Entry<User, String>> searchCustomersIncludingPets(String keyword) {
+    public List<Map.Entry<User, String>> searchCustomersIncludingPets(String keyword) {
         if (keyword == null || keyword.isBlank()) return List.of();
-        java.util.Map<String, String> pets = petNamesMatching(keyword);
-        java.util.Map<String, java.util.Map.Entry<User, String>> found = new java.util.LinkedHashMap<>();
+        Map<String, String> pets = petNamesMatching(keyword);
+        Map<String, Map.Entry<User, String>> found = new LinkedHashMap<>();
         for (User u : searchCustomers(keyword)) {
-            found.put(u.getUsername(), new java.util.AbstractMap.SimpleEntry<>(u, pets.get(u.getUsername())));
+            found.put(u.getUsername(), new AbstractMap.SimpleEntry<>(u, pets.get(u.getUsername())));
         }
         for (var e : pets.entrySet()) {
             if (found.size() >= 20) break;
             if (!found.containsKey(e.getKey())) {
                 userRepository.findByUsername(e.getKey()).ifPresent(u ->
-                        found.put(u.getUsername(), new java.util.AbstractMap.SimpleEntry<>(u, e.getValue())));
+                        found.put(u.getUsername(), new AbstractMap.SimpleEntry<>(u, e.getValue())));
             }
         }
         return List.copyOf(found.values());
     }
 
-    // 需求（追加，2026-10-02）：經手人下拉選單（員工＋管理者），只給 id 跟姓名，不把整個 User 丟進頁面
-    public List<java.util.Map<String, Object>> operatorOptions() {
-        List<User> list = new java.util.ArrayList<>(getAllStaffEntities());
+    // 經手人下拉選單（員工＋管理者），只給 id 跟姓名，不把整個 User 丟進頁面
+    public List<Map<String, Object>> operatorOptions() {
+        List<User> list = new ArrayList<>(getAllStaffEntities());
         list.addAll(getAllAdminEntities());
         return list.stream()
-                .<java.util.Map<String, Object>>map(u -> java.util.Map.of("id", u.getId(), "name", u.getName()))
+                .<Map<String, Object>>map(u -> Map.of("id", u.getId(), "name", u.getName()))
                 .toList();
     }
 
@@ -271,7 +290,7 @@ public class UserService {
 
     public User getUserEntityById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + id));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + id));
     }
 
     // ── 8. LINE 登入：依 lineUserId 查找會員，找不到就自動建立（CUSTOMER）──
@@ -312,7 +331,7 @@ public class UserService {
     // ── 9. ADMIN 重設員工／管理員密碼（不需驗證舊密碼，僅 ADMIN 可操作）──────
     public void resetPassword(Long userId, ResetPasswordRequest req) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + userId));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + userId));
         if (user.isCustomer()) {
             // 顧客帳號走 LINE 登入，沒有密碼登入需求，不開放重設
             throw new MemberException("顧客帳號不支援密碼重設");
@@ -324,7 +343,7 @@ public class UserService {
     // ── 10. 員工／管理員自行修改密碼（需驗證舊密碼）─────────────────────
     public void changePassword(String username, ChangePasswordRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
 
         if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
             throw new MemberException("目前密碼不正確");
@@ -333,11 +352,11 @@ public class UserService {
         userRepository.save(user);
     }
 
-    // ── 新需求：切換使用者用的 PIN 碼 ─────────────────────────────────
+    // ── 切換使用者用的 PIN 碼 ─────────────────────────────────
     // 員工/管理員自己設定 4 位數 PIN（需先驗證密碼，避免旁人隨便亂設）
     public void setSwitchPin(String username, String currentPassword, String newPin) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new MemberException("找不到使用者：" + username));
+                .orElseThrow(() -> new MemberException(ErrorCode.NOT_FOUND, "找不到使用者：" + username));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new MemberException("目前密碼不正確");
@@ -353,5 +372,9 @@ public class UserService {
     public boolean verifySwitchPin(User user, String pin) {
         if (user.getSwitchPin() == null) return false;
         return passwordEncoder.matches(pin, user.getSwitchPin());
+    }
+
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
     }
 }

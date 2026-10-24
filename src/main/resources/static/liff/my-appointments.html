@@ -674,7 +674,7 @@
 
       async function loadAppointments() {
         try {
-          const res = await fetch("/api/appointments/my", {
+          const res = await fetch("/api/me/appointments", {
             headers: {
               Authorization: "Bearer " + jwtToken,
               "ngrok-skip-browser-warning": "true",
@@ -830,11 +830,11 @@
         const isFuture = !isPastOrCancelledForCancelCheck(a);
         const canCancel = !a.cancelled && !a.paid && isFuture;
 
-        // 需求（2026-10-02）：初次預約還沒開單時，金額由店家現場報價
+        // 初次預約還沒開單時，金額由店家現場報價
         const quotePending = a.firstVisitAssessment && !a.paid && !a.totalAmount;
         let footerHtml = `<div class="appt-total">總金額<span class="amount">${quotePending ? "現場報價" : "$" + a.totalAmount}</span></div>`;
 
-        // 需求（追加）：Google 日曆串接——已確認、未取消、還沒過去的預約，
+        // Google 日曆串接——已確認、未取消、還沒過去的預約，
         // 給一個「加入我的Google日曆」連結，純前端組網址，不用打任何 API，
         // 顧客自己選要不要加，不會強迫加入。
         const canAddToCalendar = a.status === "CONFIRMED" && !a.cancelled && isFuture;
@@ -872,7 +872,7 @@
     `;
       }
 
-      // 需求（追加）：組出 Google 日曆的「新增活動」網址（官方支援的 URL 樣板，
+      // 組出 Google 日曆的「新增活動」網址（官方支援的 URL 樣板，
       // 不需要任何 API 金鑰或後端支援，純前端組字串，開啟後由顧客自己決定
       // 要不要按「儲存」，我們這邊不會知道顧客有沒有真的加進去）。
       // dates 參數格式：YYYYMMDDTHHMMSS/YYYYMMDDTHHMMSS（本地時間，不含時區代碼，
@@ -950,7 +950,7 @@
         backdrop.classList.add("show");
 
         try {
-          const res = await fetch(`/api/appointments/${id}/detail`, {
+          const res = await fetch(`/api/appointments/${id}`, {
             headers: {
               Authorization: "Bearer " + jwtToken,
               "ngrok-skip-browser-warning": "true",
@@ -1025,7 +1025,7 @@
         `;
       }
 
-      // 需求（2026-09-29）：核對時店家留下的美容狀況備註與照片，點照片可以看原圖
+      // 核對時店家留下的美容狀況備註與照片，點照片可以看原圖
       function groomingHtml(d) {
         const photos = d.groomingPhotos || [];
         if (!d.groomingNote && !photos.length) return "";
@@ -1045,7 +1045,7 @@
           </div>`;
       }
 
-      // ── 需求（追加，2026-10-02）：契約副本——「雙方各執一份契約正本」，顧客隨時可查看 ──
+      // ── 契約副本——「雙方各執一份契約正本」，顧客隨時可查看 ──
       async function openContract(id) {
         const backdrop = document.getElementById("detailBackdrop");
         const body = document.getElementById("detailBody");

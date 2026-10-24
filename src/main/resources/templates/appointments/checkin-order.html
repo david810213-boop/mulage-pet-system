@@ -45,7 +45,7 @@
             </table>
           </div>
 
-          <!-- 需求（追加，2026-08-29）：店家反饋現場加單遇到已鎖定套餐的狗，
+          <!-- 店家反饋現場加單遇到已鎖定套餐的狗，
                要跳去會員信息才能解鎖太繁瑣，直接在這裡加解鎖按鈕（沿用既有 API）。 -->
           <div
             class="card"
@@ -121,7 +121,7 @@
                 </label>
               </div>
 
-              <!-- 需求 4：勾選「特殊項目」後才展開，其餘不計分的加購/調理項目預設收起 -->
+              <!-- 勾選「特殊項目」後才展開，其餘不計分的加購/調理項目預設收起 -->
               <div id="otherItemsSection" style="display:none; margin-top: 14px;">
                 <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 8px;">
                   ✨ 其他加購項目（不計入員工積分）
@@ -178,7 +178,7 @@
             </div>
 
             <script>
-              // 需求 4：勾選「特殊項目」才展開其餘不計分的加購項目清單
+              // 勾選「特殊項目」才展開其餘不計分的加購項目清單
               document.querySelectorAll('.special-trigger').forEach(function (cb) {
                 cb.addEventListener('change', function () {
                   if (this.checked) {
@@ -187,13 +187,13 @@
                 });
               });
 
-              // 需求（追加，2026-08-29）：這頁的解鎖直接整頁 reload——跟結帳頁的
+              // 這頁的解鎖直接整頁 reload——跟結帳頁的
               // unlockPet() 邏輯一致，reload 後菜單會重新依體重篩選，是對的行為，
               // 且這頁進來還沒填任何表單資料，reload 不會有洗掉輸入的問題。
               async function unlockPet(petId) {
                 if (!confirm('確定要解鎖嗎？解鎖後菜單會恢復成依體重重新篩選。')) return;
                 try {
-                  const res = await fetch('/api/admin/pets/' + petId + '/unlock-grooming-item', { method: 'PUT' });
+                  const res = await fetch('/api/admin/pets/' + petId + '/locked-item', { method: 'DELETE' });
                   if (!res.ok) {
                     alert('解鎖失敗，請重試');
                     return;
@@ -205,7 +205,7 @@
               }
             </script>
 
-            <!-- 需求（2026-10-02）：比照現場開單，勾選的項目可以直接選經手人（預設稍後補填） -->
+            <!-- 比照現場開單，勾選的項目可以直接選經手人（預設稍後補填） -->
             <div class="card" style="margin-bottom: 1rem; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px;">
               <span>勾選的項目經手人全部設為</span>
               <select id="opAll" style="padding:6px 8px; border:1px solid var(--cream-300); border-radius:6px;">
@@ -243,5 +243,6 @@
         </div>
       </div>
     </div>
+  <th:block th:replace="~{fragments/weight-reminder :: weightReminder}"></th:block>
   </body>
 </html>

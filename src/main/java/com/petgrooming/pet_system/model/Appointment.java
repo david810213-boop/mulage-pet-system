@@ -10,7 +10,12 @@ import java.time.LocalTime;
 import java.util.List;
 
 @Entity
-@Table(name = "appointments")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "appointments", indexes = {
+        @Index(name = "idx_appointments_date", columnList = "date"),
+        @Index(name = "idx_appointments_status_date", columnList = "status, date"),
+        @Index(name = "idx_appointments_user_pet", columnList = "user_id, pet_name")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -64,12 +69,12 @@ public class Appointment {
     @ToString.Exclude
     private User staff;
 
-    // ── 需求 3：店家確認最後時間 ─────────────────────────────────────────
+    // ── 店家確認最後時間 ─────────────────────────────────────────
     // 顧客送出預約後為 PENDING_CONFIRM，店家確認並敲定實際時間後填入 confirmedTime 並轉 CONFIRMED
     @Column(name = "confirmed_time")
     private LocalDateTime confirmedTime;
 
-    // ── 需求 7：預約備注（雙可見性）───────────────────────────────────────
+    // ── 預約備注（雙可見性）───────────────────────────────────────
     // 店家內部備注：例如「耳朵加強去油」「造型需求」。絕不回傳給顧客端 API。
     @Column(name = "internal_note", columnDefinition = "TEXT")
     private String internalNote;
@@ -102,16 +107,16 @@ public class Appointment {
     @Column(name = "contract_agreed_at")
     private LocalDateTime contractAgreedAt;
 
-    // 需求（追加，2026-10-02）：簽署的契約版本（null＝2026-10-02 之前的舊版）
+    // 簽署的契約版本（null＝2026-10-02 之前的舊版）
     @Column(name = "contract_version", length = 20)
     private String contractVersion;
 
-    // 需求（追加，2026-10-02）：契約第二十一條影像使用——顧客另外勾選同意才可分享美容照片（預設不同意）
+    // 契約第二十一條影像使用——顧客另外勾選同意才可分享美容照片（預設不同意）
     @Column(name = "photo_share_consent", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean photoShareConsent = false;
 
-    // 需求（追加）：Google 日曆串接——這筆預約同步到店家共用日曆之後，
+    // Google 日曆串接——這筆預約同步到店家共用日曆之後，
     // Google 那邊回傳的事件 ID 存在這裡，之後要更新/刪除這個日曆事件時要用。
     // null 代表還沒同步過（可能是日曆功能還沒設定好，或這筆預約還在「待確認」
     // 狀態，只有轉成「已確認」才會同步——待確認的預約時間可能還會變動，
@@ -169,7 +174,7 @@ public class Appointment {
     @Builder.Default
     private boolean checkinOrderConfirmed = false;
 
-    // ── 需求 13：LINE 自動推播 ───────────────────────────────────────────
+    // ── LINE 自動推播 ───────────────────────────────────────────
     // 前一日 19:00 排程提醒是否已發送過，避免排程重跑（例如當天重新部署）造成重複推播。
     // 用 columnDefinition 給資料庫層級預設值，避免既有表加 NOT NULL 欄位時 ALTER 失敗
     // （沿用 GroomingItem.bookable / Appointment.serviceEndedDone 同樣的處理方式）。
@@ -177,7 +182,7 @@ public class Appointment {
     @Builder.Default
     private boolean reminderSent = false;
 
-    // ── 需求（追加，2026-10-02 店家確認 6）：初次預約只選時段 ─────────────────
+    // ── 初次預約只選時段 ─────────────────
     // 這隻毛孩第一次來（沒有已付款紀錄）時，顧客不選服務項目，到店後由店員依
     // 現場狀況在「到店開單」開立項目、現場報價。預約金額先記 0。
     @Column(name = "first_visit_assessment", nullable = false, columnDefinition = "boolean default false")

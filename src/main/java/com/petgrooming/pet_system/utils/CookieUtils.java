@@ -1,11 +1,8 @@
 package com.petgrooming.pet_system.utils;
 
 /**
- * 資安修正：jakarta.servlet.http.Cookie 這個舊版 Servlet API 不支援設定
- * SameSite 屬性，本專案登入用的 JWT_TOKEN Cookie 原本因此完全沒有 SameSite，
- * 等於只靠瀏覽器自己的預設值（現代瀏覽器多半預設 Lax）擋 CSRF，不是刻意做的防護。
- *
- * 這裡直接組出完整的 Set-Cookie 標頭字串，透過 HttpServletResponse.addHeader(
+ * Cookie 寫入工具：jakarta.servlet.http.Cookie 不支援設定 SameSite 屬性，
+ * 所以這裡直接組出完整的 Set-Cookie 標頭字串，透過 HttpServletResponse.addHeader(
  * "Set-Cookie", ...) 寫入，取代 response.addCookie(Cookie)，明確帶上
  * SameSite=Lax——店家後台是一般表單導覽（非跨站 AJAX），Lax 已經足夠擋掉
  * 常見的跨站 POST 偽造請求，同時不影響 LINE LIFF 內部瀏覽器的正常導覽情境。
@@ -37,7 +34,7 @@ public final class CookieUtils {
     }
 
     /**
-     * 需求（追加，2026-09-17）：CSRF Token 專用 Cookie，刻意不帶 HttpOnly——
+     * CSRF Token 專用 Cookie，刻意不帶 HttpOnly——
      * 前端 JS 需要讀出這個值，才能在高風險操作（密碼變更、建立員工帳號、
      * 帳號合併、手動儲值、刪除操作）送出時一併帶上，讓後端 CsrfInterceptor
      * 核對跟 JWT 裡內嵌的 csrf claim 是否一致。跨站的攻擊頁面讀不到這個

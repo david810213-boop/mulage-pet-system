@@ -1,11 +1,13 @@
 package com.petgrooming.pet_system.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-// ADMIN 建立員工帳號（對應原本 adminList → 新增員工帳號）
+// ADMIN 建立員工帳號
 @Data
 public class CreateStaffRequest {
-    private String username;    // email
+    @Schema(description = "email")
+    private String username;
     private String password;
     private String name;       
 }

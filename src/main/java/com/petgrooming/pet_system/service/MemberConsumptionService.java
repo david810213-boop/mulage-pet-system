@@ -1,30 +1,31 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
+import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.repository.TransactionRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 會員消費紀錄彙整（需求，2026-09-24 第五批）。
- *
- * 原本整段寫在 CustomerAnalysisMvcController.customerDetail() 裡（網頁版會員信息頁），
- * 員工手機版的會員頁、毛孩頁也要顯示同一份消費紀錄；為了不把同一套彙整邏輯
- * 複製成兩份，原封不動搬到這裡，網頁版跟手機版都呼叫這支方法。內容沒有任何行為變更。
+ * 會員消費紀錄彙整：網頁版會員信息頁與員工手機版的會員頁、毛孩頁共用。
  *
  * 來源：預約結帳（Transaction，只取已付款）＋ 現場開單（WalkInOrder，只取已付款），
  * 依付款時間新到舊排序。
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberConsumptionService {
 
     private final TransactionRepository transactionRepository;
     private final WalkInOrderRepository walkInOrderRepository;
-    private final AppointmentService appointmentService;
+    private final AppointmentDetailService appointmentDetailService;
     private final WalkInOrderService walkInOrderService;
 
     /**
@@ -32,29 +33,30 @@ public class MemberConsumptionService {
      * @param viewerUsername 查看的店家／員工帳號（查預約明細時需要權限判斷用），null 時不帶預約明細
      */
     public List<ConsumptionRecordResponse> buildPaidRecords(String username, String viewerUsername) {
-        java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse> records = new java.util.ArrayList<>();
+        List<ConsumptionRecordResponse> records = new ArrayList<>();
 
         // 來源 1：預約結帳（Transaction）
         for (var t : transactionRepository.findByUserUsername(username)) {
             if (!t.isPaid())
                 continue;
-            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
+            List<ConsumptionRecordResponse.Item> items = List.of();
             if (t.getAppointment() != null && viewerUsername != null) {
                 try {
-                    var detail = appointmentService.getAppointmentDetail(t.getAppointment().getId(), viewerUsername);
+                    var detail = appointmentDetailService.getAppointmentDetail(t.getAppointment().getId(), viewerUsername);
                     items = detail.getItems().stream()
-                            .map(di -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
+                            .map(di -> ConsumptionRecordResponse.Item.builder()
                                     .name(di.getName())
                                     .staffName(di.getOperatorName())
                                     .discountLabel(di.getAppliedDiscountType() != null ? di.getAppliedDiscountType().getLabel() : null)
                                     .price(di.getPrice())
                                     .build())
                             .toList();
-                } catch (Exception ignored) {
+                } catch (Exception e) {
                     // 找不到明細（例如舊資料）就顯示空清單，不影響整頁其他內容
+                    log.debug("預約 #{} 消費明細無法組出，顯示空清單：{}", t.getAppointment().getId(), e.getMessage());
                 }
             }
-            records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
+            records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("預約結帳")
                     .sourceType("APPOINTMENT")
                     .recordId(t.getAppointment() != null ? t.getAppointment().getId() : null)
@@ -73,21 +75,22 @@ public class MemberConsumptionService {
         for (var w : walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(username)) {
             if (!w.isPaid())
                 continue;
-            java.util.List<com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item> items = java.util.List.of();
+            List<ConsumptionRecordResponse.Item> items = List.of();
             try {
                 var detail = walkInOrderService.getById(w.getId());
                 items = detail.getItems().stream()
-                        .map(il -> com.petgrooming.pet_system.dto.ConsumptionRecordResponse.Item.builder()
+                        .map(il -> ConsumptionRecordResponse.Item.builder()
                                 .name(il.getItemName())
                                 .staffName(il.getOperator())
                                 .discountLabel(il.getAppliedDiscountType() != null ? il.getAppliedDiscountType().getLabel() : null)
                                 .price(il.getPrice())
                                 .build())
                         .toList();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // 找不到明細就顯示空清單，不影響整頁其他內容
+                log.debug("現場單 #{} 消費明細無法組出，顯示空清單：{}", w.getId(), e.getMessage());
             }
-            records.add(com.petgrooming.pet_system.dto.ConsumptionRecordResponse.builder()
+            records.add(ConsumptionRecordResponse.builder()
                     .sourceLabel("現場開單")
                     .sourceType("WALKIN")
                     .recordId(w.getId())
@@ -115,15 +118,14 @@ public class MemberConsumptionService {
     }
 
     /**
-     * 交易紀錄列表用（需求，2026-09-24 第八批）：把「預約交易」跟「現場單」合成同一份清單，
-     * 只取已付款，依付款時間新到舊排序。原本是 PaymentMvcController 的 private 方法，
-     * 員工手機版交易紀錄頁也要用，原封不動搬到這裡共用，內容沒有任何行為變更。
+     * 交易紀錄列表用：把「預約交易」跟「現場單」合成同一份清單，
+     * 只取已付款，依付款時間新到舊排序。網頁版與員工手機版的交易紀錄頁共用。
      */
-    public java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
-            java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
-            java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
+    public List<ConsumptionRecordResponse> buildCombinedRecords(
+            List<TransactionResponse> transactions,
+            List<WalkInOrder> walkInOrders) {
 
-        java.util.List<ConsumptionRecordResponse> records = new java.util.ArrayList<>();
+        List<ConsumptionRecordResponse> records = new ArrayList<>();
 
         for (var t : transactions) {
             if (!t.isPaid()) continue;

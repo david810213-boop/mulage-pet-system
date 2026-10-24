@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.model;
 
+import com.petgrooming.pet_system.enums.PetType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 /**
- * 需求 3：同時段最多五隻。
+ * 同時段最多五隻。
  *
  * 這張表是「時段計數器」。每個 (日期, 開始時間) 一列，記錄目前已預約幾隻(booked)、上限(capacity=5)。
  *
@@ -47,13 +48,13 @@ public class SlotCapacity {
 
     @Column(nullable = false)
     @Builder.Default
-    private int capacity = 5;        // 上限（需求：最多 5 隻）
+    private int capacity = 5;        // 上限（最多 5 隻）
 
-    // 需求（追加，2026-09-08）：限定這個時段只能預約特定物種（避免同時段狗貓混雜，
+    // 限定這個時段只能預約特定物種（避免同時段狗貓混雜，
     // 造成寵物緊迫）。null＝不限制，兩者皆可；DOG／CAT＝只開放該物種。
     // 建立新的一天的計數列時，初始值會從 DefaultSlotCapacityTemplate 的設定帶入，
     // 之後店家仍可以在「時段管理」頁針對某一天單獨覆寫，只影響那一天，不影響範本本身。
     @Column(name = "allowed_pet_type")
     @Enumerated(EnumType.STRING)
-    private com.petgrooming.pet_system.enums.PetType allowedPetType;
+    private PetType allowedPetType;
 }

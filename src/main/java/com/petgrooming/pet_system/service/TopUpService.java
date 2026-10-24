@@ -1,9 +1,11 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.DepositRequest;
-import com.petgrooming.pet_system.dto.TopUpRequestCreate;
+import com.petgrooming.pet_system.dto.CreateTopUpRequest;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.TopUpStatus;
+import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.WalletException;
 import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.User;
@@ -18,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 需求 1：線上儲值僅限轉帳。
+ * 線上儲值僅限轉帳。
  *
  * 流程：
  *   顧客 submit()  → 建立 PENDING 申請（餘額不動）
@@ -36,15 +38,17 @@ public class TopUpService {
     private final TopUpRequestRepository topUpRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    private final IdempotencyService idempotencyService;
 
     // ── 顧客送出轉帳儲值申請 ────────────────────────────────────────────────
     @Transactional
-    public TopUpRequestResponse submit(String username, TopUpRequestCreate req) {
+    public TopUpRequestResponse submit(String username, CreateTopUpRequest req) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new WalletException("找不到使用者"));
-        if (req.getAmount() == null || req.getAmount() < WalletService.MIN_DEPOSIT) {
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到使用者"));
+        if (req.getAmount() == null || req.getAmount() < StoreRules.MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
+        idempotencyService.claim("TOPUP_REQUEST", req.getIdempotencyKey());
 
         TopUpRequest topUp = TopUpRequest.builder()
                 .user(user)
@@ -71,14 +75,22 @@ public class TopUpService {
                 .stream().map(TopUpRequestResponse::from).toList();
     }
 
+    /** 鎖住這筆申請並讀回最新狀態，連點或兩位員工同時處理時依序執行，避免重複入帳。 */
+    private TopUpStatus lockStatus(Long id) {
+        return topUpRepository.lockStatusById(id)
+                .map(TopUpStatus::valueOf)
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
+    }
+
     // ── 店家：確認入帳 ──────────────────────────────────────────────────────
     @Transactional
     public TopUpRequestResponse confirm(Long id, String reviewerName) {
+        TopUpStatus status = lockStatus(id);
         TopUpRequest topUp = topUpRepository.findById(id)
-                .orElseThrow(() -> new WalletException("找不到此儲值申請"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
 
-        if (topUp.getStatus() != TopUpStatus.PENDING) {
-            throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
+        if (status != TopUpStatus.PENDING) {
+            throw new WalletException("此申請已處理過，狀態：" + status.getLabel());
         }
 
         // 真正加值：複用既有錢包儲值邏輯（含贈點 / 升卡）
@@ -100,11 +112,12 @@ public class TopUpService {
     // ── 店家：駁回 ──────────────────────────────────────────────────────────
     @Transactional
     public TopUpRequestResponse reject(Long id, String reviewerName, String reason) {
+        TopUpStatus status = lockStatus(id);
         TopUpRequest topUp = topUpRepository.findById(id)
-                .orElseThrow(() -> new WalletException("找不到此儲值申請"));
+                .orElseThrow(() -> new WalletException(ErrorCode.NOT_FOUND, "找不到此儲值申請"));
 
-        if (topUp.getStatus() != TopUpStatus.PENDING) {
-            throw new WalletException("此申請已處理過，狀態：" + topUp.getStatus().getLabel());
+        if (status != TopUpStatus.PENDING) {
+            throw new WalletException("此申請已處理過，狀態：" + status.getLabel());
         }
 
         topUp.setStatus(TopUpStatus.REJECTED);

@@ -1,25 +1,40 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CheckoutRequest;
 import com.petgrooming.pet_system.dto.ConsumptionRecordResponse;
-import com.petgrooming.pet_system.enums.PaymentMethod;
+import com.petgrooming.pet_system.dto.TransactionResponse;
+import com.petgrooming.pet_system.enums.BankAccountPurpose;
+import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
+import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.AppointmentRepository;
-import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.model.WalkInOrder;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
+import com.petgrooming.pet_system.service.AppointmentDetailService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
+import com.petgrooming.pet_system.service.CheckoutPreviewService;
+import com.petgrooming.pet_system.service.GroomingMenuFilter;
+import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PaymentService;
-import com.petgrooming.pet_system.service.UserService;
-import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.petgrooming.pet_system.service.StoreSettingsService;
+import com.petgrooming.pet_system.service.RetailProductService;
+import com.petgrooming.pet_system.service.WalkInOrderService;
+import com.petgrooming.pet_system.service.interfaces.GroomingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/payments")
@@ -28,170 +43,101 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PaymentMvcController {
 
     private final PaymentService paymentService;
-    private final UserService userService;
-    private final WalletService walletService;
-    private final AppointmentRepository appointmentRepository;
-    private final WalkInOrderRepository walkInOrderRepository;
+
+    private final StoreSettingsService storeSettingsService;
     private final OperationLogService operationLogService;
-    private final com.petgrooming.pet_system.service.AppointmentService appointmentService;
-    private final com.petgrooming.pet_system.service.CatRewashDiscountService catRewashDiscountService; // 需求 8-1
-    private final com.petgrooming.pet_system.service.DogFirstVisitDiscountService dogFirstVisitDiscountService; // 需求（追加）
-    private final com.petgrooming.pet_system.service.CatFirstVisitDiscountService catFirstVisitDiscountService; // 需求（追加）：貓咪首次體驗優惠
-    private final com.petgrooming.pet_system.service.RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
-    private final com.petgrooming.pet_system.service.interfaces.GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
-    private final com.petgrooming.pet_system.service.MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
+    private final AppointmentQueryService appointmentQueryService;
+    private final AppointmentDetailService appointmentDetailService;
+    private final AppointmentItemService appointmentItemService;
+    private final CheckoutPreviewService checkoutPreviewService;
+    private final RetailProductService retailProductService; // 預約結帳頁加購零售商品
+    private final GroomingService groomingService; // 編輯訂單新增服務項目
+    private final MemberConsumptionService memberConsumptionService;
+    private final WalkInOrderService walkInOrderService;
+    private final GroomingMenuFilter groomingMenuFilter;
 
-    /**
-     * JWT 版獲取當前登入使用者
-     * 從 LoginInterceptor 存入的 request attribute 拿取 username，
-     * 再用 UserService 查出完整的 User entity，沒有就回傳 null
-     */
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try {
-            return userService.getUserEntityByUsername(username);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
-    // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
-    // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
-    // 需求（2026-09-24）：合併交易紀錄的邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
-    private java.util.List<ConsumptionRecordResponse> buildCombinedRecords(
-            java.util.List<com.petgrooming.pet_system.dto.TransactionResponse> transactions,
-            java.util.List<com.petgrooming.pet_system.model.WalkInOrder> walkInOrders) {
+    // 交易紀錄：預約結帳（Transaction）跟現場開單（WalkInOrder）是兩張資料表，
+    // 「交易紀錄」頁面要呈現完整消費全貌，合併成同一份清單並依付款時間排序
+    private List<ConsumptionRecordResponse> buildCombinedRecords(
+            List<TransactionResponse> transactions,
+            List<WalkInOrder> walkInOrders) {
         return memberConsumptionService.buildCombinedRecords(transactions, walkInOrders);
     }
 
     // 列出付款紀錄（員工/管理員看全部，顧客只看自己的）
     @GetMapping
-    public String list(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String list(Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
         model.addAttribute("user", user);
         if (user.isStaffOrAdmin()) {
             model.addAttribute("transactions", buildCombinedRecords(
                     paymentService.getAllTransactions(),
-                    walkInOrderRepository.findAllByOrderByCreatedAtDesc()));
+                    walkInOrderService.findAllOrders()));
         } else {
             model.addAttribute("transactions", buildCombinedRecords(
                     paymentService.getMyTransactions(user.getUsername()),
-                    walkInOrderRepository.findByMemberUsernameOrderByCreatedAtDesc(user.getUsername())));
+                    walkInOrderService.findOrdersOfMember(user.getUsername())));
         }
         return "payments/list";
     }
 
     // 結帳頁面（從預約列表點「結帳」連過來）
     @GetMapping("/checkout/{appointmentId}")
-    public String checkoutPage(@PathVariable Long appointmentId,
-                               HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String checkoutPage(@PathVariable Long appointmentId, Model model, @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
-        model.addAttribute("user", user);
-        model.addAttribute("appointmentId", appointmentId);
-        // 需求 10：結帳畫面不再提供「信用卡」選項（歷史資料仍保留該列舉值，僅畫面隱藏）
-        model.addAttribute("paymentMethods", java.util.Arrays.stream(PaymentMethod.values())
-                .filter(m -> m != PaymentMethod.CREDIT_CARD).toList());
         model.addAttribute("checkoutRequest", new CheckoutRequest());
-        model.addAttribute("bankAccountInfo",
-                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
-        model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
-        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
-        boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
-        String petType = appointmentService.getPetTypeForAppointment(appointmentId);
-        // 需求（追加，2026-08-24）：狗狗定價流程簡化——依這隻狗目前的體重/是否
-        // 已鎖定固定套餐，進一步篩選「新增服務項目」下拉選單（跟現場開單結帳頁
-        // 同一套邏輯，先前這裡漏做了，這次一併補上）。
-        var pet = appointmentService.getPetForAppointment(appointmentId);
-        model.addAttribute("pet", pet);
-        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
-        model.addAttribute("performanceCategories", com.petgrooming.pet_system.enums.PerformanceCategory.values());
-        final Long lockedItemId = pet != null ? pet.getLockedGroomingItemId() : null;
-        final com.petgrooming.pet_system.enums.DogWeightTier dogTier =
-                pet != null && lockedItemId == null && "DOG".equalsIgnoreCase(petType)
-                        ? com.petgrooming.pet_system.enums.DogWeightTier.forWeight(pet.getWeight())
-                        : null;
-        // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
-        // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。中長毛現在
-        // 也有自己對應的套餐了（DOG049~072），一併算「已定義」。只有還沒
-        // 定義（UNDEFINED）才不篩毛長，維持「這個體重級距的都顯示」。
-        final com.petgrooming.pet_system.enums.CoatType petCoatType = pet != null ? pet.getCoatType() : null;
-        final boolean coatDefined = petCoatType == com.petgrooming.pet_system.enums.CoatType.SHORT
-                || petCoatType == com.petgrooming.pet_system.enums.CoatType.LONG
-                || petCoatType == com.petgrooming.pet_system.enums.CoatType.MEDIUM;
-        model.addAttribute("groomingItems", groomingService.getAllItems().stream()
-                .filter(i -> isExisting || !i.isRequiresExistingCustomer())
-                .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petType))
-                .filter(i -> {
-                    if (i.getDogWeightTier() == null) return true;
-                    if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                    if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
-                    if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
-                        return i.getDogCoatLength().equals(petCoatType.name());
-                    }
-                    return true;
-                })
-                .toList()); // 需求（追加）：編輯訂單可新增的服務項目清單
-
-        // 帶入該預約會員的儲值金餘額與會員折扣，讓店家/員工結帳時可預覽儲值金折扣後金額
-        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
-        if (appointment != null && appointment.getUser() != null) {
-            var wallet = walletService.getWallet(appointment.getUser().getUsername());
-            model.addAttribute("walletBalance", wallet.getBalance());
-            model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-            model.addAttribute("walletDiscount", wallet.getDiscount());
-            model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-            model.addAttribute("baseAmount", appointment.getTotalAmount());
-        }
-
-        // 需求：結帳頁面顯示逐項目消費明細（含折扣資格），跟實際結帳邏輯用同一份資料，
-        // 避免像舊版「整筆金額×折扣」預覽跟實際逐項目扣款金額對不上。
-        var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
-        model.addAttribute("detailItems", detail.getItems());
-        if (appointment != null && appointment.getUser() != null) {
-            double discount = walletService.getWallet(appointment.getUser().getUsername()).getDiscount();
-            // 需求 8-1 修正：回洗優惠與會員折扣只能擇一，預覽金額改用同一套「擇一」規則計算，
-            // 不再是舊版的「符合會員折扣就直接乘」。
-            // 需求（追加）：貓咪首次體驗優惠加入後，isFirstVisitEligible() 這個旗標狗貓共用，
-            // 這裡依 petType 分流到正確的 service（兩邊算法完全一致，只是分開呼叫語意才清楚）。
-            boolean isDogPet = "DOG".equalsIgnoreCase(petType);
-            double walletPreview = detail.getItems().stream()
-                    .mapToDouble(it -> {
-                        if (it.isFirstVisitEligible() && isDogPet) {
-                            return dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
-                        }
-                        if (it.isFirstVisitEligible()) {
-                            return catFirstVisitDiscountService.resolvePreferredDiscount(
-                                    it.getPrice(), true, it.isDiscountEligible(), discount).price();
-                        }
-                        return catRewashDiscountService.resolvePreferredDiscount(
-                                it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), discount).price();
-                    })
-                    .sum();
-            model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
-        }
-
+        addCheckoutBasics(model, appointmentId, user);
+        addMenuAndPreview(model, appointmentId, user);
         return "payments/checkout";
     }
 
+    /** 結帳頁一定要有的資料：付款方式、匯款帳號、加購商品清單。 */
+    private void addCheckoutBasics(Model model, Long appointmentId, User user) {
+        model.addAttribute("user", user);
+        model.addAttribute("appointmentId", appointmentId);
+        model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
+        model.addAttribute("bankAccountInfo", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+        model.addAttribute("retailProducts", retailProductService.listActive()); // 結帳頁加購商品清單
+        // 自訂金額加購用的積分分類下拉選單
+        model.addAttribute("performanceCategories", PerformanceCategory.values());
+    }
+
+    /**
+     * 「新增服務項目」選單（依這隻寵物的體型篩選，規則見 GroomingMenuFilter）、逐項目消費明細，
+     * 以及會員的儲值金餘額與折扣後金額預覽（跟實際結帳逐項目扣款用同一份資料，見 CheckoutPreviewService）。
+     */
+    private void addMenuAndPreview(Model model, Long appointmentId, User user) {
+        boolean isExisting = appointmentQueryService.isExistingCustomerPet(appointmentId);
+        String petType = appointmentQueryService.getPetTypeForAppointment(appointmentId);
+        var pet = appointmentQueryService.getPetForAppointment(appointmentId);
+        model.addAttribute("pet", pet);
+        model.addAttribute("groomingItems", groomingMenuFilter.filterForPetShape(
+                groomingService.getAllItems(), isExisting, petType, pet));
+        model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
+
+        var detail = appointmentDetailService.getAppointmentDetail(appointmentId, user.getUsername());
+        model.addAttribute("detailItems", detail.getItems());
+        Appointment appointment = appointmentQueryService.findAppointment(appointmentId).orElse(null);
+        if (appointment != null && appointment.getUser() != null) {
+            model.addAttribute("baseAmount", appointment.getTotalAmount());
+            CheckoutPageSupport.addWalletPreview(model, checkoutPreviewService.forAppointment(
+                    appointment.getUser().getUsername(), detail.getItems(), petType));
+        }
+    }
+
     // ── POST /payments/checkout/{appointmentId}/add-retail-item ────────────
-    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
+    // 新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
     @PostMapping("/checkout/{appointmentId}/add-retail-item")
     public String addRetailItem(@PathVariable Long appointmentId,
                                 @RequestParam Long retailProductId,
                                 @RequestParam(defaultValue = "1") int quantity,
                                 @RequestParam(defaultValue = "checkout") String from,
-                                HttpServletRequest request,
-                                RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                RedirectAttributes redirectAttributes,
+                                @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
+            appointmentItemService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -199,23 +145,22 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
-    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
-    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入自訂價格用
-    // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
+    // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // customPrice 選填，店員手動輸入自訂價格用
+    // （例如剪毛這種價格浮動的項目），空白就照項目設定的固定價格。
     @PostMapping("/checkout/{appointmentId}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long appointmentId,
                                   @RequestParam Long groomingItemId,
                                   @RequestParam(required = false) Integer customPrice,
-                                  @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+                                  @RequestParam(required = false) Long operatorStaffId, // 空白＝稍後補填
                                   @RequestParam(required = false) Long operatorStaffId2,
                                   @RequestParam(defaultValue = "checkout") String from,
-                                  HttpServletRequest request,
-                                  RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                  RedirectAttributes redirectAttributes,
+                                  @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
+            appointmentItemService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -223,23 +168,22 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-custom-item ────────────
-    // 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式報價
+    // 自訂金額加購——處理「高階定制調理」開放式報價
     // 跟各種浮動加價，不綁定任何現有服務項目，店員直接輸入項目名稱+金額。
     @PostMapping("/checkout/{appointmentId}/add-custom-item")
     public String addCustomItem(@PathVariable Long appointmentId,
                                 @RequestParam String itemName,
                                 @RequestParam int price,
-                                @RequestParam(required = false) com.petgrooming.pet_system.enums.PerformanceCategory category,
+                                @RequestParam(required = false) PerformanceCategory category,
                                 @RequestParam(required = false) Long operatorStaffId,
                                 @RequestParam(required = false) Long operatorStaffId2,
                                 @RequestParam(defaultValue = "checkout") String from,
-                                HttpServletRequest request,
-                                RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                                RedirectAttributes redirectAttributes,
+                                @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
+            appointmentItemService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
             redirectAttributes.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
@@ -248,26 +192,25 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/remove-item ────────────────
-    // 需求（追加）：從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
-    // 供編輯訂單使用；路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
+    // 結帳前任何項目都能移除（零售商品、服務項目、自訂項目），
+    // 供編輯訂單使用。
     @PostMapping("/checkout/{appointmentId}/remove-item")
     public String removeItem(@PathVariable Long appointmentId,
                              @RequestParam Long itemId,
                              @RequestParam(defaultValue = "checkout") String from,
-                             HttpServletRequest request,
-                             RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+                             RedirectAttributes redirectAttributes,
+                             @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.removeItem(appointmentId, itemId, user.getUsername());
+            appointmentItemService.removeItem(appointmentId, itemId, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
         return redirectAfterEdit(appointmentId, from);
     }
 
-    // 需求（追加）：編輯訂單的三個端點共用的導回邏輯——from=final-check 導回核對頁，
+    // 編輯訂單的三個端點共用的導回邏輯——from=final-check 導回核對頁，
     // 其餘（預設 checkout）導回結帳頁，避免同一段字串重複寫三次。
     private String redirectAfterEdit(Long appointmentId, String from) {
         if ("final-check".equals(from)) {
@@ -280,11 +223,10 @@ public class PaymentMvcController {
     @PostMapping("/checkout/{appointmentId}/submit")
     public String checkoutSubmit(@PathVariable Long appointmentId,
                                  @ModelAttribute CheckoutRequest req,
-                                 HttpServletRequest request,
                                  RedirectAttributes redirectAttributes,
-                                 Model model) {
+                                 Model model,
+                                 @CurrentUser User user) {
 
-        User user = getLoginUser(request);
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -292,19 +234,10 @@ public class PaymentMvcController {
             operationLogService.log(user, "APPOINTMENT", "CHECKOUT", "預約 #" + appointmentId,
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
 
-            // 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後，如果這隻狗
-            // 還沒鎖定固定套餐，跳提醒請店員記得更新體重（見 WalkInOrderMvcController
-            // 同樣邏輯的說明）。不管等一下要導去 /payments 還是 /appointments，
-            // 兩個頁面都有放這個彈窗的渲染邏輯，flash attribute 都讀得到。
-            var pet = appointmentService.getPetForAppointment(appointmentId);
-            if (pet != null && pet.getPetType() != null && "DOG".equalsIgnoreCase(pet.getPetType().name())
-                    && pet.getLockedGroomingItemId() == null) {
-                redirectAttributes.addFlashAttribute("weightReminderPetId", pet.getId());
-                redirectAttributes.addFlashAttribute("weightReminderPetName", pet.getName());
-                redirectAttributes.addFlashAttribute("weightReminderCurrentWeight", pet.getWeight());
-            }
+            CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes,
+                    appointmentQueryService.getPetForAppointment(appointmentId));
 
-            // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
+            // 匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
             // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
             // 導回預約列表，等店家之後在儲值管理/匯款頁確認收款才算真的完成。
             if (result.isPaid()) {
@@ -315,60 +248,22 @@ public class PaymentMvcController {
                 return "redirect:/appointments";
             }
         } catch (IllegalArgumentException e) {
-            model.addAttribute("user", user);
-            model.addAttribute("appointmentId", appointmentId);
-            model.addAttribute("paymentMethods", PaymentMethod.values());
-            model.addAttribute("retailProducts", retailProductService.listActive());
-            boolean isExistingErr = appointmentService.isExistingCustomerPet(appointmentId);
-            String petTypeErr = appointmentService.getPetTypeForAppointment(appointmentId);
-            model.addAttribute("groomingItems", groomingService.getAllItems().stream()
-                    .filter(i -> isExistingErr || !i.isRequiresExistingCustomer())
-                    .filter(i -> i.getApplicablePetType() == null || i.getApplicablePetType().equalsIgnoreCase(petTypeErr))
-                    .toList());
+            // 結帳被業務規則擋下（例如還沒核對、儲值金不足）：回到結帳頁顯示原因，保留剛才選的付款方式
+            model.addAttribute("checkoutRequest", req);
             model.addAttribute("errorMsg", e.getMessage());
-
-            // 需求（追加）：組錯誤頁預覽資料本身如果又出錯（例如這筆預約資料本身有異常），
-            // 不能讓第二個例外蓋掉使用者原本該看到的錯誤訊息，變成一片空白的 500 錯誤頁。
-            // 這裡包一層 try/catch，最差情況就是錯誤頁少了金額預覽，但至少使用者看得到
-            // 「為什麼結帳失敗」這句話，店家也才能照著訊息判斷下一步。
+            addCheckoutBasics(model, appointmentId, user);
+            // 組選單與金額預覽時如果又出錯（例如這筆預約資料本身有異常），不能讓第二個例外蓋掉
+            // 真正的結帳錯誤訊息；最差情況就是頁面少了選單與金額預覽，但看得到「為什麼結帳失敗」。
             try {
-                Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
-                if (appointment != null && appointment.getUser() != null) {
-                    var wallet = walletService.getWallet(appointment.getUser().getUsername());
-                    model.addAttribute("walletBalance", wallet.getBalance());
-                    model.addAttribute("walletLowBalance", wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD);
-                    model.addAttribute("walletDiscount", wallet.getDiscount());
-                    model.addAttribute("walletDiscountActive", wallet.isCardActive() && wallet.getDiscount() < 1.0);
-                    model.addAttribute("baseAmount", appointment.getTotalAmount());
-                    // 需求 8-1 修正：跟主要頁面用同一套「擇一」邏輯算預覽金額，避免錯誤頁顯示的金額不準
-                    var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
-                    model.addAttribute("detailItems", detail.getItems());
-                    boolean isDogPetErr = "DOG".equalsIgnoreCase(petTypeErr);
-                    double walletPreview = detail.getItems().stream()
-                            .mapToDouble(it -> {
-                                if (it.isFirstVisitEligible() && isDogPetErr) {
-                                    return dogFirstVisitDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
-                                }
-                                if (it.isFirstVisitEligible()) {
-                                    return catFirstVisitDiscountService.resolvePreferredDiscount(
-                                            it.getPrice(), true, it.isDiscountEligible(), wallet.getDiscount()).price();
-                                }
-                                return catRewashDiscountService.resolvePreferredDiscount(
-                                        it.getPrice(), it.isRewashEligible(), it.isDiscountEligible(), wallet.getDiscount()).price();
-                            })
-                            .sum();
-                    model.addAttribute("walletFinalAmount", (int) Math.round(walletPreview));
-                }
+                addMenuAndPreview(model, appointmentId, user);
             } catch (Exception previewError) {
                 log.warn("結帳錯誤頁組金額預覽時另外出錯，預約 #{}，僅顯示原始錯誤訊息：{}",
                         appointmentId, previewError.getMessage(), previewError);
             }
-
             return "payments/checkout";
         } catch (Exception e) {
             // 保底：checkout() 本身如果拋出非預期的例外（不是業務規則的 IllegalArgumentException），
-            // 原本會直接變成一片空白的 Whitelabel 500 錯誤頁，使用者跟店家都看不出發生什麼事。
+            // 不攔下來的話會變成一片空白的 Whitelabel 500 錯誤頁，使用者跟店家都看不出發生什麼事。
             // 這裡攔下來，把完整堆疊記到 log（Railway Logs 搜尋「結帳發生未預期錯誤」就找得到），
             // 畫面則導回結帳頁顯示友善訊息，至少能重試或回報。
             log.error("結帳發生未預期錯誤，預約 #{}，操作人：{}", appointmentId, user.getUsername(), e);
@@ -378,11 +273,11 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/{id}/confirm-wire-transfer ───────────────────────
-    // 需求 10：店員核對匯款到帳後點擊，訂單才正式轉為已完成
+    // 店員核對匯款到帳後點擊，訂單才正式轉為已完成
     @PostMapping("/{id}/confirm-wire-transfer")
-    public String confirmWireTransfer(@PathVariable Long id, HttpServletRequest request,
-                                      RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+    public String confirmWireTransfer(@PathVariable Long id,
+                                      RedirectAttributes redirectAttributes,
+                                      @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -399,9 +294,9 @@ public class PaymentMvcController {
     // 退款：僅限「已結帳」的預約。退款後回到「已確認」狀態，清空現場開單、
     // 結束服務、核對進度，可重新開單重新結帳；管理員與員工皆可操作。
     @PostMapping("/{id}/refund")
-    public String refund(@PathVariable Long id, HttpServletRequest request,
-                         RedirectAttributes redirectAttributes) {
-        User user = getLoginUser(request);
+    public String refund(@PathVariable Long id,
+                         RedirectAttributes redirectAttributes,
+                         @CurrentUser User user) {
         if (user == null) return "redirect:/auth/login";
 
         try {
@@ -415,28 +310,27 @@ public class PaymentMvcController {
     }
 
     // ── GET /payments/bank-account ────────────────────────────────────────
-    // 需求 10：店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
-    // 需求（追加）：改成同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
+    // 店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
+    // 同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/bank-account")
-    public String bankAccountForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
+    public String bankAccountForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
         model.addAttribute("checkoutInfo",
-                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.CHECKOUT));
+                storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
         model.addAttribute("topupInfo",
-                paymentService.getBankAccountInfo(com.petgrooming.pet_system.enums.BankAccountPurpose.TOPUP));
+                storeSettingsService.getBankAccountInfo(BankAccountPurpose.TOPUP));
         return "payments/bank-account";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account")
-    public String updateBankAccount(@RequestParam com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
+    public String updateBankAccount(@RequestParam BankAccountPurpose purpose,
                                     @RequestParam String bankName,
                                     @RequestParam String accountNumber,
-                                    @RequestParam String accountHolder,
-                                    HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
-        paymentService.updateBankAccountInfo(purpose, bankName, accountNumber, accountHolder);
+                                    @RequestParam String accountHolder, RedirectAttributes ra,
+                                    @CurrentUser User user) {
+        storeSettingsService.updateBankAccountInfo(purpose, bankName, accountNumber, accountHolder);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT",
                 purpose.getLabel() + " 帳號設定", null);
         ra.addFlashAttribute("successMsg", "已更新「" + purpose.getLabel() + "」帳號資訊");
@@ -444,15 +338,14 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/bank-account/qr-code ─────────────────────────────
-    // 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立）
+    // 上傳/更換匯款收款 QR Code（依用途各自獨立）
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account/qr-code")
-    public String uploadBankAccountQrCode(@RequestParam com.petgrooming.pet_system.enums.BankAccountPurpose purpose,
-                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
-                                          HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String uploadBankAccountQrCode(@RequestParam BankAccountPurpose purpose,
+                                          @RequestParam("file") MultipartFile file, RedirectAttributes ra,
+                                          @CurrentUser User user) {
         try {
-            paymentService.updateBankAccountQrCode(purpose, file);
+            storeSettingsService.updateBankAccountQrCode(purpose, file);
             operationLogService.log(user, "APPOINTMENT", "UPDATE_BANK_ACCOUNT_QR",
                     purpose.getLabel() + " 收款 QR Code", null);
             ra.addFlashAttribute("successMsg", "已更新「" + purpose.getLabel() + "」的收款 QR Code");
@@ -463,59 +356,55 @@ public class PaymentMvcController {
     }
 
     // ── GET /payments/company-signature ──────────────────────────────────
-    // 需求 22：店家上傳乙方固定電子簽名檔（顯示在顧客端契約最下方）
+    // 店家上傳乙方固定電子簽名檔（顯示在顧客端契約最下方）
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/company-signature")
-    public String companySignatureForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
-        model.addAttribute("signatureImage", paymentService.getCompanySignatureImage());
+    public String companySignatureForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
+        model.addAttribute("signatureImage", storeSettingsService.getCompanySignatureImage());
         return "payments/company-signature";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/company-signature")
-    public String updateCompanySignature(@RequestParam String signatureImage,
-                                         HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
+    public String updateCompanySignature(@RequestParam String signatureImage, RedirectAttributes ra, @CurrentUser User user) {
         if (signatureImage == null || !signatureImage.startsWith("data:image")) {
             ra.addFlashAttribute("errorMsg", "請上傳有效的圖片檔案");
             return "redirect:/payments/company-signature";
         }
-        paymentService.updateCompanySignature(signatureImage);
+        storeSettingsService.updateCompanySignature(signatureImage);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_COMPANY_SIGNATURE", "乙方電子簽名檔", null);
         ra.addFlashAttribute("successMsg", "已更新乙方電子簽名檔");
         return "redirect:/payments/company-signature";
     }
 
     // ── GET /payments/api/company-signature ─────────────────────────────
-    // 需求 22：公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
+    // 公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
     // 不需要登入即可讀取——簽名檔本身不是敏感資訊，是要公開展示給顧客看的。
     // 注意：這個 controller class 層級是 @RequestMapping("/payments")，所以完整路徑
     // 是 /payments/api/company-signature，不是看起來很直覺的 /api/company-signature
     // （之前 booking.html 就是因為呼叫錯路徑，一直 404，簽名檔顯示不出來）。
     @GetMapping("/api/company-signature")
     @ResponseBody
-    public java.util.Map<String, String> getCompanySignatureApi() {
-        String image = paymentService.getCompanySignatureImage();
-        return java.util.Collections.singletonMap("signatureImage", image);
+    public Map<String, String> getCompanySignatureApi() {
+        String image = storeSettingsService.getCompanySignatureImage();
+        return Collections.singletonMap("signatureImage", image);
     }
 
     // ── GET /payments/pricing-settings ──────────────────────────────────
-    // 需求（追加）：貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
+    // 貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/pricing-settings")
-    public String pricingSettingsForm(HttpServletRequest request, Model model) {
-        model.addAttribute("user", getLoginUser(request));
-        model.addAttribute("settings", paymentService.getPricingSettings());
+    public String pricingSettingsForm(Model model, @CurrentUser User loginUser) {
+        model.addAttribute("user", loginUser);
+        model.addAttribute("settings", storeSettingsService.getPricingSettings());
         return "payments/pricing-settings";
     }
 
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/pricing-settings")
-    public String updatePricingSettings(@ModelAttribute com.petgrooming.pet_system.model.PricingSettings settings,
-                                        HttpServletRequest request, RedirectAttributes ra) {
-        User user = getLoginUser(request);
-        paymentService.updatePricingSettings(settings);
+    public String updatePricingSettings(@ModelAttribute PricingSettings settings, RedirectAttributes ra, @CurrentUser User user) {
+        storeSettingsService.updatePricingSettings(settings);
         operationLogService.log(user, "APPOINTMENT", "UPDATE_PRICING_SETTINGS", "體重定價門檻設定", null);
         ra.addFlashAttribute("successMsg", "已更新體重定價門檻");
         return "redirect:/payments/pricing-settings";

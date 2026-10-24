@@ -1,6 +1,6 @@
 package com.petgrooming.pet_system.service;
 
-import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
+import com.petgrooming.pet_system.dto.MobilePendingOperatorGroupView;
 import com.petgrooming.pet_system.dto.PendingOperatorMatrixResponse;
 import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.model.AppointmentItem;
@@ -14,11 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 需求（追加）：矩陣式待補經手人表單。取代原本一列一項目的扁平清單，
- * 改成「一隻寵物一列、橫向固定欄位」的表格，本次消費沒出現的項目那一格直接顯示「無」，
+ * 矩陣式待補經手人表單：「一隻寵物一列、橫向固定欄位」，本次消費沒出現的項目那一格直接顯示「無」，
  * 只有實際有這個項目、還沒填經手人的格子才會出現下拉選單。
  */
 @Service
@@ -84,12 +84,12 @@ public class PendingOperatorMatrixService {
         return result;
     }
 
-    // ── 需求（2026-09-24）：員工手機版「待補經手人」────────────────────────
+    // ── 員工手機版「待補經手人」────────────────────────
     // 跟上面兩支矩陣方法同一份資料來源（未填經手人、且有積分的項目），
-    // 改成「一張單一組、一個項目一列」的格式，預約單跟現場單合在一起、新的排前面。
+    // 以「一張單一組、一個項目一列」呈現，預約單跟現場單合在一起、新的排前面。
     @Transactional(readOnly = true)
-    public List<MobilePendingOperatorGroup> buildMobileGroups() {
-        List<MobilePendingOperatorGroup> result = new ArrayList<>();
+    public List<MobilePendingOperatorGroupView> buildMobileGroups() {
+        List<MobilePendingOperatorGroupView> result = new ArrayList<>();
 
         Map<Long, List<AppointmentItem>> byAppointment = appointmentItemRepository.findByOperatorStaffIsNull()
                 .stream()
@@ -99,14 +99,14 @@ public class PendingOperatorMatrixService {
             var appointment = appointmentRepository.findById(entry.getKey()).orElse(null);
             if (appointment == null || appointment.isCancelled())
                 continue;
-            result.add(MobilePendingOperatorGroup.builder()
+            result.add(MobilePendingOperatorGroupView.builder()
                     .kind("A")
                     .orderId(appointment.getId())
                     .code(String.format("AP%03d", appointment.getId()))
                     .petName(appointment.getPetName())
                     .date(appointment.getDate())
                     .lines(entry.getValue().stream()
-                            .map(i -> MobilePendingOperatorGroup.Line.builder()
+                            .map(i -> MobilePendingOperatorGroupView.Line.builder()
                                     .itemId(i.getId())
                                     .itemName(i.getItemName())
                                     .categoryLabel(i.getPerformanceCategory() != null ? i.getPerformanceCategory().getLabel() : "")
@@ -125,14 +125,14 @@ public class PendingOperatorMatrixService {
             var order = walkInOrderRepository.findById(entry.getKey()).orElse(null);
             if (order == null)
                 continue;
-            result.add(MobilePendingOperatorGroup.builder()
+            result.add(MobilePendingOperatorGroupView.builder()
                     .kind("W")
                     .orderId(order.getId())
                     .code("現場單#" + order.getId())
                     .petName(order.getPetName())
                     .date(order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : null)
                     .lines(entry.getValue().stream()
-                            .map(i -> MobilePendingOperatorGroup.Line.builder()
+                            .map(i -> MobilePendingOperatorGroupView.Line.builder()
                                     .itemId(i.getId())
                                     .itemName(i.getItemName())
                                     .categoryLabel(i.getPerformanceCategory() != null ? i.getPerformanceCategory().getLabel() : "")
@@ -143,7 +143,7 @@ public class PendingOperatorMatrixService {
                     .build());
         }
 
-        result.sort(Comparator.comparing(MobilePendingOperatorGroup::getDate,
+        result.sort(Comparator.comparing(MobilePendingOperatorGroupView::getDate,
                 Comparator.nullsLast(Comparator.reverseOrder())));
         return result;
     }
@@ -181,7 +181,7 @@ public class PendingOperatorMatrixService {
     }
 
     private <T> void assignWithOverflow(List<T> items,
-            java.util.function.Function<T, PerformanceCategory> categoryOf,
+            Function<T, PerformanceCategory> categoryOf,
             Map<PerformanceCategory, T> assigned) {
         List<T> overflow = new ArrayList<>();
         for (T item : items) {

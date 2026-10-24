@@ -13,7 +13,7 @@
         <div class="alert alert-success" th:if="${successMsg}" th:text="${successMsg}"></div>
         <div class="alert alert-error" th:if="${errorMsg}" th:text="${errorMsg}"></div>
 
-        <!-- 需求（追加，2026-08-24）：狗狗定價流程簡化——結帳完成後的體重更新提醒彈窗。
+        <!-- 狗狗定價流程簡化——結帳完成後的體重更新提醒彈窗。
              用彈窗（不是提示帶），一定要點一下才會關掉，避免店員忽略。 -->
         <div id="weightReminderModal" th:if="${weightReminderPetId != null}"
              style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
@@ -90,7 +90,7 @@
                 <!-- 唯一實際送出的欄位：無論用下拉選還是手打，值都同步進這裡 -->
                 <input type="text" id="petNameInput" name="petName" placeholder="寵物名稱（尚未選會員或非會員時手動輸入）"
                        style="width:100%; padding:8px 10px; border:1px solid var(--cream-300); border-radius:var(--radius-sm); box-sizing:border-box;" />
-                <!-- 需求（追加，2026-08-29）：店家反饋現場開單遇到已鎖定套餐的狗，
+                <!-- 店家反饋現場開單遇到已鎖定套餐的狗，
                      要跳去會員信息才能解鎖太繁瑣，直接在這裡加解鎖按鈕。
                      刻意不整頁 reload（跟結帳頁不同），避免洗掉店員已經填的其他欄位。 -->
                 <div id="lockedPetBanner" style="display:none; margin-top:6px; padding:6px 8px; background:#fff8e6; border:1px solid #e6c366; border-radius:var(--radius-sm); font-size:12px;">
@@ -112,7 +112,7 @@
               ＋ 新增服務項目
             </button>
 
-            <!-- 需求 7-1：開單當下也能直接加零售商品，支援純零售訂單（不需要任何美容服務項目） -->
+            <!-- 開單當下也能直接加零售商品，支援純零售訂單（不需要任何美容服務項目） -->
             <label style="display:block; font-size:12px; color:#666; margin: 16px 0 6px;">零售商品（可加多筆，純美容服務可不填）</label>
             <div id="retailItemRows"></div>
 
@@ -126,7 +126,7 @@
           </form>
         </div>
 
-        <!-- 需求（追加）：矩陣式待補經手人表單——現場開單 -->
+        <!-- 矩陣式待補經手人表單——現場開單 -->
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; overflow-x: auto;"
         >
@@ -162,7 +162,7 @@
                             class="pending-staff-select batch-operator-select">
                       <option value="">尚未選擇</option>
                     </select>
-                    <!-- 需求（2026-10-02）：第二經手人（選填，積分各半） -->
+                    <!-- 第二經手人（選填，積分各半） -->
                     <select name="staffIds2"
                             style="margin-top:4px; padding:3px 6px; border:1px dashed var(--cream-300); border-radius:var(--radius-sm); font-size:11px; width:110px;"
                             class="pending-staff-select">
@@ -178,7 +178,7 @@
           </form>
         </div>
 
-        <!-- 需求（追加）：矩陣式待補經手人表單——預約現場開單 -->
+        <!-- 矩陣式待補經手人表單——預約現場開單 -->
         <div
           style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; overflow-x: auto;"
         >
@@ -215,7 +215,7 @@
                             class="pending-staff-select batch-operator-select">
                       <option value="">尚未選擇</option>
                     </select>
-                    <!-- 需求（2026-10-02）：第二經手人（選填，積分各半） -->
+                    <!-- 第二經手人（選填，積分各半） -->
                     <select name="staffIds2"
                             style="margin-top:4px; padding:3px 6px; border:1px dashed var(--cream-300); border-radius:var(--radius-sm); font-size:11px; width:110px;"
                             class="pending-staff-select">
@@ -295,7 +295,7 @@
                 <td>
                   <span th:if="${o.paid}" class="badge paid" th:text="'已' + ${o.paymentMethodLabel}"></span>
 
-                  <!-- 需求 15 修正：已選匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
+                  <!-- 已選匯款、還沒確認收款前，顯示待對帳徽章與確認收款按鈕 -->
                   <div th:if="${o.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
                     <span class="badge" style="background:#fff3e0; color:#e65100; border-color:#ffcc80;">🏦 待對帳（匯款）</span>
                     <form th:action="@{/admin/walk-in-orders/{id}/confirm-wire-transfer(id=${o.id})}" method="post"
@@ -309,7 +309,7 @@
                   <div th:if="${!o.paid and !o.pendingWireTransfer}" style="display:flex; flex-direction:column; gap:4px;">
                     <span class="badge unpaid">未結帳</span>
 
-                    <!-- 需求 7-1 修正：純零售商品訂單（沒有美容服務項目）不用走「結束服務→核對」，直接結帳 -->
+                    <!-- 純零售商品訂單（沒有美容服務項目）不用走「結束服務→核對」，直接結帳 -->
                     <a th:if="${!o.requiresServiceFlow}"
                        th:href="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}"
                        class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">💰 結帳（純零售）</a>
@@ -323,7 +323,7 @@
                        th:href="@{/admin/walk-in-orders/{id}/final-check(id=${o.id})}"
                        class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">📝 核對</a>
 
-                    <!-- 需求 15：結帳畫面統一——改連到跟預約結帳同樣風格的專屬結帳頁，不再是表格列裡的小下拉選單 -->
+                    <!-- 結帳畫面統一——改連到跟預約結帳同樣風格的專屬結帳頁，不再是表格列裡的小下拉選單 -->
                     <a th:if="${o.requiresServiceFlow and o.finalCheckDone}"
                        th:href="@{/admin/walk-in-orders/{id}/checkout(id=${o.id})}"
                        class="btn" style="padding:3px 10px; font-size:12px; display:inline-block; text-decoration:none;">💰 結帳</a>
@@ -349,9 +349,9 @@
     <script th:inline="javascript">
       // 從後端帶入可用項目清單（含不可線上預約的調理項目），JS 動態組出下拉選單
       const GROOMING_ITEMS = /*[[${groomingItems}]]*/ [];
-      // 需求 7-1：可加購的零售商品清單
+      // 可加購的零售商品清單
       const RETAIL_PRODUCTS = /*[[${retailProducts}]]*/ [];
-      // 需求 4：預設只給「會計積分」的項目；勾選/選到「特殊項目」(SPECIAL) 之後，
+      // 預設只給「會計積分」的項目；勾選/選到「特殊項目」(SPECIAL) 之後，
       // 才把不計分的加購/調理項目 (OTHER) 加進所有列的下拉選單裡。
       const POINT_ITEMS = GROOMING_ITEMS.filter(function (i) { return i.performanceCategory !== 'OTHER'; });
       const OTHER_ITEMS = GROOMING_ITEMS.filter(function (i) { return i.performanceCategory === 'OTHER'; });
@@ -366,7 +366,7 @@
         });
       }
 
-      // 需求（追加，2026-09-04）：現場開單「建立新單」的服務項目下拉選單，
+      // 現場開單「建立新單」的服務項目下拉選單，
       // 比照 LIFF／預約現場加單頁的做法，依選定寵物的物種／貓咪毛髮分類
       // 篩選可選項目——之前這裡完全沒有篩選，選了貓也看得到狗的項目，
       // 也看得到跟這隻貓毛髮分類不符的「單次」套餐。規則：
@@ -387,8 +387,8 @@
         const catCoatCategory =
           petType === 'CAT' && pet.catCoatCategory ? String(pet.catCoatCategory).toUpperCase() : null;
 
-        // 需求（追加，2026-09-08）：狗狗依「體重＋毛長」篩選，補齊跟結帳頁／
-        // 預約現場加單頁（AppointmentMvcController.filterItemsForPetShape()）
+        // 狗狗依「體重＋毛長」篩選，補齊跟結帳頁／
+        // 預約現場加單頁（GroomingMenuFilter.filterForPetShape()）
         // 同一套邏輯——這裡是「建立新單」頁面原本唯一還沒做完整篩選的地方
         // （見《功能總覽》已知限制第2點）。已鎖定固定套餐的狗只顯示那一項；
         // 沒鎖定則先比體重級距，毛長已定義（短毛/長毛/中長毛）才再篩到唯一
@@ -422,7 +422,7 @@
         });
       }
 
-      // 需求（追加，2026-09-04）：選寵物之後，重新篩選「已經存在」的項目列
+      // 選寵物之後，重新篩選「已經存在」的項目列
       // 下拉選單內容（新增的列會在 addItemRow() 裡自動套用篩選，不用另外處理）。
       // 原本選的項目如果篩選後還在，保留選擇；不在了（例如換了不同物種/毛髮
       // 分類的寵物）就清空，請店員重新選，避免送出跟寵物不符的項目。
@@ -461,7 +461,7 @@
         }
       }
 
-      // 需求：經手人綁定員工帳號，只給 id + 姓名（不含密碼等敏感欄位）
+      // 經手人綁定員工帳號，只給 id + 姓名（不含密碼等敏感欄位）
       const STAFF_LIST = /*[[${staffList}]]*/ [];
 
       function buildStaffSelect(nameAttr) {
@@ -492,7 +492,7 @@
         emptyOpt.value = '';
         emptyOpt.textContent = '請選擇項目';
         select.appendChild(emptyOpt);
-        // 需求（追加，2026-09-04）：新增列時，依目前選定的寵物（如果呼叫端
+        // 新增列時，依目前選定的寵物（如果呼叫端
         // 沒有直接帶入 pet 參數，就從下拉選單目前的值反查）篩選可選項目。
         const targetPet = pet !== undefined ? pet : currentPetsData.find(function (p) { return p.name === petSelect.value; });
         appendItemOptions(select, filterItemsForPet(POINT_ITEMS, targetPet));
@@ -505,9 +505,9 @@
         }
         select.addEventListener('change', function () { unlockOtherItemsIfNeeded(select); });
 
-        // 需求：經手人改成從員工清單選，不再自由輸入文字
+        // 經手人改成從員工清單選，不再自由輸入文字
         const operatorSelect = buildStaffSelect('operatorStaffIds');
-        // 需求（2026-10-02）：第二經手人（選填，積分各半）
+        // 第二經手人（選填，積分各半）
         const operatorSelect2 = buildStaffSelect('operatorStaffIds2');
         operatorSelect2.options[0].textContent = '第二經手人（選填）';
 
@@ -524,7 +524,7 @@
         document.getElementById('itemRows').appendChild(row);
       }
 
-      // 需求 7-1：零售商品加購列（商品下拉 + 數量 + 移除鈕）
+      // 零售商品加購列（商品下拉 + 數量 + 移除鈕）
       function addRetailItemRow() {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
@@ -562,7 +562,7 @@
         document.getElementById('retailItemRows').appendChild(row);
       }
 
-      // 需求 7-1：至少要有一個「有效選擇」的美容項目或零售商品，兩者擇一或都有皆可，
+      // 至少要有一個「有效選擇」的美容項目或零售商品，兩者擇一或都有皆可，
       // 純零售訂單（只買東西不做美容）現在是合法的，不再強制一定要選美容項目。
       function validateOrderForm() {
         const hasService = Array.from(document.querySelectorAll('select[name="itemCodes"]'))
@@ -577,7 +577,7 @@
       }
 
       // 表單一開始至少給一行
-      // 需求（追加，2026-09-04）：這行呼叫移到下面 petSelect 等變數宣告完成
+      // 這行呼叫移到下面 petSelect 等變數宣告完成
       // 之後才執行——之前 addItemRow() 內部沒有用到 petSelect，放在這裡沒問題；
       // 這次改動讓 addItemRow() 內部會讀取 petSelect.value，提前呼叫會在
       // petSelect 這個 const 變數還沒宣告時就存取它，直接讓整支 script 中斷
@@ -593,7 +593,7 @@
         });
       });
 
-      // ── 需求 1：會員搜尋（解決 LINE 會員帳號是 line_xxx 內碼，店家打不出來的問題）──
+      // ── 會員搜尋（解決 LINE 會員帳號是 line_xxx 內碼，店家打不出來的問題）──
       const memberSearchBox    = document.getElementById('memberSearchBox');
       const memberSuggestions  = document.getElementById('memberSuggestions');
       const memberUsernameField = document.getElementById('memberUsernameField');
@@ -601,16 +601,16 @@
       const petSelect          = document.getElementById('petSelect');
       const petNameInput       = document.getElementById('petNameInput');
 
-      // 需求（追加，2026-08-24）：狗狗定價流程簡化——開單時自動帶入建議套餐，
+      // 狗狗定價流程簡化——開單時自動帶入建議套餐，
       // 完整的寵物資料（體重、是否已鎖定固定套餐）留著供查找。
-      // 需求（追加，2026-09-04）：這個宣告從原本比較後面的位置移到這裡——
+      // 這個宣告從原本比較後面的位置移到這裡——
       // addItemRow() 現在會用到 currentPetsData，而 addItemRow() 在下面
       // 馬上就會被呼叫一次（表單一開始給一行），如果宣告還留在後面，
       // 一樣會踩到跟 petSelect 那次一樣的「const/let 提前存取」問題，
       // 導致整支 script 中斷、後面的會員搜尋監聽器都不會註冊。
       let currentPetsData = [];
 
-      // 需求（追加，2026-09-04）：addItemRow() 內部會用到上面剛宣告的
+      // addItemRow() 內部會用到上面剛宣告的
       // petSelect、currentPetsData，一定要放在宣告完成之後才呼叫。
       addItemRow();
 
@@ -631,7 +631,7 @@
         }
         // 防抖：停止打字 300ms 後才真的送出搜尋，避免每打一個字就打一次 API
         searchDebounce = setTimeout(function () {
-          // 需求 9：同時搜「家長姓名/帳號」跟「寵物名稱」，合併顯示
+          // 同時搜「家長姓名/帳號」跟「寵物名稱」，合併顯示
           Promise.all([
             fetch('/api/admin/members/search?keyword=' + encodeURIComponent(keyword))
               .then(function (res) { return res.ok ? res.json() : []; })
@@ -674,7 +674,7 @@
           petList.forEach(function (p) {
             const item = document.createElement('div');
             item.style.cssText = 'padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0e8dc; display:flex; align-items:center; gap:8px;';
-            // 需求 17：搜尋結果帶出寵物照片供店員視覺核對，沒有照片就顯示預設圖示
+            // 搜尋結果帶出寵物照片供店員視覺核對，沒有照片就顯示預設圖示
             const thumb = document.createElement(p.photoUrl ? 'img' : 'span');
             if (p.photoUrl) {
               thumb.src = p.photoUrl;
@@ -703,13 +703,13 @@
         memberSelectedTag.style.display = 'block';
         memberSuggestions.style.display = 'none';
 
-        // 需求 1：選定會員後自動抓出名下寵物
-        fetch('/api/admin/members/' + encodeURIComponent(u.username) + '/pets')
+        // 選定會員後自動抓出名下寵物
+        fetch('/api/admin/members/' + u.id + '/pets')
           .then(function (res) { return res.ok ? res.json() : []; })
           .then(function (pets) { fillPetSelect(pets, null); });
       }
 
-      // 需求 9：用「寵物搜尋」結果選定時，選家長的同時直接把該隻寵物預選好
+      // 用「寵物搜尋」結果選定時，選家長的同時直接把該隻寵物預選好
       function selectMemberByPet(p) {
         memberSearchBox.value = p.ownerName;
         memberUsernameField.value = p.ownerUsername;
@@ -717,13 +717,13 @@
         memberSelectedTag.style.display = 'block';
         memberSuggestions.style.display = 'none';
 
-        fetch('/api/admin/members/' + encodeURIComponent(p.ownerUsername) + '/pets')
+        fetch('/api/admin/members/' + p.ownerId + '/pets')
           .then(function (res) { return res.ok ? res.json() : []; })
           .then(function (pets) { fillPetSelect(pets, p.petName); });
       }
 
       function fillPetSelect(pets, preselectName) {
-        currentPetsData = pets; // 需求（追加）：留一份完整資料供選寵物時判斷建議套餐用
+        currentPetsData = pets; // 留一份完整資料供選寵物時判斷建議套餐用
         petSelect.innerHTML = '';
         if (!pets.length) {
           petSelect.style.display = 'none';
@@ -747,10 +747,10 @@
         }
       }
 
-      // 需求（追加，2026-08-24）：狗狗定價流程簡化——開單時自動帶入建議套餐。
+      // 狗狗定價流程簡化——開單時自動帶入建議套餐。
       // fillPetSelect 原本只把 p.name/p.petTypeLabel 放進下拉選單的文字，
       // 完整的寵物資料（體重、是否已鎖定固定套餐）沒有留著，選了寵物之後
-      // 沒辦法用來判斷該建議哪個套餐。這裡额外存一份完整資料供查找。
+      // 沒辦法用來判斷該建議哪個套餐。這裡額外存一份完整資料供查找。
       // （宣告本身已經移到上面靠前的位置，這裡不再重複宣告一次。）
 
       // 跟後端 DogWeightTier 同一套體重級距邊界（見 booking.html/
@@ -813,13 +813,13 @@
       petSelect.addEventListener('change', function () {
         if (this.value) petNameInput.value = this.value;
         const pet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
-        // 需求（追加，2026-09-04）：換寵物時，重新篩選已經存在的項目列選項
+        // 換寵物時，重新篩選已經存在的項目列選項
         refreshItemRowOptions(pet);
         if (pet) applySuggestedItem(pet);
         renderLockedPetBanner(pet);
       });
 
-      // 需求（追加，2026-08-29）：現場開單頁面就地顯示鎖定狀態＋解鎖按鈕，
+      // 現場開單頁面就地顯示鎖定狀態＋解鎖按鈕，
       // 不用跳去會員信息頁。跟 suggestItemCodeForPet() 同樣的判斷條件
       // （只有狗有鎖定機制）。
       function renderLockedPetBanner(pet) {
@@ -843,7 +843,7 @@
         if (!pet) return;
         if (!confirm('確定要解鎖嗎？解鎖後這隻狗會恢復成依體重重新選套餐。')) return;
         try {
-          const res = await fetch('/api/admin/pets/' + pet.id + '/unlock-grooming-item', { method: 'PUT' });
+          const res = await fetch('/api/admin/pets/' + pet.id + '/locked-item', { method: 'DELETE' });
           if (!res.ok) {
             alert('解鎖失敗，請重試');
             return;

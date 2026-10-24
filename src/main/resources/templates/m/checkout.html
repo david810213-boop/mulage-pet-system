@@ -40,7 +40,7 @@
   <button type="button" class="soft-btn" data-open-sheet="sheetRetail" th:unless="${retailProducts.isEmpty()}">
     <svg class="i"><use href="#i-bag"/></svg>加購零售商品
   </button>
-  <!-- 需求（2026-10-02）：掃碼加入零售商品（掃碼槍掃完會自動送出） -->
+  <!-- 掃碼加入零售商品（掃碼槍掃完會自動送出） -->
   <div class="scan-box" data-scan-box th:unless="${retailProducts.isEmpty()}">
     <span>掃碼</span>
     <input type="text" data-scan="add-retail" data-form="#retailForm" placeholder="點這裡後用掃碼槍掃商品條碼" autocomplete="off" />
@@ -179,7 +179,7 @@
         var box = document.getElementById("lockBox");
         if (!window.confirm("鎖定後，這隻狗下次預約、開單都會直接帶出這個套餐，確定嗎？")) return;
         lockBtn.disabled = true;
-        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/lock-grooming-item", {
+        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/locked-item", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ groomingItemId: Number(box.dataset.itemId) })

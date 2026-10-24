@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -12,9 +13,11 @@ public interface AppointmentItemRepository extends JpaRepository<AppointmentItem
 
     List<AppointmentItem> findByAppointmentId(Long appointmentId);
 
-    // 需求（追加，2026-08-26 修正）：預約列表頁批次查多筆預約的核對後項目，
+    List<AppointmentItem> findByAppointmentIdIn(Collection<Long> appointmentIds);
+
+    // 預約列表頁批次查多筆預約的核對後項目，
     // 避免一筆一筆查造成 N+1 查詢問題（列表頁可能同時顯示幾十筆預約）。
-    List<AppointmentItem> findByAppointmentIdIn(java.util.List<Long> appointmentIds);
+    List<AppointmentItem> findByAppointmentIdIn(List<Long> appointmentIds);
 
     // 待補經手人清單（operatorStaff 為 null 的項目）
     List<AppointmentItem> findByOperatorStaffIsNull();

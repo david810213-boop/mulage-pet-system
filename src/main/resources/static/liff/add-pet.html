@@ -474,8 +474,8 @@
     <script>
       const LIFF_ID = window.MULAGE_LIFF.addPet; // LIFF ID 集中在 /liff/liff-config.js
       let jwtToken = null;
-      let myPhone = ""; // 需求（追加）：從個人資料帶入，不用在這頁重複填
-      // 需求（追加）：編輯模式——LIFF「我的毛孩」點編輯會帶 ?editPetId=123 連過來，
+      let myPhone = ""; // 從個人資料帶入，不用在這頁重複填
+      // 編輯模式——LIFF「我的毛孩」點編輯會帶 ?editPetId=123 連過來，
       // 這頁偵測到就切換成編輯既有寵物（而不是新增），重用同一套表單跟品種下拉邏輯，
       // 不用另外做一份重複的編輯頁面。
       const editPetId = new URLSearchParams(window.location.search).get("editPetId");
@@ -511,7 +511,7 @@
           }
           jwtToken = data.token;
 
-          // 需求（追加）：家長手機不用再重複填一次，直接沿用「編輯個人信息」裡
+          // 家長手機不用再重複填一次，直接沿用「編輯個人信息」裡
           // 已經填過的電話，這裡靜默抓取，不另外顯示欄位讓使用者填寫。
           try {
             const meRes = await fetch("/api/users/me", {
@@ -533,12 +533,12 @@
         }
       }
 
-      // 需求（追加）：編輯模式——把畫面切成「編輯這隻寵物」，物種鎖住不能改
+      // 編輯模式——把畫面切成「編輯這隻寵物」，物種鎖住不能改
       // （理由跟後端 PetService.updatePet() 的說明一致：換物種牽動一連串判斷邏輯，
       // 貿然開放容易產生不一致的歷史資料）。
       async function enterEditMode() {
         try {
-          const res = await fetch("/api/pets/my", {
+          const res = await fetch("/api/me/pets", {
             headers: { Authorization: "Bearer " + jwtToken },
           });
           const pets = await res.json();
@@ -583,7 +583,7 @@
             markFilled("breed", pet.breed);
           }
 
-          // 需求（2026-08-24 修正）：原本這裡只有分離焦慮這一個欄位有預先帶入，
+          // 原本這裡只有分離焦慮這一個欄位有預先帶入，
           // 性別/絕育/晶片/個性/病史/獸醫院這幾個欄位完全沒有處理，導致編輯完
           // 儲存之後，再次打開編輯畫面時這些欄位看起來永遠是空的，容易讓人誤以為
           // 沒有存成功——這批全部補上，跟後端 PetResponse 補上對應欄位是同一次修正。
@@ -616,7 +616,7 @@
         }
       }
 
-      // 需求（追加，2026-08-24）：把既有值填進輸入框，同時加上 .prefilled 樣式
+      // 把既有值填進輸入框，同時加上 .prefilled 樣式
       // （深色文字＋淺色底），讓「這欄位已經有儲存過的資料」跟空白欄位一眼就能
       // 分辨出來，不用逐欄自己判斷。
       function markFilled(elementId, value) {
@@ -627,7 +627,7 @@
         el.classList.add("prefilled");
       }
 
-      // 需求（追加）：以程式方式觸發 selectRadio 對應的視覺效果（模擬點擊該選項），
+      // 以程式方式觸發 selectRadio 對應的視覺效果（模擬點擊該選項），
       // 不用改動 selectRadio 本身的邏輯，直接找出對應的按鈕元素呼叫它。
       function selectRadioProgrammatic(field, value) {
         const el = document.querySelector(
@@ -720,7 +720,7 @@
         }
       }
 
-      // 需求（追加）：體型/自動帶入項目的提示卡片已從畫面移除（避免暴露內部
+      // 體型/自動帶入項目的提示卡片已從畫面移除（避免暴露內部
       // 項目代碼給顧客），這個函式保留為 no-op，純粹是因為其他地方（selectRadio、
       // weight 欄位 oninput、編輯模式載入）還有呼叫到，拿掉呼叫點反而風險更高。
       function updateSizePreview() {
@@ -745,7 +745,7 @@
           breed = document.getElementById("breed").value.trim();
         }
         const weight = parseFloat(document.getElementById("weight").value);
-        const age = parseFloat(document.getElementById("age").value); // 需求（追加）：允許小數年齡
+        const age = parseFloat(document.getElementById("age").value); // 允許小數年齡
         const notes = document.getElementById("notes").value.trim();
 
         if (!formData.petType) {

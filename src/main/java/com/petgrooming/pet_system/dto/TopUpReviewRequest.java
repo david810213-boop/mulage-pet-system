@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -7,5 +8,6 @@ import lombok.Data;
  */
 @Data
 public class TopUpReviewRequest {
-    private String rejectReason; // 僅駁回時使用
+    @Schema(description = "僅駁回時使用")
+    private String rejectReason;
 }

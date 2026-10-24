@@ -198,7 +198,7 @@
               >
                 美容服務項目 *（可多選）
               </label>
-              <!-- 需求（2026-10-02 店家確認 6-5-B）：初次的毛孩可以不勾項目 -->
+              <!-- 初次的毛孩可以不勾項目 -->
               <p style="font-size: 12px; color: var(--brown-light); margin: -4px 0 10px;">
                 🌱 第一次來的毛孩可以不勾項目，會建立成「初次・現場評估」預約，到店後再開單報價；也可以照常先勾項目。
               </p>
@@ -259,7 +259,7 @@
                 </label>
               </div>
 
-              <!-- 需求 4：勾選「特殊項目」後才展開，其餘不計分的加購/調理項目預設收起 -->
+              <!-- 勾選「特殊項目」後才展開，其餘不計分的加購/調理項目預設收起 -->
               <div id="otherItemsSection" style="display:none; margin-top: 14px;">
                 <p style="font-size: 12px; color: var(--brown-light); margin-bottom: 8px;">
                   ✨ 其他加購項目（不計入員工積分）
@@ -320,7 +320,7 @@
               </div>
 
               <script>
-                // 需求 4：勾選「特殊項目」才展開其餘不計分的加購項目清單
+                // 勾選「特殊項目」才展開其餘不計分的加購項目清單
                 document.querySelectorAll('.special-trigger').forEach(function (cb) {
                   cb.addEventListener('change', function () {
                     if (this.checked) {
@@ -358,7 +358,7 @@
                   color: var(--brown-mid);
                 "
               >
-                <!-- 需求（2026-10-02）：契約全文改由 /liff/contract-body.html 統一載入（跟 LIFF 預約頁同一份） -->
+                <!-- 契約全文改由 /liff/contract-body.html 統一載入（跟 LIFF 預約頁同一份） -->
                 <div id="contractBodyHolder"></div>
                 <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--cream-300);">
                   <p style="font-weight: 600; color: var(--brown-dark); margin-bottom: 6px;">乙方（企業經營者）簽名：</p>
@@ -392,7 +392,7 @@
                 />
                 我已詳細閱讀並同意上述定型化契約內容
               </label>
-              <!-- 需求（2026-10-02）：契約第二十一條影像使用——另外勾選、預設不同意 -->
+              <!-- 契約第二十一條影像使用——另外勾選、預設不同意 -->
               <label style="display:flex; align-items:flex-start; gap:8px; margin-top:8px; font-weight:400; font-size:13px; cursor:pointer;">
                 <input type="checkbox" name="photoShareConsent" value="true" style="margin-top:3px;" />
                 <span>（選填）顧客同意依契約第二十一條，在不揭露個人資料的前提下分享毛孩美容照片。請當面詢問顧客，未詢問請勿勾選。</span>
@@ -619,7 +619,7 @@
           e.preventDefault();
           return;
         }
-        // 需求（2026-10-02）：沒勾項目＝初次現場評估（只有第一次來的毛孩可以，後端會檢查）
+        // 沒勾項目＝初次現場評估（只有第一次來的毛孩可以，後端會檢查）
         if (!document.querySelector('input[name="selectedItems"]:checked')
             && !confirm("沒有勾選服務項目，將建立成「初次・現場評估」預約（只限第一次來的毛孩），確定嗎？")) {
           e.preventDefault();
@@ -649,7 +649,7 @@
 
         slotsField.style.display = "block";
 
-        // 需求（追加，2026-10-02）：不能代客預約過去的日期（後端也會擋）
+        // 不能代客預約過去的日期（後端也會擋）
         const nowD = new Date();
         const todayStr = nowD.getFullYear() + "-" + String(nowD.getMonth() + 1).padStart(2, "0") + "-" + String(nowD.getDate()).padStart(2, "0");
         if (date < todayStr) {
@@ -737,10 +737,10 @@
         const select = document.getElementById("petSelect");
         const selected = select.options[select.selectedIndex];
         const recommend = selected.dataset.recommend || "";
-        const isExisting = selected.dataset.existing === "true"; // 需求（追加）
-        const petType = (selected.dataset.pettype || "").toUpperCase(); // 需求（追加）
+        const isExisting = selected.dataset.existing === "true";
+        const petType = (selected.dataset.pettype || "").toUpperCase();
 
-        // 需求（追加，2026-09-08）：狗狗依「體重＋毛長」篩選、貓咪依毛髮分類篩選，
+        // 狗狗依「體重＋毛長」篩選、貓咪依毛髮分類篩選，
         // 補齊代客預約頁面原本完全沒做的體型篩選（跟現場開單/結帳頁/預約現場
         // 加單頁同一套邏輯）。已鎖定固定套餐的狗只留鎖定那一項；毛長未定義時
         // 只看體重，維持顯示該體重級距全部項目，不誤擋。
@@ -757,7 +757,7 @@
         const coatDefined =
           isDog && (coatType === "SHORT" || coatType === "LONG" || coatType === "MEDIUM");
 
-        // 需求（追加）：僅限既有客戶／適用物種／體型（體重+毛長/毛髮分類），
+        // 僅限既有客戶／適用物種／體型（體重+毛長/毛髮分類），
         // 不符合資格的項目整列隱藏（連同勾選一起清掉）
         document.querySelectorAll("label[data-requires-existing]").forEach((label) => {
           const requiresExisting = label.dataset.requiresExisting === "true";

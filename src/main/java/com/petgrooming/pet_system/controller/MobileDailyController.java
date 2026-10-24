@@ -1,15 +1,17 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.config.StoreRules;
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.model.StoreSupply;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PerformanceService;
+import com.petgrooming.pet_system.service.PerformanceSplitService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.StoreSupplyService;
 import com.petgrooming.pet_system.service.UserService;
@@ -30,11 +32,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * 員工手機版：我的績效、店用洗劑、零售商品庫存（需求，2026-09-24 第七批）。
+ * 員工手機版：我的績效、店用洗劑、零售商品庫存。
  *
  * 只做現場每天會用到的動作：
  * - 我的績效：看今日／本月積分、離下一個獎勵金級距還差多少，把自己的一筆積分對半拆給協助的同事
@@ -51,14 +53,12 @@ public class MobileDailyController {
 
     private final UserService userService;
     private final PerformanceService performanceService;
-    private final PerformanceRecordRepository performanceRecordRepository;
+    private final PerformanceSplitService performanceSplitService;
     private final StoreSupplyService storeSupplyService;
     private final RetailProductService retailProductService;
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
 
-    /** 零售商品低庫存門檻，跟 Dashboard 庫存管理區塊一致 */
-    private static final int RETAIL_LOW_STOCK = 5;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -74,8 +74,7 @@ public class MobileDailyController {
 
     // ── 我的績效 ────────────────────────────────────────────────────────
     @GetMapping("/perf")
-    public String myPerformance(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String myPerformance(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -83,12 +82,9 @@ public class MobileDailyController {
         LocalDate monthStart = today.withDayOfMonth(1);
         var progress = performanceService.getMyProgress(user.getId(), today);
 
-        List<PerformanceRecord> records = performanceRecordRepository
-                .findByStaffIdAndServiceDateBetweenOrderByServiceDateDesc(user.getId(), monthStart, today);
+        List<PerformanceRecord> records = performanceService.getRecordsBetween(user.getId(), monthStart, today);
         // 已經被拆分過的原始紀錄（不能再拆），用來決定要不要顯示「拆給同事」按鈕
-        Set<Long> alreadySplit = performanceRecordRepository.findBySplitFromRecordIdIsNotNull().stream()
-                .map(PerformanceRecord::getSplitFromRecordId)
-                .collect(Collectors.toSet());
+        Set<Long> alreadySplit = performanceSplitService.getSplitSourceRecordIds();
 
         Map<String, List<Map<String, Object>>> byDate = new LinkedHashMap<>();
         Map<String, Double> dayTotal = new LinkedHashMap<>();
@@ -97,13 +93,13 @@ public class MobileDailyController {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", r.getId());
             m.put("category", r.getCategory() != null ? r.getCategory().getLabel() : "");
-            m.put("points", r.getPoints() == null ? 0.0 : r.getPoints());
+            m.put("points", Objects.requireNonNullElse(r.getPoints(), 0.0));
             m.put("note", r.getNote());
             m.put("source", r.getAppointmentId() != null ? String.format("AP%03d", r.getAppointmentId())
                     : r.getWalkInOrderId() != null ? "現場單#" + r.getWalkInOrderId() : null);
             m.put("sourceUrl", r.getAppointmentId() != null ? "/m/appointments/" + r.getAppointmentId()
                     : r.getWalkInOrderId() != null ? "/m/walk-in/" + r.getWalkInOrderId() : null);
-            // 需求（2026-10-02）：雙人經手的紀錄另外標示，不顯示成「同事拆分給你」
+            // 雙人經手的紀錄另外標示，不顯示成「同事拆分給你」
             boolean dual = r.getNote() != null && r.getNote().contains("雙人經手");
             m.put("dual", dual);
             m.put("fromSplit", r.getSplitFromRecordId() != null && !dual);
@@ -111,9 +107,9 @@ public class MobileDailyController {
                     && r.getPoints() != null && r.getPoints() > 0);
             m.put("split", alreadySplit.contains(r.getId()) && !dual);
             m.put("label", (r.getCategory() != null ? r.getCategory().getLabel() : "")
-                    + "，" + String.format("%.1f", r.getPoints() == null ? 0.0 : r.getPoints()) + " 分");
+                    + "，" + String.format("%.1f", Objects.requireNonNullElse(r.getPoints(), 0.0)) + " 分");
             byDate.computeIfAbsent(key, k -> new ArrayList<>()).add(m);
-            dayTotal.merge(key, r.getPoints() == null ? 0.0 : r.getPoints(), Double::sum);
+            dayTotal.merge(key, Objects.requireNonNullElse(r.getPoints(), 0.0), Double::sum);
         }
 
         // 進度條：本月主要積分 ÷ 下一個級距門檻
@@ -134,11 +130,11 @@ public class MobileDailyController {
     }
 
     @PostMapping("/perf/split")
-    public String split(HttpServletRequest request, RedirectAttributes ra,
+    public String split(RedirectAttributes ra,
             @RequestParam Long sourceRecordId,
             @RequestParam(required = false) Long toStaffId,
-            @RequestParam(required = false) String note) {
-        User user = getLoginUser(request);
+            @RequestParam(required = false) String note,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -148,13 +144,13 @@ public class MobileDailyController {
         }
         try {
             // 手機版只能拆自己的紀錄；拆別人的積分請到網頁版績效管理
-            PerformanceRecord source = performanceRecordRepository.findById(sourceRecordId).orElse(null);
+            PerformanceRecord source = performanceService.findRecord(sourceRecordId).orElse(null);
             if (source == null || source.getStaff() == null || !source.getStaff().getId().equals(user.getId())) {
                 ra.addFlashAttribute("toastError", "只能拆分自己的積分");
                 return "redirect:/m/perf";
             }
             String n = note == null || note.isBlank() ? null : note.trim();
-            performanceService.splitRecord(sourceRecordId, toStaffId, n);
+            performanceSplitService.splitRecord(sourceRecordId, toStaffId, n);
             operationLogService.log(user, "PERFORMANCE", "SPLIT_POINTS", "績效紀錄 #" + sourceRecordId,
                     "拆分給員工 #" + toStaffId + (n != null ? "：" + n : "") + "（手機版）");
             ra.addFlashAttribute("toast", "已把這筆積分對半拆給同事");
@@ -166,8 +162,7 @@ public class MobileDailyController {
 
     // ── 店用洗劑 ────────────────────────────────────────────────────────
     @GetMapping("/supplies")
-    public String supplies(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String supplies(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -188,7 +183,7 @@ public class MobileDailyController {
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
         model.addAttribute("lowCount", list.stream().filter(this::isLow).count());
-        model.addAttribute("isAdmin", user.isAdmin()); // 需求（2026-10-02）：盤點只有管理者
+        model.addAttribute("isAdmin", user.isAdmin()); // 盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/supplies";
     }
@@ -211,8 +206,7 @@ public class MobileDailyController {
 
     // ── 零售商品庫存 ────────────────────────────────────────────────────
     @GetMapping("/retail")
-    public String retail(HttpServletRequest request, Model model) {
-        User user = getLoginUser(request);
+    public String retail(Model model, @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -224,24 +218,24 @@ public class MobileDailyController {
             m.put("name", p.getName());
             m.put("price", p.getPrice());
             m.put("stock", p.getStockQuantity());
-            m.put("low", p.getStockQuantity() > 0 && p.getStockQuantity() <= RETAIL_LOW_STOCK);
+            m.put("low", p.getStockQuantity() > 0 && p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD);
             m.put("out", p.getStockQuantity() <= 0);
             return m;
         }).toList();
 
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
-        model.addAttribute("lowCount", list.stream().filter(p -> p.getStockQuantity() <= RETAIL_LOW_STOCK).count());
-        model.addAttribute("isAdmin", user.isAdmin()); // 需求（2026-10-02）：盤點只有管理者
+        model.addAttribute("lowCount", list.stream().filter(p -> p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD).count());
+        model.addAttribute("isAdmin", user.isAdmin()); // 盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/retail";
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）───────────
+    // ── 盤點（只有管理者）───────────
     @PostMapping("/retail/{id}/stocktake")
-    public String stocktakeRetail(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
-            @RequestParam int actual) {
-        User user = getLoginUser(request);
+    public String stocktakeRetail(@PathVariable Long id, RedirectAttributes ra,
+            @RequestParam int actual,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -261,9 +255,9 @@ public class MobileDailyController {
     }
 
     @PostMapping("/supplies/{id}/stocktake")
-    public String stocktakeSupply(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
-            @RequestParam int actual) {
-        User user = getLoginUser(request);
+    public String stocktakeSupply(@PathVariable Long id, RedirectAttributes ra,
+            @RequestParam int actual,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }
@@ -284,9 +278,9 @@ public class MobileDailyController {
 
     // delta 正數＝進貨，負數＝報損／盤點扣減
     @PostMapping("/retail/{id}/adjust")
-    public String adjustRetail(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra,
-            @RequestParam int delta) {
-        User user = getLoginUser(request);
+    public String adjustRetail(@PathVariable Long id, RedirectAttributes ra,
+            @RequestParam int delta,
+            @CurrentUser User user) {
         if (user == null) {
             return "redirect:/auth/login";
         }

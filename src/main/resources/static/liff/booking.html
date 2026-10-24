@@ -345,7 +345,7 @@
       let selectedPetId = null;
       let selectedDate = null;
       let selectedSlot = null; // { startTime, endTime }
-      let closedDatesCache = null; // 需求 16：公休日清單快取（本次頁面停留期間有效）
+      let closedDatesCache = null; // 公休日清單快取（本次頁面停留期間有效）
 
       // 資安修正：寵物名稱/品種是顧客自己填的，服務項目名稱/描述雖然是店家設定，
       // 一律統一跳脫，插入 innerHTML 前先過一手，避免存放型 XSS。
@@ -359,7 +359,7 @@
           .replace(/'/g, "&#39;");
       }
 
-      // 需求 16：抓取公休日清單（只抓一次，快取起來），回傳 Set<string> 方便查詢
+      // 抓取公休日清單（只抓一次，快取起來），回傳 Set<string> 方便查詢
       async function loadClosedDates() {
         if (closedDatesCache) return closedDatesCache;
         try {
@@ -415,7 +415,7 @@
 
           renderForm();
 
-          // 需求（追加）：簽名檔要抓的 <img>/<p> 元素是 renderForm() 動態產生的 HTML，
+          // 簽名檔要抓的 <img>/<p> 元素是 renderForm() 動態產生的 HTML，
           // 之前跟 fetchMyPets/fetchGroomingItems 一起 Promise.all 平行呼叫，
           // renderForm() 都還沒跑、DOM 裡根本還沒有這兩個元素，抓 getElementById 一定是 null，
           // 圖片永遠貼不上去。改成表單畫出來之後才呼叫。
@@ -426,10 +426,10 @@
         }
       }
 
-      // 需求 22：抓取乙方固定電子簽名檔，顯示在契約最下方
+      // 抓取乙方固定電子簽名檔，顯示在契約最下方
       async function loadCompanySignature() {
         try {
-          // 需求（追加）修正：這支 API 實際掛在 PaymentMvcController（class 層級是
+          // 這支 API 實際掛在 PaymentMvcController（class 層級是
           // @RequestMapping("/payments")），正確路徑其實是 /payments/api/company-signature，
           // 之前寫成 /api/company-signature 一直是 404，簽名檔永遠貼不上去。
           const res = await fetch("/payments/api/company-signature", {
@@ -460,7 +460,7 @@
       }
 
       async function fetchMyPets() {
-        const res = await fetch("/api/pets/my", { headers: authHeaders() });
+        const res = await fetch("/api/me/pets", { headers: authHeaders() });
         if (!res.ok) throw new Error("取得毛孩清單失敗");
         return res.json();
       }
@@ -478,7 +478,7 @@
           '<div class="loading-page" style="color:#8B0000">' + msg + "</div>";
       }
 
-      // 需求（追加，2026-08-30）：不開放顧客當天自己在 LIFF 提出預約申請，
+      // 不開放顧客當天自己在 LIFF 提出預約申請，
       // 日期選擇器最早只能選明天，並在下方顯示提示文字引導改用 LINE/電話聯繫。
       function tomorrowStr() {
         const d = new Date();
@@ -511,7 +511,7 @@
             <option value="">請選擇毛孩</option>
             ${myPets.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}（${escapeHtml(p.breed)}）</option>`).join("")}
           </select>
-          <!-- 需求（追加，2026-08-31）：選到貓咪時顯示預約時段小提醒，
+          <!-- 選到貓咪時顯示預約時段小提醒，
                引導家長優先選擇 11:00 或 16:00 後這兩個相對安靜的時段。 -->
           <div
             id="catBookingTip"
@@ -521,7 +521,7 @@
             為了讓貓咪有較安靜、放鬆的美容環境，預約時建議優先選擇 11:00 或
             16:00 後，這兩個時段現場相對較安靜 ♡
           </div>
-          <!-- 需求（追加，2026-09-04）：顯示這隻寵物目前的折扣資格狀態
+          <!-- 顯示這隻寵物目前的折扣資格狀態
                （距上次洗澡幾天／優惠期內或已過期／首次體驗優惠）。 -->
           <div
             id="petDiscountNotice"
@@ -544,7 +544,7 @@
 
       <div class="form-card">
         <h3>𖥸 選擇服務項目</h3>
-        <!-- 需求（2026-10-02）：初次預約只選時段，由店家到店後依毛孩狀況開立項目 -->
+        <!-- 初次預約只選時段，由店家到店後依毛孩狀況開立項目 -->
         <div id="firstVisitNote" style="display:none; background:#eef6ec; border:1px solid #a9d1a0; border-radius:8px; padding:12px 14px; font-size:13.5px; line-height:1.7; color:#3d6b34;"></div>
         <div id="dogLockedBanner" style="display:none; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px;"></div>
         <div id="itemsContainer">
@@ -568,7 +568,7 @@
           font-size: 12px;
           line-height: 1.8;
           color: #6b645c; font-family:'Huninn','PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;">
-          <!-- 需求（2026-10-02）：契約全文改由 /liff/contract-body.html 統一載入（各頁條文一致） -->
+          <!-- 契約全文改由 /liff/contract-body.html 統一載入（各頁條文一致） -->
           <div id="contractBodyHolder"></div>
           <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #DBD3C4;">
             <p style="font-weight:700; color:#26332B; margin-bottom:6px;">乙方（企業經營者）簽名：</p>
@@ -584,7 +584,7 @@
         <div style="font-size:11.5px; color:#a29a8c; margin:4px 0 0 24px;">
           契約全文也公開在 <a href="/liff/contract.html" target="_blank" style="color:#A67C52;">慕沐村定型化契約</a>，簽署後可隨時在「我的預約」查看。
         </div>
-        <!-- 需求（2026-10-02）：契約第二十一條影像使用——另外勾選、預設不同意 -->
+        <!-- 契約第二十一條影像使用——另外勾選、預設不同意 -->
         <label style="display:flex; align-items:flex-start; gap:8px; margin-top:10px; font-size:13px; color:#6b645c; cursor:pointer;">
           <input type="checkbox" id="photoShareConsent" style="width:16px; height:16px; margin-top:2px; accent-color:#A67C52;" />
           <span>（選填）同意乙方依契約第二十一條，在不揭露個人資料的前提下，於社群媒體分享毛孩美容照片。不勾選不影響預約。</span>
@@ -610,7 +610,7 @@
         renderSummaryBar();
       }
 
-      // 需求（追加，2026-08-24）：狗狗定價流程簡化——JS 端鏡射後端
+      // 狗狗定價流程簡化——JS 端鏡射後端
       // DogWeightTier 的體重級距邊界，用來篩選菜單。跟後端同一套規則：
       // 落在整數空隙的體重就近進位到下一級距，超過 33kg 歸進最高級距。
       function computeDogWeightTier(weight) {
@@ -628,7 +628,7 @@
         return "EXTRA_LARGE";
       }
 
-      // 需求（追加，2026-08-26）：假日限定套餐——固定週六、週日算假日（跟後端
+      // 假日限定套餐——固定週六、週日算假日（跟後端
       // AppointmentService 判斷邏輯一致）。用字串直接組 Date 物件避免時區
       // 轉換造成日期跑掉（"2026-08-30" 這種純日期字串在部分瀏覽器會被當成
       // UTC 午夜解析，跨到前一天，所以拆開年月日自己組本地時間的 Date）。
@@ -639,7 +639,7 @@
         return day === 0 || day === 6;
       }
 
-      // 需求（追加，2026-09-04）：這隻寵物目前的折扣資格狀態（首次體驗/回洗/
+      // 這隻寵物目前的折扣資格狀態（首次體驗/回洗/
       // 會員儲值折扣），選毛孩之後打 /api/pets/{petId}/discount-status 抓一次，
       // 服務項目清單渲染時用來判斷要不要顯示「原價劃掉+折扣價」。
       let currentPetDiscountStatus = null;
@@ -648,7 +648,7 @@
         currentPetDiscountStatus = null;
         if (!petId) return;
         try {
-          // 需求（追加，2026-09-06）：距上次洗澡幾天／是否符合定期養護禮遇資格，
+          // 距上次洗澡幾天／是否符合定期養護禮遇資格，
           // 要用「顧客實際選的預約日期」去算，不是永遠用「今天」——例如選了
           // 好幾個月後的日期，等到那天早就超過90天，不該還顯示符合資格。
           // 選毛孩當下如果日期欄位還是空的（通常會先選毛孩才選日期），就先不帶
@@ -671,7 +671,7 @@
       }
 
       // 依 currentPetDiscountStatus，算出這個項目「較優惠」的折扣後價格；
-      // 三種折扣互斥擇優，邏輯跟後端 resolvePreferredDiscount() 一致：
+      // 三種折扣互斥擇優，邏輯跟後端 DiscountCalculator.resolve() 一致：
       // 特殊優惠（首次體驗/回洗）跟會員儲值折扣都適用時，取金額較低者，
       // 打平時優先算特殊優惠（跟後端 <= 判斷一致）。都不適用則回傳原價。
       function resolveDiscountedPrice(item) {
@@ -726,7 +726,7 @@
       </div>`;
       }
 
-      // ── 需求（追加，2026-10-02）：初次預約只選時段 ───────────────────
+      // ── 初次預約只選時段 ───────────────────
       let isFirstVisit = false;
       let pendingFirstVisit = false;
 
@@ -784,7 +784,7 @@
             .forEach((code) => selectedItemCodes.add(code));
         }
 
-        // 需求（追加，2026-09-04）：抓這隻寵物的折扣資格狀態（首次體驗/回洗/
+        // 抓這隻寵物的折扣資格狀態（首次體驗/回洗/
         // 會員儲值折扣），畫面上顯示提示文字，服務項目清單也要重新渲染一次
         // 才能套用正確的折扣後價格（itemRowHtml 是在渲染當下讀
         // currentPetDiscountStatus，第一次渲染整份清單時通常還沒選毛孩）。
@@ -824,24 +824,24 @@
         // 總金額不更新、送出的項目也不是畫面上勾的那些。重畫後一律重新綁定。
         bindItemCheckboxes();
 
-        // 需求（追加）：僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
+        // 僅限既有客戶／適用物種，不符合資格的項目整列隱藏（連同勾選一起清掉）
         const isExisting = !!(pet && pet.isExistingCustomer);
         const petType =
           pet && pet.petType ? String(pet.petType).toUpperCase() : null;
 
-        // 需求（追加，2026-08-31）：選到貓咪時顯示預約時段小提醒
+        // 選到貓咪時顯示預約時段小提醒
         const catTipEl = document.getElementById("catBookingTip");
         if (catTipEl) {
           catTipEl.style.display = petType === "CAT" ? "block" : "none";
         }
-        // 需求（追加，菜單簡化）：貓咪依品種自動判斷的毛髮分類（單層毛/雙層毛/長毛），
+        // 貓咪依品種自動判斷的毛髮分類（單層毛/雙層毛/長毛），
         // 只顯示對應分類的套餐項目。這隻貓的分類是 null 的話（特殊貓種、品種不在
         // 對照表裡），不篩選、顯示全部貓咪項目——讓店家人工協助這位顧客判斷，
         // 不會因為系統判斷不出來就擋住預約或漏掉選項。
         const catCoatCategory =
           pet && petType === "CAT" ? pet.catCoatCategory || null : null;
 
-        // 需求（追加，2026-08-24）：狗狗定價流程簡化。
+        // 狗狗定價流程簡化。
         // 已鎖定固定套餐：只顯示那一項套餐（自動勾選），其餘體重級距項目全部隱藏；
         // 還沒鎖定：依這隻狗目前的體重篩出對應級距，只顯示那 6 項（短毛/長毛×3等級）。
         // 不受影響：沒有標 dogWeightTier 的項目（通用加購），維持原本篩選邏輯不變。
@@ -852,7 +852,7 @@
           isDog && pet && !dogLockedItemId
             ? computeDogWeightTier(pet.weight)
             : null;
-        // 需求（追加，2026-09-06）：狗狗菜單再依「毛長」細分——店家後台如果已經
+        // 狗狗菜單再依「毛長」細分——店家後台如果已經
         // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。
         // 中長毛現在也有自己對應的套餐了（DOG049~072），一併算「已定義」。
         // 只有還沒定義（UNDEFINED）才不篩毛長，維持「這個體重級距的都顯示」。
@@ -862,11 +862,11 @@
           petCoatType === "LONG" ||
           petCoatType === "MEDIUM";
 
-        // 需求（追加，2026-08-26）：假日（固定週六、週日）限定只能選完整套餐，
+        // 假日（固定週六、週日）限定只能選完整套餐，
         // 通用單項加購（沒有副組成的項目，例如指甲修剪、貓咪基礎保養）整列隱藏，
         // 逼客人只能從套餐裡選——這條規則只影響顧客自己在 LIFF 預約，店員
         // 現場開單/核對時不受這條限制，維持原本可以自由加選單項的彈性。
-        // 需求（2026-08-26 修正）：不在畫面上明講這條規則（店家不希望顧客知道
+        // 不在畫面上明講這條規則（店家不希望顧客知道
         // 假日只能選套餐是刻意的機制），單純把不符合的項目隱藏，不額外顯示提示文字。
         const isHoliday = isHolidayDate(selectedDate);
 
@@ -922,7 +922,7 @@
               itemCoatCategory !== catCoatCategory;
             // 假日只能選套餐：非套餐項目（沒有副組成）在假日整列隱藏。
             const blockedByHoliday = isHoliday && !isPackage;
-            // 需求（追加，2026-09-06）：店家反饋鎖定固定套餐後，畫面應該只顯示
+            // 店家反饋鎖定固定套餐後，畫面應該只顯示
             // 鎖定的那一項，連通用加購項目（指甲修剪等，沒有標體重級距）也要
             // 一併隱藏——這是對 2026-08-24 原始設計的調整：原本「不受影響：
             // 沒有標 dogWeightTier 的項目維持原本篩選邏輯」，現在改成「已鎖定
@@ -938,7 +938,7 @@
             if (itemDogTier && !dogLockedItemId && dogWeightTier) {
               blockedByDogTier = itemDogTier !== dogWeightTier;
             }
-            // 需求（追加，2026-09-06）：毛長篩選，只在體重級距已經符合、且店家
+            // 毛長篩選，只在體重級距已經符合、且店家
             // 已經定義毛長時才進一步篩，避免跟體重篩選規則疊加出奇怪的行為。
             let blockedByDogCoat = false;
             if (
@@ -992,7 +992,7 @@
         selectedDate = dateInput.value;
         selectedSlot = null;
 
-        // 需求（追加，2026-08-26）：日期改變會影響「是不是假日」，連帶影響
+        // 日期改變會影響「是不是假日」，連帶影響
         // 服務項目菜單（假日只能選套餐），日期一變就要重新跑一次項目篩選邏輯，
         // 不能只在選毛孩的時候才篩選一次。
         if (selectedPetId) onPetChange();
@@ -1007,7 +1007,7 @@
         slotsField.style.display = "block";
         container.innerHTML = '<div class="slots-loading">載入時段中...</div>';
 
-        // 需求（追加，2026-08-31）：不能只靠日期選擇器的 min 屬性擋今天——
+        // 不能只靠日期選擇器的 min 屬性擋今天——
         // LINE 內建瀏覽器（LIFF webview）不完全可靠，同一台測試手機實測發現
         // 還是選得到今天。這裡加一層 JS 防呆，選到今天直接明確提示，不用
         // 等送出預約後才被後端擋下來、顯示不夠明確的錯誤。
@@ -1018,7 +1018,7 @@
           const day = String(d.getDate()).padStart(2, "0");
           return `${y}-${m}-${day}`;
         })();
-        // 需求（追加，2026-10-02）：過去的日期也擋（字串 yyyy-MM-dd 可直接比大小）
+        // 過去的日期也擋（字串 yyyy-MM-dd 可直接比大小）
         if (selectedDate < todayStrCheck) {
           container.innerHTML =
             '<div class="slots-empty">⚠️ 不能預約已經過去的日期，請重新選擇</div>';
@@ -1031,7 +1031,7 @@
         }
 
         try {
-          // 需求 16：先檢查是否為公休日，是的話直接提示，不用等 /slots 回傳空清單
+          // 先檢查是否為公休日，是的話直接提示，不用等 /slots 回傳空清單
           const closedDates = await loadClosedDates();
           if (closedDates.has(selectedDate)) {
             container.innerHTML =
@@ -1054,7 +1054,7 @@
             return;
           }
 
-          // 需求（追加，2026-08-26）：選的日期如果是今天，已經過去的時段自動
+          // 選的日期如果是今天，已經過去的時段自動
           // 標成不可選（用時段的「開始時間」判斷，只要開始時間已經過了現在，
           // 就不該再讓人預約——即使還沒到結束時間也一樣，因為到店的時間已經
           // 來不及了）。用瀏覽器當下的本地時間比對，這個系統本來就是給台灣
@@ -1085,7 +1085,7 @@
             .map((s, i) => {
               const past = isPast(s.startTime);
               const available = s.available && !past;
-              // 需求（追加，2026-09-08）：時段限定物種時，不管有沒有帶 petType 都會回傳
+              // 時段限定物種時，不管有沒有帶 petType 都會回傳
               // allowedPetType，這裡加個小標籤讓顧客知道「為什麼」，不只是單純變成灰色。
               const restrictTag =
                 s.allowedPetType === "DOG" ? "🐕" : s.allowedPetType === "CAT" ? "🐱" : "";
@@ -1325,7 +1325,7 @@
             }),
           });
 
-          // 需求（追加，2026-08-31）：後端回傳的錯誤是純文字（不是 JSON），
+          // 後端回傳的錯誤是純文字（不是 JSON），
           // 用 res.json() 解析純文字會拋例外被 .catch() 吞掉，導致畫面只顯示
           // 寫死的 res.status（例如「400」），看不到真正的錯誤原因——這是專案
           // 疑難排解文件裡早就記過的同一個坑，這裡補上正確做法：先讀
@@ -1348,7 +1348,7 @@
             return;
           }
 
-          // 需求（2026-08-26）：每一筆預約送出成功後都要跳彈窗說明「還沒完成，
+          // 每一筆預約送出成功後都要跳彈窗說明「還沒完成，
           // 等店家確認」，不能讓顧客誤以為送出=預約成功；如果是這隻毛孩第一次
           // 消費，額外加一段「線上報價僅供參考」的提醒——兩則訊息合併成同一個
           // 彈窗，不要疊兩個彈窗造成困擾。
@@ -1375,7 +1375,7 @@
         setTimeout(() => el.classList.remove("show"), 3000);
       }
 
-      // 需求（追加，2026-08-26）：預約送出成功後的彈窗——一律顯示「還沒完成，
+      // 預約送出成功後的彈窗——一律顯示「還沒完成，
       // 等店家確認」，這隻毛孩如果是第一次消費，額外附上報價僅供參考的提醒。
       // 用彈窗（不是 toast）是因為這兩則訊息都重要、要確保顧客真的看到，
       // 點「我知道了」才會離開這頁去我的預約。

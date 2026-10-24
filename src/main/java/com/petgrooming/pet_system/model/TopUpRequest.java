@@ -9,13 +9,16 @@ import java.time.LocalDateTime;
 /**
  * 線上儲值申請（僅限轉帳）
  *
- * 需求 1：線上儲值僅限轉帳。
+ * 線上儲值僅限轉帳。
  * 顧客在 LIFF 填寫「金額 + 匯款帳號後五碼 + 轉帳時間」送出，
  * 這時只建立一筆 PENDING 申請，錢包餘額「不會」立刻變動。
  * 店家於後台核對銀行入帳後按「確認入帳」，才真正呼叫 WalletService.deposit() 加值。
  */
 @Entity
-@Table(name = "topup_requests")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "topup_requests", indexes = {
+        @Index(name = "idx_topup_requests_status_created", columnList = "status, created_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,10 +31,10 @@ public class JwtUtils {
     @PostConstruct
     public void init() {
         if (secretString.startsWith("INSECURE_DEFAULT")) {
-            log.warn("⚠️⚠️⚠️ 尚未設定環境變數 JWT_SECRET，目前使用不安全的預設密鑰！" +
+            log.warn("尚未設定環境變數 JWT_SECRET，目前使用不安全的預設密鑰！" +
                     "正式環境請務必設定一組隨機產生、至少 32 字元的 JWT_SECRET，否則任何人都能偽造登入憑證。");
         }
-        this.key = Keys.hmacShaKeyFor(secretString.getBytes());
+        this.key = Keys.hmacShaKeyFor(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
     // Token 有效時間：設定為 24 小時（單位：毫秒）
@@ -64,7 +65,7 @@ public class JwtUtils {
     }
 
     /**
-     * 需求（追加，2026-09-17）：CSRF Token 防護——店家後台帳密登入時額外帶入
+     * CSRF Token 防護——店家後台帳密登入時額外帶入
      * 一組隨機產生的 csrfToken，內嵌進 JWT 的 claim 裡（跟 role/source 一樣
      * 靠簽章保護，外部無法偽造）。呼叫端同時要把這個值另外用一個可讀 Cookie
      * 存起來（見 CookieUtils.buildReadableCookieHeader()），前端才能在高風險
@@ -103,7 +104,7 @@ public class JwtUtils {
                     .getBody();
         } catch (JwtException | IllegalArgumentException e) {
             // 當 Token 過期、被篡改、格式不對，都會觸發異常
-            System.out.println("JWT 驗證失敗原因: " + e.getMessage());
+            log.debug("JWT 驗證失敗：{}", e.getMessage());
             return null; // 驗證失敗就回傳 null
         }
     }

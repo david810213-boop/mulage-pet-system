@@ -6,15 +6,17 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * 需求 6：店用洗劑每次領用的結構化紀錄，供財務報表計算「洗劑消耗成本」用。
+ * 店用洗劑每次領用的結構化紀錄，供財務報表計算「洗劑消耗成本」用。
  *
- * 之前 StoreSupplyService.recordUsage() 只把領用寫進操作紀錄（純文字備註，
- * 沒辦法拿來做統計查詢/加總）。這裡另外存一份結構化紀錄，成本用「領用當下」
+ * 操作紀錄只有純文字備註，沒辦法統計加總，所以另外存一份結構化紀錄。成本用「領用當下」
  * 的進貨單價快照（unitCostSnapshot），不是事後回頭抓 StoreSupply 目前的單價——
  * 避免之後進貨單價調整了，回頭去算以前月份的成本卻用了錯的價格。
  */
 @Entity
-@Table(name = "supply_usage_records")
+// 索引依實際查詢條件建立（日期、狀態、付款時間、會員等），ddl-auto=update 會自動補建
+@Table(name = "supply_usage_records", indexes = {
+        @Index(name = "idx_supply_usage_records_used_at", columnList = "used_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

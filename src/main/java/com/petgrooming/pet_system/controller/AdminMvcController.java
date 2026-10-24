@@ -1,14 +1,19 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;
 import com.petgrooming.pet_system.dto.ResetPasswordRequest;
+import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
+import com.petgrooming.pet_system.export.ExcelSupport;
+import com.petgrooming.pet_system.export.FinancialReportExcel;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.PaymentService;
+import com.petgrooming.pet_system.service.FinancialReportService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.interfaces.GroomingService;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -18,13 +23,16 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
+import java.time.LocalDate;
+
 @Controller
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 public class AdminMvcController {
 
     private final UserService userService;
-    private final PaymentService paymentService;
+    private final FinancialReportService financialReportService;
     private final GroomingService groomingService;
 
     /**
@@ -51,16 +59,15 @@ public class AdminMvcController {
      * 1. 首頁：列出使用者、員工，【新增】同時列出所有美容項目與表單對象
      */
     @GetMapping
-    public String adminHome(HttpServletRequest request, Model model) {
+    public String adminHome(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (!isAdmin(request)) return "redirect:/dashboard";
         
-        User user = getLoginUser(request);
         model.addAttribute("user", user);
         model.addAttribute("allUsers", userService.getAllUsers());
         model.addAttribute("allStaff", userService.getAllStaff());
         model.addAttribute("createStaffRequest", new CreateStaffRequest());
         model.addAttribute("groomingItems", groomingService.getAllItems());
-        //接收服务项目的空物件
+        //接收服務項目的空物件
         model.addAttribute("groomingItemRequest", new GroomingItemRequest());
         
         return "admin/home";
@@ -72,10 +79,10 @@ public class AdminMvcController {
                               BindingResult bindingResult,
                               HttpServletRequest request,
                               RedirectAttributes redirectAttributes,
-                              Model model) {
+                              Model model,
+                              @CurrentUser User user) {
 
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
@@ -125,14 +132,14 @@ public class AdminMvcController {
      */
     @PostMapping("/grooming/update/{id}")
     public String updateItem(@PathVariable Long id,
-                             @Valid @ModelAttribute("updateGroomingItemRequest") com.petgrooming.pet_system.dto.UpdateGroomingItemRequest req,
+                             @Valid @ModelAttribute("updateGroomingItemRequest") UpdateGroomingItemRequest req,
                              BindingResult bindingResult,
                              HttpServletRequest request,
                               RedirectAttributes redirectAttributes,
-                             Model model) {
+                             Model model,
+                             @CurrentUser User user) {
         
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
 
         // 如果管理員欄位填錯（例如價格填負數）
         if (bindingResult.hasErrors()) {
@@ -180,97 +187,24 @@ public class AdminMvcController {
 
     // 財務報表頁面
     @GetMapping("/report")
-    public String report(HttpServletRequest request, Model model) {
+    public String report(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
         model.addAttribute("user", user);
-        model.addAttribute("report", paymentService.getFinancialReport());
+        model.addAttribute("report", financialReportService.getFinancialReport());
         return "admin/report";
     }
 
     // ── GET /admin/report/export.xlsx ───────────────────────────────────
-    // 需求 6：財務報表匯出 Excel（當日/當月彙總 + 成本毛利 + 逐筆明細，三個工作表）
+    // 財務報表匯出 Excel（當日/當月彙總 + 成本毛利 + 逐筆明細，三個工作表）
     @GetMapping("/report/export.xlsx")
-    public void exportReport(HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    public void exportReport(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!isAdmin(request)) {
             response.sendRedirect("/dashboard");
             return;
         }
-        var report = paymentService.getFinancialReport();
-
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
-            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
-
-            // ── 工作表 1：彙總 ──────────────────────────────────────────
-            var summarySheet = workbook.createSheet("業績彙總");
-            String[][] summaryRows = {
-                    {"項目", "數值"},
-                    {"當日總業績", String.valueOf(report.getTodayRevenueTotal())},
-                    {"當日儲值金扣款", String.valueOf(report.getTodayRevenueWallet())},
-                    {"當日非儲值金付款", String.valueOf(report.getTodayRevenueNonWallet())},
-                    {"當日結帳筆數", String.valueOf(report.getTodayOrderCount())},
-                    {"當日零售商品營收（已含在總業績內）", String.valueOf(report.getTodayRetailRevenue())},
-                    {"當日儲值金額（預收款，非業績）", String.valueOf(report.getTodayTopupCollected())},
-                    {"當月總業績", String.valueOf(report.getMonthRevenueTotal())},
-                    {"當月儲值金扣款", String.valueOf(report.getMonthRevenueWallet())},
-                    {"當月非儲值金付款", String.valueOf(report.getMonthRevenueNonWallet())},
-                    {"當月結帳筆數", String.valueOf(report.getMonthOrderCount())},
-                    {"當月零售商品營收（已含在總業績內）", String.valueOf(report.getMonthRetailRevenue())},
-                    {"當月儲值金額（預收款，非業績）", String.valueOf(report.getMonthTopupCollected())},
-                    {"零售商品成本（估算）", String.valueOf(report.getMonthRetailCostEstimate())},
-                    {"店用洗劑成本", String.valueOf(report.getMonthSupplyCost())},
-                    {"成本合計", String.valueOf(report.getMonthTotalCost())},
-                    {"粗估毛利", String.valueOf(report.getMonthEstimatedProfit())},
-            };
-            for (int r = 0; r < summaryRows.length; r++) {
-                var row = summarySheet.createRow(r);
-                for (int c = 0; c < summaryRows[r].length; c++) {
-                    var cell = row.createCell(c);
-                    cell.setCellValue(summaryRows[r][c]);
-                    if (r == 0) cell.setCellStyle(headerStyle);
-                }
-            }
-            // 需求（追加）：autoSizeColumn() 底層要呼叫 Java AWT 字型系統量測文字寬度，
-            // Railway 的容器沒有安裝 libfreetype 等字型函式庫，一呼叫就會直接噴
-            // UnsatisfiedLinkError 導致整個匯出失敗。改成固定欄寬，不依賴字型系統。
-            summarySheet.setColumnWidth(0, 32 * 256);
-            summarySheet.setColumnWidth(1, 14 * 256);
-
-            // ── 工作表 2：交易明細 ──────────────────────────────────────
-            var detailSheet = workbook.createSheet("交易明細");
-            String[] detailHeaders = {"來源", "單號", "付款方式", "金額", "付款時間", "經手人"};
-            var detailHeaderRow = detailSheet.createRow(0);
-            for (int i = 0; i < detailHeaders.length; i++) {
-                var cell = detailHeaderRow.createCell(i);
-                cell.setCellValue(detailHeaders[i]);
-                cell.setCellStyle(headerStyle);
-            }
-            int rowIdx = 1;
-            for (var d : report.getDetails()) {
-                var row = detailSheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(d.getSourceLabel());
-                row.createCell(1).setCellValue(d.getCode());
-                row.createCell(2).setCellValue(d.getPaymentMethodLabel());
-                row.createCell(3).setCellValue(d.getAmount());
-                row.createCell(4).setCellValue(d.getPaymentTime() != null
-                        ? d.getPaymentTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
-                row.createCell(5).setCellValue(d.getHandledBy() != null ? d.getHandledBy() : "");
-            }
-            int[] detailColWidths = {10, 12, 12, 10, 20, 16};
-            for (int i = 0; i < detailHeaders.length; i++) {
-                detailSheet.setColumnWidth(i, detailColWidths[i] * 256);
-            }
-
-            String filename = "財務報表_" + java.time.LocalDate.now() + ".xlsx";
-            String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
-            workbook.write(response.getOutputStream());
+        var report = financialReportService.getFinancialReport();
+        try (var workbook = FinancialReportExcel.build(report)) {
+            ExcelSupport.writeXlsx(response, "財務報表_" + LocalDate.now() + ".xlsx", workbook);
         }
     }
 
@@ -282,10 +216,10 @@ public class AdminMvcController {
                                     BindingResult bindingResult,
                                     HttpServletRequest request,
                                     RedirectAttributes redirectAttributes,
-                                    Model model) {
+                                    Model model,
+                                    @CurrentUser User user) {
         
         if (!isAdmin(request)) return "redirect:/dashboard";
-        User user = getLoginUser(request);
 
         // 欄位校正，萬一管理員沒填名稱或價格寫負數
         if (bindingResult.hasErrors()) {
@@ -299,7 +233,7 @@ public class AdminMvcController {
 
         try {
             groomingService.createItem(req);
-            redirectAttributes.addFlashAttribute("successMsg", "✨ 成功建立新的美容項目！");
+            redirectAttributes.addFlashAttribute("successMsg", "\u2728 成功建立新的美容項目！");
             return "redirect:/admin";
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
@@ -310,4 +244,5 @@ public class AdminMvcController {
             return "admin/home";
         }
     }
+
 }

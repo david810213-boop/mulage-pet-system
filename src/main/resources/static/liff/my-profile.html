@@ -348,7 +348,7 @@
     `;
       }
 
-      // 需求（追加，2026-09-30）：新客報到頁輸入過、查無會員的電話，這裡自動帶入
+      // 新客報到頁輸入過、查無會員的電話，這裡自動帶入
       function prefillPhone() {
         try { return sessionStorage.getItem("mulage_new_customer_phone") || ""; } catch (e) { return ""; }
       }
@@ -378,7 +378,7 @@
         const emergencyContactPhone = document.getElementById("emergencyContactPhone").value.trim();
         const emergencyContactRelation = document.getElementById("emergencyContactRelation").value.trim();
 
-        // 需求（追加，配合定型化契約家長資料）：姓名、電話、通訊地址、
+        // 姓名、電話、通訊地址、
         // 緊急聯絡人姓名/電話改為必填；緊急聯絡人關係維持選填。
         if (!name) {
           showToast("請填寫姓名", "error");
@@ -434,7 +434,7 @@
           });
 
           const data = await res.json().catch(() => null);
-          // 需求（追加，2026-09-30）：電話是店家匯入、還沒被認領的既有會員 → 導回新客報到認領
+          // 電話是店家匯入、還沒被認領的既有會員 → 導回新客報到認領
           if (res.status === 409) {
             showToast(data?.message || "這支電話是既有會員，請到新客報到帶入資料", "error");
             setTimeout(() => { window.location.href = "/liff/new-customer.html"; }, 3000);

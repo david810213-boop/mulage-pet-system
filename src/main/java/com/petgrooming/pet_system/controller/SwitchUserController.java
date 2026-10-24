@@ -1,10 +1,11 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.utils.CookieUtils;
 import com.petgrooming.pet_system.utils.JwtUtils;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,9 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
- * 新需求：共用平板（例如店內 iPad）快速切換使用者。
+ * 共用平板（例如店內 iPad）快速切換使用者。
  *
  * 安全設計重點：
  * - 這條路徑本身要求「目前裝置已經是某個店家/員工帳號登入狀態」才能使用
@@ -38,18 +40,10 @@ public class SwitchUserController {
     @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
 
-    private User getLoginUser(HttpServletRequest request) {
-        String username = (String) request.getAttribute("tokenUsername");
-        if (username == null) return null;
-        try { return userService.getUserEntityByUsername(username); }
-        catch (Exception e) { return null; }
-    }
-
     // ── GET /auth/switch-user ─────────────────────────────────────────────
     // 列出所有「已設定 PIN 碼」的員工/管理員，供點選切換
     @GetMapping
-    public String switchUserPage(HttpServletRequest request, Model model) {
-        User currentUser = getLoginUser(request);
+    public String switchUserPage(Model model, @CurrentUser User currentUser) {
         if (currentUser == null || currentUser.isCustomer()) {
             return "redirect:/auth/login";
         }
@@ -67,10 +61,9 @@ public class SwitchUserController {
     @PostMapping
     public String doSwitch(@RequestParam Long targetUserId,
                            @RequestParam String pin,
-                           HttpServletRequest request,
                            HttpServletResponse response,
-                           RedirectAttributes ra) {
-        User currentUser = getLoginUser(request);
+                           RedirectAttributes ra,
+                           @CurrentUser User currentUser) {
         if (currentUser == null || currentUser.isCustomer()) {
             return "redirect:/auth/login";
         }
@@ -86,21 +79,18 @@ public class SwitchUserController {
             return "redirect:/auth/switch-user";
         }
 
-        // 驗證通過：直接簽發目標帳號的 JWT，換掉目前的登入 Cookie
-        // 需求（追加，2026-09-17）：CSRF Token 防護——切換使用者也要重新產生
-        // csrfToken 並更新 XSRF-TOKEN Cookie，否則切換後的帳號在鎖定的高風險
-        // 操作（密碼變更、帳號合併、手動儲值、刪除操作）上會因為 tokenCsrf
-        // 對不上而被一律擋下，直到重新登出登入為止。順手改用跟登入流程一致的
-        // CookieUtils（帶 SameSite=Lax），原本這裡是用舊版 Cookie API 直接
-        // addCookie()，沒有這層保護。
-        String csrfToken = java.util.UUID.randomUUID().toString();
+        // 驗證通過：直接簽發目標帳號的 JWT，換掉目前的登入 Cookie。
+        // 同時重新產生 csrfToken 並更新 XSRF-TOKEN Cookie，否則切換後的帳號在高風險操作
+        // （密碼變更、帳號合併、手動儲值、刪除）上會因為 token 對不上被擋下；Cookie 一律用
+        // CookieUtils 寫入（帶 SameSite=Lax），跟登入流程一致。
+        String csrfToken = UUID.randomUUID().toString();
         String token = jwtUtils.generateToken(target.getUsername(), target.getRole().name(), "WEB", csrfToken);
 
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildJwtCookieHeader(
+                CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", token, 86400, cookieSecure));
         response.addHeader("Set-Cookie",
-                com.petgrooming.pet_system.utils.CookieUtils.buildReadableCookieHeader(
+                CookieUtils.buildReadableCookieHeader(
                         "XSRF-TOKEN", csrfToken, 86400, cookieSecure));
 
         operationLogService.log(currentUser, "AUTH", "SWITCH_USER",

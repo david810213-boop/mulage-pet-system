@@ -12,9 +12,9 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * 需求 17/18：寵物照片上傳，使用 Cloudinary 免費額度雲端圖床。
+ * 寵物照片上傳，使用 Cloudinary 免費額度雲端圖床。
  *
- * 為什麼選 Cloudinary 而不是直接存 Base64（像需求22乙方簽名檔那樣）：
+ * 為什麼選 Cloudinary 而不是直接存 Base64（像乙方簽名檔那樣）：
  *   簽名檔只有一張、全店共用，Base64 存資料庫沒問題；但寵物照片是每隻寵物一張、
  *   數量會隨會員數持續成長，Base64 存資料庫會讓資料庫肥大、備份變慢，
  *   所以照片改用外部圖床，資料庫只存網址（photoUrl）。

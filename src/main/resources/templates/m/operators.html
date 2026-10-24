@@ -44,7 +44,7 @@
             <option value="">未選</option>
             <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>
           </select>
-          <!-- 需求（2026-10-02）：第二經手人（選填），兩位積分各半 -->
+          <!-- 第二經手人（選填），兩位積分各半 -->
           <select name="staffIds2" aria-label="第二經手人">
             <option value="">第二位（選填）</option>
             <option th:each="s : ${staffOptions}" th:value="${s.id}" th:text="${s.name}">小芸</option>

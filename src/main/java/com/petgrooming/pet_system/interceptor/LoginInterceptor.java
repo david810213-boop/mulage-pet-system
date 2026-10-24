@@ -30,6 +30,7 @@ public class LoginInterceptor implements HandlerInterceptor {
         log.debug("LoginInterceptor 處理請求: {}", request.getRequestURI());
 
         String token = null;
+        boolean fromCookie = false;
 
         // 1. 優先從 Authorization: Bearer 取 token（LIFF / 行動端常用，不依賴 Cookie）
         String authHeader = request.getHeader("Authorization");
@@ -44,6 +45,7 @@ public class LoginInterceptor implements HandlerInterceptor {
                 for (Cookie cookie : cookies) {
                     if ("JWT_TOKEN".equals(cookie.getName())) {
                         token = cookie.getValue();
+                        fromCookie = true;
                         break;
                     }
                 }
@@ -59,8 +61,9 @@ public class LoginInterceptor implements HandlerInterceptor {
                 request.setAttribute("tokenUsername", claims.getSubject());
                 request.setAttribute("tokenRole", claims.get("role", String.class));
                 request.setAttribute("tokenSource", claims.get("source", String.class));
-                // 需求（追加，2026-09-17）：CSRF Token 防護，供 CsrfInterceptor 核對用
+                // CSRF Token 防護，供 CsrfInterceptor 核對用
                 request.setAttribute("tokenCsrf", claims.get("csrf", String.class));
+                request.setAttribute(CsrfInterceptor.TOKEN_FROM_COOKIE, fromCookie);
                 return true; // 放行
             }
         }
@@ -78,7 +81,7 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // 一般網頁路徑（店家後台）：維持原本導回登入頁的行為
+        // 一般網頁路徑（店家後台）：導回登入頁
         response.sendRedirect("/auth/login?redirect=" + uri);
         return false;
     }

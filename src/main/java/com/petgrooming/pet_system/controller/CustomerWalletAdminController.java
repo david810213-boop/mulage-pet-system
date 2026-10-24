@@ -1,5 +1,7 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.WalletResponse;
@@ -9,7 +11,6 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.UserService;
 import com.petgrooming.pet_system.service.WalletService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +22,9 @@ import java.util.List;
  * 店家端儲值管理 API（STAFF / ADMIN 操作）
  * 幫指定顧客儲值、查詢任意顧客的錢包與紀錄
  */
+@Tag(name = "管理端：錢包", description = "查詢會員錢包、手動儲值")
 @RestController
-@RequestMapping("/api/admin/wallet")
+@RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class CustomerWalletAdminController {
 
@@ -31,37 +33,62 @@ public class CustomerWalletAdminController {
     private final TopUpService topUpService;
     private final UserService userService;
 
-    private String currentUsername(HttpServletRequest request) {
-        return (String) request.getAttribute("tokenUsername");
-    }
-
-    // ── GET /api/admin/wallet/{username} ───────────────────────────────────
+    // ── GET /api/admin/wallets/{userId} ────────────────────────────────────
     // 查詢指定顧客的錢包
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/{username}")
+    @GetMapping("/wallets/{userId}")
+    public ResponseEntity<WalletResponse> getWalletById(@PathVariable Long userId) {
+        return getWallet(usernameOf(userId));
+    }
+
+    // ── GET /api/admin/wallets/{userId}/transactions ───────────────────────
+    // 查詢指定顧客的異動紀錄
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/wallets/{userId}/transactions")
+    public ResponseEntity<List<WalletTransactionResponse>> getTransactionsById(@PathVariable Long userId) {
+        return getTransactions(usernameOf(userId));
+    }
+
+    // ── POST /api/admin/wallets/{userId}/deposit ───────────────────────────
+    // 幫指定顧客儲值（收到現金/匯款後由店家操作）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/wallets/{userId}/deposit")
+    public ResponseEntity<?> depositById(
+            @PathVariable Long userId,
+            @Valid @RequestBody DepositRequest req,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @CurrentUser String reviewer) {
+        return deposit(usernameOf(userId), req, idempotencyKey, reviewer);
+    }
+
+    private String usernameOf(Long userId) {
+        return userService.getUserEntityById(userId).getUsername();
+    }
+
+    // 以下三個是舊路徑（網址帶帳號），改用上方以 userId 識別的路徑
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @GetMapping("/wallet/{username}")
     public ResponseEntity<WalletResponse> getWallet(@PathVariable String username) {
         return ResponseEntity.ok(walletService.getWallet(username));
     }
 
-    // ── GET /api/admin/wallet/{username}/transactions ──────────────────────
-    // 查詢指定顧客的異動紀錄
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @GetMapping("/{username}/transactions")
+    @GetMapping("/wallet/{username}/transactions")
     public ResponseEntity<List<WalletTransactionResponse>> getTransactions(@PathVariable String username) {
         return ResponseEntity.ok(walletService.getTransactions(username));
     }
 
-    // ── POST /api/admin/wallet/{username}/deposit ──────────────────────────
-    // 幫指定顧客儲值（收到現金/匯款後由店家操作）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @com.petgrooming.pet_system.annotation.RequireCsrf
-    @PostMapping("/{username}/deposit")
+    @PostMapping("/wallet/{username}/deposit")
     public ResponseEntity<?> deposit(
             @PathVariable String username,
             @Valid @RequestBody DepositRequest req,
-            HttpServletRequest request) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @CurrentUser String reviewer) {
+        if (idempotencyKey != null) {
+            req.setIdempotencyKey(idempotencyKey);
+        }
         WalletResponse res = walletService.deposit(username, req);
-        String reviewer = currentUsername(request);
         try {
             var targetCustomer = userService.getUserEntityByUsername(username);
             String reviewerName = reviewer != null ? userService.getUserEntityByUsername(reviewer).getName() : "系統管理員";

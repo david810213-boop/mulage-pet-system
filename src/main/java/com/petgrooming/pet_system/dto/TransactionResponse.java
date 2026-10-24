@@ -6,11 +6,11 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-// API 回傳的交易資料（對應原本 Transaction.toString()）
+// API 回傳的交易資料
 @Data
 public class TransactionResponse {
     private Long id;
-    private Long appointmentId;         // 需求：交易紀錄列表點擊查看明細用
+    private Long appointmentId;         // 交易紀錄列表點擊查看明細用
     private String appointmentCode;     // AP001 格式
     private String petName;
     private String ownerEmail;

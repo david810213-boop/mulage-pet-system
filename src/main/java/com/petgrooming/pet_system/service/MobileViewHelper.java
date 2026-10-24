@@ -1,7 +1,7 @@
 package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.AppointmentDetailResponse;
-import com.petgrooming.pet_system.dto.MobileLineItem;
+import com.petgrooming.pet_system.dto.MobileLineItemView;
 import com.petgrooming.pet_system.dto.WalkInOrderResponse;
 import com.petgrooming.pet_system.model.AppointmentItem;
 import com.petgrooming.pet_system.model.User;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 員工手機版畫面共用的小工具（需求，2026-09-24 第四批）。
+ * 員工手機版畫面共用的小工具。
  * 預約、現場單兩個 controller 都會用到，集中在這裡避免各自複製一份。
  * 只做「畫面顯示用」的轉換，不含任何業務規則判斷。
  */
@@ -64,11 +64,11 @@ public class MobileViewHelper {
         return list;
     }
 
-    // ── 各種項目資料 → MobileLineItem ────────────────────────────────────
+    // ── 各種項目資料 → MobileLineItemView ────────────────────────────────────
 
     /** 預約核對頁：現場開單項目 */
-    public List<MobileLineItem> fromAppointmentItems(List<AppointmentItem> items) {
-        return items.stream().map(it -> MobileLineItem.builder()
+    public List<MobileLineItemView> fromAppointmentItems(List<AppointmentItem> items) {
+        return items.stream().map(it -> MobileLineItemView.builder()
                 .id(it.getId())
                 .name(it.getItemName())
                 .price(it.getPrice())
@@ -78,11 +78,11 @@ public class MobileViewHelper {
     }
 
     /** 預約結帳頁：含折扣資格的消費明細 */
-    public List<MobileLineItem> fromAppointmentDetail(List<AppointmentDetailResponse.DetailItem> items) {
+    public List<MobileLineItemView> fromAppointmentDetail(List<AppointmentDetailResponse.DetailItem> items) {
         return items.stream().map(it -> {
             String[] n = discountNote(it.isRetailItem(), it.isFirstVisitEligible(),
                     it.isRewashEligible(), it.isDiscountEligible());
-            return MobileLineItem.builder()
+            return MobileLineItemView.builder()
                     .id(it.getItemId())
                     .name(it.getName())
                     .price(it.getPrice())
@@ -94,12 +94,12 @@ public class MobileViewHelper {
     }
 
     /** 現場單：明細、核對、結帳都用這一份 */
-    public List<MobileLineItem> fromWalkIn(List<WalkInOrderResponse.ItemLine> items, boolean withDiscountNote) {
+    public List<MobileLineItemView> fromWalkIn(List<WalkInOrderResponse.ItemLine> items, boolean withDiscountNote) {
         return items.stream().map(it -> {
             String[] n = withDiscountNote
                     ? discountNote(it.isRetailItem(), it.isFirstVisitEligible(), it.isRewashEligible(), it.isDiscountEligible())
                     : new String[] { it.isRetailItem() ? "零售商品" : null, null };
-            return MobileLineItem.builder()
+            return MobileLineItemView.builder()
                     .id(it.getItemId())
                     .name(it.getItemName())
                     .price(it.getPrice())
