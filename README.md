@@ -2,6 +2,7 @@
 
 > 一套從零開始設計、開發，並**實際運行於店家日常營運**的全端寵物美容店管理系統。
 
+[![CI](https://github.com/david810213-boop/mulage-pet-system/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/david810213-boop/mulage-pet-system/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4-6DB33F)
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1)
@@ -63,6 +64,8 @@
 
 **解法**：改用 `SELECT ... FOR UPDATE` 悲觀鎖重新讀取錢包列後才扣款，讓同一顧客的併發請求被序列化處理，從資料庫層級杜絕超扣。
 
+**後續發現**：之後補上併發測試，發現只加鎖還不夠——同一個交易裡如果先用一般查詢讀過這一筆，Hibernate 會把快取中的舊實體直接回傳給鎖定查詢，鎖拿到了，數值卻是舊的，同樣會超扣。最後改成鎖定前先 `flush()` 並把舊實體移出快取，錢包、時段名額、零售庫存三處統一這個寫法，並寫成架構決策紀錄（`docs/adr/0002`）。
+
 ### 2. 同時段預約超收
 
 **問題**：店家規定同一時段最多接待固定數量的寵物，但「還不存在的預約列」沒有東西可以上鎖，光靠應用層判斷無法防止併發超賣。
@@ -101,13 +104,13 @@
 
 **問題**：13 個 REST controller 各自用 try/catch 把例外組成 `Map.of(...)` 回傳，共 33 處重複樣板，格式不一、也沒有型別保護。
 
-**解法**：建立 `BusinessException` 為基底、依業務拆分的例外類別（預約、付款、績效、錢包、會員、庫存等），交由全域例外處理器統一轉成 `ErrorResponse` DTO。之後逐支 Service 遷移（`AppointmentService` 78 處、`WalkInOrderService` 53 處等），順便清掉已失效的死碼 try/catch。
+**解法**：建立 `BusinessException` 為基底、依業務拆分的例外類別（預約、付款、績效、錢包、會員、庫存等），交由全域例外處理器統一轉成 JSON 錯誤回應。之後逐支 Service 遷移（`AppointmentService` 78 處、`WalkInOrderService` 53 處等），順便清掉已失效的死碼 try/catch。重構時再把回應格式統一為 `{ status, detail, code, message, errors? }`：`code` 是錯誤代碼列舉，前端依代碼判斷、不必比對中文訊息；狀態碼也照語意調整（新增 201、刪除 204、找不到 404、無權限 403），未預期錯誤一律回通用訊息，細節只進 log 與 Sentry。
 
 ### 9. N+1 查詢與零售商品超賣
 
 **問題**：後台預約列表與 Dashboard 對每筆預約各自觸發多次延遲載入查詢，資料一多就變成數百條 SQL；零售商品庫存扣減則與錢包有同樣的「讀取→比較→寫回」競態風險。
 
-**解法**：預約查詢改用 `JOIN FETCH` 一次帶出使用者與服務項目，其餘關聯改為批次查詢；零售商品扣庫存比照錢包加上悲觀鎖，避免同一商品被同時賣超。
+**解法**：預約查詢改用 `JOIN FETCH` 一次帶出使用者與服務項目，其餘關聯改為批次查詢；零售商品扣庫存比照錢包加上悲觀鎖，避免同一商品被同時賣超。之後再把首頁、手機版今日頁改成只查「今天」與「待確認」的預約，並寫成「加入歷史資料後 SQL 條數不能增加」的自動化測試，防止日後改程式時又退化回 N+1。
 
 ### 10. 會員自助認領的安全邊界
 
@@ -216,7 +219,8 @@ mvn verify
 
 - 開發歷程橫跨兩台工作機協作，累積多次資料庫遷移與需求迭代
 - Git 歷史保留實際開發過程中的修正紀錄，未經過整理
-- 分支策略：`main`（穩定版）、`dev`（整合開發）、`redesign`（主要開發分支，2026-10 已完整合併回 `main`）、`feature/*`（單一功能開發）
+- 分支策略：`main`（正式部署，Railway 自動部署）、`redesign`（開發整合）、`refactor/*`／`feature/*`／`perf/*`（每項改動一個分支）。每項改動開 PR、CI 通過後才合併進 `redesign`，累積一批再合併到 `main` 上線；`dev` 為早期的整合分支
+- 2026-10 依 Clean Code 原則完成一輪分階段重構（約 30 個 PR），重構過程見上方工程決策第 12、13 點
 
 ---
 
