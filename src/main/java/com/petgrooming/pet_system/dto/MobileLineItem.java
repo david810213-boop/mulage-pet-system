@@ -4,7 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 /**
- * 員工手機版核對／結帳／現場單明細共用的「一列項目」（需求，2026-09-24 第四批）。
+ * 員工手機版核對／結帳／現場單明細共用的「一列項目」。
  * 預約（AppointmentItem、AppointmentDetailResponse.DetailItem）跟現場單
  * （WalkInOrderResponse.ItemLine）欄位名稱各不相同，統一轉成這個格式後，
  * 核對、結帳兩個畫面可以共用同一份樣板。

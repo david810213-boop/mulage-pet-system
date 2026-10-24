@@ -64,7 +64,7 @@ public class JwtUtils {
     }
 
     /**
-     * 需求（追加，2026-09-17）：CSRF Token 防護——店家後台帳密登入時額外帶入
+     * CSRF Token 防護——店家後台帳密登入時額外帶入
      * 一組隨機產生的 csrfToken，內嵌進 JWT 的 claim 裡（跟 role/source 一樣
      * 靠簽章保護，外部無法偽造）。呼叫端同時要把這個值另外用一個可讀 Cookie
      * 存起來（見 CookieUtils.buildReadableCookieHeader()），前端才能在高風險

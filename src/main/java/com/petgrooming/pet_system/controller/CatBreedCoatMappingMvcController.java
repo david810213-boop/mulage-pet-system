@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * 需求（追加）：貓咪品種→毛髮分類對照表後台管理。店家自己就能新增/調整品種
+ * 貓咪品種→毛髮分類對照表後台管理。店家自己就能新增/調整品種
  * 跟對應分類，不用改程式碼重新部署——之後遇到新品種或分類判斷需要調整，
  * 直接來這裡改就好。
  */

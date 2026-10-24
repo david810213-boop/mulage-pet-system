@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * 需求 6：店用洗劑每次領用的結構化紀錄，供財務報表計算「洗劑消耗成本」用。
+ * 店用洗劑每次領用的結構化紀錄，供財務報表計算「洗劑消耗成本」用。
  *
  * 之前 StoreSupplyService.recordUsage() 只把領用寫進操作紀錄（純文字備註，
  * 沒辦法拿來做統計查詢/加總）。這裡另外存一份結構化紀錄，成本用「領用當下」

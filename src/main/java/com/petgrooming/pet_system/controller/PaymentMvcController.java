@@ -50,16 +50,15 @@ public class PaymentMvcController {
     private final AppointmentDetailService appointmentDetailService;
     private final AppointmentItemService appointmentItemService;
     private final CheckoutPreviewService checkoutPreviewService;
-    private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
-    private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
-    private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
+    private final RetailProductService retailProductService; // 預約結帳頁加購零售商品
+    private final GroomingService groomingService; // 編輯訂單新增服務項目
+    private final MemberConsumptionService memberConsumptionService;
     private final WalkInOrderService walkInOrderService;
     private final GroomingMenuFilter groomingMenuFilter;
 
     // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
     // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
     // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
-    // 需求（2026-09-24）：合併交易紀錄的邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
     private List<ConsumptionRecordResponse> buildCombinedRecords(
             List<TransactionResponse> transactions,
             List<WalkInOrder> walkInOrders) {
@@ -99,8 +98,8 @@ public class PaymentMvcController {
         model.addAttribute("appointmentId", appointmentId);
         model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
         model.addAttribute("bankAccountInfo", storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
-        model.addAttribute("retailProducts", retailProductService.listActive()); // 需求（追加）：結帳頁加購商品清單
-        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        model.addAttribute("retailProducts", retailProductService.listActive()); // 結帳頁加購商品清單
+        // 自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", PerformanceCategory.values());
     }
 
@@ -128,7 +127,7 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-retail-item ────────────
-    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
+    // 新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
     @PostMapping("/checkout/{appointmentId}/add-retail-item")
     public String addRetailItem(@PathVariable Long appointmentId,
                                 @RequestParam Long retailProductId,
@@ -147,14 +146,14 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
-    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
-    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入自訂價格用
+    // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // customPrice 選填，店員手動輸入自訂價格用
     // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
     @PostMapping("/checkout/{appointmentId}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long appointmentId,
                                   @RequestParam Long groomingItemId,
                                   @RequestParam(required = false) Integer customPrice,
-                                  @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+                                  @RequestParam(required = false) Long operatorStaffId, // 空白＝稍後補填
                                   @RequestParam(required = false) Long operatorStaffId2,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   RedirectAttributes redirectAttributes,
@@ -170,7 +169,7 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/add-custom-item ────────────
-    // 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式報價
+    // 自訂金額加購——處理「高階定制調理」開放式報價
     // 跟各種浮動加價，不綁定任何現有服務項目，店員直接輸入項目名稱+金額。
     @PostMapping("/checkout/{appointmentId}/add-custom-item")
     public String addCustomItem(@PathVariable Long appointmentId,
@@ -194,7 +193,7 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/remove-item ────────────────
-    // 需求（追加）：從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
+    // 從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
     // 供編輯訂單使用；路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
     @PostMapping("/checkout/{appointmentId}/remove-item")
     public String removeItem(@PathVariable Long appointmentId,
@@ -212,7 +211,7 @@ public class PaymentMvcController {
         return redirectAfterEdit(appointmentId, from);
     }
 
-    // 需求（追加）：編輯訂單的三個端點共用的導回邏輯——from=final-check 導回核對頁，
+    // 編輯訂單的三個端點共用的導回邏輯——from=final-check 導回核對頁，
     // 其餘（預設 checkout）導回結帳頁，避免同一段字串重複寫三次。
     private String redirectAfterEdit(Long appointmentId, String from) {
         if ("final-check".equals(from)) {
@@ -239,7 +238,7 @@ public class PaymentMvcController {
             CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes,
                     appointmentQueryService.getPetForAppointment(appointmentId));
 
-            // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
+            // 匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
             // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
             // 導回預約列表，等店家之後在儲值管理/匯款頁確認收款才算真的完成。
             if (result.isPaid()) {
@@ -275,7 +274,7 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/{id}/confirm-wire-transfer ───────────────────────
-    // 需求 10：店員核對匯款到帳後點擊，訂單才正式轉為已完成
+    // 店員核對匯款到帳後點擊，訂單才正式轉為已完成
     @PostMapping("/{id}/confirm-wire-transfer")
     public String confirmWireTransfer(@PathVariable Long id,
                                       RedirectAttributes redirectAttributes,
@@ -312,8 +311,8 @@ public class PaymentMvcController {
     }
 
     // ── GET /payments/bank-account ────────────────────────────────────────
-    // 需求 10：店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
-    // 需求（追加）：改成同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
+    // 店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
+    // 改成同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/bank-account")
     public String bankAccountForm(Model model, @CurrentUser User loginUser) {
@@ -340,7 +339,7 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/bank-account/qr-code ─────────────────────────────
-    // 需求 21：上傳/更換匯款收款 QR Code（依用途各自獨立）
+    // 上傳/更換匯款收款 QR Code（依用途各自獨立）
     @RequireRole(UserRole.ADMIN)
     @PostMapping("/bank-account/qr-code")
     public String uploadBankAccountQrCode(@RequestParam BankAccountPurpose purpose,
@@ -358,7 +357,7 @@ public class PaymentMvcController {
     }
 
     // ── GET /payments/company-signature ──────────────────────────────────
-    // 需求 22：店家上傳乙方固定電子簽名檔（顯示在顧客端契約最下方）
+    // 店家上傳乙方固定電子簽名檔（顯示在顧客端契約最下方）
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/company-signature")
     public String companySignatureForm(Model model, @CurrentUser User loginUser) {
@@ -381,7 +380,7 @@ public class PaymentMvcController {
     }
 
     // ── GET /payments/api/company-signature ─────────────────────────────
-    // 需求 22：公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
+    // 公開 API，給 LIFF 靜態頁面（booking.html）用 JS 抓取簽名檔顯示在契約最下方。
     // 不需要登入即可讀取——簽名檔本身不是敏感資訊，是要公開展示給顧客看的。
     // 注意：這個 controller class 層級是 @RequestMapping("/payments")，所以完整路徑
     // 是 /payments/api/company-signature，不是看起來很直覺的 /api/company-signature
@@ -394,7 +393,7 @@ public class PaymentMvcController {
     }
 
     // ── GET /payments/pricing-settings ──────────────────────────────────
-    // 需求（追加）：貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
+    // 貓咪體重加價門檻、狗狗小型犬/大型犬體重切點，後台可調整
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/pricing-settings")
     public String pricingSettingsForm(Model model, @CurrentUser User loginUser) {

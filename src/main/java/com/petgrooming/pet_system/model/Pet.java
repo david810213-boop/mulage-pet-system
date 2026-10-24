@@ -34,7 +34,7 @@ public class Pet {
     private Double weight;              // 體重（kg）
 
     @Column(nullable = false)
-    private Double age;                // 年齡（需求追加：允許小數，例如 5.5 歲，方便幼犬/幼貓標記半歲）
+    private Double age;                // 年齡（允許小數，例如 5.5 歲，方便幼犬/幼貓標記半歲）
 
     // ── 自動判斷欄位（新增寵物時系統自動計算）────────────────────────────
     @Enumerated(EnumType.STRING)
@@ -42,14 +42,14 @@ public class Pet {
     @Builder.Default
     private PetSizeCategory sizeCategory = PetSizeCategory.OTHER; // 體型（小型犬/大型犬/小貓/大貓）
 
-    // 需求 2：毛長不再由顧客選填，改由店家於後台檢視實際毛況後定義。
+    // 毛長不再由顧客選填，改由店家於後台檢視實際毛況後定義。
     // 新增寵物時一律預設 UNDEFINED（未定義），待店家後台設定。
     @Enumerated(EnumType.STRING)
     @Column(name = "coat_type", nullable = false)
     @Builder.Default
     private CoatType coatType = CoatType.UNDEFINED;                // 毛長（未定義 → 店家定義後：短/中長/長）
 
-    // 需求（追加）：菜單簡化——貓咪專用，新增/編輯毛孩時依品種（下拉選單）自動查
+    // 菜單簡化——貓咪專用，新增/編輯毛孩時依品種（下拉選單）自動查
     // CatBreedCoatMapping 對照表算出來，寫進這裡。null 代表這隻是狗、或是品種不在
     // 對照表裡的特殊貓種（LIFF 預約頁遇到 null 會顯示全部貓咪套餐項目，不會篩選，
     // 讓店家人工協助判斷，不會擋住顧客預約）。
@@ -59,7 +59,7 @@ public class Pet {
     @Column(name = "cat_coat_category")
     private CatCoatCategory catCoatCategory;
 
-    // 需求（追加，2026-08-24）：狗狗定價流程簡化——成犬定型後，店員在店裡核對
+    // 狗狗定價流程簡化——成犬定型後，店員在店裡核對
     // 選出真正對應的套餐項目，這裡記錄下來變成這隻狗的「固定套餐」。
     // null（預設）＝還沒鎖定，LIFF 預約/店員開單都依 Pet.weight 目前的體重
     // 自動篩選對應級距的 6 個項目，每次都要重新選；有值＝已鎖定，之後不管顧客
@@ -72,7 +72,7 @@ public class Pet {
     @Column(name = "locked_grooming_item_id")
     private Long lockedGroomingItemId;
 
-    // 需求（追加，2026-08-26 修正）：刪除寵物改成跟服務項目下架同一套邏輯——
+    // 刪除寵物改成跟服務項目下架同一套邏輯——
     // 軟刪除，不是真的從資料庫刪掉這筆資料列。這樣過往預約/消費紀錄裡
     // 記錄的寵物名字快照完全不受影響（本來就不是即時關聯查詢，是結帳當下
     // 存好的文字），刪除也不用再檢查「有沒有消費紀錄」這件事——反正資料
@@ -92,7 +92,7 @@ public class Pet {
     @Column(length = 500)
     private String notes;                                           // 注意事項
 
-    // ── 需求 19：定型化契約要求蒐集的寵物資料（皆選填）─────────────────
+    // ── 定型化契約要求蒐集的寵物資料（皆選填）─────────────────
     @Column(length = 10)
     private String gender;              // 性別："公" / "母"
 
@@ -128,7 +128,7 @@ public class Pet {
     @Column(name = "designated_vet_phone", length = 20)
     private String designatedVetPhone;
 
-    // ── 需求 17：寵物照片（Cloudinary 雲端圖床，存網址不存檔案本體）──────
+    // ── 寵物照片（Cloudinary 雲端圖床，存網址不存檔案本體）──────
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
 

@@ -7,7 +7,7 @@ import java.time.DayOfWeek;
 
 /**
  * 固定公休星期設定（單例設定，全店只有一筆）。
- * 跟需求 16 的 ClosedDate（單一天公休）是兩套獨立機制：
+ * 跟 ClosedDate（單一天公休）是兩套獨立機制：
  *   - ClosedDate：某一個特定日期公休（例如國定假日、店休一天）
  *   - WeeklyClosureSetting：每週固定哪幾天公休（例如每週四、五）
  * 兩者同時生效、互相疊加判斷，只要符合任一條件，當天就是公休日。

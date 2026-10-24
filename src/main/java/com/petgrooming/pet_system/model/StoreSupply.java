@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * 需求 7-2：店用洗劑（店家自己使用的消耗品，例如洗毛精、潤絲精）。
+ * 店用洗劑（店家自己使用的消耗品，例如洗毛精、潤絲精）。
  * 跟零售商品（RetailProduct）的關鍵差異：
  *   - 不賣給顧客，員工「領用」才扣庫存（不是結帳扣庫存）
  *   - 要記錄進貨成本（算進店家支出，供財務報表使用）
@@ -41,7 +41,7 @@ public class StoreSupply {
     @Builder.Default
     private int unitCost = 0;
 
-    // 需求（追加，2026-10-02 店家確認 7）：條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
+    // 條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
     // 零售商品與店用洗劑之間也不能重複（BarcodeService 檢查）。
     @Column(length = 32, unique = true)
     private String barcode;

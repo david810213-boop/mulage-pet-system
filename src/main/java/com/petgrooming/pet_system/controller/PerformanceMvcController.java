@@ -49,12 +49,12 @@ public class PerformanceMvcController {
         if (date == null) date = LocalDate.now();
         model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
-        // 需求 12：當日績效紀錄排除已拆分過的（只在拆分歷史顯示，避免同一筆看起來出現兩次）
+        // 當日績效紀錄排除已拆分過的（只在拆分歷史顯示，避免同一筆看起來出現兩次）
         model.addAttribute("records", performanceSplitService.getDailyRecordsForDisplay(date));
         model.addAttribute("staffList", userService.getAllStaffEntities());
         model.addAttribute("categories", Arrays.stream(PerformanceCategory.values())
                 .filter(c -> c != PerformanceCategory.OTHER).toList());
-        // 需求 12：拆分區塊直接顯示完整清單（含寵物名/服務項目）＋當日拆分歷史，不用跳頁
+        // 拆分區塊直接顯示完整清單（含寵物名/服務項目）＋當日拆分歷史，不用跳頁
         model.addAttribute("candidates", performanceSplitService.getSplitCandidates(date, date, null, null));
         model.addAttribute("splitHistory", performanceSplitService.getSplitHistory(date, date, null, null));
         return "admin/performance-daily";
@@ -258,7 +258,7 @@ public class PerformanceMvcController {
     }
 
     // ── GET /admin/performance/split-manage ──────────────────────────────
-    // 需求 12：拆分管理頁面——強化版待拆分清單（含寵物名/服務項目/篩選）
+    // 拆分管理頁面——強化版待拆分清單（含寵物名/服務項目/篩選）
     // ＋拆分歷史查詢（誰在何時把哪隻寵物的哪個項目拆給了誰）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/split-manage")

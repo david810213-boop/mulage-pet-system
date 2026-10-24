@@ -11,7 +11,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * 需求 7：店家後台專用的預約回傳格式。
+ * 店家後台專用的預約回傳格式。
  * 與顧客端 AppointmentResponse 的差別：這裡「額外」包含 internalNote（店家內部備注）。
  * 此 DTO 只會由 RequireRole(ADMIN/STAFF) 的端點使用，不會出現在任何顧客 API。
  */
@@ -27,11 +27,11 @@ public class AppointmentAdminResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private List<GroomingItem> selectedItems;
-    // 需求（追加，2026-08-26 修正）：同 AppointmentResponse 的說明，列表頁畫面
+    // 同 AppointmentResponse 的說明，列表頁畫面
     // 要改讀這個欄位，不要直接讀 selectedItems（那是預約當下的原始選擇，
     // 核對時改過項目不會反映在上面）。
     private List<String> displayItemNames;
-    private boolean firstVisitAssessment; // 需求（2026-10-02）：初次・現場評估（金額現場報價）
+    private boolean firstVisitAssessment; // 初次・現場評估（金額現場報價）
     private int totalAmount;
     private boolean paid;
     private AppointmentStatus status;
@@ -46,7 +46,7 @@ public class AppointmentAdminResponse {
     private String finalCheckNote;
     private boolean checkinOrderConfirmed;
     private boolean serviceEndedDone;
-    private boolean pendingWireTransfer; // 需求 10：已結帳選匯款，但店家尚未確認收款
+    private boolean pendingWireTransfer; // 已結帳選匯款，但店家尚未確認收款
     private Long pendingTransactionId;   // 待確認收款的交易紀錄 id
 
     public static AppointmentAdminResponse from(Appointment a) {

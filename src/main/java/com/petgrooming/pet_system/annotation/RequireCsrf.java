@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 需求（追加，2026-09-17）：CSRF Token 防護注解。
+ * CSRF Token 防護注解。
  *
  * 只標記在店家後台「高風險端點」上（密碼變更、建立員工帳號、帳號合併、
  * 手動儲值、刪除類操作），不是全站套用——這個系統沒有用 Spring Security，

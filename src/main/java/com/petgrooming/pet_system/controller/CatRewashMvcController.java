@@ -23,7 +23,7 @@ import java.io.PrintWriter;
 import java.util.List;
 
 /**
- * 需求 8-2：貓咪 90 天回洗優惠名單——篩選＋匯出 Excel/CSV，供店家手動聯繫（不做自動群發）。
+ * 貓咪 90 天回洗優惠名單——篩選＋匯出 Excel/CSV，供店家手動聯繫（不做自動群發）。
  */
 @Controller
 @RequestMapping("/admin/cat-rewash")

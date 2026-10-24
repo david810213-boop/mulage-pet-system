@@ -47,8 +47,8 @@ public class AppointmentMvcController {
     private final GroomingService groomingItemService;
     private final UserService userService;
     private final OperationLogService operationLogService;
-    private final RetailProductService retailProductService; // 需求（追加）：核對頁編輯訂單
-    private final GroomingMenuFilter groomingMenuFilter; // 需求（2026-09-24）：菜單篩選抽成共用元件，手機版也要用
+    private final RetailProductService retailProductService; // 核對頁編輯訂單
+    private final GroomingMenuFilter groomingMenuFilter; // 菜單篩選抽成共用元件，手機版也要用
 
     // ── GET /appointments ──────────────────────────────────────────────────
     // 💡 作用：查看預約清單。不貼貼紙，因為一般會員與員工登入後都能看（各自看不同範圍）
@@ -87,7 +87,7 @@ public class AppointmentMvcController {
 
     // 關鍵字比對：預約編號（AP001 或純數字）、飼主姓名、寵物名稱
     // ── POST /appointments/{id}/confirm ────────────────────────────────────
-    // 需求 3：店家確認預約並敲定最後時間
+    // 店家確認預約並敲定最後時間
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/confirm")
     public String confirm(@PathVariable Long id,
@@ -106,7 +106,7 @@ public class AppointmentMvcController {
     }
 
     // ── POST /appointments/{id}/notes ──────────────────────────────────────
-    // 需求 7：店家設定備注（雙可見性：internalNote 店家專用 / memberNote 會員可見）
+    // 店家設定備注（雙可見性：internalNote 店家專用 / memberNote 會員可見）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/notes")
     public String setNotes(@PathVariable Long id,
@@ -134,36 +134,34 @@ public class AppointmentMvcController {
             return "redirect:/appointments?status=CONFIRMED";
         }
         model.addAttribute("appointment", target);
-        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        // 僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
-        // 需求（追加，2026-08-28）：店家反饋現場加單流程要加快，不要整份菜單都列出來，
+        // 店家反饋現場加單流程要加快，不要整份菜單都列出來，
         // 改成只顯示符合這隻寵物體型的項目——跟結帳頁（PaymentMvcController.checkoutPage）
         // 的狗狗體重篩選是同一套邏輯，這裡額外把貓咪毛髮分類篩選也一併補上
         // （結帳頁目前只做了狗狗，沒做貓咪，是既有的缺口，先不動它，只在這裡補齊）。
         var pet = appointmentQueryService.getPetForAppointment(id);
-        model.addAttribute("pet", pet); // 需求（追加，2026-08-29）：頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
+        model.addAttribute("pet", pet); // 頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
         model.addAttribute("groomingItems", filterItemsForPetShape(
                 groomingItemService.getAllItems(), isExisting, target.getPetType(), pet));
         model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(target.getPetType(), pet));
-        model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：開單可選經手人
+        model.addAttribute("staffList", userService.operatorOptions()); // 開單可選經手人
         return "appointments/checkin-order";
     }
 
-    // 需求（追加）：套餐化——「僅限既有客戶」+「適用物種」共用的選單過濾邏輯，
+    // 套餐化——「僅限既有客戶」+「適用物種」共用的選單過濾邏輯，
     // 這個 controller 裡好幾個 GET handler 都要用，抽成一個小方法避免重複寫。
     private List<GroomingItemResponse> filterItemsFor(
             List<GroomingItemResponse> items, boolean isExisting, String petType) {
-        // 需求（2026-09-24）：邏輯搬到 GroomingMenuFilter 共用，內容不變
         return groomingMenuFilter.filterFor(items, isExisting, petType);
     }
 
-    // 需求（追加，2026-08-28）：在 filterItemsFor() 的基礎上，再依這隻寵物的體型
+    // 在 filterItemsFor() 的基礎上，再依這隻寵物的體型
     // （狗狗體重級距／貓咪毛髮分類）進一步篩選，只給現場加單頁面用——結帳頁維持
     // 原本只做狗狗那一版，避免這次順手擴大改動範圍影響到已經在正常運作的結帳流程。
     private List<GroomingItemResponse> filterItemsForPetShape(
             List<GroomingItemResponse> items, boolean isExisting,
             String petType, PetResponse pet) {
-        // 需求（2026-09-24）：邏輯搬到 GroomingMenuFilter 共用，內容不變
         return groomingMenuFilter.filterForPetShape(items, isExisting, petType, pet);
     }
 
@@ -173,7 +171,7 @@ public class AppointmentMvcController {
     public String checkinOrderSubmit(@PathVariable Long id,
                                      @RequestParam(required = false) List<String> itemCodes,
                                      @RequestParam(required = false) List<String> operatorStaffIds,
-                                     @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）
+                                     @RequestParam(required = false) List<String> operatorStaffIds2,
                                      
                                      RedirectAttributes redirectAttributes,
                                      @CurrentUser User user) {
@@ -219,7 +217,7 @@ public class AppointmentMvcController {
     }
 
     // ── POST /appointments/checkin-items/operator/batch ──────────────────
-    // 需求 11：批次補填經手人（依預約編號現場開單這邊的待補清單）
+    // 批次補填經手人（依預約編號現場開單這邊的待補清單）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/checkin-items/operator/batch")
     public String fillCheckinItemOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
@@ -295,14 +293,14 @@ public class AppointmentMvcController {
         }
         model.addAttribute("appointment", target);
         model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id));
-        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        // 僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
         var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
-        model.addAttribute("groomingItems", filteredItems); // 需求（追加）：核對頁也能直接編輯訂單項目
+        model.addAttribute("groomingItems", filteredItems); // 核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
-        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        // 自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", PerformanceCategory.values());
-        model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：核對加項目可選經手人
+        model.addAttribute("staffList", userService.operatorOptions()); // 核對加項目可選經手人
         return "appointments/final-check";
     }
 
@@ -319,13 +317,13 @@ public class AppointmentMvcController {
             var target = appointmentQueryService.getForAdmin(id).orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
-            model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
-            boolean isExisting1 = appointmentQueryService.isExistingCustomerPet(id); // 需求（追加）
+            model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 漏帶導致誤顯示「尚未開單」
+            boolean isExisting1 = appointmentQueryService.isExistingCustomerPet(id);
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting1, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("performanceCategories", PerformanceCategory.values());
             model.addAttribute("errorMsg", "請完整填寫備注並完成簽名");
-            model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）
+            model.addAttribute("staffList", userService.operatorOptions());
             return "appointments/final-check";
         }
 
@@ -338,13 +336,13 @@ public class AppointmentMvcController {
             var target = appointmentQueryService.getForAdmin(id).orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
-            model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：同上
-            boolean isExisting2 = appointmentQueryService.isExistingCustomerPet(id); // 需求（追加）
+            model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 同上
+            boolean isExisting2 = appointmentQueryService.isExistingCustomerPet(id);
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting2, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", e.getMessage());
             model.addAttribute("performanceCategories", PerformanceCategory.values());
-            model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）
+            model.addAttribute("staffList", userService.operatorOptions());
             return "appointments/final-check";
         }
     }

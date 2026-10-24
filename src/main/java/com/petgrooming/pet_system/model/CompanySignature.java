@@ -3,9 +3,9 @@ package com.petgrooming.pet_system.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-// 需求 22：乙方（店家）固定電子簽名檔，顯示在用戶端定型化契約最下方。
+// 乙方（店家）固定電子簽名檔，顯示在用戶端定型化契約最下方。
 // 只會有一列資料（單例設定），存 Base64 圖片資料，後台可上傳/更換。
-// 只有一張圖片，直接存資料庫欄位即可，不需要額外的雲端圖床（跟需求 17/21
+// 只有一張圖片，直接存資料庫欄位即可，不需要額外的雲端圖床（跟寵物照片、匯款 QR Code
 // 那種「每個會員/每次美容都要存一張照片」的情境不同，不用套用同一套方案）。
 @Entity
 @Table(name = "company_signature")

@@ -10,7 +10,7 @@ public interface StoreSupplyRepository extends JpaRepository<StoreSupply, Long> 
 
     List<StoreSupply> findByIsDeletedFalseOrderByNameAsc();
 
-    // 需求（追加，2026-10-02）：條碼查詢／CSV 匯入比對
+    // 條碼查詢／CSV 匯入比對
     Optional<StoreSupply> findByBarcode(String barcode);
     Optional<StoreSupply> findFirstByNameAndIsDeletedFalse(String name);
     List<StoreSupply> findByIsDeletedFalseAndBarcodeIsNull();

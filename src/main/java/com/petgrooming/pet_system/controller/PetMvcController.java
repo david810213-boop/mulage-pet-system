@@ -45,7 +45,7 @@ public class PetMvcController {
     @PostMapping("/submit")
     public String submit(@Valid @ModelAttribute PetRequest req,
                          BindingResult bindingResult,
-                         // 需求 2：毛長由店家（後台）定義；此 param 僅後台 Thymeleaf 表單使用
+                         // 毛長由店家（後台）定義；此 param 僅後台 Thymeleaf 表單使用
                          @RequestParam(name = "coatType", required = false) CoatType coatType,
                          RedirectAttributes redirectAttributes,
                          Model model,

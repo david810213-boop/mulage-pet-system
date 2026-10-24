@@ -40,8 +40,8 @@ public class CustomerAnalysisMvcController {
     private final PetService petService;
     private final WalletService walletService;
     private final AppointmentQueryService appointmentQueryService;
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
-    private final MemberConsumptionService memberConsumptionService; // 需求（2026-09-24）
+    private final GroomingNotePhotoService groomingNotePhotoService;
+    private final MemberConsumptionService memberConsumptionService;
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
@@ -52,7 +52,7 @@ public class CustomerAnalysisMvcController {
         model.addAttribute("stats", customerAnalysisService.getOverview());
 
         var all = userService.getAllCustomers();
-        // 需求（追加，2026-10-02）：會員信息列表也能用電話、寵物名搜，並標出搜到的毛孩
+        // 會員信息列表也能用電話、寵物名搜，並標出搜到的毛孩
         String kw = keyword == null ? "" : keyword.trim().toLowerCase();
         String digits = kw.replaceAll("[^0-9]", "");
         Map<String, String> petMatches = userService.petNamesMatching(kw);
@@ -82,7 +82,6 @@ public class CustomerAnalysisMvcController {
         model.addAttribute("wallet", walletService.getWallet(username));
         model.addAttribute("appointments", appointmentQueryService.getMyAppointments(username));
 
-        // 需求（2026-09-24）：消費紀錄彙整邏輯搬到 MemberConsumptionService 共用（員工手機版也要用），內容不變
         List<ConsumptionRecordResponse> records =
                 memberConsumptionService.buildPaidRecords(username, loginUser != null ? loginUser.getUsername() : null);
         model.addAttribute("transactions", records);
@@ -101,12 +100,12 @@ public class CustomerAnalysisMvcController {
         var pets = petService.getMyPets(username);
         model.addAttribute("pets", pets);
         model.addAttribute("coatTypes", CoatType.values());
-        // 需求（追加）：貓咪品種下拉選單資料來源 + 毛髮分類選項，供編輯基本資料表單使用
+        // 貓咪品種下拉選單資料來源 + 毛髮分類選項，供編輯基本資料表單使用
         model.addAttribute("catBreeds", petService.listCatBreedOptions());
         model.addAttribute("catCoatCategories", CatCoatCategory.values());
         var groomingNotesByPetId = new HashMap<Long, List<PetGroomingNote>>();
-        // 需求 8-3：消費項目明細整合顯示在美容歷史卡片旁——依寵物名稱把上面已經整理好的
-        // 消費紀錄（records）分組。沿用需求 9 既有的「用寵物名稱文字比對」慣例
+        // 消費項目明細整合顯示在美容歷史卡片旁——依寵物名稱把上面已經整理好的
+        // 消費紀錄（records）分組。沿用既有的「用寵物名稱文字比對」慣例
         // （Appointment / WalkInOrder 都只存 petName 快照，沒有直接關聯 Pet 實體）。
         var consumptionByPetId = new HashMap<Long, List<ConsumptionRecordResponse>>();
         for (var p : pets) {
@@ -118,7 +117,7 @@ public class CustomerAnalysisMvcController {
                             .toList());
         }
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
-        // 需求（2026-09-29）：核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
+        // 核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
         model.addAttribute("notePhotosByNoteId", groomingNotePhotoService.photoUrlsByNoteId(
                 groomingNotesByPetId.values().stream().flatMap(List::stream).toList()));
         model.addAttribute("consumptionByPetId", consumptionByPetId);

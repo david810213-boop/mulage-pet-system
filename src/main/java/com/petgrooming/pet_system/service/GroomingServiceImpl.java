@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class GroomingServiceImpl implements GroomingService {
 
     private final GroomingItemRepository groomingItemRepository;
-    private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加，2026-08-26）：判斷是不是完整套餐
+    private final GroomingItemComponentRepository groomingItemComponentRepository; // 判斷是不是完整套餐
 
     /**
      * 新增美容服務項目
@@ -43,16 +43,16 @@ public class GroomingServiceImpl implements GroomingService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setDeleted(false); // 新增的項目預設就是直接上架使用
-        item.setBookable(request.getBookable() != null && request.getBookable()); // 需求 4
-        item.setDiscountEligible(request.getDiscountEligible() == null || request.getDiscountEligible()); // 需求（追加）
+        item.setBookable(request.getBookable() != null && request.getBookable());
+        item.setDiscountEligible(request.getDiscountEligible() == null || request.getDiscountEligible());
 
-        // 需求（追加）：分類決定積分（每個分類都有預設積分，不用手動輸入），也決定
+        // 分類決定積分（每個分類都有預設積分，不用手動輸入），也決定
         // 這個項目會不會被回洗優惠/首次體驗優惠這類「依分類判斷」的邏輯認得到。
         var category = request.getPerformanceCategory() != null
                 ? request.getPerformanceCategory()
                 : PerformanceCategory.OTHER;
         item.setPerformanceCategory(category);
-        // 需求（追加）：積分分類——店家有指定就用指定值，沒指定才退回分類預設值（維持舊行為）
+        // 積分分類——店家有指定就用指定值，沒指定才退回分類預設值（維持舊行為）
         item.setPoints(request.getPoints() != null ? request.getPoints() : category.getDefaultPoints());
         item.setRequiresExistingCustomer(request.getRequiresExistingCustomer() != null && request.getRequiresExistingCustomer());
         item.setApplicablePetType(request.getApplicablePetType());
@@ -63,7 +63,7 @@ public class GroomingServiceImpl implements GroomingService {
 
     /**
      * 1. 撈出整個美容項目菜單 (只拿沒被下架的)
-     * 需求：CHECKIN/CHECKOUT/COMPLETE 這三個項目是初始化時建立的內部流程標記
+     * CHECKIN/CHECKOUT/COMPLETE 這三個項目是初始化時建立的內部流程標記
      * （接待入場/接待送出/完成確認，$0 元，積分邏輯直接用 PerformanceCategory 計算，
      * 不會真的去查這三個項目），不是給客人選的真實服務，一律從價目表/選單中排除。
      */
@@ -86,7 +86,7 @@ public class GroomingServiceImpl implements GroomingService {
     }
 
     /**
-     * 1b. 需求 4：只撈可線上預約的項目（大美容 / 小美容 / 精緻洗 / 定製洗）
+     * 1b. 只撈可線上預約的項目（大美容 / 小美容 / 精緻洗 / 定製洗）
      */
     @Override
     @Transactional(readOnly = true)
@@ -96,7 +96,7 @@ public class GroomingServiceImpl implements GroomingService {
                 .collect(Collectors.toList());
     }
 
-    // 需求（追加，2026-08-26）：假日限定套餐——判斷「這個項目是不是完整套餐」，
+    // 假日限定套餐——判斷「這個項目是不是完整套餐」，
     // 用既有的訊號（有沒有副組成）判斷，不用另外加資料庫欄位：CAT013~024、
     // DOG001~036 這類套餐主力項目都設定了副組成（洗+吹+基礎美容拆分），
     // CAT025~028、GS001~012 這類單項加購沒有副組成。
@@ -108,7 +108,7 @@ public class GroomingServiceImpl implements GroomingService {
     }
 
     /**
-     * 2. 需求 14：修改指定的美容項目（名稱/描述/金額/是否可預約）——不含代碼，代碼不可改
+     * 2. 修改指定的美容項目（名稱/描述/金額/是否可預約）——不含代碼，代碼不可改
      */
     @Override
     @Transactional
@@ -119,8 +119,8 @@ public class GroomingServiceImpl implements GroomingService {
         item.setName(request.getName());
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
-        if (request.getBookable() != null) item.setBookable(request.getBookable()); // 需求 4
-        if (request.getPoints() != null) item.setPoints(request.getPoints()); // 需求（追加）：積分分類可個別調整
+        if (request.getBookable() != null) item.setBookable(request.getBookable());
+        if (request.getPoints() != null) item.setPoints(request.getPoints()); // 積分分類可個別調整
         if (request.getRequiresExistingCustomer() != null) item.setRequiresExistingCustomer(request.getRequiresExistingCustomer());
         if (request.getApplicablePetType() != null) item.setApplicablePetType(request.getApplicablePetType());
         

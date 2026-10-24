@@ -28,30 +28,30 @@ public class AppointmentDetailResponse {
     private String memberNote;
     private List<DetailItem> items;
     private int totalAmount;      // 帳面總額（未打折）
-    private boolean quotePending; // 需求（2026-10-02）：初次・現場評估、還沒開單＝金額現場報價
-    private Integer chargedAmount; // 需求 5：實際扣款金額（有打折的話會比 totalAmount 少；null 代表跟 totalAmount 相同或尚未結帳）
+    private boolean quotePending; // 初次・現場評估、還沒開單＝金額現場報價
+    private Integer chargedAmount; // 實際扣款金額（有打折的話會比 totalAmount 少；null 代表跟 totalAmount 相同或尚未結帳）
     private boolean paid;
     private String paymentMethodLabel;
     private LocalDateTime paymentTime;
     private String handledBy;
-    // 需求（2026-09-29）：核對時留下的美容狀況備註與照片，顧客在 LIFF 明細看得到
+    // 核對時留下的美容狀況備註與照片，顧客在 LIFF 明細看得到
     private String groomingNote;
     private List<String> groomingPhotos;
 
     @Data
     @Builder
     public static class DetailItem {
-        private Long itemId; // 需求（追加）：現場加購的零售商品需要能個別移除，其餘（selectedItems 舊資料）為 null
+        private Long itemId; // 現場加購的零售商品需要能個別移除，其餘（selectedItems 舊資料）為 null
         private String name;
         private int price;
         private String operatorName; // 現場開單項目才有經手人；一般預約項目則為 null
-        private boolean discountEligible; // 需求 5：這個項目是否可享會員折扣（僅代表項目本身的靜態設定，不代表本次是否真的有打折）
-        // 需求 8-1 修正：90天回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
+        private boolean discountEligible; // 這個項目是否可享會員折扣（僅代表項目本身的靜態設定，不代表本次是否真的有打折）
+        // 90天回洗優惠與會員折扣只能擇一，消費明細要能看出「實際套用的是哪一種」
         private boolean rewashEligible; // 這個項目是否符合回洗優惠資格（貓咪洗澡 + 距上次洗澡未滿90天）
-        private boolean firstVisitEligible; // 需求（追加）：這個項目是否符合狗狗首次體驗優惠資格
-        private boolean retailItem; // 需求（追加）：是否為結帳頁加購的零售商品（不打折、不算回洗優惠）
+        private boolean firstVisitEligible; // 這個項目是否符合狗狗首次體驗優惠資格
+        private boolean retailItem; // 是否為結帳頁加購的零售商品（不打折、不算回洗優惠）
         private DiscountType appliedDiscountType; // 已結帳的預約：實際套用的折扣種類；未結帳（尚未選付款方式）則為 null
-        // 需求（追加，2026-08-24）：狗狗定價流程簡化——這個項目對應的真正 GroomingItem
+        // 狗狗定價流程簡化——這個項目對應的真正 GroomingItem
         // id（不是 itemId 那個 AppointmentItem 自己的流水號），以及它自帶的體重級距標記，
         // 供結帳頁「鎖定為固定套餐」按鈕判斷用，不用再另外反查一份會隨體重浮動的清單
         // （這個做法是修正過現場開單那邊同類型 bug 之後，這裡直接照正確方式一次做對）。

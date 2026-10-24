@@ -48,12 +48,12 @@ public class AppointmentService {
     private final UserRepository userRepository;
     private final PetRepository petRepository;
     private final GroomingItemRepository groomingItemRepository; // 服務項目價格
-    private final GoogleCalendarService googleCalendarService; // 需求（追加）：Google 日曆串接
-    private final SlotCapacityService slotCapacityService; // 需求 3：時段名額控管
-    private final ClosedDateService closedDateService; // 需求 16：公休日設定
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
+    private final GoogleCalendarService googleCalendarService; // Google 日曆串接
+    private final SlotCapacityService slotCapacityService; // 時段名額控管
+    private final ClosedDateService closedDateService; // 公休日設定
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
 
-    // 需求（追加，2026-08-27）：營業時間／時段格線改抽到 BusinessHours 共用常數類別，
+    // 營業時間／時段格線改抽到 BusinessHours 共用常數類別，
     // 因為新增的「預設時段容量範本」（DefaultSlotCapacityTemplateService）也需要同一份格線，
     // 避免兩邊各自寫一份、以後改一邊忘了改另一邊。時段長度也從原本固定 2 小時改成 30 分鐘一格。
     private static final LocalTime OPENING = BusinessHours.OPENING;
@@ -267,7 +267,7 @@ public class AppointmentService {
                 ? "會員自行取消（" + user.getName() + "）"
                 : "員工取消：" + user.getName());
 
-        // 需求 3：釋放該時段名額，讓其他人可以遞補
+        // 釋放該時段名額，讓其他人可以遞補
         slotCapacityService.release(appointment.getDate(), appointment.getStartTime());
 
         Appointment saved = appointmentRepository.save(appointment);
@@ -276,13 +276,13 @@ public class AppointmentService {
         log.info("[預約取消] #{}（{} {}）取消人：{}", appointment.getId(),
                 appointment.getDate(), appointment.getStartTime(), appointment.getCancelledBy());
 
-        // 需求（追加）：Google 日曆串接——取消的同時把店家日曆上對應的事件刪掉
+        // Google 日曆串接——取消的同時把店家日曆上對應的事件刪掉
         googleCalendarService.deleteEvent(saved);
 
         return AppointmentResponse.from(saved);
     }
 
-    // ── 店家設定預約備注（需求 7：雙可見性）────────────────────────────────
+    // ── 店家設定預約備注（雙可見性）────────────────────────────────
     // 只更新有帶值的欄位；internalNote 僅後台可見，memberNote 會員可見。
     @Transactional
     public AppointmentAdminResponse setNotes(
@@ -306,7 +306,7 @@ public class AppointmentService {
         return AppointmentAdminResponse.from(saved);
     }
 
-    // ── 店家確認預約並敲定最後時間（需求 3）────────────────────────────────
+    // ── 店家確認預約並敲定最後時間────────────────────────────────
     // confirmedTime 由店家傳入（可與原申請時間不同）；狀態轉為 CONFIRMED。
     @Transactional
     public AppointmentResponse confirm(Long appointmentId, LocalDateTime confirmedTime, String username) {
@@ -327,10 +327,10 @@ public class AppointmentService {
         appointment.setConfirmedTime(confirmedTime != null ? confirmedTime : LocalDateTime.now());
         Appointment saved = appointmentRepository.save(appointment);
 
-        // 需求 3 / 13：用官方 LINE 通知會員「預約已確認」
+        // 用官方 LINE 通知會員「預約已確認」
         appointmentNotificationService.sendConfirmedNotify(saved);
 
-        // 需求（追加）：Google 日曆串接——確認的同時同步進店家共用日曆
+        // Google 日曆串接——確認的同時同步進店家共用日曆
         googleCalendarService.syncEvent(saved);
         appointmentRepository.save(saved); // 補存 googleCalendarEventId
 

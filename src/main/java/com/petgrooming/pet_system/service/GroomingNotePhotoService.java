@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 美容狀況紀錄照片（需求，2026-09-29）。
+ * 美容狀況紀錄照片。
  *
  * 流程：核對頁選照片 → 前端先壓縮再逐張呼叫 uploadTemp() 傳到 Cloudinary，
  * 拿回網址與 public_id 放進表單隱藏欄位 → 送出核對時才呼叫 attach() 寫進資料庫。

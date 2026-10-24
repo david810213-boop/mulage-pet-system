@@ -20,7 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 /**
- * 時段管理（需求 1、16）：某一天各時段的名額上限、預設時段容量範本、每週固定公休與指定公休日。
+ * 時段管理：某一天各時段的名額上限、預設時段容量範本、每週固定公休與指定公休日。
  */
 @Controller
 @RequestMapping("/appointments")
@@ -30,11 +30,11 @@ public class SlotManageMvcController {
     private final AppointmentQueryService appointmentQueryService;
     private final OperationLogService operationLogService;
     private final SlotCapacityService slotCapacityService;
-    private final ClosedDateService closedDateService; // 需求 16：公休日設定
-    private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 需求（追加，2026-08-27）：預設時段容量範本
+    private final ClosedDateService closedDateService; // 公休日設定
+    private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService; // 預設時段容量範本
 
     // ── GET /appointments/slots-manage ───────────────────────────────────
-    // 需求 1：時段開關管理——查看某一天每個時段的名額上限/已預約數，
+    // 時段開關管理——查看某一天每個時段的名額上限/已預約數，
     // 可手動調整上限或直接關閉（設為 0），只影響剩餘名額，不影響已預約紀錄。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/slots-manage")
@@ -46,21 +46,21 @@ public class SlotManageMvcController {
         model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
         model.addAttribute("slots", appointmentQueryService.getAvailableSlots(date));
-        // 需求 16：公休日設定
+        // 公休日設定
         model.addAttribute("isClosedToday", closedDateService.isClosed(date));
         model.addAttribute("upcomingClosedDates", closedDateService.listUpcoming());
         model.addAttribute("weeklyClosureSetting", closedDateService.getWeeklyClosureSetting());
-        // 需求（追加，2026-08-27）：預設時段容量範本——通用一份，不分日期，
+        // 預設時段容量範本——通用一份，不分日期，
         // 跟上面「這一天的各時段名額」是分開的兩張表格。
         model.addAttribute("templateSlots", defaultSlotCapacityTemplateService.listForAdmin());
         return "appointments/slots-manage";
     }
 
     // ── POST /appointments/slots-manage/template/update ───────────────────
-    // 需求（追加，2026-08-27）：店家調整「預設時段容量範本」某個時段的預設名額上限。
+    // 店家調整「預設時段容量範本」某個時段的預設名額上限。
     // 只影響以後新建立的日期的初始值，不會回溯影響已經存在的日期
     // （已存在的日期要調整的話，用下面既有的「這一天各時段名額」表格覆寫）。
-    // 需求（追加，2026-09-08）：一併調整這個時段預設限定的物種（空字串＝不限制）。
+    // 一併調整這個時段預設限定的物種（空字串＝不限制）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/template/update")
     public String updateDefaultSlotCapacityTemplate(@RequestParam
@@ -87,7 +87,7 @@ public class SlotManageMvcController {
         return "redirect:/appointments/slots-manage" + (date != null ? "?date=" + date : "");
     }
 
-    // 需求（追加，2026-09-08）：時段管理表單裡的物種下拉選單值轉成 PetType，
+    // 時段管理表單裡的物種下拉選單值轉成 PetType，
     // 空字串／null／不合法值一律當「不限制」，兩個時段管理 POST endpoint 共用。
     private PetType parsePetTypeOrNull(String raw) {
         if (raw == null || raw.isBlank()) return null;
@@ -120,7 +120,7 @@ public class SlotManageMvcController {
     }
 
     // ── POST /appointments/slots-manage/closed-date/add ───────────────────
-    // 需求 16：將指定日期設為公休日，當天所有時段自動不開放預約
+    // 將指定日期設為公休日，當天所有時段自動不開放預約
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/closed-date/add")
     public String addClosedDate(@RequestParam
@@ -149,7 +149,7 @@ public class SlotManageMvcController {
     }
 
     // ── POST /appointments/slots-manage/update ───────────────────────────
-    // 需求（追加，2026-09-08）：一併調整這一天這個時段限定的物種（空字串＝不限制）。
+    // 一併調整這一天這個時段限定的物種（空字串＝不限制）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/slots-manage/update")
     public String updateSlotCapacity(@RequestParam

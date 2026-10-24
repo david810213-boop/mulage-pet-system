@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 需求 2：店家後台管理寵物毛長
+ * 店家後台管理寵物毛長
  *
  * PUT /api/admin/pets/{petId}/coat-type   由店家定義毛長並寫入資料庫
  */
@@ -33,7 +33,7 @@ public class AdminPetController {
         return ResponseEntity.ok(res);
     }
 
-    // ── 需求（追加，2026-08-24）：狗狗定價流程簡化 ─────────────────────────
+    // ── 狗狗定價流程簡化 ─────────────────────────
 
     /** 成犬結帳核對時，店員選出真正對應的套餐項目後鎖定，之後不用再重複選單。 */
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
@@ -58,7 +58,7 @@ public class AdminPetController {
         return ResponseEntity.ok(petService.updateWeight(petId, body.weight()));
     }
 
-    // 需求（追加，2026-08-26）：店家後台刪除寵物。有預約或消費紀錄的話會被
+    // 店家後台刪除寵物。有預約或消費紀錄的話會被
     // PetService.deletePet() 擋下（見該方法說明），不用在這裡重複檢查。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @RequireCsrf

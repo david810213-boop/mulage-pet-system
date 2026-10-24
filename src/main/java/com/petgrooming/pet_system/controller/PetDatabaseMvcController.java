@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * 需求（追加，2026-09-06）：寵物信息管理頁面。
+ * 寵物信息管理頁面。
  *
  * 背景：鎖定/解鎖固定套餐這個功能，原本只能在「會員信息」寵物卡片、
  * 「現場開單」／「預約現場加單」頁面操作，店家要先找到會員或那張單才

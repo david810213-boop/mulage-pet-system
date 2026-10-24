@@ -31,7 +31,7 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    // 新需求：共用平板快速切換使用者用的 4 位數 PIN 碼（加密儲存，同密碼一樣用 BCrypt）。
+    // 共用平板快速切換使用者用的 4 位數 PIN 碼（加密儲存，同密碼一樣用 BCrypt）。
     // 只有員工/管理員需要設定，尚未設定過的話這裡是 null，切換清單上不會出現他們，
     // 提示要先去設定 PIN 才能被切換。
     @Column(name = "switch_pin")
@@ -63,7 +63,7 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;    // 帳號是否啟用（預留停用功能）
 
-    // ── 需求（追加，2026-09-17）：登入暴力破解防護 ─────────────────────────
+    // ── 登入暴力破解防護 ─────────────────────────
     // 只用在帳密登入（LoginController.login），LINE 顧客端用 idToken 驗證，
     // 不是猜密碼，不受這個機制影響。
     @Builder.Default
@@ -85,7 +85,7 @@ public class User {
     @Column(name = "residence_area", length = 50)
     private String residenceArea;       // 居住區域（例如：板橋區）
 
-    // ── 需求 19：定型化契約要求蒐集的家長資料（皆選填，只需填一次）───────
+    // ── 定型化契約要求蒐集的家長資料（皆選填，只需填一次）───────
     @Column(name = "mailing_address", length = 200)
     private String mailingAddress;              // 通訊地址（完整地址，與 residenceArea 用途不同，那個只是行銷分析用的粗略區域）
 
@@ -105,7 +105,7 @@ public class User {
     @Column(name = "profile_completed_at")
     private LocalDateTime profileCompletedAt; // 首次完成資料填寫時間
 
-    // ── 需求 8：店家後台備注會員特殊資訊 ──────────────────────────────────
+    // ── 店家後台備注會員特殊資訊 ──────────────────────────────────
     // 例：對某剪法敏感、需特別安撫、慣用付款方式等。
     // 僅後台可見，絕不回傳給任何顧客端 API（UserResponse 不含此欄位）。
     @Column(name = "admin_note", columnDefinition = "TEXT")

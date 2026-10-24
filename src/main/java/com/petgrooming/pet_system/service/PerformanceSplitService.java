@@ -22,7 +22,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 積分對半拆分（需求 12）：兩位員工共同完成同一項目時，把一筆績效紀錄對半分給另一位員工；待拆分清單、拆分歷史，以及日報排除已拆分的紀錄。
+ * 積分對半拆分：兩位員工共同完成同一項目時，把一筆績效紀錄對半分給另一位員工；待拆分清單、拆分歷史，以及日報排除已拆分的紀錄。
  */
 @Slf4j
 @Service
@@ -94,7 +94,7 @@ public class PerformanceSplitService {
         return recordRepo.save(split);
     }
 
-    // ── 需求 12：算出「已經拆分過」的紀錄 id 集合（原始來源 + 拆分產生的新紀錄都算）──
+    // ── 算出「已經拆分過」的紀錄 id 集合（原始來源 + 拆分產生的新紀錄都算）──
     // 用來從候選清單、日報顯示中排除，這些紀錄之後只在「拆分歷史」看得到。
     private Set<Long> getSplitInvolvedRecordIds() {
         Set<Long> involved = new HashSet<>();
@@ -105,7 +105,7 @@ public class PerformanceSplitService {
         return involved;
     }
 
-    // ── 需求 12：日報用——當日績效紀錄，排除已拆分過的（只在拆分歷史顯示）───
+    // ── 日報用——當日績效紀錄，排除已拆分過的（只在拆分歷史顯示）───
     public List<PerformanceRecord> getDailyRecordsForDisplay(LocalDate date) {
         Set<Long> involved = getSplitInvolvedRecordIds();
         return performanceService.getDailyRecords(date).stream()
@@ -113,7 +113,7 @@ public class PerformanceSplitService {
                 .toList();
     }
 
-    // ── 需求 12：解析一筆績效紀錄對應的寵物名稱（預約或現場單擇一查）───
+    // ── 解析一筆績效紀錄對應的寵物名稱（預約或現場單擇一查）───
     private String resolvePetName(PerformanceRecord r) {
         if (r.getAppointmentId() != null) {
             return appointmentRepository.findById(r.getAppointmentId())
@@ -126,7 +126,7 @@ public class PerformanceSplitService {
         return "—";
     }
 
-    // ── 需求 12：待拆分積分清單（強化版，含寵物名/服務項目，支援篩選）───
+    // ── 待拆分積分清單（強化版，含寵物名/服務項目，支援篩選）───
     // 篩選條件皆為選填：不給日期區間預設查當日；petNameKeyword 模糊比對；staffId 篩經手人。
     public List<SplitCandidateResponse> getSplitCandidates(
             LocalDate dateFrom, LocalDate dateTo, String petNameKeyword, Long staffId) {
@@ -143,7 +143,7 @@ public class PerformanceSplitService {
                 .filter(r -> staffId == null || r.getStaff().getId().equals(staffId))
                 .toList();
 
-        // 需求 12：已拆分過的紀錄（不管是被拆走一半的原始紀錄，還是拆分產生的新紀錄）
+        // 已拆分過的紀錄（不管是被拆走一半的原始紀錄，還是拆分產生的新紀錄）
         // 不再顯示在候選清單裡，只在「拆分歷史」看得到，也不能被重複拆分
         Set<Long> splitInvolved = getSplitInvolvedRecordIds();
         records = records.stream().filter(r -> !splitInvolved.contains(r.getId())).toList();
@@ -170,7 +170,7 @@ public class PerformanceSplitService {
         return result;
     }
 
-    // ── 需求 12：拆分歷史查詢（誰在什麼時候把哪隻寵物的哪個項目拆給了誰）─
+    // ── 拆分歷史查詢（誰在什麼時候把哪隻寵物的哪個項目拆給了誰）─
     public List<SplitHistoryResponse> getSplitHistory(
             LocalDate dateFrom, LocalDate dateTo, String petNameKeyword, Long staffId) {
 

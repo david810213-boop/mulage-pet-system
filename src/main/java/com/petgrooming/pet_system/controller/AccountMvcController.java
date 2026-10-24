@@ -69,7 +69,7 @@ public class AccountMvcController {
     }
 
     // ── GET /account/pin ──────────────────────────────────────────────────
-    // 新需求：設定共用平板快速切換使用者用的 PIN 碼
+    // 設定共用平板快速切換使用者用的 PIN 碼
     @GetMapping("/pin")
     public String setPinPage(Model model, @CurrentUser User user) {
         if (user == null || user.isCustomer()) return "redirect:/dashboard";

@@ -39,7 +39,7 @@ public class WalletMvcController {
     private final UserService userService;
     private final PetService petService;
     private final TopUpService topUpService;
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）
+    private final GroomingNotePhotoService groomingNotePhotoService;
     private final OperationLogService operationLogService;
 
     // ── GET /admin/wallets ─────────────────────────────────────────────────
@@ -53,7 +53,7 @@ public class WalletMvcController {
 
         var allCustomers = userService.getAllCustomers(); // 下面 UserService 補這個方法
 
-        // 需求（追加）：搜尋範圍擴大到寵物名稱、手機號碼，先把每位顧客的寵物名單準備好
+        // 搜尋範圍擴大到寵物名稱、手機號碼，先把每位顧客的寵物名單準備好
         // （寵物名稱要拿來比對關鍵字，也要顯示在列表上，一次查好兩用）
         var petsByUsername = new HashMap<String, List<String>>();
         for (var c : allCustomers) {
@@ -84,7 +84,7 @@ public class WalletMvcController {
         model.addAttribute("keyword", keyword);
         model.addAttribute("walletsByUsername", walletsByUsername);
         model.addAttribute("petsByUsername", petsByUsername);
-        // 統整需求：儲值管理頁一併帶出待審核的線上轉帳儲值申請
+        // 儲值管理頁一併帶出待審核的線上轉帳儲值申請
         model.addAttribute("pendingTopups", topUpService.pending());
         return "admin/wallets";
     }
@@ -99,7 +99,7 @@ public class WalletMvcController {
         model.addAttribute("wallet", walletService.getWallet(username));
         model.addAttribute("transactions", walletService.getTransactions(username));
         model.addAttribute("depositRequest", new DepositRequest());
-        // 需求 2：該會員的寵物清單，供店家設定毛長
+        // 該會員的寵物清單，供店家設定毛長
         var pets = petService.getMyPets(username);
         model.addAttribute("pets", pets);
         model.addAttribute("coatTypes", CoatType.values());
@@ -110,16 +110,16 @@ public class WalletMvcController {
                     petService.getGroomingNotes(p.getId()));
         }
         model.addAttribute("groomingNotesByPetId", groomingNotesByPetId);
-        // 需求（2026-09-29）：核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
+        // 核對時拍的美容狀況照片（每筆最多 5 張），一次查齊
         model.addAttribute("notePhotosByNoteId", groomingNotePhotoService.photoUrlsByNoteId(
                 groomingNotesByPetId.values().stream().flatMap(List::stream).toList()));
-        // 需求 8：會員特殊備注（僅後台可見）
+        // 會員特殊備注（僅後台可見）
         model.addAttribute("adminNote", userService.getAdminNote(username));
         return "admin/wallet-detail";
     }
 
     // ── POST /admin/wallets/{username}/pets/{petId}/edit ────────────────────
-    // 需求（追加）：店家代客編輯寵物資料。物種（petType）不開放修改，理由跟
+    // 店家代客編輯寵物資料。物種（petType）不開放修改，理由跟
     // PetService.updatePet() 的說明一致；表單裡沒有物種欄位，PetRequest 傳進去
     // 也不會被拿來覆蓋既有物種。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
@@ -148,7 +148,7 @@ public class WalletMvcController {
     }
 
     // ── POST /admin/wallets/{username}/pets/{petId}/cat-coat-category ──────
-    // 需求（追加）：店家手動修正貓咪毛髮分類（自動判斷抓不到品種時的補救手段）。
+    // 店家手動修正貓咪毛髮分類（自動判斷抓不到品種時的補救手段）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/cat-coat-category")
     public String setCatCoatCategory(@PathVariable String username, @PathVariable Long petId,
@@ -169,7 +169,7 @@ public class WalletMvcController {
     }
 
     // ── POST /admin/wallets/{username}/pets/{petId}/coat-type ──────────────
-    // 需求 2：店家定義寵物毛長
+    // 店家定義寵物毛長
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/coat-type")
     public String setCoatType(@PathVariable String username, @PathVariable Long petId,
@@ -190,7 +190,7 @@ public class WalletMvcController {
     }
 
     // ── POST /admin/wallets/{username}/pets/{petId}/photo ──────────────────
-    // 需求 17：店家後台可更新照片（不限本人上傳，方便店家幫忙補拍/更新）
+    // 店家後台可更新照片（不限本人上傳，方便店家幫忙補拍/更新）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/pets/{petId}/photo")
     public String uploadPetPhoto(@PathVariable String username, @PathVariable Long petId,
@@ -211,7 +211,7 @@ public class WalletMvcController {
     }
 
     // ── POST /admin/wallets/{username}/grooming-notes/{noteId}/photo ───────
-    // 需求 18：美容狀況歷史相簿——幫某一筆美容備註補上照片
+    // 美容狀況歷史相簿——幫某一筆美容備註補上照片
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/grooming-notes/{noteId}/photo")
     public String uploadGroomingNotePhoto(@PathVariable String username, @PathVariable Long noteId,
@@ -232,7 +232,7 @@ public class WalletMvcController {
     }
 
     // ── POST /admin/wallets/{username}/note ─────────────────────────────────
-    // 需求 8：店家後台備注會員特殊資訊
+    // 店家後台備注會員特殊資訊
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{username}/note")
     public String setAdminNote(@PathVariable String username,

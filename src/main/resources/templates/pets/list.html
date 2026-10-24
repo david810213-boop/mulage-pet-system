@@ -24,7 +24,7 @@
 
         <div class="cards" th:unless="${pets == null or pets.isEmpty()}">
           <div class="pet-card" th:each="p : ${pets}">
-            <!-- 需求 17（網頁版）：寵物照片顯示 + 上傳/更換 -->
+            <!-- 寵物照片顯示 + 上傳/更換 -->
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
               <img
                 th:if="${p.photoUrl != null}"

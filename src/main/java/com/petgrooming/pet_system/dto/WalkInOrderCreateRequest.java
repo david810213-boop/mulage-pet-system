@@ -5,8 +5,8 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * 需求 5：現場開單輸入
- * 需求 7-1 修正：允許純零售商品訂單（沒有任何美容服務項目，例如客人單純上門買東西），
+ * 現場開單輸入
+ * 允許純零售商品訂單（沒有任何美容服務項目，例如客人單純上門買東西），
  * 所以 items（美容服務項目）跟 retailItems（零售商品）都改成可為空，
  * 「至少要有一項（不管哪一種）」的驗證移到 Service 層做，
  * 因為這是跨兩個欄位的規則，單一欄位的 @NotEmpty 表達不出來。
@@ -35,7 +35,7 @@ public class WalkInOrderCreateRequest {
         private String itemCode;
         // 經手人：實際員工帳號 id（選填；不填則為「未填寫」，之後從待補清單選人補上）
         private Long operatorStaffId;
-        private Long operatorStaffId2; // 需求（2026-10-02）：第二經手人（選填）
+        private Long operatorStaffId2; // 第二經手人（選填）
     }
 
     @Data

@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 需求 12：拆分歷史查詢的一列，記錄「誰拆給了誰、拆了多少」。
+ * 拆分歷史查詢的一列，記錄「誰拆給了誰、拆了多少」。
  */
 @Data
 @Builder

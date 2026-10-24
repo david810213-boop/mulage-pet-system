@@ -37,7 +37,7 @@ public class AppointmentItemService {
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final RetailProductService retailProductService; // 結帳頁加購零售商品
 
-    // ── 需求（追加）：預約結帳頁加購零售商品 ────────────────────────────
+    // ── 預約結帳頁加購零售商品 ────────────────────────────
     // 結帳前都可以加購（不受核對/checkinOrderConfirmed 限制，零售商品不是美容服務，
     // 走的是不同的完成判定邏輯）；quantity 幾件就建幾筆項目列，沿用 WalkInOrderItem
     // 「一列 = 一份，price 是單價」的慣例，不加 quantity 欄位，降低牽連風險。
@@ -73,11 +73,11 @@ public class AppointmentItemService {
         log.info("預約 #{} 加購商品「{}」x{}", appointmentId, product.getName(), quantity);
     }
 
-    // ── 需求（追加）：編輯訂單——結帳前新增一筆美容服務項目 ────────────────
+    // ── 編輯訂單——結帳前新增一筆美容服務項目 ────────────────
     // 跟加購零售商品同一套「結帳前才准動」的限制；核對時發現漏開/開錯項目，
     // 不用整筆退款重開，直接在這裡補上即可。
     @Transactional
-    // 需求（追加，2026-08-26）：customPrice 選填，跟 WalkInOrderService 同一套
+    // customPrice 選填，跟 WalkInOrderService 同一套
     // 設計，積分固定照 gi.getPoints() 計算，跟改過的價格完全無關。
     public void addGroomingItem(Long appointmentId, Long groomingItemId, String username) {
         addGroomingItem(appointmentId, groomingItemId, null, username);
@@ -93,7 +93,7 @@ public class AppointmentItemService {
         addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, null, username);
     }
 
-    // 需求（追加，2026-10-02 店家確認 3-1）：核對時加的項目也可以當場選經手人
+    // 核對時加的項目也可以當場選經手人
     @Transactional
     public void addGroomingItem(Long appointmentId, Long groomingItemId, Integer customPrice,
             Long operatorStaffId, Long operatorStaffId2, String username) {
@@ -106,7 +106,7 @@ public class AppointmentItemService {
         GroomingItem gi = groomingItemRepository.findById(groomingItemId)
                 .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到服務項目"));
 
-        // 需求（追加）：僅限既有客戶的項目（例如貓咪基礎保養），這隻寵物完全沒有
+        // 僅限既有客戶的項目（例如貓咪基礎保養），這隻寵物完全沒有
         // 消費紀錄的話不能加入這個項目。
         if (gi.isRequiresExistingCustomer()
                 && !petConsumptionHistoryService.hasPriorPaidService(
@@ -114,7 +114,7 @@ public class AppointmentItemService {
             throw new AppointmentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法加入此項目");
         }
 
-        // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
+        // 主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
         // 加上分類標籤（見上方 checkin 流程同樣的說明）。有自訂價格的話，名稱
         // 後面也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
         var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
@@ -136,7 +136,7 @@ public class AppointmentItemService {
         assignOperators(item, operatorStaffId, operatorStaffId2);
         appointmentItemRepository.save(item);
         awardItemPoints(item);
-        expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
+        expandPackageComponents(appointment, gi, itemComponents); // 套餐化——展開副組成
 
         appointment.setTotalAmount(appointment.getTotalAmount() + item.getPrice());
         appointment.setCheckinOrderConfirmed(true); // 保險起見一併標記，避免極少數尚未開過單的情況卡在後續流程
@@ -145,7 +145,7 @@ public class AppointmentItemService {
         log.info("預約 #{} 編輯新增服務項目「{}」", appointmentId, gi.getName());
     }
 
-    // ── 需求（追加，2026-08-26）：自訂金額加購 ──────────────────────────────
+    // ── 自訂金額加購 ──────────────────────────────
     // 用途：處理「高階定制調理」（開放式報價）跟各種浮動加價（厚毛/長毛/
     // 特殊剪法/特殊情況）——這些沒辦法用固定價目表項目涵蓋，店員需要現場
     // 依實際情況打一個自訂名稱+金額的項目進去，不綁定任何現有的 GroomingItem。
@@ -201,7 +201,7 @@ public class AppointmentItemService {
         log.info("預約 #{} 新增自訂項目「{}」，金額 ${}", appointmentId, itemName, price);
     }
 
-    // 需求（追加）：套餐化——一個套餐項目結帳/開單時，除了自己的主組成（已經記錄在
+    // 套餐化——一個套餐項目結帳/開單時，除了自己的主組成（已經記錄在
     // AppointmentItem 本身），如果後台有設定「副組成」，這裡一併展開成額外的待補經手人
     // 紀錄（price 固定 0，不重複計價，純粹是為了矩陣待補經手人表單能拆出每個積分分類，
     // 可能由不同美容師分開處理）。
@@ -247,7 +247,7 @@ public class AppointmentItemService {
     }
 
     // ── 待補經手人清單（現場開單項目中 operatorStaff 為 null 的）─────────────
-    // 需求（追加）：只列出「有積分可算」的項目——零售商品加購（points 固定 0）
+    // 只列出「有積分可算」的項目——零售商品加購（points 固定 0）
     // 不會產生績效，補了經手人也沒有計算意義，不需要出現在這份待辦清單裡。
     public List<AppointmentItemResponse> pendingItemOperators() {
         return appointmentItemRepository.findByOperatorStaffIsNull().stream()
@@ -262,7 +262,7 @@ public class AppointmentItemService {
         fillItemOperator(appointmentItemId, staffId, null);
     }
 
-    // 需求（2026-10-02 店家確認 5）：待補經手人也可以一次選兩位
+    // 待補經手人也可以一次選兩位
     @Transactional
     public void fillItemOperator(Long appointmentItemId, Long staffId, Long staffId2) {
         AppointmentItem item = appointmentItemRepository.findById(appointmentItemId)
@@ -278,7 +278,7 @@ public class AppointmentItemService {
         awardItemPoints(item);
     }
 
-    // 需求（2026-10-02 店家確認 5）：設定經手人（＋選填的第二經手人）
+    // 設定經手人（＋選填的第二經手人）
     // 規則：第一位沒選時不能選第二位；兩位不能是同一人。
     void assignOperators(AppointmentItem item, Long id1, Long id2) {
         if (id1 == null && id2 != null) {
@@ -315,7 +315,7 @@ public class AppointmentItemService {
 
         Appointment appt = item.getAppointment();
         if (item.getOperatorStaff2() != null) {
-            // 需求（2026-10-02）：雙人經手，積分各半
+            // 雙人經手，積分各半
             performanceService.addDualRecords(
                     item.getOperatorStaff().getId(), item.getOperatorStaff2().getId(),
                     appt.getId(), null,

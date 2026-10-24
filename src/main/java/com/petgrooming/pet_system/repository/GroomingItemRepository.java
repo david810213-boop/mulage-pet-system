@@ -14,7 +14,7 @@ public interface GroomingItemRepository extends JpaRepository<GroomingItem, Long
     // 查詢所有未被邏輯刪除的服務項目
     List<GroomingItem> findByIsDeletedFalse();
 
-    // 需求 4：查詢可線上預約的項目（bookable=true 且未下架）— 供 LIFF 預約頁使用
+    // 查詢可線上預約的項目（bookable=true 且未下架）— 供 LIFF 預約頁使用
     List<GroomingItem> findByBookableTrueAndIsDeletedFalse();
 
     // 根據 itemCode 查詢服務項目（用於結帳時驗證）

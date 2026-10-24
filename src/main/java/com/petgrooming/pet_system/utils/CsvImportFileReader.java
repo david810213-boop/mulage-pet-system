@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 需求（追加，2026-09-08）：既有資料 CSV 匯入的編碼容錯讀取。
+ * 既有資料 CSV 匯入的編碼容錯讀取。
  *
  * 背景：店家用 Windows Excel「另存 CSV」時常存成 Big5，不是 UTF-8。
  * 舊版三支 parseXxxCsv 直接用 new InputStreamReader(is, UTF_8) 硬讀，Java 遇到

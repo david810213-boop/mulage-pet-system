@@ -18,7 +18,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 查某使用者的所有預約（對應原本 getReceiptsByUser）
     List<Appointment> findByUserUsername(String username);
 
-    // 需求（追加，2026-09-08）：手動綁定既有匯入資料——過戶這個會員名下所有預約
+    // 手動綁定既有匯入資料——過戶這個會員名下所有預約
     List<Appointment> findByUserId(Long userId);
 
     // 查某天的所有預約（用來計算已佔用時段）
@@ -35,20 +35,20 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         LocalDate date, LocalTime endTime, LocalTime startTime
     );
 
-    // 需求 13：查某天尚未發送過提醒、且已確認的預約（排程用）
+    // 查某天尚未發送過提醒、且已確認的預約（排程用）
     List<Appointment> findByDateAndReminderSentFalseAndStatus(
         LocalDate date, AppointmentStatus status
     );
 
-    // 需求 8：查某會員名下、某寵物名稱的所有已結帳預約（用來回溯上次洗澡日期）
+    // 查某會員名下、某寵物名稱的所有已結帳預約（用來回溯上次洗澡日期）
     // 注意：Appointment 沒有直接關聯 Pet 實體（只存 petName 快照），
-    // 沿用需求 9 既有的「(會員, 寵物名) 配對識別同一隻寵物」慣例。
+    // 沿用既有的「(會員, 寵物名) 配對識別同一隻寵物」慣例。
     List<Appointment> findByUserIdAndPetNameAndPaidTrue(Long userId, String petName);
 
-    // 需求（追加，2026-10-02）：同一隻毛孩是否已經有一筆還沒完成的「初次・現場評估」預約
+    // 同一隻毛孩是否已經有一筆還沒完成的「初次・現場評估」預約
     List<Appointment> findByUserIdAndPetNameAndFirstVisitAssessmentTrueAndPaidFalse(Long userId, String petName);
 
-    // 需求（修正，2026-09-13）：N+1 查詢優化。getAllForAdmin()/getAllAppointments()
+    // N+1 查詢優化。getAllForAdmin()/getAllAppointments()
     // 原本用 findAll() 撈全部預約，DTO 轉換時逐筆存取 a.getUser()（LAZY）跟
     // a.getSelectedItems()（雖然是 EAGER，但預設用逐筆 SELECT 撈，不是 JOIN），
     // 資料一多，每次載入預約列表都會觸發幾百條額外 SQL。改用 JOIN FETCH 把

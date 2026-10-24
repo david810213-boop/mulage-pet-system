@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 需求 5 / 6：現場開單店家後台頁面。
+ * 現場開單店家後台頁面。
  * （對應的 REST API 在 WalkInOrderController，這裡是給店家在瀏覽器上直接操作用的表單頁面）
  */
 @Controller
@@ -48,10 +48,10 @@ public class WalkInOrderMvcController {
     private final GroomingService groomingService;
     private final UserService userService;
     private final OperationLogService operationLogService;
-    private final CheckoutPreviewService checkoutPreviewService; // 需求 15：儲值金折扣預覽
+    private final CheckoutPreviewService checkoutPreviewService; // 儲值金折扣預覽
     private final StoreSettingsService storeSettingsService;
-    private final RetailProductService retailProductService; // 需求 7-1
-    private final PendingOperatorMatrixService pendingOperatorMatrixService; // 需求（追加）：矩陣式待補經手人
+    private final RetailProductService retailProductService;
+    private final PendingOperatorMatrixService pendingOperatorMatrixService; // 矩陣式待補經手人
     private final GroomingMenuFilter groomingMenuFilter;
 
     // ── GET /admin/walk-in-orders ───────────────────────────────────────────
@@ -61,7 +61,7 @@ public class WalkInOrderMvcController {
     public String page(Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
         model.addAttribute("groomingItems", groomingService.getAllItems()); // 含不可線上預約的調理項目
-        // 需求 7-1：開單當下可加購商品——這裡要塞進 JS 變數（Thymeleaf inline javascript 用 Jackson 序列化），
+        // 開單當下可加購商品——這裡要塞進 JS 變數（Thymeleaf inline javascript 用 Jackson 序列化），
         // 不能直接丟整個 RetailProduct entity，裡面的 createdAt（LocalDateTime）Jackson 預設不認得，
         // 會直接讓整頁渲染中斷（跟 staffList 同樣的處理方式，只留 JS 真正需要的欄位）。
         model.addAttribute("retailProducts", retailProductService.listActive().stream()
@@ -71,7 +71,7 @@ public class WalkInOrderMvcController {
                         "price", p.getPrice(),
                         "stockQuantity", p.getStockQuantity()))
                 .toList());
-        // 需求：經手人改綁員工帳號，前端下拉選單資料來源（STAFF + ADMIN，店主可能也會親自美容）
+        // 經手人改綁員工帳號，前端下拉選單資料來源（STAFF + ADMIN，店主可能也會親自美容）
         // ⚠️ 絕不能把 User entity 整包丟進頁面（含密碼雜湊），只給 id + 姓名
         List<User> staffAndAdmin = new ArrayList<>(userService.getAllStaffEntities());
         staffAndAdmin.addAll(userService.getAllAdminEntities());
@@ -79,7 +79,7 @@ public class WalkInOrderMvcController {
                 .map(s -> Map.of("id", s.getId(), "name", s.getName()))
                 .toList());
         model.addAttribute("orders", walkInOrderService.listAll());
-        // 需求（追加）：待補經手人改成矩陣式表單，取代原本一列一項目的清單
+        // 待補經手人改成矩陣式表單，取代原本一列一項目的清單
         model.addAttribute("walkInMatrixRows", pendingOperatorMatrixService.buildWalkInMatrix());
         model.addAttribute("appointmentMatrixRows", pendingOperatorMatrixService.buildAppointmentMatrix());
         model.addAttribute("matrixColumns", PendingOperatorMatrixService.COLUMNS);
@@ -96,7 +96,7 @@ public class WalkInOrderMvcController {
                          @RequestParam(required = false) String note,
                          @RequestParam(required = false) List<String> itemCodes,
                          @RequestParam(required = false) List<String> operatorStaffIds,
-                         @RequestParam(required = false) List<String> operatorStaffIds2, // 需求（2026-10-02）
+                         @RequestParam(required = false) List<String> operatorStaffIds2,
                          @RequestParam(required = false) List<String> retailProductIds,
                          @RequestParam(required = false) List<String> retailQuantities, RedirectAttributes ra,
                          @CurrentUser User user) {
@@ -121,7 +121,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/items/{itemId}/operator ─────────────────
-    // 需求 6：補填經手人（綁定員工帳號）
+    // 補填經手人（綁定員工帳號）
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/items/{itemId}/operator")
     public String fillOperator(@PathVariable Long itemId,
@@ -140,7 +140,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/items/operator/batch ──────────────────
-    // 需求 11：批次補填經手人，逐一勾選/選擇後，一次性儲存全部，不用每列各按一次
+    // 批次補填經手人，逐一勾選/選擇後，一次性儲存全部，不用每列各按一次
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/items/operator/batch")
     public String fillOperatorBatch(@RequestParam("itemIds") List<Long> itemIds,
@@ -170,7 +170,7 @@ public class WalkInOrderMvcController {
     }
 
     /**
-     * 需求 7-1：開單當下也能直接加零售商品，支援純零售訂單（沒有任何美容服務項目）。
+     * 開單當下也能直接加零售商品，支援純零售訂單（沒有任何美容服務項目）。
      * 商品空白的列跳過，數量空白視為 1。
      */
     private static List<WalkInOrderCreateRequest.RetailItem> retailItems(List<String> retailProductIds,
@@ -190,7 +190,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── GET /admin/walk-in-orders/{id}/checkout ──────────────────────────
-    // 需求 15：現場開單結帳畫面統一——跟「預約訂單結帳」同樣風格的專屬結帳頁，
+    // 現場開單結帳畫面統一——跟「預約訂單結帳」同樣風格的專屬結帳頁，
     // 結帳前先看到逐項目折扣預覽（回洗優惠／會員折扣，兩者擇一），不是原本表格列裡的小下拉選單直接送出。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{id}/checkout")
@@ -199,15 +199,15 @@ public class WalkInOrderMvcController {
         try {
             var order = walkInOrderService.getById(id);
             model.addAttribute("order", order);
-            model.addAttribute("retailProducts", retailProductService.listActive()); // 需求 7-1：加購商品清單
-            // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+            model.addAttribute("retailProducts", retailProductService.listActive()); // 加購商品清單
+            // 僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
             boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
             String petType = walkInOrderService.getPetTypeForOrder(id);
             var pet = walkInOrderService.getPetForOrder(id);
             model.addAttribute("pet", pet);
-            // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+            // 自訂金額加購用的積分分類下拉選單
             model.addAttribute("performanceCategories", PerformanceCategory.values());
-            // 需求（追加，2026-08-24 修正）：先抓一份完整、沒被篩過的服務項目清單，
+            // 先抓一份完整、沒被篩過的服務項目清單，
             // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份
             // 完整清單衍生，不要各自分開查——原本的 bug 就是兩邊各自查了不同時機/
             // 條件的清單，導致這張單已經選定的項目沒辦法反查回自己的體重級距。
@@ -233,8 +233,8 @@ public class WalkInOrderMvcController {
                     : groomingMenuFilter.filterForOptionalPetType(allGroomingItems, isExisting, petType));
             model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
             model.addAttribute("bankAccountInfo",
-                    storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT)); // 需求 15 修正
-            // 需求 10：跟預約結帳一致，不提供「信用卡」選項；需求 15 修正：匯款有待對帳流程，保留在選單
+                    storeSettingsService.getBankAccountInfo(BankAccountPurpose.CHECKOUT));
+            // 跟預約結帳一致，不提供「信用卡」選項；匯款有待對帳流程，保留在選單
             model.addAttribute("paymentMethods", CheckoutPageSupport.CHECKOUT_PAYMENT_METHODS);
 
             if (order.getMemberUsername() != null) {
@@ -248,8 +248,8 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/add-retail-item ─────────────────
-    // 需求 7-1：結帳頁直接加購零售商品
-    // 需求（追加）：新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
+    // 結帳頁直接加購零售商品
+    // 新增 from 參數，讓核對頁提交後也能導回核對頁，不會固定跳回結帳頁
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-retail-item")
     public String addRetailItem(@PathVariable Long id,
@@ -268,15 +268,15 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/add-grooming-item ────────────────
-    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
-    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入自訂價格用
+    // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // customPrice 選填，店員手動輸入自訂價格用
     // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long id,
                                   @RequestParam Long groomingItemId,
                                   @RequestParam(required = false) Integer customPrice,
-                                  @RequestParam(required = false) Long operatorStaffId, // 需求（2026-10-02）：空白＝稍後補填
+                                  @RequestParam(required = false) Long operatorStaffId, // 空白＝稍後補填
                                   @RequestParam(required = false) Long operatorStaffId2,
                                   @RequestParam(defaultValue = "checkout") String from,
                                   RedirectAttributes ra,
@@ -291,7 +291,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/add-custom-item ──────────────────
-    // 需求（追加，2026-08-26）：自訂金額加購——處理「高階定制調理」開放式報價
+    // 自訂金額加購——處理「高階定制調理」開放式報價
     // 跟各種浮動加價，不綁定任何現有服務項目，店員直接輸入項目名稱+金額。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-custom-item")
@@ -314,7 +314,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/remove-item ──────────────────────
-    // 需求（追加）：從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
+    // 從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
     // 路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/remove-item")
@@ -333,7 +333,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/checkout ────────────────────────────
-    // 需求：現場單串接結帳
+    // 現場單串接結帳
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/checkout")
     public String checkout(@PathVariable Long id,
@@ -356,7 +356,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/confirm-wire-transfer ────────────
-    // 需求 15 修正：店員核對匯款到帳後點擊，現場單才正式轉為已完成
+    // 店員核對匯款到帳後點擊，現場單才正式轉為已完成
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/confirm-wire-transfer")
     public String confirmWireTransfer(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
@@ -375,26 +375,26 @@ public class WalkInOrderMvcController {
     @GetMapping("/{id}/final-check")
     public String finalCheckForm(@PathVariable Long id, Model model, @CurrentUser User loginUser) {
         model.addAttribute("user", loginUser);
-        // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
+        // 僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
         boolean isExisting = walkInOrderService.isExistingCustomerPet(id);
         String petType = walkInOrderService.getPetTypeForOrder(id);
         model.addAttribute("groomingItems", groomingService.getAllItems().stream()
                 .filter(i -> isExisting || !i.isRequiresExistingCustomer())
                 .filter(i -> i.getApplicablePetType() == null || petType == null || i.getApplicablePetType().equalsIgnoreCase(petType))
-                .toList()); // 需求（追加）：核對頁也能直接編輯訂單項目
+                .toList()); // 核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
-        // 需求（追加，2026-08-26）：自訂金額加購用的積分分類下拉選單
+        // 自訂金額加購用的積分分類下拉選單
         model.addAttribute("performanceCategories", PerformanceCategory.values());
         try {
             var orderForCheck = walkInOrderService.getById(id);
             model.addAttribute("order", orderForCheck);
-            // 需求（2026-09-29）：非會員單沒有毛孩檔案，不開放核對照片
+            // 非會員單沒有毛孩檔案，不開放核對照片
             model.addAttribute("photoEnabled", orderForCheck.getMemberUsername() != null
                     && !orderForCheck.getMemberUsername().isBlank());
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMsg", e.getMessage());
         }
-        model.addAttribute("staffList", userService.operatorOptions()); // 需求（2026-10-02）：核對加項目可選經手人
+        model.addAttribute("staffList", userService.operatorOptions()); // 核對加項目可選經手人
         return "admin/walk-in-order-final-check";
     }
 

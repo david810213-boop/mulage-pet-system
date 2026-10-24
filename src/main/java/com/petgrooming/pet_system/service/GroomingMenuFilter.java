@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 服務項目菜單篩選（需求，2026-09-24）。
+ * 服務項目菜單篩選。
  *
  * 原本寫在 AppointmentMvcController 的兩支 private 方法，員工手機版的
  * 「到店開單」也要用同一套篩選規則；為了避免同一套業務邏輯複製成兩份、

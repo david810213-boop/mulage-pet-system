@@ -19,7 +19,7 @@ public class GroomingItemController {
     private final GroomingService groomingService;
 
     // ── GET /api/grooming-items ─────────────────────────────────────────────
-    // 需求 4：LIFF 預約頁只顯示「可線上預約」的主項目
+    // LIFF 預約頁只顯示「可線上預約」的主項目
     // （大美容 / 小美容 / 精緻洗 / 定製洗），其餘調理項目留給現場開單。
     @GetMapping
     public ResponseEntity<List<GroomingItemResponse>> getBookableItems() {

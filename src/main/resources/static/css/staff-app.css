@@ -2068,7 +2068,7 @@ details.more-items[open] summary svg.i {
   display: block;
 }
 
-/* 需求（2026-09-29）：美容紀錄多張照片並排 */
+/* 美容紀錄多張照片並排 */
 .rec-photos {
   display: flex;
   flex-wrap: wrap;

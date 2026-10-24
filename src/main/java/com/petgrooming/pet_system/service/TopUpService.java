@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 需求 1：線上儲值僅限轉帳。
+ * 線上儲值僅限轉帳。
  *
  * 流程：
  *   顧客 submit()  → 建立 PENDING 申請（餘額不動）

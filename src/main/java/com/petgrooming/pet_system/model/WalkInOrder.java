@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 需求 5 / 6：現場開單（到店開單）。
+ * 現場開單（到店開單）。
  *
  * 使用情境：不同寵物有需要調理的項目時，店家現場針對這隻寵物開一張單，
  * 加入一到多個項目（含不可線上預約的調理項目）。這張單本身就是一筆「交易紀錄」，
@@ -52,7 +52,7 @@ public class WalkInOrder {
     @Builder.Default
     private int totalAmount = 0;
 
-    // 需求 5：實際結帳扣款金額（若用儲值金付款且套用折扣，這裡會比 totalAmount 小；
+    // 實際結帳扣款金額（若用儲值金付款且套用折扣，這裡會比 totalAmount 小；
     // 其他付款方式或沒打折的話會跟 totalAmount 相同）。退款時要退這個欄位，
     // 不能直接退 totalAmount，否則折扣過的訂單會退超過實際扣款金額。
     @Column(name = "charged_amount")
@@ -66,7 +66,7 @@ public class WalkInOrder {
     @Column(length = 300)
     private String note;
 
-    // ── 需求：現場單串接結帳 ─────────────────────────────────────────────
+    // ── 現場單串接結帳 ─────────────────────────────────────────────
     // 開單當下未付款；paid=true 才代表已完成結帳（跟 Appointment.paid 同樣的語意）。
     // 用 columnDefinition 給資料庫層級預設值，避免既有表加 NOT NULL 欄位時 ALTER 失敗
     // （這是先前 GroomingItem.bookable 踩過的坑，這裡直接照做避開）。

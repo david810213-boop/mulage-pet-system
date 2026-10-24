@@ -7,7 +7,7 @@ import lombok.*;
 import java.time.LocalTime;
 
 /**
- * 需求（追加，2026-08-27）：預設時段容量範本。
+ * 預設時段容量範本。
  *
  * 背景：店家反饋預約時間過於鬆散，希望能針對「一天當中的某個時段」設定固定的預設可接組數
  * （例如每天 11:00 固定可接 4 組、11:30 這格預設不開放、12:00 起每 30 分鐘固定接 1 組），
@@ -45,7 +45,7 @@ public class DefaultSlotCapacityTemplate {
     @Builder.Default
     private int capacity = 5;        // 這個時段預設的名額上限，設 0 代表這個時段預設不開放
 
-    // 需求（追加，2026-09-08）：限定這個時段預設只能預約特定物種，跟 SlotCapacity
+    // 限定這個時段預設只能預約特定物種，跟 SlotCapacity
     // 同一套欄位設計（null＝不限制）。新建立一天的計數列時會從這裡帶入初始值。
     @Column(name = "allowed_pet_type")
     @Enumerated(EnumType.STRING)

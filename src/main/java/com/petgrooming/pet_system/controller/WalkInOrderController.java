@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 需求 5 / 6：現場開單 API（店家後台）
+ * 現場開單 API（店家後台）
  *
  * POST /api/admin/walk-in-orders 現場開單
  * GET /api/admin/walk-in-orders 所有現場單（交易紀錄）

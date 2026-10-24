@@ -66,7 +66,7 @@ public class DataInitializer implements ApplicationRunner {
         warnIfDefaultPasswordStillActive("staff@pet.com", "staff123", "美容師小洪（STAFF）");
         warnIfDefaultPasswordStillActive("user@pet.com", "user123", "測試會員（CUSTOMER）");
 
-        // 需求 3：積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
+        // 積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
         if (bonusTierRepository.count() == 0) {
             bonusTierRepository.save(BonusTier.builder().minPoints(3001).maxPoints(3350).bonusAmount(1200).build());
             bonusTierRepository.save(BonusTier.builder().minPoints(3351).maxPoints(3700).bonusAmount(1600).build());
@@ -79,8 +79,8 @@ public class DataInitializer implements ApplicationRunner {
             log.info("積分獎勵金級距種子資料初始化完成");
         }
 
-        // 需求 10：店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
-        // 需求（追加）：改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
+        // 店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
+        // 改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
         if (bankAccountInfoRepository.findByPurpose(BankAccountPurpose.CHECKOUT).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
                     .purpose(BankAccountPurpose.CHECKOUT)

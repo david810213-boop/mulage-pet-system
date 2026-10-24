@@ -23,7 +23,7 @@
         </p>
 
 
-        <!-- 需求（2026-10-02 店家確認 7）：掃碼查庫存、CSV 匯入、條碼標籤 -->
+        <!-- 掃碼查庫存、CSV 匯入、條碼標籤 -->
         <div class="card" style="margin-bottom: 1.25rem; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
           <div data-scan-box style="flex:1; min-width:260px;">
             <h3 style="font-size: 15px; margin-bottom: 8px;">📷 掃碼查商品</h3>
@@ -141,7 +141,7 @@
                       <input type="number" name="delta" placeholder="±數量" style="width: 65px; font-size: 12px;" required />
                       <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">調庫存</button>
                     </form>
-                    <!-- 需求（2026-10-02 店家確認 7-6）：盤點，只有店長（管理者）能用 -->
+                    <!-- 盤點，只有店長（管理者）能用 -->
                     <form th:if="${user != null and user.admin}" method="post"
                           th:action="@{/admin/retail-products/{id}/stocktake(id=${p.id})}"
                           style="display: flex; gap: 4px; align-items: center;"

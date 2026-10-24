@@ -25,6 +25,6 @@ public class AppointmentRequest {
     @NotBlank(message = "請詳閱定型化契約，並在簽名板上親筆簽名後再送出預約")
     private String contractSignatureData;
 
-    // 需求（追加，2026-10-02）：契約第二十一條，顧客另外勾選同意分享美容照片（未勾＝不同意）
+    // 契約第二十一條，顧客另外勾選同意分享美容照片（未勾＝不同意）
     private Boolean photoShareConsent;
 }

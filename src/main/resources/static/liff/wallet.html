@@ -398,8 +398,8 @@
 
           // 3. 成功拿到資料後，渲染畫面
           render(wallet, txList);
-          loadMyTopUps(); // 需求 1：載入儲值申請狀態
-          loadBankAccountInfo(); // 需求 21：載入匯款帳號資訊 + 收款 QR Code（原本是寫死的假資料）
+          loadMyTopUps(); // 載入儲值申請狀態
+          loadBankAccountInfo(); // 載入匯款帳號資訊 + 收款 QR Code（原本是寫死的假資料）
         } catch (e) {
           // 這裡保留 e.message，如果後端真的噴 401/500，畫面上會顯示具體的 HTTP 狀態碼
           showError("載入失敗：" + (e.message || "未知錯誤"));
@@ -517,7 +517,7 @@
                     </div>
                 </div>
 
-                <!-- 需求 1：線上儲值僅限轉帳 -->
+                <!-- 線上儲值僅限轉帳 -->
                 <div class="topup-card" style="margin:16px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-card);">
                     <h3 style="font-family:'Huninn','PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif; font-size:14px; font-weight:600; color:var(--primary-deep); letter-spacing:1px; margin-bottom:12px;">線上儲值（限轉帳）</h3>
                     <div id="bankAccountInfoBox" style="background:var(--paper-2); border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:var(--ink-soft); line-height:1.7; margin-bottom:14px; font-family:'Huninn','PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;">
@@ -568,7 +568,7 @@
                 </div>`;
       }
 
-      // 需求 1：送出線上轉帳儲值申請（餘額不會立即變動，待店家核帳）
+      // 送出線上轉帳儲值申請（餘額不會立即變動，待店家核帳）
       async function submitTopUp() {
         const amount = parseInt(
           document.getElementById("topupAmount").value,
@@ -607,7 +607,7 @@
         }
       }
 
-      // 需求 21：載入匯款帳號資訊 + 收款 QR Code（原本是寫死在頁面上的假資料）
+      // 載入匯款帳號資訊 + 收款 QR Code（原本是寫死在頁面上的假資料）
       async function loadBankAccountInfo() {
         const box = document.getElementById("bankAccountInfoBox");
         if (!box) return;
@@ -627,7 +627,7 @@
         }
       }
 
-      // 需求 1：載入自己的儲值申請狀態
+      // 載入自己的儲值申請狀態
       async function loadMyTopUps() {
         try {
           const res = await fetch("/api/topup/my", {

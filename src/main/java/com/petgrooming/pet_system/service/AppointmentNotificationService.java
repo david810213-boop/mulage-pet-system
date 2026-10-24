@@ -34,7 +34,7 @@ public class AppointmentNotificationService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final LineMessagingService lineMessagingService;
-    private final GoogleCalendarService googleCalendarService; // 需求（追加）：Google 日曆串接
+    private final GoogleCalendarService googleCalendarService; // Google 日曆串接
 
     /**
      * 新預約通知所有已綁定 LINE 的店家與員工。當天預約已直接確認，立即通知顧客並同步 Google 日曆
@@ -51,7 +51,7 @@ public class AppointmentNotificationService {
         }
     }
 
-    // 需求（追加，2026-08-26）：新預約送出時通知店家/員工，跟 StoreSupplyService
+    // 新預約送出時通知店家/員工，跟 StoreSupplyService
     // 低庫存通知同一套「發給所有已綁定 LINE 的員工/店家帳號」機制，不用另外設計。
     // 推播失敗（token 沒設定、帳號沒綁 LINE 等）不應該讓預約本身失敗，
     // pushText() 內部已經處理過這個容錯，這裡不用再包 try-catch。
@@ -78,8 +78,8 @@ public class AppointmentNotificationService {
     }
 
 
-    // 需求 13：預約確認通知文字內容 + 發送，供「店家點確認」與「當日臨時預約自動確認」共用
-    // 需求（追加，2026-08-30）：文案改版（店家指定新內容），改成完整的預約須知格式。
+    // 預約確認通知文字內容 + 發送，供「店家點確認」與「當日臨時預約自動確認」共用
+    // 文案改版（店家指定新內容），改成完整的預約須知格式。
     // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免這些生僻 Unicode
     // 符號在存檔/複製貼上過程中位元組被弄壞、導致編譯失敗（踩過的坑：
     // "illegal start of expression"）。中文字本身沒有這個風險，維持原樣。
@@ -116,7 +116,7 @@ public class AppointmentNotificationService {
         lineMessagingService.pushText(saved.getUser().getLineUserId(), notifyText);
     }
 
-    // ── 需求 13：每天 19:00 自動掃描「隔天」預約，發送前一日提醒 ─────────────
+    // ── 每天 19:00 自動掃描「隔天」預約，發送前一日提醒 ─────────────
     // 只提醒狀態已是 CONFIRMED 的預約（PENDING_CONFIRM 代表店家還沒確認最後時間，
     // 不適合先跟會員說「明天請準時到場」）。
     // 當天現場開單／臨時預約因為在 book() 建立當下就已經直接送出確認通知（見 sendConfirmedNotify
@@ -143,7 +143,7 @@ public class AppointmentNotificationService {
         log.info("[需求13-前日提醒] 已處理 {} 筆 {} 的預約提醒", targets.size(), tomorrow);
     }
 
-    // 需求（追加，2026-08-30）：前一天預約提醒文案改版（店家指定新內容），
+    // 前一天預約提醒文案改版（店家指定新內容），
     // 補回寵物名字（原始文案沒寫，店家確認要保留）。
     // 原本這裡有一段「隔天預約時間早於 11:00 要額外提醒準時到場」的邏輯
     // （EARLY_SLOT_CUTOFF），但店家開門時間本來就是 11:00，條件永遠不會成立，

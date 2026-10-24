@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * 需求 1：店家後台審核線上轉帳儲值申請的網頁介面。
+ * 店家後台審核線上轉帳儲值申請的網頁介面。
  * （對應的 REST API 在 TopUpController，這裡是給店家在瀏覽器上直接操作用的表單頁面）
  */
 @Controller

@@ -15,7 +15,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * 需求（追加）：狗狗首次體驗 9 折。
+ * 狗狗首次體驗 9 折。
  *
  * 規則：這隻狗名下完全沒有任何一筆「已結帳」的預約或現場開單紀錄
  * （不管有沒有洗澡項目，只要曾經消費過一次就不算首次），這次消費的
@@ -32,7 +32,7 @@ import java.util.Set;
  * 資料來源涵蓋範圍：跟 CatRewashDiscountService 一致——預約（Appointment）
  * 與現場開單（WalkInOrder，須有綁定會員）都納入判斷是否為首次消費。
  *
- * 需求（追加）：「是不是既有客戶」的查詢邏輯已抽成 {@link PetConsumptionHistoryService}
+ * 「是不是既有客戶」的查詢邏輯已抽成 {@link PetConsumptionHistoryService}
  * 共用，這裡不再自己重複實作，改成呼叫共用 service。
  */
 @Service
@@ -45,7 +45,7 @@ public class DogFirstVisitDiscountService implements SpecialDiscountPolicy {
             EnumSet.of(PerformanceCategory.BATH_SMALL, PerformanceCategory.BATH_LARGE);
 
     private final PetRepository petRepository;
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）
+    private final PetConsumptionHistoryService petConsumptionHistoryService;
 
     public boolean isDogPackageItem(GroomingItem item) {
         return item != null && DOG_PACKAGE_CATEGORIES.contains(item.getPerformanceCategory());

@@ -317,7 +317,7 @@
               ${p.hasSeparationAnxiety ? "⚠️ 有分離焦慮" : "分離焦慮：無"}
             </span>
           </div>
-          <!-- 需求（追加，2026-09-04）：折扣資格狀態（距上次洗澡幾天/優惠期內
+          <!-- 折扣資格狀態（距上次洗澡幾天/優惠期內
                或已過期/首次體驗優惠），選好毛孩清單後非同步逐一補上，避免
                拖慢整頁的初次載入速度。 -->
           <div class="pet-tags" id="discountTag-${p.id}"></div>
@@ -325,7 +325,7 @@
             體重：<b>${p.weight} kg</b>　年齡：<b>${p.age} 歲</b>
             ${p.notes ? "<br>注意事項：<b>" + escapeHtml(p.notes) + "</b>" : ""}
           </div>
-          <!-- 需求（2026-09-29）：每次美容的狀況備註與照片 -->
+          <!-- 每次美容的狀況備註與照片 -->
           <button type="button" class="history-btn" onclick="openHistory(${p.id})"
                   style="margin-top:10px; width:100%; padding:10px; border-radius:12px; border:1px solid #DBD3C4; background:#fff; color:#26332B; font-size:14px; font-family:inherit; cursor:pointer;">
             📖 美容紀錄
@@ -342,7 +342,7 @@
             )
             .join("");
 
-          // 需求（追加，2026-09-04）：逐一補上每隻寵物的折扣狀態標籤，
+          // 逐一補上每隻寵物的折扣狀態標籤，
           // 用 Promise.all 平行打，不要一隻一隻等，減少總等待時間。
           Promise.all(pets.map((p) => loadDiscountTag(p.id)));
         } catch (e) {
@@ -353,7 +353,7 @@
         }
       }
 
-      // 需求（追加，2026-09-04）：抓單一寵物的折扣資格狀態，塞進對應的
+      // 抓單一寵物的折扣資格狀態，塞進對應的
       // pet-tags 區塊。抓失敗（例如網路問題）就靜默留空，不影響整頁其他功能。
       async function loadDiscountTag(petId) {
         const el = document.getElementById("discountTag-" + petId);
@@ -388,10 +388,10 @@
 
 
       // --- 上傳/更換寵物照片 ---
-      // 需求（追加，2026-08-26）：顧客自己刪除毛孩。有預約或消費紀錄的話，
+      // 顧客自己刪除毛孩。有預約或消費紀錄的話，
       // 後端 PetService.deletePet() 會擋下並回傳明確的錯誤訊息，這裡直接
       // 顯示後端給的訊息，不用自己重複判斷。
-      // 需求（2026-09-29）：查看毛孩每次美容的狀況備註與照片（店家核對時留下的）
+      // 查看毛孩每次美容的狀況備註與照片（店家核對時留下的）
       let petNameById = {};
       async function openHistory(petId) {
         const petName = escapeHtml(petNameById[petId] || "毛孩");

@@ -15,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * 需求 7-2：店用洗劑後台管理——新增品項、進貨補貨、員工領用登記、下架。
+ * 店用洗劑後台管理——新增品項、進貨補貨、員工領用登記、下架。
  */
 @Controller
 @RequestMapping("/admin/store-supplies")
@@ -23,7 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class StoreSupplyMvcController {
 
     private final StoreSupplyService storeSupplyService;
-    private final InventoryImportService inventoryImportService; // 需求（2026-10-02）
+    private final InventoryImportService inventoryImportService;
     private final OperationLogService operationLogService;
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
@@ -40,7 +40,7 @@ public class StoreSupplyMvcController {
                          @RequestParam(defaultValue = "0") int stockQuantity,
                          @RequestParam(defaultValue = "0") int safetyStockThreshold,
                          @RequestParam(defaultValue = "0") int unitCost,
-                         @RequestParam(required = false) String barcode, // 需求（2026-10-02）：留空＝系統產生
+                         @RequestParam(required = false) String barcode, // 留空＝系統產生
                          RedirectAttributes ra,
                          @CurrentUser User user) {
         try {
@@ -77,7 +77,7 @@ public class StoreSupplyMvcController {
         return "redirect:/admin/store-supplies";
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7-6）：盤點（只有管理者）──────────
+    // ── 盤點（只有管理者）──────────
     @RequireRole({UserRole.ADMIN})
     @PostMapping("/{id}/stocktake")
     public String stocktake(@PathVariable Long id,
@@ -94,7 +94,7 @@ public class StoreSupplyMvcController {
         return "redirect:/admin/store-supplies";
     }
 
-    // ── 需求（追加，2026-10-02 店家確認 7）：CSV 批次匯入 ──────────────────
+    // ── CSV 批次匯入 ──────────────────
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/import")
     public String importCsv(@RequestParam("file") MultipartFile file,
@@ -129,7 +129,7 @@ public class StoreSupplyMvcController {
         return "redirect:/admin/store-supplies";
     }
 
-    // 需求 7-2：員工領用登記
+    // 員工領用登記
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/use")
     public String use(@PathVariable Long id,

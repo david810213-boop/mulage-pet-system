@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 會員消費紀錄彙整（需求，2026-09-24 第五批）。
+ * 會員消費紀錄彙整。
  *
  * 原本整段寫在 CustomerAnalysisMvcController.customerDetail() 裡（網頁版會員信息頁），
  * 員工手機版的會員頁、毛孩頁也要顯示同一份消費紀錄；為了不把同一套彙整邏輯
@@ -118,7 +118,7 @@ public class MemberConsumptionService {
     }
 
     /**
-     * 交易紀錄列表用（需求，2026-09-24 第八批）：把「預約交易」跟「現場單」合成同一份清單，
+     * 交易紀錄列表用：把「預約交易」跟「現場單」合成同一份清單，
      * 只取已付款，依付款時間新到舊排序。原本是 PaymentMvcController 的 private 方法，
      * 員工手機版交易紀錄頁也要用，原封不動搬到這裡共用，內容沒有任何行為變更。
      */

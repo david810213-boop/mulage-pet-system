@@ -48,7 +48,7 @@ public class MemberClaimService {
     // 安全限制：只有目前這個 LINE 帳號「還沒填過資料」（profileCompletedAt 為 null）
     // 才能認領，避免已經自己填好資料的人不小心把別人的資料領走蓋掉自己的。
     //
-    // 需求（追加，2026-09-30）：新客報到改成「先輸入電話分流」，認領時多一道確認——
+    // 新客報到改成「先輸入電話分流」，認領時多一道確認——
     // 匯入帳號有毛孩就要輸入其中一隻毛孩的名字，沒有毛孩就輸入登記的姓名。
     // 原因：帳號裡可能有儲值金與會員卡，只憑電話就能認領的話，知道別人電話的人
     // 可以把整個帳號連錢包一起領走。
@@ -78,7 +78,7 @@ public class MemberClaimService {
         return currentUser;
     }
 
-    // ── 需求（追加，2026-09-30）：新客報到第一步「輸入電話分流」────────────
+    // ── 新客報到第一步「輸入電話分流」────────────
     // 查到還沒被認領的既有會員 → 回傳遮罩後的姓名、毛孩數、要用什麼確認；
     // 查不到 → matched=false，前端改走一般新客流程。不回傳毛孩名字等可直接
     // 拿來認領的資訊。
@@ -138,7 +138,7 @@ public class MemberClaimService {
         return n.charAt(0) + "○".repeat(n.length() - 2) + n.charAt(n.length() - 1);
     }
 
-    // ── 需求（追加，2026-09-08）：店家後台手動綁定既有匯入資料 ──────────────
+    // ── 店家後台手動綁定既有匯入資料 ──────────────
     //
     // 使用時機：顧客的 LINE 帳號自己已經先填過個人資料/新增過毛孩（例如測試時
     // 不小心先手動填了，沒有先用電話號碼認領），導致 claimByPhone() 的防呆
@@ -149,7 +149,7 @@ public class MemberClaimService {
     // 跟 claimByPhone() 的差異：
     // ① 不覆蓋目標會員已經填的姓名——目標帳號通常已經有自己填的真實資料，
     //    這是店家人工判斷合併，不該用匯入資料蓋掉顧客自己填寫的內容。電話
-    //    則是「目標帳號原本沒填才帶入」（需求追加，2026-09-11）——因為
+    //    則是「目標帳號原本沒填才帶入」——因為
     //    LINE 帳號常常還沒填過電話，這種情況匯入資料裡的電話應該要補上，
     //    只有目標已經自己填過電話時才不覆蓋
     // ② 實際的資料過戶（寵物/消費/預約/儲值/刪除來源帳號）跟 claimByPhone()
@@ -172,7 +172,7 @@ public class MemberClaimService {
             throw new MemberException("目標帳號也是匯入用的暫時帳號，請選一個真正在使用的會員帳號");
         }
 
-        // 需求（追加，2026-09-11）：目標帳號原本沒填電話才帶入匯入資料的電話，
+        // 目標帳號原本沒填電話才帶入匯入資料的電話，
         // 已經自己填過電話的話維持不覆蓋——姓名不論如何都不覆蓋。
         if (isBlank(target.getPhone()) && !isBlank(imported.getPhone())) {
             target.setPhone(imported.getPhone());
@@ -186,7 +186,7 @@ public class MemberClaimService {
                 summary.appointments().size(), summary.topUps().size());
     }
 
-    // ── 需求（重構，2026-09-11）：claimByPhone() 跟 manualMerge() 共用的過戶邏輯 ──
+    // ── claimByPhone() 跟 manualMerge() 共用的過戶邏輯 ──
     //
     // 抽出來的原因：claimByPhone() 原本自己另外寫了一份簡化版（只過戶寵物），
     // manualMerge() 開發時修正了兩個問題（JPA 級聯刪除坑、錢包外鍵未清理），
@@ -242,7 +242,7 @@ public class MemberClaimService {
 
         // 儲值餘額加總到目標會員的錢包，不是覆蓋；沒有餘額也要把來源帳號的
         // 空錢包刪掉，不然會卡外鍵讓下面刪除來源帳號失敗。
-        // 需求（追加，2026-09-30）：會員卡等級／開卡日／到期日也要一起帶過去，
+        // 會員卡等級／開卡日／到期日也要一起帶過去，
         // 不然匯入時帶入的等級在顧客認領後就消失了。兩邊都有卡時保留「比較好的那張」。
         walletRepository.findByUserId(imported.getId()).ifPresent(importedWallet -> {
             boolean hasBalance = importedWallet.getBalance() != null && importedWallet.getBalance() > 0;

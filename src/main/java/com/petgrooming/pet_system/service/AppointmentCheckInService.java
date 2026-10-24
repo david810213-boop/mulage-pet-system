@@ -39,12 +39,12 @@ public class AppointmentCheckInService {
     private final GroomingItemRepository groomingItemRepository; // 服務項目價格
     private final LineMessagingService lineMessagingService;
     private final PetGroomingNoteRepository petGroomingNoteRepository; // 進行中核對：毛孩美容狀況歷史
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：核對照片
+    private final GroomingNotePhotoService groomingNotePhotoService; // 核對照片
     private final PerformanceService performanceService; // 進行中核對：接待送出積分
     private final AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final AppointmentItemService appointmentItemService; // 訂單項目、經手人與積分
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
+    private final GroomingItemComponentRepository groomingItemComponentRepository; // 套餐組成
 
     // ── 店員開始服務：CONFIRMED → IN_PROGRESS（寵物已到店開始施作）──────────
     @Transactional
@@ -119,7 +119,7 @@ public class AppointmentCheckInService {
                 "結束服務：預約 #" + appointment.getId());
 
         // 用官方 LINE 通知家長可以來店接寵物了
-        // 需求（追加，2026-08-30）：文案改版（店家指定新內容）。
+        // 文案改版（店家指定新內容）。
         // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免存檔/複製貼上
         // 過程中位元組被弄壞導致編譯失敗（踩過的坑，跟 WalkInOrderService 同一份模板）。
         // 逃逸序列對照的符號說明，請見交付 README，不要把實際符號貼進這個檔案。
@@ -148,10 +148,10 @@ public class AppointmentCheckInService {
         return confirmCheckinOrder(appointmentId, itemCodes, operatorStaffIds, null, username);
     }
 
-    // 需求（追加，2026-10-02 店家確認 3）：到店開單比照現場開單，每個項目可以直接選經手人。
+    // 到店開單比照現場開單，每個項目可以直接選經手人。
     // operatorStaffIds 跟 itemCodes 一一對應（null／空字串＝稍後補填），選了的當下就寫入積分。
     @Transactional
-    // 需求（2026-10-02 店家確認 5）：operatorStaffIds2 是第二經手人（選填），同樣跟 itemCodes 一一對應
+    // operatorStaffIds2 是第二經手人（選填），同樣跟 itemCodes 一一對應
     public AppointmentResponse confirmCheckinOrder(Long appointmentId, List<String> itemCodes,
             List<Long> operatorStaffIds, List<Long> operatorStaffIds2, String username) {
         User staff = userRepository.findByUsername(username)
@@ -184,14 +184,14 @@ public class AppointmentCheckInService {
             GroomingItem gi = groomingItemRepository.findByItemCode(code)
                     .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到項目代碼：" + code));
 
-            // 需求（追加）：僅限既有客戶的項目，這隻寵物完全沒有消費紀錄的話不能選這個項目。
+            // 僅限既有客戶的項目，這隻寵物完全沒有消費紀錄的話不能選這個項目。
             if (gi.isRequiresExistingCustomer()
                     && !petConsumptionHistoryService.hasPriorPaidService(
                             appointment.getUser().getId(), appointment.getPetName(), appointmentId)) {
                 throw new AppointmentException("「" + gi.getName() + "」僅限既有客戶，這隻寵物還沒有消費紀錄，無法選擇此項目");
             }
 
-            // 需求（追加）：主項目本身掛的積分分類（例如 BATH_CAT_S）如果有副組成，
+            // 主項目本身掛的積分分類（例如 BATH_CAT_S）如果有副組成，
             // 名稱後面比照副組成加上分類標籤（例如「（洗（小貓））」），店家在待補
             // 經手人矩陣表單才看得出「這行就是洗澡的積分」，不會誤以為 BATH 沒出現
             // （這行其實一直都有記錄，只是原本沒有標籤，容易被誤認成普通項目名稱）。
@@ -212,7 +212,7 @@ public class AppointmentCheckInService {
             appointmentItemService.assignOperators(item, operatorId, operatorId2);
             appointmentItemRepository.save(item);
             appointmentItemService.awardItemPoints(item); // 沒選經手人的會直接略過，之後從待補清單補
-            appointmentItemService.expandPackageComponents(appointment, gi, itemComponents); // 需求（追加）：套餐化——展開副組成
+            appointmentItemService.expandPackageComponents(appointment, gi, itemComponents); // 套餐化——展開副組成
             total += item.getPrice();
         }
 
@@ -257,7 +257,7 @@ public class AppointmentCheckInService {
             throw new AppointmentException("請請家長於簽名板完成簽名確認");
         }
 
-        // 需求（2026-09-29）：核對照片（選填，最多 5 張），先驗證再開始寫資料
+        // 核對照片（選填，最多 5 張），先驗證再開始寫資料
         List<String[]> photos = groomingNotePhotoService.normalize(req.getPhotoUrls(), req.getPhotoPublicIds());
 
         LocalDateTime now = LocalDateTime.now();

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 需求 1：線上轉帳儲值 API
+ * 線上轉帳儲值 API
  *
  * 顧客端：
  *   POST /api/topup            送出轉帳儲值申請

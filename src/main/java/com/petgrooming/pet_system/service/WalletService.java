@@ -51,7 +51,7 @@ public class WalletService {
     @Transactional
     public WalletResponse deposit(String username, DepositRequest req) {
         int amount = req.getAmount() != null ? req.getAmount() : 0;
-        // 需求（追加，2026-10-02 店家確認）：不開放單筆 5,000 以下的儲值
+        // 不開放單筆 5,000 以下的儲值
         if (amount < MIN_DEPOSIT) {
             throw new WalletException("單筆儲值最低 $5,000");
         }
@@ -87,7 +87,7 @@ public class WalletService {
         deduct(username, amount, appointmentId, "預約 #" + appointmentId + " 消費扣款");
     }
 
-    // 需求：現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
+    // 現場開單結帳也走這裡扣款，但沒有 appointmentId，改用自訂備註文字
     // （例如「現場單 #5 消費扣款」），避免顯示成看起來像 bug 的「預約 #null」。
     @Transactional
     public void deduct(String username, int amount, Long appointmentId, String note) {

@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 需求 5：現場開單——建立、結帳前編輯項目、查詢。
+ * 現場開單——建立、結帳前編輯項目、查詢。
  *
  * 結束服務與核對見 {@link WalkInOrderCheckService}；
  * 結帳／匯款確認／退款與金額計算見 {@link WalkInPaymentService}；
@@ -43,10 +43,10 @@ public class WalkInOrderService {
     private final GroomingItemRepository groomingItemRepository;
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final GroomingItemComponentRepository groomingItemComponentRepository; // 需求（追加）：套餐組成
-    private final PetRepository petRepository; // 需求（追加）：查現場單寵物物種
-    private final RetailProductService retailProductService; // 需求 7-1：零售商品加購
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
+    private final GroomingItemComponentRepository groomingItemComponentRepository; // 套餐組成
+    private final PetRepository petRepository; // 查現場單寵物物種
+    private final RetailProductService retailProductService; // 零售商品加購
 
     // ── 建立現場單 ───────────────────────────────────────────────────────
     /**
@@ -156,7 +156,7 @@ public class WalkInOrderService {
         }
     }
 
-    // ── 需求 7-1：現場單加購零售商品 ─────────────────────────────────────
+    // ── 現場單加購零售商品 ─────────────────────────────────────
     // 結帳前都可以加購（不受「結束服務/核對」流程限制，因為零售商品不是美容服務，
     // 跟原本的服務項目走的是不同的完成判定邏輯）。quantity 幾件就建幾筆項目列，
     // 沿用既有 WalkInOrderItem 的「一列 = 一份，price 是單價」慣例，
@@ -187,7 +187,7 @@ public class WalkInOrderService {
         return res;
     }
 
-    // 需求 7-1：建立一筆零售商品的訂單項目快照，供開單當下加購、結帳頁加購共用同一份邏輯，
+    // 建立一筆零售商品的訂單項目快照，供開單當下加購、結帳頁加購共用同一份邏輯，
     // 避免兩處各寫一次、日後改欄位漏改其中一邊。
     private WalkInOrderItem buildRetailOrderItem(RetailProduct product) {
         return WalkInOrderItem.builder()
@@ -200,7 +200,7 @@ public class WalkInOrderService {
                 .build();
     }
 
-    // ── 需求（追加）：這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
+    // ── 這隻寵物是不是既有客戶（供畫面過濾「僅限既有客戶」項目用）───
     // 現場單沒綁會員的話沒辦法查歷史消費紀錄，保守回傳 false（視為不是既有客戶）。
     public boolean isExistingCustomerPet(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
@@ -210,7 +210,7 @@ public class WalkInOrderService {
                 order.getMember().getId(), order.getPetName(), orderId);
     }
 
-    // 需求（追加）：這張現場單的寵物種類（供畫面過濾「適用物種」項目用）；
+    // 這張現場單的寵物種類（供畫面過濾「適用物種」項目用）；
     // 沒綁會員或查不到對應的寵物資料就回傳 null（無法判斷，畫面上不濾掉任何物種，避免誤擋）。
     public String getPetTypeForOrder(Long orderId) {
         WalkInOrder order = orderRepository.findById(orderId)
@@ -221,7 +221,7 @@ public class WalkInOrderService {
                 .orElse(null);
     }
 
-    // 需求（追加，2026-08-24）：狗狗定價流程簡化——這張現場單對應的完整寵物資料
+    // 狗狗定價流程簡化——這張現場單對應的完整寵物資料
     // （含目前體重、鎖定的固定套餐），供結帳頁篩選「新增服務項目」下拉選單、
     // 顯示鎖定套餐提示、還有「鎖定為固定套餐」按鈕使用。
     // 沒綁會員或查不到對應寵物就回傳 null（純現場客、沒建檔的寵物，不套用這套邏輯）。
@@ -238,8 +238,8 @@ public class WalkInOrderService {
         return PetResponse.from(pet, lockedItem);
     }
 
-    // 需求（追加）：編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
-    // 需求（追加，2026-08-26）：customPrice 選填，店員手動輸入的自訂價格
+    // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
+    // customPrice 選填，店員手動輸入的自訂價格
     // （例如剪毛這種價格浮動的項目）。null 或負數就照項目原本的固定價格；
     // 有給值就用那個值當這筆的實際收費。⚠️ 積分固定照 gi.getPoints()
     // 這個項目本身設定的值計算，跟改過的價格完全無關——這是刻意設計，
@@ -262,7 +262,7 @@ public class WalkInOrderService {
         return addGroomingItem(orderId, groomingItemId, customPrice, operatorStaffId, null, username);
     }
 
-    // 需求（追加，2026-10-02 店家確認 3-1）：核對時加的項目也可以當場選經手人（null＝稍後補填）
+    // 核對時加的項目也可以當場選經手人（null＝稍後補填）
     @Transactional
     public WalkInOrderResponse addGroomingItem(Long orderId, Long groomingItemId, Integer customPrice,
             Long operatorStaffId, Long operatorStaffId2, String username) {
@@ -275,7 +275,7 @@ public class WalkInOrderService {
         GroomingItem gi = groomingItemRepository.findById(groomingItemId)
                 .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "找不到服務項目"));
 
-        // 需求（追加）：僅限既有客戶的項目，沒綁會員的現場單無法查歷史消費紀錄，
+        // 僅限既有客戶的項目，沒綁會員的現場單無法查歷史消費紀錄，
         // 保守起見一律擋下（不確定是不是既有客戶時，不開放使用這類項目）。
         if (gi.isRequiresExistingCustomer()) {
             boolean isExisting = order.getMember() != null
@@ -286,7 +286,7 @@ public class WalkInOrderService {
             }
         }
 
-        // 需求（追加）：主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
+        // 主項目本身掛的積分分類如果有副組成，名稱後面比照副組成
         // 加上分類標籤（見上方建單流程同樣的說明）。有自訂價格的話，名稱後面
         // 也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
         var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
@@ -308,7 +308,7 @@ public class WalkInOrderService {
         order.addItem(item);
         order.setTotalAmount(order.getTotalAmount() + item.getPrice());
 
-        // 需求（追加）：套餐化——展開副組成
+        // 套餐化——展開副組成
         for (var component : itemComponents) {
             WalkInOrderItem sub = WalkInOrderItem.builder()
                     .groomingItemId(gi.getId())
@@ -330,7 +330,7 @@ public class WalkInOrderService {
         return res;
     }
 
-    // ── 需求（追加，2026-08-26）：自訂金額加購 ──────────────────────────────
+    // ── 自訂金額加購 ──────────────────────────────
     // 用途：處理「高階定制調理」（開放式報價）跟各種浮動加價（厚毛/長毛/
     // 特殊剪法/特殊情況）——這些沒辦法用固定價目表項目涵蓋，店員需要現場
     // 依實際情況打一個自訂名稱+金額的項目進去，不綁定任何現有的 GroomingItem。

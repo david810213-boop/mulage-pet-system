@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 需求 8-1：貓咪 90 天回洗優惠。
+ * 貓咪 90 天回洗優惠。
  *
  * 規則（依需求文件逐字解讀）：
  *   「貓咪距上次洗澡未滿90天再預約洗澡，結帳自動套用9折；
@@ -43,7 +43,7 @@ import java.util.Set;
  *   「預約」（Appointment）與「現場開單」（WalkInOrder）都納入計算——但現場開單
  *   必須「有綁定會員」才算數（沒有會員身分的現場客沒有可追蹤的寵物身分/歷史）。
  *   Appointment 用 (user_id, petName) 配對識別同一隻貓；WalkInOrder 用
- *   (member_id, petName) 配對，兩邊都沿用需求 9 既有的「文字配對」慣例，
+ *   (member_id, petName) 配對，兩邊都沿用既有的「文字配對」慣例，
  *   因為兩張表都沒有直接關聯 Pet 實體。WalkInOrder 沒有獨立的服務日期欄位，
  *   以 createdAt 當天的日期視為服務日期。
  */
@@ -84,7 +84,7 @@ public class CatRewashDiscountService implements SpecialDiscountPolicy {
     }
 
     /**
-     * 需求 8 修正：現場開單（有綁定會員）結帳時，是否符合回洗優惠資格。
+     * 現場開單（有綁定會員）結帳時，是否符合回洗優惠資格。
      * 沒有綁定會員的現場單無法識別是哪隻寵物的歷史紀錄，一律不適用。
      */
     public boolean isRewashEligible(WalkInOrder order) {
@@ -138,7 +138,7 @@ public class CatRewashDiscountService implements SpecialDiscountPolicy {
     }
 
     /**
-     * 需求 8-2：這隻貓「上一次完成洗澡服務」的日期，供名單頁顯示用
+     * 這隻貓「上一次完成洗澡服務」的日期，供名單頁顯示用
      * （跟 isRewashEligible 共用同一套查詢，只是不用排除某一筆特定紀錄，以今天為基準）。
      */
     public Optional<LocalDate> findLastBathDate(Long userId, String petName) {
@@ -146,7 +146,7 @@ public class CatRewashDiscountService implements SpecialDiscountPolicy {
     }
 
     /**
-     * 需求 8-2：全店貓咪回洗名單，供後台篩選 + 匯出。
+     * 全店貓咪回洗名單，供後台篩選 + 匯出。
      * withinWindowOnly：true 只列出「還在 90 天優惠期內」的貓（適合提醒趁優惠期再預約）；
      *                    false 只列出「已經超過 90 天沒回洗」的貓（適合喚回久未到店的客人）；
      *                    null 則列出全部有過洗澡紀錄的貓。

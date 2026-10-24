@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 需求（追加）：套餐化——一個服務項目（套餐）結帳時，除了本身的「主組成」
+ * 套餐化——一個服務項目（套餐）結帳時，除了本身的「主組成」
  * （已經記錄在 {@link GroomingItem} 的 performanceCategory/points 欄位），
  * 還可能同時包含其他積分分類，例如「頂級專業定制洗護」= 洗澡（主組成，掛價格）
  * + 吹毛 + 基礎美容 + AD 三個「副組成」。

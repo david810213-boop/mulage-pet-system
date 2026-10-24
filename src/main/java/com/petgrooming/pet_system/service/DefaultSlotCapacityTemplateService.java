@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 需求（追加，2026-08-27）：預設時段容量範本管理。
+ * 預設時段容量範本管理。
  *
  * 通用一份範本（不分星期幾），每個時段格線（依 BusinessHours 產生）對應一個預設名額上限。
  * 沿用專案裡既有單例設定（例如 WeeklyClosureSetting）的「lazy 自我初始化」寫法：
@@ -55,7 +55,7 @@ public class DefaultSlotCapacityTemplateService {
     }
 
     /**
-     * 需求（追加，2026-09-08）：查某個時段預設限定的物種（null＝不限制），
+     * 查某個時段預設限定的物種（null＝不限制），
      * 資料庫裡還沒有這一列的話回傳 null（保險預設不限制）。
      */
     public PetType getAllowedPetType(LocalTime slotTime) {
@@ -85,7 +85,7 @@ public class DefaultSlotCapacityTemplateService {
     }
 
     /**
-     * 店家在後台調整某個時段的預設名額上限，以及（需求追加，2026-09-08）預設限定
+     * 店家在後台調整某個時段的預設名額上限，以及預設限定
      * 的物種（null＝不限制，兩者皆可）。
      * ⚠️ 這只會影響「以後新建立的日期」在第一次被查詢/預約時的初始值，
      * 已經存在的 SlotCapacity 列（不管是已經有人預約過、還是店家之前手動覆寫過的日期）

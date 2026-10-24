@@ -8,7 +8,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.util.List;
 
 /**
- * 貓咪回洗名單 Excel（需求 8-2）。
+ * 貓咪回洗名單 Excel。
  */
 public final class CatRewashExcel {
 

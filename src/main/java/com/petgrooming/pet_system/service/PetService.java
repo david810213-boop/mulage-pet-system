@@ -36,12 +36,12 @@ public class PetService {
 
     private final PetRepository petRepository;
     private final UserRepository userRepository;
-    private final CloudinaryService cloudinaryService; // 需求 17：寵物照片上傳
-    private final PetGroomingNoteRepository petGroomingNoteRepository; // 需求 18
-    private final PetConsumptionHistoryService petConsumptionHistoryService; // 需求（追加）：僅限既有客戶項目判斷
-    private final CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 需求（追加）：菜單簡化
-    private final GroomingItemRepository groomingItemRepository; // 需求（追加）：狗狗鎖定套餐查詢
-    private final GroomingNotePhotoService groomingNotePhotoService; // 需求（2026-09-29）：美容紀錄照片
+    private final CloudinaryService cloudinaryService; // 寵物照片上傳
+    private final PetGroomingNoteRepository petGroomingNoteRepository;
+    private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
+    private final CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 菜單簡化
+    private final GroomingItemRepository groomingItemRepository; // 狗狗鎖定套餐查詢
+    private final GroomingNotePhotoService groomingNotePhotoService; // 美容紀錄照片
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
     // 改用 X-Username 識別飼主，與 AppointmentService.book() 相同做法
@@ -53,7 +53,7 @@ public class PetService {
         // 自動依 petType + weight 判斷體型分類
         PetSizeCategory sizeCategory = PetSizeCategory.determine(req.getPetType(), req.getWeight());
 
-        // 需求（追加）：菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
+        // 菜單簡化——貓咪依品種自動判斷毛髮分類（單層毛/雙層毛/長毛），
         // LIFF 預約頁靠這個欄位篩選菜單。狗/其他物種、或品種不在對照表裡的特殊貓種，
         // 一律是 null（LIFF 端遇到 null 顯示全部貓咪套餐項目，不擋顧客預約）。
         CatCoatCategory catCoatCategory = resolveCatCoatCategory(req.getPetType(), req.getBreed());
@@ -65,14 +65,14 @@ public class PetService {
                 .weight(req.getWeight())
                 .age(req.getAge())
                 .sizeCategory(sizeCategory)
-                // 需求 2：毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
+                // 毛長不由顧客決定，新增時固定為 UNDEFINED，之後由店家後台設定
                 .coatType(CoatType.UNDEFINED)
                 .catCoatCategory(catCoatCategory)
                 .hasSeparationAnxiety(req.getHasSeparationAnxiety() != null && req.getHasSeparationAnxiety())
                 .ownerPhone(req.getOwnerPhone())
                 .notes(req.getNotes())
                 .owner(user)
-                // 需求 19：定型化契約要求蒐集的資料（皆選填）
+                // 定型化契約要求蒐集的資料（皆選填）
                 .gender(req.getGender())
                 .isNeutered(req.getIsNeutered() != null && req.getIsNeutered())
                 .hasChip(req.getHasChip() != null && req.getHasChip())
@@ -90,12 +90,12 @@ public class PetService {
         return PetResponse.from(saved);
     }
 
-    // 需求（追加）：LIFF 新增毛孩頁面的品種下拉選單資料來源
+    // LIFF 新增毛孩頁面的品種下拉選單資料來源
     public List<CatBreedCoatMapping> listCatBreedOptions() {
         return catBreedCoatMappingRepository.findAllByOrderBySortOrderAscBreedNameAsc();
     }
 
-    // 需求（追加）：貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
+    // 貓咪依品種查對照表算出毛髮分類，新增/編輯/批次匯入共用同一套邏輯，
     // 避免多處各自實作導致行為不一致。
     public CatCoatCategory resolveCatCoatCategory(
             PetType petType, String breed) {
@@ -148,7 +148,7 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // 需求（追加）：LIFF 顧客端編輯自己的寵物前，先確認這隻寵物真的是這個 username 的，
+    // LIFF 顧客端編輯自己的寵物前，先確認這隻寵物真的是這個 username 的，
     // 避免會員竄改 API 請求裡的 petId 改到別人的寵物資料。
     public void assertOwnership(Long petId, String username) {
         Pet pet = getPetEntity(petId);
@@ -180,15 +180,15 @@ public class PetService {
 
         return petRepository.findByOwnerUsername(username)
                 .stream()
-                .filter(pet -> !pet.isDeleted()) // 需求（追加，2026-08-26 修正）：軟刪除的寵物不出現在清單裡
+                .filter(pet -> !pet.isDeleted()) // 軟刪除的寵物不出現在清單裡
                 .map(pet -> {
-                    // 需求（追加）：已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
+                    // 已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
                     // 前端才不用為了顯示鎖定資訊再多打一次 API。
                     GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
                             ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
                             : null;
                     PetResponse res = PetResponse.from(pet, lockedItem);
-                    // 需求（追加）：帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
+                    // 帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
                     res.setIsExistingCustomer(
                             petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pet.getName(), null));
                     return res;
@@ -196,7 +196,7 @@ public class PetService {
                 .toList();
     }
 
-    // ── 3. 店家定義寵物毛長（需求 2）────────────────────────────────────────
+    // ── 3. 店家定義寵物毛長────────────────────────────────────────
     // 僅供後台（STAFF / ADMIN）呼叫，由店家實際檢視毛況後設定短毛 / 中長毛 / 長毛。
     @Transactional
     public PetResponse setCoatType(Long petId, CoatType coatType) {
@@ -209,7 +209,7 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // ── 需求（追加，2026-09-06）：寵物信息管理頁面 ──────────────────────────
+    // ── 寵物信息管理頁面 ──────────────────────────
     // 用途：後台集中管理所有寵物（跨會員），把原本分散在「會員信息」寵物卡片、
     // 「現場開單」/「預約現場加單」頁面才看得到的鎖定套餐狀態集中到一頁，
     // 不用先找到會員、點進去才看得到。
@@ -283,7 +283,7 @@ public class PetService {
         return PetResponse.from(petRepository.save(pet));
     }
 
-    // ── 4. 上傳/更換寵物照片（需求 17：LIFF 顧客端 + 店家後台皆可用）───────
+    // ── 4. 上傳/更換寵物照片（LIFF 顧客端 + 店家後台皆可用）───────
     // 權限（會員只能傳自己的寵物、店家可傳任何寵物）由呼叫端（Controller）檢查，
     // 這裡只負責「換照片」這件事本身：先上傳新圖，成功後才刪舊圖並更新資料庫，
     // 順序不能反過來——否則上傳失敗時會先把舊照片刪掉，變成沒有照片可以用。
@@ -310,7 +310,7 @@ public class PetService {
                 .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
     }
 
-    // ── 5. 上傳美容狀況歷史照片（需求 18：美容歷史相簿）─────────────────
+    // ── 5. 上傳美容狀況歷史照片（美容歷史相簿）─────────────────
     // 僅供店家後台使用（美容狀況備注本身就是店員在核對步驟填寫的，照片同樣由店員事後補上）。
     @Transactional
     public void uploadGroomingNotePhoto(Long noteId, MultipartFile file) {
@@ -327,7 +327,7 @@ public class PetService {
         cloudinaryService.deleteQuietly(oldPublicId);
     }
 
-    // ── 6. 顧客查看自己毛孩的美容紀錄（需求，2026-09-29：LIFF「我的毛孩」）──────
+    // ── 6. 顧客查看自己毛孩的美容紀錄（LIFF「我的毛孩」）──────
     // 備註內容與照片全部開放給顧客看（2026-09-29 店家決定）。呼叫端要先做擁有者檢查。
     public List<Map<String, Object>> getGroomingHistory(Long petId) {
         var notes = petGroomingNoteRepository.findByPetIdOrderByServiceDateDescCreatedAtDesc(petId);
