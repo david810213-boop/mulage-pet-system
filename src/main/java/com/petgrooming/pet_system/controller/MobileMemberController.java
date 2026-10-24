@@ -51,6 +51,8 @@ public class MobileMemberController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy/M/d");
     private static final DateTimeFormatter SHORT_DATE_FMT = DateTimeFormatter.ofPattern("M/d");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    /** 會員與寵物頁的美容紀錄、消費紀錄最多列出的筆數。 */
+    private static final int RECENT_RECORD_LIMIT = 10;
 
     private final UserService userService;
     private final PetService petService;
@@ -120,7 +122,7 @@ public class MobileMemberController {
         }
 
         List<PetGroomingNote> noteEntities = petService.getGroomingNotes(id)
-                .stream().limit(10).toList();
+                .stream().limit(RECENT_RECORD_LIMIT).toList();
         // 每筆紀錄的照片（核對時拍的＋事後補的）一次查齊
         Map<Long, List<String>> photosByNote = groomingNotePhotoService.allPhotoUrlsByNoteId(noteEntities);
         List<Map<String, Object>> notes = noteEntities.stream().<Map<String, Object>>map(n -> {
@@ -130,7 +132,7 @@ public class MobileMemberController {
         }).toList();
         List<Map<String, Object>> records = memberConsumptionService.buildPaidRecords(owner, user.getUsername())
                 .stream().filter(r -> pet.getName().equals(r.getPetName()))
-                .limit(10).map(this::recordRow).toList();
+                .limit(RECENT_RECORD_LIMIT).map(this::recordRow).toList();
         List<Map<String, Object>> upcoming = upcomingAppointments(owner, pet.getName());
 
         model.addAttribute("user", user);
@@ -217,7 +219,7 @@ public class MobileMemberController {
                 ? view.formatDiscount(wallet.getDiscount()) : null);
         model.addAttribute("totalSpent", records.stream().mapToInt(ConsumptionRecordResponse::getAmount).sum());
         model.addAttribute("orderCount", records.size());
-        model.addAttribute("records", records.stream().limit(10).map(this::recordRow).toList());
+        model.addAttribute("records", records.stream().limit(RECENT_RECORD_LIMIT).map(this::recordRow).toList());
         model.addAttribute("pets", pets);
         model.addAttribute("upcoming", upcomingAppointments(username, null));
         model.addAttribute("adminNote", customer.getAdminNote() == null ? "" : customer.getAdminNote());

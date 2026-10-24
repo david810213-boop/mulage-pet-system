@@ -34,6 +34,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PetService {
 
+    private static final int STAFF_SEARCH_LIMIT = 20;
+
     private final PetRepository petRepository;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService; // 寵物照片上傳
@@ -357,7 +359,7 @@ public class PetService {
     public List<PetSearchResult> searchForStaff(String keyword) {
         return searchByName(keyword.trim()).stream()
                 .filter(p -> p.getOwner() != null)
-                .limit(20)
+                .limit(STAFF_SEARCH_LIMIT)
                 .map(PetService::toSearchResult)
                 .toList();
     }

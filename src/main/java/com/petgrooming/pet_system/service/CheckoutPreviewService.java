@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.service;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.dto.AppointmentDetailResponse.DetailItem;
 import com.petgrooming.pet_system.dto.WalkInOrderResponse.ItemLine;
 import com.petgrooming.pet_system.service.discount.DiscountCalculator;
@@ -51,7 +52,7 @@ public class CheckoutPreviewService {
         double total = lines.stream().mapToDouble(line -> linePrice(line, isDog, discount)).sum();
         return new WalletPreview(
                 wallet.getBalance(),
-                wallet.getBalance() < PaymentService.WALLET_LOW_BALANCE_THRESHOLD,
+                wallet.getBalance() < StoreRules.WALLET_LOW_BALANCE_THRESHOLD,
                 discount,
                 wallet.isCardActive() && discount < 1.0,
                 (int) Math.round(total));

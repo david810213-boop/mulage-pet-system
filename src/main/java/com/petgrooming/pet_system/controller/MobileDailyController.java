@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
@@ -57,8 +58,6 @@ public class MobileDailyController {
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
 
-    /** 零售商品低庫存門檻，跟 Dashboard 庫存管理區塊一致 */
-    private static final int RETAIL_LOW_STOCK = 5;
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -218,14 +217,14 @@ public class MobileDailyController {
             m.put("name", p.getName());
             m.put("price", p.getPrice());
             m.put("stock", p.getStockQuantity());
-            m.put("low", p.getStockQuantity() > 0 && p.getStockQuantity() <= RETAIL_LOW_STOCK);
+            m.put("low", p.getStockQuantity() > 0 && p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD);
             m.put("out", p.getStockQuantity() <= 0);
             return m;
         }).toList();
 
         model.addAttribute("user", user);
         model.addAttribute("rows", rows);
-        model.addAttribute("lowCount", list.stream().filter(p -> p.getStockQuantity() <= RETAIL_LOW_STOCK).count());
+        model.addAttribute("lowCount", list.stream().filter(p -> p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD).count());
         model.addAttribute("isAdmin", user.isAdmin()); // 盤點只有管理者
         model.addAttribute("activeTab", "more");
         return "m/retail";

@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import com.petgrooming.pet_system.config.StoreRules;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.AppointmentAdminResponse;
@@ -45,6 +46,8 @@ import java.util.Set;
 public class MobileMvcController {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    /** 今日頁「之後的待確認」最多列出的筆數。 */
+    private static final int UPCOMING_PENDING_LIMIT = 10;
     private static final long VIEW_MODE_MAX_AGE = 60L * 60 * 24 * 365;
 
     private final AppointmentQueryService appointmentQueryService;
@@ -84,13 +87,13 @@ public class MobileMvcController {
                 .filter(a -> a.getDate().isAfter(today))
                 .sorted(Comparator.comparing(AppointmentAdminResponse::getDate)
                         .thenComparing(AppointmentAdminResponse::getStartTime))
-                .limit(10)
+                .limit(UPCOMING_PENDING_LIMIT)
                 .map(a -> cards.toCard(a, today))
                 .toList();
 
         long pendingConfirmCount = pending.size();
         long lowStockCount = retailProductService.listActive().stream()
-                .filter(p -> p.getStockQuantity() <= 5)
+                .filter(p -> p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD)
                 .count();
 
         model.addAttribute("user", user);
