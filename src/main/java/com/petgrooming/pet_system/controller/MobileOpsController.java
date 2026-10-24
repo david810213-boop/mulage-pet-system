@@ -6,7 +6,7 @@ import com.petgrooming.pet_system.dto.MobilePendingOperatorGroup;
 import com.petgrooming.pet_system.dto.TopUpRequestResponse;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
@@ -46,7 +46,7 @@ public class MobileOpsController {
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
 
     private final PendingOperatorMatrixService pendingOperatorMatrixService;
-    private final AppointmentService appointmentService;
+    private final AppointmentItemService appointmentItemService;
     private final WalkInOrderService walkInOrderService;
     private final TopUpService topUpService;
     private final OperationLogService operationLogService;
@@ -97,7 +97,7 @@ public class MobileOpsController {
             Long staffId2 = s2 != null && !s2.isBlank() ? Long.valueOf(s2) : null;
             try {
                 if ("A".equals(kinds.get(i))) {
-                    appointmentService.fillItemOperator(itemId, staffId, staffId2);
+                    appointmentItemService.fillItemOperator(itemId, staffId, staffId2);
                     operationLogService.log(user, "APPOINTMENT", "FILL_OPERATOR",
                             "項目 #" + itemId, "指定經手人 #" + staffId + "（手機版）");
                 } else {

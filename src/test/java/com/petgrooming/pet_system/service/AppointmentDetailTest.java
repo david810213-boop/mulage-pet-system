@@ -40,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AppointmentDetailTest extends IntegrationTestBase {
 
     @Autowired private AppointmentService appointmentService;
+    @Autowired private AppointmentDetailService appointmentDetailService;
     @Autowired private PaymentService paymentService;
     @Autowired private WalletService walletService;
     @Autowired private RetailProductService retailProductService;
@@ -132,7 +133,7 @@ class AppointmentDetailTest extends IntegrationTestBase {
 
     private AppointmentDetailResponse detail(Long appointmentId, User viewer) {
         return transactionTemplate.execute(status ->
-                appointmentService.getAppointmentDetail(appointmentId, viewer.getUsername()));
+                appointmentDetailService.getAppointmentDetail(appointmentId, viewer.getUsername()));
     }
 
     private Appointment appointment(User customer, String petType, int total) {

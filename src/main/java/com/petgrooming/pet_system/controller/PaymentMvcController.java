@@ -13,6 +13,8 @@ import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentDetailService;
+import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.CheckoutPreviewService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
@@ -45,6 +47,8 @@ public class PaymentMvcController {
     private final StoreSettingsService storeSettingsService;
     private final OperationLogService operationLogService;
     private final AppointmentService appointmentService;
+    private final AppointmentDetailService appointmentDetailService;
+    private final AppointmentItemService appointmentItemService;
     private final CheckoutPreviewService checkoutPreviewService;
     private final RetailProductService retailProductService; // 需求（追加）：預約結帳頁加購零售商品
     private final GroomingService groomingService; // 需求（追加）：編輯訂單新增服務項目
@@ -113,7 +117,7 @@ public class PaymentMvcController {
                 groomingService.getAllItems(), isExisting, petType, pet));
         model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(petType, pet));
 
-        var detail = appointmentService.getAppointmentDetail(appointmentId, user.getUsername());
+        var detail = appointmentDetailService.getAppointmentDetail(appointmentId, user.getUsername());
         model.addAttribute("detailItems", detail.getItems());
         Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
         if (appointment != null && appointment.getUser() != null) {
@@ -135,7 +139,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
+            appointmentItemService.addRetailItem(appointmentId, retailProductId, quantity, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -158,7 +162,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
+            appointmentItemService.addGroomingItem(appointmentId, groomingItemId, customPrice, operatorStaffId, operatorStaffId2, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -181,7 +185,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
+            appointmentItemService.addCustomItem(appointmentId, itemName, price, category, operatorStaffId, operatorStaffId2, user.getUsername());
             redirectAttributes.addFlashAttribute("successMsg", "已新增自訂項目「" + itemName + "」");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
@@ -201,7 +205,7 @@ public class PaymentMvcController {
         if (user == null) return "redirect:/auth/login";
 
         try {
-            appointmentService.removeItem(appointmentId, itemId, user.getUsername());
+            appointmentItemService.removeItem(appointmentId, itemId, user.getUsername());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }

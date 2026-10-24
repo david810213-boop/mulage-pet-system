@@ -42,7 +42,7 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final PerformanceService performanceService;
     private final WalletService walletService;
-    private final AppointmentService appointmentService;
+    private final AppointmentItemService appointmentItemService;
     private final AppointmentItemRepository appointmentItemRepository;
     private final PerformanceRecordRepository performanceRecordRepository;
     private final GroomingItemRepository groomingItemRepository;
@@ -186,8 +186,8 @@ public class PaymentService {
                                               boolean isStaffOrAdmin) {
         // 若此預約已透過「現場開單（依預約編號）」確認過服務項目，
         // 積分改依各項目個別指定的經手人計算，不再整包算給單一 appointment.staff。
-        if (appointmentService.hasCheckinOrderItems(appointment.getId())) {
-            appointmentService.awardPendingItemPointsForAppointment(appointment.getId());
+        if (appointmentItemService.hasCheckinOrderItems(appointment.getId())) {
+            appointmentItemService.awardPendingItemPointsForAppointment(appointment.getId());
         } else {
             // 舊版相容邏輯：沒有現場開單項目的預約（例如舊資料），維持原本整包算給
             // appointment.staff（或操作結帳的店家/員工）的方式，避免破壞既有資料。

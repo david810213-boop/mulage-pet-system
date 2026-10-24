@@ -47,7 +47,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
     @Autowired private PaymentService paymentService;
     @Autowired private WalletService walletService;
     @Autowired private RetailProductService retailProductService;
-    @Autowired private AppointmentService appointmentService;
+    @Autowired private AppointmentDetailService appointmentDetailService;
     @Autowired private WalkInOrderService walkInOrderService;
     @Autowired private CheckoutPreviewService checkoutPreviewService;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -252,12 +252,12 @@ class DiscountCheckoutTest extends IntegrationTestBase {
 
     private List<DetailItem> detail(Appointment appointment, User owner) {
         return transactionTemplate.execute(s ->
-                appointmentService.getAppointmentDetail(appointment.getId(), owner.getUsername()).getItems());
+                appointmentDetailService.getAppointmentDetail(appointment.getId(), owner.getUsername()).getItems());
     }
 
     private int previewWallet(Appointment appointment, User owner) {
         return transactionTemplate.execute(s -> checkoutPreviewService.forAppointment(owner.getUsername(),
-                appointmentService.getAppointmentDetail(appointment.getId(), owner.getUsername()).getItems(),
+                appointmentDetailService.getAppointmentDetail(appointment.getId(), owner.getUsername()).getItems(),
                 appointment.getPetType()).finalAmount());
     }
 
