@@ -63,11 +63,11 @@ public class PetMvcController {
         try {
             var created = petService.addPet(user.getUsername(), req);
             // 後台建立時若有選毛長，直接由店家定義寫入
-            if (coatType != null && created != null && created.getId() != null) {
+            if (coatType != null && created.getId() != null) {
                 petService.setCoatType(created.getId(), coatType);
             }
             operationLogService.log(user, "CUSTOMER", "ADD_PET",
-                    "寵物 " + (created != null ? created.getName() : "") + " #" + (created != null ? created.getId() : ""),
+                    "寵物 " + created.getName() + " #" + created.getId(),
                     req.getBreed());
             redirectAttributes.addFlashAttribute("successMsg", "寵物新增成功！");
             return "redirect:/pets";

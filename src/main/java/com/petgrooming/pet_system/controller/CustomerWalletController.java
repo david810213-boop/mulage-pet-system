@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.WalletResponse;
 import com.petgrooming.pet_system.dto.WalletTransactionResponse;
@@ -15,6 +16,7 @@ import java.util.List;
  * 顧客只能查詢自己的餘額和紀錄，無法自己儲值
  * 儲值由店家後台操作（CustomerWalletAdminController）
  */
+@Tag(name = "錢包", description = "顧客查詢自己的餘額與紀錄")
 @RestController
 @RequestMapping("/api/wallet")
 @RequiredArgsConstructor

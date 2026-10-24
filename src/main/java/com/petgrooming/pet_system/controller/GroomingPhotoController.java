@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.CloudinaryService;
@@ -20,6 +21,7 @@ import java.util.Map;
  * 核對頁的美容狀況照片上傳。網頁版與員工手機版共用，
  * 前端會先把照片壓縮再逐張上傳，拿到網址後放進核對表單的隱藏欄位。
  */
+@Tag(name = "美容照片", description = "核對頁的美容狀況照片上傳與刪除")
 @RestController
 @RequestMapping("/api/grooming-photos")
 @RequireRole({ UserRole.ADMIN, UserRole.STAFF })

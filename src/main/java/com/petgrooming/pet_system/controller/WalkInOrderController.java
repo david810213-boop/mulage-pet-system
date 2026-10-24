@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.*;
@@ -23,6 +24,7 @@ import java.util.List;
  * PUT /api/admin/walk-in-orders/items/{itemId}/operator 補填經手人
  * GET /api/admin/walk-in-orders/points-report 經手人積分結算
  */
+@Tag(name = "管理端：現場單", description = "現場開單、經手人、積分報表")
 @RestController
 @RequestMapping("/api/admin/walk-in-orders")
 @RequiredArgsConstructor

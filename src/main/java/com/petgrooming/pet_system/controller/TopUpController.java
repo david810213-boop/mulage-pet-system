@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.CreateTopUpRequest;
@@ -20,13 +21,15 @@ import java.util.List;
  * 線上轉帳儲值 API
  *
  * 顧客端：
- *   POST /api/topup            送出轉帳儲值申請
- *   GET  /api/topup/my         查自己的申請紀錄
+ *   POST /api/top-ups                    送出轉帳儲值申請
+ *   GET  /api/me/top-ups                 查自己的申請紀錄
  * 店家端：
- *   GET  /api/admin/topup/pending      待核帳清單
- *   POST /api/admin/topup/{id}/confirm 確認入帳
- *   POST /api/admin/topup/{id}/reject  駁回
+ *   GET  /api/admin/top-ups/pending      待核帳清單
+ *   POST /api/admin/top-ups/{id}/confirm 確認入帳
+ *   POST /api/admin/top-ups/{id}/reject  駁回
+ * 每支方法的第二個路徑是舊路徑，見 DeprecatedApiInterceptor
  */
+@Tag(name = "儲值申請", description = "顧客線上轉帳儲值申請與店家核帳")
 @RestController
 @RequiredArgsConstructor
 public class TopUpController {

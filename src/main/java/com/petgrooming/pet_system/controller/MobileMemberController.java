@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -213,7 +214,7 @@ public class MobileMemberController {
         model.addAttribute("initial", view.initial(customer.getName(), "客"));
         model.addAttribute("imported", username.startsWith("imported_"));
         model.addAttribute("sourceLabel", customer.getSource() != null ? customer.getSource().getLabel() : null);
-        model.addAttribute("walletBalance", wallet.getBalance() == null ? 0 : wallet.getBalance());
+        model.addAttribute("walletBalance", Objects.requireNonNullElse(wallet.getBalance(), 0));
         model.addAttribute("walletTier", wallet.isCardActive() ? wallet.getCardTierLabel() : null);
         model.addAttribute("walletDiscount", wallet.isCardActive() && wallet.getDiscount() < 1.0
                 ? view.formatDiscount(wallet.getDiscount()) : null);

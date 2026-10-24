@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
@@ -21,6 +22,7 @@ import java.util.List;
  * 店家端儲值管理 API（STAFF / ADMIN 操作）
  * 幫指定顧客儲值、查詢任意顧客的錢包與紀錄
  */
+@Tag(name = "管理端：錢包", description = "查詢會員錢包、手動儲值")
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor

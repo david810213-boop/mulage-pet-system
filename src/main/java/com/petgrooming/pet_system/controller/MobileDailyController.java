@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -92,7 +93,7 @@ public class MobileDailyController {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", r.getId());
             m.put("category", r.getCategory() != null ? r.getCategory().getLabel() : "");
-            m.put("points", r.getPoints() == null ? 0.0 : r.getPoints());
+            m.put("points", Objects.requireNonNullElse(r.getPoints(), 0.0));
             m.put("note", r.getNote());
             m.put("source", r.getAppointmentId() != null ? String.format("AP%03d", r.getAppointmentId())
                     : r.getWalkInOrderId() != null ? "現場單#" + r.getWalkInOrderId() : null);
@@ -106,9 +107,9 @@ public class MobileDailyController {
                     && r.getPoints() != null && r.getPoints() > 0);
             m.put("split", alreadySplit.contains(r.getId()) && !dual);
             m.put("label", (r.getCategory() != null ? r.getCategory().getLabel() : "")
-                    + "，" + String.format("%.1f", r.getPoints() == null ? 0.0 : r.getPoints()) + " 分");
+                    + "，" + String.format("%.1f", Objects.requireNonNullElse(r.getPoints(), 0.0)) + " 分");
             byDate.computeIfAbsent(key, k -> new ArrayList<>()).add(m);
-            dayTotal.merge(key, r.getPoints() == null ? 0.0 : r.getPoints(), Double::sum);
+            dayTotal.merge(key, Objects.requireNonNullElse(r.getPoints(), 0.0), Double::sum);
         }
 
         // 進度條：本月主要積分 ÷ 下一個級距門檻

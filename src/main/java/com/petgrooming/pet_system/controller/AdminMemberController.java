@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.MemberMergeRequest;
 import com.petgrooming.pet_system.dto.MemberNoteRequest;
@@ -26,6 +27,7 @@ import java.util.Map;
  *
  * 僅 STAFF / ADMIN 可存取；此備注永不出現在顧客端 API。
  */
+@Tag(name = "管理端：會員", description = "會員搜尋、備註、名下寵物、匯入資料合併")
 @RestController
 @RequestMapping("/api/admin/members")
 @RequiredArgsConstructor
