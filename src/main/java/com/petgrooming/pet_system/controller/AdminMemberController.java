@@ -1,6 +1,5 @@
 package com.petgrooming.pet_system.controller;
 
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.MemberMergeRequest;
 import com.petgrooming.pet_system.dto.MemberNoteRequest;
@@ -128,7 +127,6 @@ public class AdminMemberController {
     // 人工判斷後手動合併。importedUsername 必須是 imported_ 開頭的匯入暫時
     // 帳號，targetUsername 是要合併過去的真正會員帳號（通常是 line_ 開頭）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @RequireCsrf
     @PostMapping("/merge")
     public ResponseEntity<?> merge(@Valid @RequestBody MemberMergeRequest req) {
         String importedUsername = req.importedUsername();

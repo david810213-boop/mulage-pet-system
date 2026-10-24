@@ -18,6 +18,7 @@ import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
+import com.petgrooming.pet_system.support.WebLogin;
 import com.petgrooming.pet_system.utils.JwtUtils;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -103,7 +104,8 @@ class CheckoutPageTest extends IntegrationTestBase {
 
         MvcResult result = mvc.perform(post("/payments/checkout/" + appointment.getId() + "/submit")
                         .param("paymentMethod", "CASH")
-                        .cookie(new Cookie("JWT_TOKEN", jwtUtils.generateToken(staff.getUsername(), staff.getRole().name()))))
+                        .cookie(WebLogin.cookie(jwtUtils, staff))
+                        .header("X-CSRF-Token", WebLogin.CSRF))
                 .andExpect(status().isOk())
                 .andExpect(view().name("payments/checkout"))
                 .andReturn();

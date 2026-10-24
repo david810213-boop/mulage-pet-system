@@ -1,6 +1,5 @@
 package com.petgrooming.pet_system.controller;
 
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.LockGroomingItemRequest;
 import com.petgrooming.pet_system.dto.PetResponse;
@@ -68,7 +67,6 @@ public class AdminPetController {
     // 店家後台刪除寵物。有預約或消費紀錄的話會被
     // PetService.deletePet() 擋下（見該方法說明），不用在這裡重複檢查。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @RequireCsrf
     @DeleteMapping("/{petId}")
     public ResponseEntity<?> deletePet(@PathVariable Long petId) {
         petService.deletePet(petId);

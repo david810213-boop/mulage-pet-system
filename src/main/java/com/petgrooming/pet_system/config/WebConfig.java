@@ -26,8 +26,7 @@ import java.util.List;
  * 攔截順序：
  * order(1) LoginInterceptor → 確認是否登入
  * order(2) RoleInterceptor → 確認角色是否有權限（讀 @RequireRole）
- * order(3) CsrfInterceptor → 確認 CSRF token 是否正確（讀 @RequireCsrf，
- *          只標在高風險端點上）
+ * order(3) CsrfInterceptor → 以 Cookie 登入的寫入請求確認 CSRF token 是否正確（標 @SkipCsrf 的略過）
  * order(4) MobileRedirectInterceptor → 員工用手機開啟有手機版的頁面時，
  *          自動導向 /m 底下的對應頁面
  */
@@ -131,13 +130,12 @@ public class WebConfig implements WebMvcConfigurer {
                                 .order(2);
 
                 // 3. CSRF Token 驗證（在登入/角色檢查之後）
-                // 攔截全部路徑，只對有 @RequireCsrf 的 Controller 方法生效
-                // （目前只標在高風險端點：密碼變更、建立員工帳號、帳號合併、
-                // 手動儲值、刪除操作，見各該注解使用處的說明）
+                // 登入、註冊不經過 LoginInterceptor，沒有登入狀態，CsrfInterceptor 會自動略過；
+                // /auth/switch-user 是已登入的操作，要檢查
+                // 攔截全部路徑，以 Cookie 登入的 POST／PUT／PATCH／DELETE 一律檢查（標 @SkipCsrf 的除外）
                 registry.addInterceptor(csrfInterceptor)
                                 .addPathPatterns("/**")
                                 .excludePathPatterns(
-                                                "/auth/**",
                                                 "/api/line/login",
                                                 "/api/line/bind",
                                                 "/test/**",

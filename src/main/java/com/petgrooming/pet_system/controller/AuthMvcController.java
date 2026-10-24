@@ -87,9 +87,8 @@ public class AuthMvcController {
             User user = userOpt.get();
 
             // 4. 關鍵核心：生成 JWT Token
-            // CSRF Token 防護——額外產生一組隨機值
-            // 內嵌進 JWT，同時另外用一個可讀 Cookie 存起來，供高風險操作
-            // （密碼變更、建立員工帳號、帳號合併、手動儲值、刪除操作）核對用。
+            // CSRF Token 防護——額外產生一組隨機值內嵌進 JWT，同時另外用一個可讀 Cookie 存起來，
+            // 所有以 Cookie 登入的寫入請求都要帶上這個值（見 CsrfInterceptor）。
             String csrfToken = UUID.randomUUID().toString();
             String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "WEB", csrfToken);
 

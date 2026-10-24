@@ -3,7 +3,6 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.exception.DuplicateRequestException;
 import java.util.UUID;
 import com.petgrooming.pet_system.annotation.CurrentUser;
-import com.petgrooming.pet_system.annotation.RequireCsrf;
 import com.petgrooming.pet_system.annotation.RequireRole;
 import com.petgrooming.pet_system.dto.DepositRequest;
 import com.petgrooming.pet_system.dto.PetRequest;
@@ -259,7 +258,6 @@ public class WalletMvcController {
     // ── POST /admin/wallets/{username}/deposit ─────────────────────────────
     // 幫顧客儲值
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
-    @RequireCsrf
     @PostMapping("/{username}/deposit")
     public String deposit(@PathVariable String username,
                           @ModelAttribute DepositRequest req, // 修正（2026-10-02）：不用 @Valid，金額檢查交給

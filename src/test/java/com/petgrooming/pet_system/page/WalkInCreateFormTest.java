@@ -12,8 +12,8 @@ import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
 import com.petgrooming.pet_system.support.TestData;
+import com.petgrooming.pet_system.support.WebLogin;
 import com.petgrooming.pet_system.utils.JwtUtils;
-import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,7 +156,7 @@ class WalkInCreateFormTest extends IntegrationTestBase {
     }
 
     private MockHttpServletRequestBuilder as(User user, MockHttpServletRequestBuilder request) {
-        return request.cookie(new Cookie("JWT_TOKEN", jwtUtils.generateToken(user.getUsername(), user.getRole().name())));
+        return WebLogin.as(jwtUtils, user, request);
     }
 
     private static String note() {

@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.UUID;
 import java.util.AbstractMap;
 import java.util.Map;
 
@@ -96,7 +97,10 @@ public class LineAuthController {
         boolean isNewMember = result.getValue();
 
         // 4. 簽發本系統的 JWT（標記 source=LINE）
-        String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "LINE");
+        // LIFF 以 Bearer 呼叫 API 不需要 CSRF token；但這裡同時寫入 Cookie，
+        // 若之後轉到網頁版沿用 Cookie 登入，寫入請求仍要帶 token（見 CsrfInterceptor）
+        String csrfToken = UUID.randomUUID().toString();
+        String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name(), "LINE", csrfToken);
 
         operationLogService.log(user, "AUTH", isNewMember ? "LINE_REGISTER" : "LINE_LOGIN",
                 user.getUsername(), null);
@@ -107,6 +111,9 @@ public class LineAuthController {
         response.addHeader("Set-Cookie",
                 CookieUtils.buildJwtCookieHeader(
                         "JWT_TOKEN", token, 86400, cookieSecure));
+        response.addHeader("Set-Cookie",
+                CookieUtils.buildReadableCookieHeader(
+                        "XSRF-TOKEN", csrfToken, 86400, cookieSecure));
 
         LineLoginResponse body = new LineLoginResponse(token, UserResponse.from(user), isNewMember);
         return ResponseEntity.ok(body);
