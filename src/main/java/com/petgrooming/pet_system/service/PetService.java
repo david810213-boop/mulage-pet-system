@@ -171,7 +171,7 @@ public class PetService {
     }
 
     // ── 2. 查詢自己的所有寵物 ────────────────────────────────────────────
-    // 改用 username 查詢，與 AppointmentService.getMyAppointments() 相同做法
+    // 改用 username 查詢，與 AppointmentQueryService.getMyAppointments() 相同做法
     public List<PetResponse> getMyPets(String username) {
 
         // 確認 user 存在，避免靜默回傳空清單讓呼叫端誤以為「此人只是沒有寵物」

@@ -19,6 +19,7 @@ import com.petgrooming.pet_system.service.StoreSettingsService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.RetailProductService;
 import com.petgrooming.pet_system.service.UserService;
+import com.petgrooming.pet_system.service.WalkInOrderCheckService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
 import com.petgrooming.pet_system.service.WalkInPaymentService;
@@ -67,6 +68,7 @@ public class MobileWalkInController {
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
 
     private final WalkInOrderService walkInOrderService;
+    private final WalkInOrderCheckService walkInOrderCheckService;
     private final WalkInOrderOperatorService walkInOrderOperatorService;
     private final WalkInPaymentService walkInPaymentService;
     private final UserService userService;
@@ -251,7 +253,7 @@ public class MobileWalkInController {
     @PostMapping("/{id}/end-service")
     public String endService(@PathVariable Long id, HttpServletRequest request, RedirectAttributes ra) {
         return runAction(id, request, ra, "END_SERVICE", "已結束服務，已通知家長來接",
-                u -> walkInOrderService.endService(id, u.getUsername()), "/m/walk-in/" + id);
+                u -> walkInOrderCheckService.endService(id, u.getUsername()), "/m/walk-in/" + id);
     }
 
     @PostMapping("/{id}/confirm-wire")
@@ -340,7 +342,7 @@ public class MobileWalkInController {
             return "redirect:/auth/login";
         }
         try {
-            walkInOrderService.finalCheck(id, note, signatureData, user.getUsername(), photoUrls, photoPublicIds);
+            walkInOrderCheckService.finalCheck(id, note, signatureData, user.getUsername(), photoUrls, photoPublicIds);
             operationLogService.log(user, "WALKIN", "FINAL_CHECK", "現場單 #" + id,
                     (note == null ? "" : note) + "（手機版）");
             ra.addFlashAttribute("toast", "核對完成，可以結帳了");

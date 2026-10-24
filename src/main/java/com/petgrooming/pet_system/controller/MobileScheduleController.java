@@ -7,7 +7,7 @@ import com.petgrooming.pet_system.dto.TimeSlotResponse;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.ClosedDateService;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
 import com.petgrooming.pet_system.service.OperationLogService;
@@ -49,8 +49,7 @@ public class MobileScheduleController {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
-
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final SlotCapacityService slotCapacityService;
     private final ClosedDateService closedDateService;
     private final PaymentService paymentService;
@@ -76,7 +75,7 @@ public class MobileScheduleController {
         List<Map<String, Object>> slots = new ArrayList<>();
         int totalCap = 0;
         int totalBooked = 0;
-        for (TimeSlotResponse s : appointmentService.getAvailableSlots(d)) {
+        for (TimeSlotResponse s : appointmentQueryService.getAvailableSlots(d)) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("time", s.getStartTime().format(TIME_FMT));
             m.put("iso", s.getStartTime().toString());

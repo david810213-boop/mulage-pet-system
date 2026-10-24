@@ -22,8 +22,7 @@ public class AppointmentListService {
     private static final Comparator<AppointmentAdminResponse> BY_DATE_TIME =
             Comparator.comparing(AppointmentAdminResponse::getDate)
                     .thenComparing(AppointmentAdminResponse::getStartTime);
-
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final DashboardService dashboardService;
 
     /** 網頁版預約列表的篩選條件；空白代表不限。付款狀態 PAID＝已付款，其他值＝未付款。 */
@@ -51,7 +50,7 @@ public class AppointmentListService {
 
     /** 店家後台看完整資訊（含內部備註、確認狀態）。 */
     public StaffList forStaff(Filter filter, LocalDate today) {
-        List<AppointmentAdminResponse> all = appointmentService.getAllForAdmin();
+        List<AppointmentAdminResponse> all = appointmentQueryService.getAllForAdmin();
         StaffSummary summary = new StaffSummary(
                 all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(today)).count(),
                 all.stream().filter(a -> !a.isCancelled() && a.getDate().isEqual(today)
@@ -66,7 +65,7 @@ public class AppointmentListService {
     }
 
     public List<AppointmentResponse> forCustomer(String username, Filter filter) {
-        return appointmentService.getMyAppointments(username).stream()
+        return appointmentQueryService.getMyAppointments(username).stream()
                 .filter(a -> filter.matches(a.getDate(), a.getStatus(), a.isPaid(),
                         a.getAppointmentCode(), a.getId(), a.getOwnerName(), a.getPetName()))
                 .toList();
@@ -87,7 +86,7 @@ public class AppointmentListService {
      * 最後才看分頁 f：upcoming 近期（預設）/ pending 待確認 / serving 服務中 / past 過去 60 天 / cancelled 已取消。
      */
     public MobileList forMobile(String f, LocalDate date, String keyword, LocalDate today) {
-        List<AppointmentAdminResponse> all = appointmentService.getAllForAdmin();
+        List<AppointmentAdminResponse> all = appointmentQueryService.getAllForAdmin();
         String kw = keyword == null ? "" : keyword.trim().toLowerCase();
 
         List<AppointmentAdminResponse> picked;

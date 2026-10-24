@@ -13,6 +13,8 @@ import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentListService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
+import com.petgrooming.pet_system.service.AppointmentCheckInService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.ClosedDateService;
@@ -47,6 +49,8 @@ import java.util.List;
 public class AppointmentMvcController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentCheckInService appointmentCheckInService;
+    private final AppointmentQueryService appointmentQueryService;
     private final AppointmentItemService appointmentItemService;
     private final AppointmentListService appointmentListService;
     private final GroomingService groomingItemService;
@@ -139,7 +143,7 @@ public class AppointmentMvcController {
     public String checkinOrderForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
 
-        var target = appointmentService.getAllForAdmin().stream()
+        var target = appointmentQueryService.getAllForAdmin().stream()
                 .filter(a -> a.getId().equals(id))
                 .findFirst()
                 .orElse(null);
@@ -148,12 +152,12 @@ public class AppointmentMvcController {
         }
         model.addAttribute("appointment", target);
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
-        boolean isExisting = appointmentService.isExistingCustomerPet(id);
+        boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
         // 需求（追加，2026-08-28）：店家反饋現場加單流程要加快，不要整份菜單都列出來，
         // 改成只顯示符合這隻寵物體型的項目——跟結帳頁（PaymentMvcController.checkoutPage）
         // 的狗狗體重篩選是同一套邏輯，這裡額外把貓咪毛髮分類篩選也一併補上
         // （結帳頁目前只做了狗狗，沒做貓咪，是既有的缺口，先不動它，只在這裡補齊）。
-        var pet = appointmentService.getPetForAppointment(id);
+        var pet = appointmentQueryService.getPetForAppointment(id);
         model.addAttribute("pet", pet); // 需求（追加，2026-08-29）：頁面上顯示鎖定套餐狀態＋解鎖按鈕要用
         model.addAttribute("groomingItems", filterItemsForPetShape(
                 groomingItemService.getAllItems(), isExisting, target.getPetType(), pet));
@@ -201,7 +205,7 @@ public class AppointmentMvcController {
                 opIds2 = new ArrayList<>();
                 for (String s : operatorStaffIds2) opIds2.add(s != null && !s.isBlank() ? Long.valueOf(s.trim()) : null);
             }
-            appointmentService.confirmCheckinOrder(id, itemCodes, opIds, opIds2, user.getUsername());
+            appointmentCheckInService.confirmCheckinOrder(id, itemCodes, opIds, opIds2, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
                     itemCodes != null ? String.join("、", itemCodes) : null);
             redirectAttributes.addFlashAttribute("successMsg", "已依現場情況開立服務項目，現在可以開始服務");
@@ -269,7 +273,7 @@ public class AppointmentMvcController {
                         RedirectAttributes redirectAttributes,
                         @CurrentUser User user) {
         try {
-            appointmentService.startProgress(id, user.getUsername());
+            appointmentCheckInService.startProgress(id, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "START", "預約 #" + id, null);
             redirectAttributes.addFlashAttribute("successMsg", "已開始服務，狀態轉為進行中");
         } catch (IllegalArgumentException e) {
@@ -286,7 +290,7 @@ public class AppointmentMvcController {
                              RedirectAttributes redirectAttributes,
                              @CurrentUser User user) {
         try {
-            appointmentService.endService(id, user.getUsername());
+            appointmentCheckInService.endService(id, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "END_SERVICE", "預約 #" + id, null);
             redirectAttributes.addFlashAttribute("successMsg", "已結束服務，已通知家長來店接寵物");
         } catch (IllegalArgumentException e) {
@@ -302,7 +306,7 @@ public class AppointmentMvcController {
     public String finalCheckForm(@PathVariable Long id, Model model, @CurrentUser User user) {
         model.addAttribute("user", user);
 
-        var target = appointmentService.getAllForAdmin().stream()
+        var target = appointmentQueryService.getAllForAdmin().stream()
                 .filter(a -> a.getId().equals(id))
                 .findFirst()
                 .orElse(null);
@@ -312,7 +316,7 @@ public class AppointmentMvcController {
         model.addAttribute("appointment", target);
         model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id));
         // 需求（追加）：僅限既有客戶／適用物種，這隻寵物不符合資格的項目直接從選單濾掉
-        boolean isExisting = appointmentService.isExistingCustomerPet(id);
+        boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
         var filteredItems = filterItemsFor(groomingItemService.getAllItems(), isExisting, target.getPetType());
         model.addAttribute("groomingItems", filteredItems); // 需求（追加）：核對頁也能直接編輯訂單項目
         model.addAttribute("retailProducts", retailProductService.listActive());
@@ -332,13 +336,13 @@ public class AppointmentMvcController {
                                    @CurrentUser User user) {
 
         if (bindingResult.hasErrors()) {
-            var target = appointmentService.getAllForAdmin().stream()
+            var target = appointmentQueryService.getAllForAdmin().stream()
                     .filter(a -> a.getId().equals(id))
                     .findFirst().orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
             model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：漏帶導致誤顯示「尚未開單」
-            boolean isExisting1 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
+            boolean isExisting1 = appointmentQueryService.isExistingCustomerPet(id); // 需求（追加）
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting1, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("performanceCategories", PerformanceCategory.values());
@@ -348,18 +352,18 @@ public class AppointmentMvcController {
         }
 
         try {
-            appointmentService.finalCheck(id, req, user.getUsername());
+            appointmentCheckInService.finalCheck(id, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "FINAL_CHECK", "預約 #" + id, req.getNote());
             redirectAttributes.addFlashAttribute("successMsg", "核對完成，已可進行結帳");
             return "redirect:/appointments?status=IN_PROGRESS";
         } catch (IllegalArgumentException e) {
-            var target = appointmentService.getAllForAdmin().stream()
+            var target = appointmentQueryService.getAllForAdmin().stream()
                     .filter(a -> a.getId().equals(id))
                     .findFirst().orElse(null);
             model.addAttribute("user", user);
             model.addAttribute("appointment", target);
             model.addAttribute("checkinItems", appointmentItemService.getCheckinItems(id)); // 需求（追加）修正：同上
-            boolean isExisting2 = appointmentService.isExistingCustomerPet(id); // 需求（追加）
+            boolean isExisting2 = appointmentQueryService.isExistingCustomerPet(id); // 需求（追加）
             model.addAttribute("groomingItems", filterItemsFor(groomingItemService.getAllItems(), isExisting2, target != null ? target.getPetType() : null));
             model.addAttribute("retailProducts", retailProductService.listActive());
             model.addAttribute("errorMsg", e.getMessage());
@@ -438,7 +442,7 @@ public class AppointmentMvcController {
     public String slots(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date, Model model, @CurrentUser User user) {
 
         model.addAttribute("user", user);
-        model.addAttribute("slots", appointmentService.getAvailableSlots(date));
+        model.addAttribute("slots", appointmentQueryService.getAvailableSlots(date));
         model.addAttribute("selectedDate", date);
         return "appointments/slots";
     }
@@ -525,7 +529,7 @@ public class AppointmentMvcController {
         if (date == null) date = LocalDate.now();
         model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
-        model.addAttribute("slots", appointmentService.getAvailableSlots(date));
+        model.addAttribute("slots", appointmentQueryService.getAvailableSlots(date));
         // 需求 16：公休日設定
         model.addAttribute("isClosedToday", closedDateService.isClosed(date));
         model.addAttribute("upcomingClosedDates", closedDateService.listUpcoming());

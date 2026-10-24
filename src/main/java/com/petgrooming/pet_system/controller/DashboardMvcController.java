@@ -2,7 +2,7 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.model.User;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.DashboardService;
 import com.petgrooming.pet_system.service.PetService;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/dashboard")
 @RequiredArgsConstructor
 public class DashboardMvcController {
-
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final PetService petService;
     private final DashboardService dashboardService;
 
@@ -46,7 +45,7 @@ public class DashboardMvcController {
             model.addAttribute("today", dashboard.today());
         } else {
             model.addAttribute("appointments",
-                    appointmentService.getMyAppointments(user.getUsername()));
+                    appointmentQueryService.getMyAppointments(user.getUsername()));
             model.addAttribute("pets",
                     petService.getMyPets(user.getUsername()));
         }

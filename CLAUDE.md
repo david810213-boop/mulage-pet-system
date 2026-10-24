@@ -53,7 +53,7 @@
 
 ## 六、已知效能技術債（尚未解決）
 
-`AppointmentService.getAllForAdmin()` 對每一筆歷史預約各自觸發多次額外查詢（N+1 查詢問題），Dashboard 跟部分後台列表頁會因此變慢。跨區域網路延遲問題已透過資料庫遷移解決，但 **N+1 查詢本身還沒修**，隨資料量增加可能再次變慢。修法方向：`getAllForAdmin()` 改用 `@BatchSize` 或 `JOIN FETCH` 把 N 次查詢併成 1~2 次；Dashboard 首頁改成只查「今天」「待確認」等真正需要的少量資料，不要撈全部歷史。完整排查記錄見 `docs/疑難排解與環境設定指南.md` 第十四節。
+`AppointmentQueryService.getAllForAdmin()` 對每一筆歷史預約各自觸發多次額外查詢（N+1 查詢問題），Dashboard 跟部分後台列表頁會因此變慢。跨區域網路延遲問題已透過資料庫遷移解決，但 **N+1 查詢本身還沒修**，隨資料量增加可能再次變慢。修法方向：`getAllForAdmin()` 改用 `@BatchSize` 或 `JOIN FETCH` 把 N 次查詢併成 1~2 次；Dashboard 首頁改成只查「今天」「待確認」等真正需要的少量資料，不要撈全部歷史。完整排查記錄見 `docs/疑難排解與環境設定指南.md` 第十四節。
 
 ## 七、給接手對話的操作提醒（每次改動都要遵守）
 

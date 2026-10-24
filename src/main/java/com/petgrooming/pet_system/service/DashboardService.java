@@ -23,8 +23,7 @@ public class DashboardService {
     private static final int PREVIEW_SIZE = 8;
     /** 零售商品沒有個別安全庫存量欄位，先以固定門檻判斷低庫存。 */
     private static final int LOW_STOCK_THRESHOLD = 5;
-
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final PaymentService paymentService;
     private final WalkInOrderService walkInOrderService;
     private final TopUpService topUpService;
@@ -50,7 +49,7 @@ public class DashboardService {
 
     public StaffDashboard staffDashboard() {
         LocalDate today = LocalDate.now();
-        List<AppointmentAdminResponse> allAdmin = appointmentService.getAllForAdmin();
+        List<AppointmentAdminResponse> allAdmin = appointmentQueryService.getAllForAdmin();
         List<AppointmentAdminResponse> upcomingPending = upcomingPendingConfirm(allAdmin, today);
         List<User> allCustomers = userService.getAllCustomers();
         List<User> recentCustomers = allCustomers.stream().limit(PREVIEW_SIZE).toList();

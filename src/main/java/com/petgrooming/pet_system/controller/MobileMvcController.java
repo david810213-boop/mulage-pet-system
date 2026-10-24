@@ -19,6 +19,8 @@ import com.petgrooming.pet_system.model.AppointmentItem;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentListService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
+import com.petgrooming.pet_system.service.AppointmentCheckInService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.AppointmentDetailService;
 import com.petgrooming.pet_system.service.AppointmentItemService;
@@ -81,6 +83,8 @@ public class MobileMvcController {
     private static final long VIEW_MODE_MAX_AGE = 60L * 60 * 24 * 365;
 
     private final AppointmentService appointmentService;
+    private final AppointmentCheckInService appointmentCheckInService;
+    private final AppointmentQueryService appointmentQueryService;
     private final AppointmentDetailService appointmentDetailService;
     private final AppointmentItemService appointmentItemService;
     private final AppointmentListService appointmentListService;
@@ -121,7 +125,7 @@ public class MobileMvcController {
 
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
-        List<AppointmentAdminResponse> all = appointmentService.getAllForAdmin();
+        List<AppointmentAdminResponse> all = appointmentQueryService.getAllForAdmin();
 
         List<MobileAppointmentCard> todayCards = all.stream()
                 .filter(a -> !a.isCancelled() && a.getDate().isEqual(today))
@@ -270,7 +274,7 @@ public class MobileMvcController {
         }
         PetResponse pet = null;
         try {
-            pet = appointmentService.getPetForAppointment(id);
+            pet = appointmentQueryService.getPetForAppointment(id);
         } catch (IllegalArgumentException e) {
             // 找不到寵物檔案（例如寵物已刪除）不影響顯示預約本身
         }
@@ -301,7 +305,7 @@ public class MobileMvcController {
     public String start(@PathVariable Long id, @RequestParam(required = false) String back,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return runAction(id, back, request, redirectAttributes, "START", "已開始服務",
-                user -> appointmentService.startProgress(id, user.getUsername()));
+                user -> appointmentCheckInService.startProgress(id, user.getUsername()));
     }
 
     // ── 結束服務：通知家長來店接寵物 ─────────────────────────────────────
@@ -309,7 +313,7 @@ public class MobileMvcController {
     public String endService(@PathVariable Long id, @RequestParam(required = false) String back,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         return runAction(id, back, request, redirectAttributes, "END_SERVICE", "已結束服務，已通知家長來接",
-                user -> appointmentService.endService(id, user.getUsername()));
+                user -> appointmentCheckInService.endService(id, user.getUsername()));
     }
 
     // ── 取消預約 ────────────────────────────────────────────────────────
@@ -351,8 +355,8 @@ public class MobileMvcController {
         if (a == null || a.isCancelled()) {
             return "redirect:/m/appointments";
         }
-        boolean isExisting = appointmentService.isExistingCustomerPet(id);
-        PetResponse pet = appointmentService.getPetForAppointment(id);
+        boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
+        PetResponse pet = appointmentQueryService.getPetForAppointment(id);
         List<GroomingItemResponse> items = groomingMenuFilter.filterForPetShape(
                 groomingItemService.getAllItems(), isExisting, a.getPetType(), pet);
         model.addAttribute("weightMissing", groomingMenuFilter.needsWeight(a.getPetType(), pet));
@@ -391,7 +395,7 @@ public class MobileMvcController {
             return "redirect:/m/appointments/" + id + "/checkin";
         }
         try {
-            appointmentService.confirmCheckinOrder(id, itemCodes, parseStaffIds(operatorStaffIds),
+            appointmentCheckInService.confirmCheckinOrder(id, itemCodes, parseStaffIds(operatorStaffIds),
                     parseStaffIds(operatorStaffIds2), user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "CHECKIN_ORDER", "預約 #" + id,
                     String.join("、", itemCodes) + "（手機版）");
@@ -419,7 +423,7 @@ public class MobileMvcController {
         List<AppointmentItem> items = appointmentItemService.getCheckinItems(id);
         // 跟網頁版核對頁同一套：只篩「僅限既有客戶」＋「適用物種」，不篩體型，
         // 讓店員現場可以補任何尺寸的項目
-        boolean isExisting = appointmentService.isExistingCustomerPet(id);
+        boolean isExisting = appointmentQueryService.isExistingCustomerPet(id);
         List<GroomingItemResponse> addable = groomingMenuFilter.filterFor(
                 groomingItemService.getAllItems(), isExisting, a.getPetType());
         MobileAppointmentCard card = toCard(a, LocalDate.now());
@@ -458,7 +462,7 @@ public class MobileMvcController {
             req.setSignatureData(signatureData);
             req.setPhotoUrls(photoUrls);
             req.setPhotoPublicIds(photoPublicIds);
-            appointmentService.finalCheck(id, req, user.getUsername());
+            appointmentCheckInService.finalCheck(id, req, user.getUsername());
             operationLogService.log(user, "APPOINTMENT", "FINAL_CHECK", "預約 #" + id,
                     (note == null ? "" : note) + "（手機版）");
             redirectAttributes.addFlashAttribute("toast", "核對完成，可以結帳了");
@@ -547,7 +551,7 @@ public class MobileMvcController {
         int walletAmount = paymentService.previewWalletAmount(id);
         PetResponse pet = null;
         try {
-            pet = appointmentService.getPetForAppointment(id);
+            pet = appointmentQueryService.getPetForAppointment(id);
         } catch (IllegalArgumentException e) {
             // 找不到寵物檔案不影響結帳
         }
@@ -605,7 +609,7 @@ public class MobileMvcController {
 
             // 跟網頁版一樣：狗狗還沒鎖定固定套餐的話，結帳完提醒更新體重
             try {
-                CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes, appointmentService.getPetForAppointment(id));
+                CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes, appointmentQueryService.getPetForAppointment(id));
             } catch (IllegalArgumentException ignore) {
                 // 提醒只是輔助功能，找不到寵物就不提醒
             }
@@ -697,7 +701,7 @@ public class MobileMvcController {
     }
 
     private AppointmentAdminResponse findAppointment(Long id) {
-        return appointmentService.getAllForAdmin().stream()
+        return appointmentQueryService.getAllForAdmin().stream()
                 .filter(x -> x.getId().equals(id))
                 .findFirst()
                 .orElse(null);

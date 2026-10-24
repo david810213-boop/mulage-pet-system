@@ -12,7 +12,7 @@ import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.PricingSettings;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
-import com.petgrooming.pet_system.service.AppointmentService;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.AppointmentDetailService;
 import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.CheckoutPreviewService;
@@ -46,7 +46,7 @@ public class PaymentMvcController {
 
     private final StoreSettingsService storeSettingsService;
     private final OperationLogService operationLogService;
-    private final AppointmentService appointmentService;
+    private final AppointmentQueryService appointmentQueryService;
     private final AppointmentDetailService appointmentDetailService;
     private final AppointmentItemService appointmentItemService;
     private final CheckoutPreviewService checkoutPreviewService;
@@ -109,9 +109,9 @@ public class PaymentMvcController {
      * 以及會員的儲值金餘額與折扣後金額預覽（跟實際結帳逐項目扣款用同一份資料，見 CheckoutPreviewService）。
      */
     private void addMenuAndPreview(Model model, Long appointmentId, User user) {
-        boolean isExisting = appointmentService.isExistingCustomerPet(appointmentId);
-        String petType = appointmentService.getPetTypeForAppointment(appointmentId);
-        var pet = appointmentService.getPetForAppointment(appointmentId);
+        boolean isExisting = appointmentQueryService.isExistingCustomerPet(appointmentId);
+        String petType = appointmentQueryService.getPetTypeForAppointment(appointmentId);
+        var pet = appointmentQueryService.getPetForAppointment(appointmentId);
         model.addAttribute("pet", pet);
         model.addAttribute("groomingItems", groomingMenuFilter.filterForPetShape(
                 groomingService.getAllItems(), isExisting, petType, pet));
@@ -119,7 +119,7 @@ public class PaymentMvcController {
 
         var detail = appointmentDetailService.getAppointmentDetail(appointmentId, user.getUsername());
         model.addAttribute("detailItems", detail.getItems());
-        Appointment appointment = appointmentService.findAppointment(appointmentId).orElse(null);
+        Appointment appointment = appointmentQueryService.findAppointment(appointmentId).orElse(null);
         if (appointment != null && appointment.getUser() != null) {
             model.addAttribute("baseAmount", appointment.getTotalAmount());
             CheckoutPageSupport.addWalletPreview(model, checkoutPreviewService.forAppointment(
@@ -237,7 +237,7 @@ public class PaymentMvcController {
                     req.getPaymentMethod() != null ? req.getPaymentMethod().name() : null);
 
             CheckoutPageSupport.addWeightUpdateReminder(redirectAttributes,
-                    appointmentService.getPetForAppointment(appointmentId));
+                    appointmentQueryService.getPetForAppointment(appointmentId));
 
             // 需求（追加）：匯款結帳當下還沒真的收到錢，只是進入「待對帳」狀態，
             // 這時候還沒有真正完成的交易紀錄可看，不該跳去交易紀錄頁；
