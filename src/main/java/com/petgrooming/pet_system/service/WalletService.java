@@ -137,6 +137,7 @@ public class WalletService {
      * 鎖定讀取永遠讀最新已提交資料（含本交易自己的寫入），也不會拿到快取中的舊值。
      * 不可改用 refresh：實體已持有鎖時 Hibernate 會改發一般查詢，在 MySQL 可重複讀隔離層級下
      * 只讀到交易開始時的快照；也不可只用鎖定查詢：實體已在快取中時 Hibernate 會回傳舊值。
+     * 時段名額、零售庫存同一套做法，見 docs/adr/0002-pessimistic-locking.md。
      */
     private Wallet lockWallet(String username) {
         Wallet cached = getOrCreateWallet(username);

@@ -31,6 +31,8 @@ import java.util.List;
  *
  * 不引入 juniversalchardet 等外部套件——嚴格解碼逐一嘗試已足夠判斷，也符合
  * 本專案「CSV 手刻、不加函式庫」的既有做法。
+ *
+ * 背景見 docs/adr/0007-csv-encoding.md。
  */
 public final class CsvImportFileReader {
 

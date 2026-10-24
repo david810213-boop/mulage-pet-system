@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
  * 接住業務錯誤、在原畫面顯示訊息；改繼承 RuntimeException 會讓這些錯誤變成 500 錯誤頁。
  * 這也是為什麼 API 例外處理只對 BusinessException 回傳原始訊息，
  * 其他 IllegalArgumentException（例如函式庫丟出的）一律回通用訊息，避免內部細節外洩。
+ *
+ * 背景與取捨見 docs/adr/0003-business-exception.md。
  */
 public class BusinessException extends IllegalArgumentException {
 

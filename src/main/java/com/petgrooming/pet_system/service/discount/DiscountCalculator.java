@@ -19,6 +19,8 @@ import java.util.List;
  *   <li>會員折扣只限儲值金付款，且項目本身可享會員折扣（GroomingItem.discountEligible）</li>
  *   <li>兩者都適用時取價格較低者；同價時以服務促銷計</li>
  * </ul>
+ *
+ * 背景與取捨見 docs/adr/0004-discount-strategy.md。
  */
 @Component
 public class DiscountCalculator {
