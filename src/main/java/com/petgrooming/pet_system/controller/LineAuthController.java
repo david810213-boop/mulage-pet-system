@@ -14,6 +14,7 @@ import com.petgrooming.pet_system.exception.MemberException;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.ClaimAttemptLimiter;
 import com.petgrooming.pet_system.service.LineBindService;
+import com.petgrooming.pet_system.service.MemberClaimService;
 import com.petgrooming.pet_system.service.MemberImportService;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
@@ -59,7 +60,7 @@ public class LineAuthController {
     private final RestClient restClient = RestClient.create();
     private final OperationLogService operationLogService;
     private final LineBindService lineBindService; // 店員綁定 LINE 用
-    private final MemberImportService memberImportService; // 需求（追加）：老客戶認領既有匯入資料
+    private final MemberClaimService memberClaimService;
     private final ClaimAttemptLimiter claimAttemptLimiter; // 需求（追加，2026-09-30）：查詢／認領次數限制
 
     // 正式環境（HTTPS）務必在 Railway 環境變數設 COOKIE_SECURE=true；本機開發保持預設 false。
@@ -165,7 +166,7 @@ public class LineAuthController {
             throw new MemberException(ErrorCode.TOO_MANY_REQUESTS, "嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助");
         }
         User current = userService.getUserEntityByUsername(username);
-        return ResponseEntity.ok(memberImportService.lookupForClaim(current, phone));
+        return ResponseEntity.ok(memberClaimService.lookupForClaim(current, phone));
     }
 
     // ── POST /api/line/claim-by-phone ───────────────────────────────────
@@ -186,7 +187,7 @@ public class LineAuthController {
             throw new MemberException(ErrorCode.TOO_MANY_REQUESTS, "嘗試次數太多，請 10 分鐘後再試，或直接聯絡店家協助");
         }
         User current = userService.getUserEntityByUsername(username);
-        User claimed = memberImportService.claimByPhone(current, phone, body.verification());
+        User claimed = memberClaimService.claimByPhone(current, phone, body.verification());
         claimAttemptLimiter.reset(username);
         operationLogService.logByUsername(username, "CUSTOMER", "CLAIM_MEMBER_DATA", claimed.getName(), phone);
         return ResponseEntity.ok(UserResponse.from(claimed));

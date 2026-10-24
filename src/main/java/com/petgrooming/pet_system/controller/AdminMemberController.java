@@ -8,7 +8,7 @@ import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.PetSearchResult;
 import com.petgrooming.pet_system.dto.UserResponse;
 import com.petgrooming.pet_system.enums.UserRole;
-import com.petgrooming.pet_system.service.MemberImportService;
+import com.petgrooming.pet_system.service.MemberClaimService;
 import com.petgrooming.pet_system.service.PetService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.validation.Valid;
@@ -34,7 +34,7 @@ public class AdminMemberController {
 
     private final UserService userService;
     private final PetService petService;
-    private final MemberImportService memberImportService; // 需求（追加，2026-09-08）：手動綁定既有匯入資料
+    private final MemberClaimService memberClaimService;
 
     // ── GET /api/admin/members/search?keyword=xxx ───────────────────────────
     // 現場開單：依姓名/帳號搜尋會員，解決 LINE 登入會員帳號是 line_xxx 內碼問題
@@ -109,7 +109,7 @@ public class AdminMemberController {
     public ResponseEntity<?> merge(@Valid @RequestBody MemberMergeRequest req) {
         String importedUsername = req.importedUsername();
         String targetUsername = req.targetUsername();
-        memberImportService.manualMerge(importedUsername, targetUsername);
+        memberClaimService.manualMerge(importedUsername, targetUsername);
         return ResponseEntity.ok(Map.of(
                 "message", "已將 " + importedUsername + " 的資料合併到 " + targetUsername));
     }

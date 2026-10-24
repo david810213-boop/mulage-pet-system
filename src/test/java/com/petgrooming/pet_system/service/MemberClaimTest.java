@@ -27,9 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 再以毛孩名字（沒有毛孩則以姓名）確認身分後認領，資料連同錢包一併過戶。
  */
 class MemberClaimTest extends IntegrationTestBase {
-
-    @Autowired
-    private MemberImportService memberImportService;
+    @Autowired private MemberClaimService memberClaimService;
 
     @Autowired
     private UserRepository userRepository;
@@ -48,7 +46,7 @@ class MemberClaimTest extends IntegrationTestBase {
         String phone = randomPhone();
         importedMember("王小明", phone, true);
 
-        Map<String, Object> result = memberImportService.lookupForClaim(newLineUser(), phone);
+        Map<String, Object> result = memberClaimService.lookupForClaim(newLineUser(), phone);
 
         assertThat(result).containsEntry("matched", true)
                 .containsEntry("maskedName", "王○明")
@@ -57,7 +55,7 @@ class MemberClaimTest extends IntegrationTestBase {
 
     @Test
     void lookupWithUnknownPhoneFindsNothing() {
-        Map<String, Object> result = memberImportService.lookupForClaim(newLineUser(), randomPhone());
+        Map<String, Object> result = memberClaimService.lookupForClaim(newLineUser(), randomPhone());
 
         assertThat(result).containsEntry("matched", false);
     }
@@ -67,7 +65,7 @@ class MemberClaimTest extends IntegrationTestBase {
         String phone = randomPhone();
         User imported = importedMember("王小明", phone, true);
 
-        assertThatThrownBy(() -> memberImportService.claimByPhone(newLineUser(), phone, "不是這隻"))
+        assertThatThrownBy(() -> memberClaimService.claimByPhone(newLineUser(), phone, "不是這隻"))
                 .isInstanceOf(MemberException.class);
         assertThat(userRepository.findById(imported.getId())).isPresent();
     }
@@ -79,7 +77,7 @@ class MemberClaimTest extends IntegrationTestBase {
         String petName = petRepository.findByOwnerId(imported.getId()).get(0).getName();
         User lineUser = newLineUser();
 
-        User claimed = memberImportService.claimByPhone(lineUser, "  " + phone.substring(0, 4) + "-" + phone.substring(4) + " ", petName);
+        User claimed = memberClaimService.claimByPhone(lineUser, "  " + phone.substring(0, 4) + "-" + phone.substring(4) + " ", petName);
 
         assertThat(claimed.getName()).isEqualTo("王小明");
         assertThat(claimed.getPhone()).isEqualTo(phone);
@@ -96,10 +94,10 @@ class MemberClaimTest extends IntegrationTestBase {
         importedMember("陳大文", phone, false);
         User lineUser = newLineUser();
 
-        assertThatThrownBy(() -> memberImportService.claimByPhone(lineUser, phone, "陳小文"))
+        assertThatThrownBy(() -> memberClaimService.claimByPhone(lineUser, phone, "陳小文"))
                 .isInstanceOf(MemberException.class);
 
-        User claimed = memberImportService.claimByPhone(lineUser, phone, "陳大文");
+        User claimed = memberClaimService.claimByPhone(lineUser, phone, "陳大文");
         assertThat(claimed.getName()).isEqualTo("陳大文");
     }
 
@@ -111,7 +109,7 @@ class MemberClaimTest extends IntegrationTestBase {
         lineUser.setProfileCompletedAt(LocalDateTime.now());
         userRepository.save(lineUser);
 
-        assertThatThrownBy(() -> memberImportService.claimByPhone(lineUser, phone, "王小明"))
+        assertThatThrownBy(() -> memberClaimService.claimByPhone(lineUser, phone, "王小明"))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("已經填過資料");
     }
@@ -123,7 +121,7 @@ class MemberClaimTest extends IntegrationTestBase {
         linked.setLineUserId("U" + UUID.randomUUID().toString().replace("-", ""));
         userRepository.save(linked);
 
-        assertThatThrownBy(() -> memberImportService.claimByPhone(newLineUser(), phone, "王小明"))
+        assertThatThrownBy(() -> memberClaimService.claimByPhone(newLineUser(), phone, "王小明"))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("查無");
     }
