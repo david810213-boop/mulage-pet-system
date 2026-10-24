@@ -4,6 +4,7 @@ spring:
     properties:
       hibernate:
         "[hibernate.format_sql]": false
+        "[hibernate.generate_statistics]": true
 
 sentry:
   dsn: ""

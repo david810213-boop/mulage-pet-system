@@ -29,6 +29,11 @@ def report_tests() -> int:
         errors += int(suite.get("errors", 0))
         skipped += int(suite.get("skipped", 0))
         for case in suite.iter("testcase"):
+            # 效能量測：測試用 System.out 印出以「[量測]」開頭的行，轉成 notice 方便在 Checks 頁查看
+            for out in case.findall("system-out"):
+                for line in (out.text or "").splitlines():
+                    if line.startswith("[量測]"):
+                        emit("notice", line, "量測")
             for problem in list(case.findall("failure")) + list(case.findall("error")):
                 if emitted >= MAX_ERRORS:
                     continue
