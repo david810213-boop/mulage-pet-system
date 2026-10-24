@@ -11,12 +11,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * 寵物信息管理頁面。
- *
- * 背景：鎖定/解鎖固定套餐這個功能，原本只能在「會員信息」寵物卡片、
- * 「現場開單」／「預約現場加單」頁面操作，店家要先找到會員或那張單才
- * 摸得到。這裡集中列出全站所有寵物（跨會員），把鎖定狀態跟操作按鈕
- * 一起放進來，不用先繞去別的頁面。
+ * 寵物信息管理頁面：集中列出全站所有寵物（跨會員）與固定套餐鎖定狀態，
+ * 不用先找到會員或那張單才能鎖定／解鎖。
  *
  * 鎖定/解鎖用的還是既有的 API（AdminPetController 的
  * PUT /api/admin/pets/{petId}/lock-grooming-item、.../unlock-grooming-item），

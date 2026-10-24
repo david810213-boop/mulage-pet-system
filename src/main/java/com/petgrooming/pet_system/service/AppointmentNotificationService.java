@@ -78,13 +78,8 @@ public class AppointmentNotificationService {
     }
 
 
-    // 預約確認通知文字內容 + 發送，供「店家點確認」與「當日臨時預約自動確認」共用
-    // 文案改版（店家指定新內容），改成完整的預約須知格式。
-    // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免這些生僻 Unicode
-    // 符號在存檔/複製貼上過程中位元組被弄壞、導致編譯失敗（踩過的坑：
-    // "illegal start of expression"）。中文字本身沒有這個風險，維持原樣。
-    // 註解裡故意不放實際符號本身（連放在註解裡都曾經導致編譯錯誤），
-    // 逃逸序列對照的符號說明，請見交付 README，不要再貼進這個檔案。
+    // 預約確認通知（文案由店家指定），供「店家點確認」與「當日臨時預約自動確認」共用。
+    // 裝飾符號一律用 Java Unicode 逃逸序列寫（見 CLAUDE.md 第四節），不要直接貼符號，連註解裡也不要放。
     void sendConfirmedNotify(Appointment saved) {
         String dateStr = saved.getDate().format(DateTimeFormatter.ofPattern("M/d"));
         String notifyText = String.format(
@@ -143,14 +138,8 @@ public class AppointmentNotificationService {
         log.info("[需求13-前日提醒] 已處理 {} 筆 {} 的預約提醒", targets.size(), tomorrow);
     }
 
-    // 前一天預約提醒文案改版（店家指定新內容），
-    // 補回寵物名字（原始文案沒寫，店家確認要保留）。
-    // 原本這裡有一段「隔天預約時間早於 11:00 要額外提醒準時到場」的邏輯
-    // （EARLY_SLOT_CUTOFF），但店家開門時間本來就是 11:00，條件永遠不會成立，
-    // 是早就存在的死代碼，新範本也沒有適合放這句提醒的位置，順手一併拿掉。
-    // 附註：裝飾符號改用 Java Unicode 逃逸序列（backslash + u + 4碼十六進位）寫死（純 ASCII），避免存檔/複製貼上
-    // 過程中位元組被弄壞導致編譯失敗（踩過的坑）。逃逸序列對照的符號說明，
-    // 請見交付 README，不要把實際符號貼進這個檔案（連放在註解裡都會出問題）。
+    // 前一天預約提醒（文案由店家指定，含寵物名字）。
+    // 裝飾符號一律用 Java Unicode 逃逸序列寫（見 CLAUDE.md 第四節），不要直接貼符號，連註解裡也不要放。
     private String buildReminderText(Appointment appointment) {
         return String.format(
                 "【慕沐村 Mulage pet】%n" +

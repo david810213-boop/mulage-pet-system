@@ -34,13 +34,7 @@ public class GroomingItem {
     @Column(nullable = false)
     private Double price;
 
-    // 邏輯刪除
-    // 修正：原本只寫 `= false` 沒加 @Builder.Default，Lombok 產生的 builder()
-    // 會完全忽略這個初始值（用 boolean 的語言預設值 false 頂著，這次剛好
-    // 跟預期值一樣所以沒出過事，但邏輯上是地雷——如果以後改成 `= true`
-    // 之類的非語言預設值，builder() 建出來的物件會悄悄跟預期不同，
-    // 且編譯器只會給警告不會報錯，很容易沒發現）。加上 @Builder.Default
-    // 才會讓 builder() 真的套用這個初始值。
+    // 邏輯刪除。要加 @Builder.Default，Lombok 的 builder() 才會套用欄位初始值（否則一律用語言預設值）
     @Builder.Default
     private boolean isDeleted = false;
 
@@ -111,13 +105,9 @@ public class GroomingItem {
     @Column(name = "dog_weight_tier")
     private DogWeightTier dogWeightTier;
 
-    // 狗狗套餐項目再依「毛長」細分——原本同一個體重
-    // 級距底下短毛/長毛兩種都會顯示、由顧客自己挑，改成搭配 Pet.coatType（店家
-    // 後台定義的毛長）自動篩選，只顯示符合這隻狗實際毛長的那一種，跟體重級距
-    // 篩選疊加使用（兩個條件都要符合）。
-    // 沿用 CoatType 這個既有 enum（雖然它還有 MEDIUM/UNDEFINED 兩個對狗狗套餐
-    // 沒有實際對應品項的值，但比另外新建一個功能重複的 enum 更簡潔一致）——
-    // 狗狗品項只會被標記 SHORT 或 LONG 兩種值。
+    // 狗狗套餐項目再依「毛長」細分：搭配 Pet.coatType（店家後台定義的毛長）自動篩選，
+    // 只顯示符合這隻狗實際毛長的那一種，跟體重級距篩選疊加使用（兩個條件都要符合）。
+    // 沿用 CoatType（它還有 MEDIUM/UNDEFINED，但狗狗品項只會標記 SHORT 或 LONG），不另建功能重複的 enum。
     // null = 跟毛長無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
     @Enumerated(EnumType.STRING)
     @Column(name = "dog_coat_length")

@@ -48,7 +48,7 @@ public class MemberClaimService {
     // 安全限制：只有目前這個 LINE 帳號「還沒填過資料」（profileCompletedAt 為 null）
     // 才能認領，避免已經自己填好資料的人不小心把別人的資料領走蓋掉自己的。
     //
-    // 新客報到改成「先輸入電話分流」，認領時多一道確認——
+    // 認領時多一道確認——
     // 匯入帳號有毛孩就要輸入其中一隻毛孩的名字，沒有毛孩就輸入登記的姓名。
     // 原因：帳號裡可能有儲值金與會員卡，只憑電話就能認領的話，知道別人電話的人
     // 可以把整個帳號連錢包一起領走。
@@ -152,10 +152,8 @@ public class MemberClaimService {
     //    則是「目標帳號原本沒填才帶入」——因為
     //    LINE 帳號常常還沒填過電話，這種情況匯入資料裡的電話應該要補上，
     //    只有目標已經自己填過電話時才不覆蓋
-    // ② 實際的資料過戶（寵物/消費/預約/儲值/刪除來源帳號）跟 claimByPhone()
-    //    共用同一支 transferAllDataAndDeleteSource()，這是 2026-09-11 修正
-    //    claimByPhone() 的 bug 時一併重構的——避免同一套邏輯分別維護兩份，
-    //    改一邊漏改另一邊（這正是這次 claimByPhone() bug 一直沒被發現的原因）
+    // ② 實際的資料過戶（寵物/消費/預約/儲值/刪除來源帳號）跟 claimByPhone() 共用同一支
+    //    transferAllDataAndDeleteSource()，避免同一套邏輯維護兩份。
     @Transactional
     public void manualMerge(String importedUsername, String targetUsername) {
         User imported = userRepository.findByUsername(importedUsername)
@@ -172,8 +170,7 @@ public class MemberClaimService {
             throw new MemberException("目標帳號也是匯入用的暫時帳號，請選一個真正在使用的會員帳號");
         }
 
-        // 目標帳號原本沒填電話才帶入匯入資料的電話，
-        // 已經自己填過電話的話維持不覆蓋——姓名不論如何都不覆蓋。
+        // 目標帳號沒填電話才帶入匯入資料的電話，已經自己填過電話的話不覆蓋——姓名不論如何都不覆蓋。
         if (isBlank(target.getPhone()) && !isBlank(imported.getPhone())) {
             target.setPhone(imported.getPhone());
             userRepository.save(target);
@@ -188,18 +185,10 @@ public class MemberClaimService {
 
     // ── claimByPhone() 跟 manualMerge() 共用的過戶邏輯 ──
     //
-    // 抽出來的原因：claimByPhone() 原本自己另外寫了一份簡化版（只過戶寵物），
-    // manualMerge() 開發時修正了兩個問題（JPA 級聯刪除坑、錢包外鍵未清理），
-    // 但沒有回頭同步套用到 claimByPhone()，導致顧客自助認領時如果匯入帳號有
-    // 錢包（幾乎每個帳號都有），claimByPhone() 一定會在刪除來源帳號那一步
-    // 撞到外鍵限制，整筆操作失敗且錯誤訊息不明確（前端顯示「找不到符合的
-    // 資料」，實際上是錢包外鍵擋下刪除，這兩者完全無關）。統一抽成一支方法，
-    // 之後不會再有「改一邊漏改另一邊」的風險。
-    //
     // 過戶內容：寵物、消費紀錄（現場開單）、預約、待處理儲值申請、儲值餘額
     // （加總，不是覆蓋），最後刪除來源帳號。
     //
-    // ⚠️ 這裡處理了兩個真正的 bug：
+    // ⚠️ 兩個容易踩的坑（都實際發生過）：
     // ① User.pets 是 cascade = CascadeType.ALL 的雙向一對多關聯，只透過
     //    petRepository 改 pets 資料表的 owner_id，imported 物件自己記憶體裡的
     //    pets 集合不會同步更新，userRepository.delete(imported) 觸發 cascade

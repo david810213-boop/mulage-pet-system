@@ -157,11 +157,9 @@ public class PetService {
         }
     }
 
-    // ── 刪除寵物（2026-08-26 修正：改成軟刪除）─────────────────────────────
-    // 客戶端（LIFF）跟後台都會呼叫這個方法。改成跟 GroomingItem 下架同一套
-    // 邏輯——單純標記 isDeleted=true，不是真的刪除資料列，過往的預約/消費
-    // 紀錄完全不受影響（那些紀錄存的是結帳當下的寵物名字快照，不是即時
-    // 關聯查詢），所以不用再檢查「有沒有消費紀錄」才能刪，任何情況都能刪。
+    // ── 刪除寵物：軟刪除 ─────────────────────────────
+    // 客戶端（LIFF）跟後台都會呼叫。跟 GroomingItem 下架同一套邏輯——只標記 isDeleted=true，
+    // 過往預約/消費紀錄存的是寵物名字快照，不受影響，所以任何情況都能刪。
     @Transactional
     public void deletePet(Long petId) {
         Pet pet = petRepository.findById(petId)
@@ -210,9 +208,7 @@ public class PetService {
     }
 
     // ── 寵物信息管理頁面 ──────────────────────────
-    // 用途：後台集中管理所有寵物（跨會員），把原本分散在「會員信息」寵物卡片、
-    // 「現場開單」/「預約現場加單」頁面才看得到的鎖定套餐狀態集中到一頁，
-    // 不用先找到會員、點進去才看得到。
+    // 後台集中管理所有寵物（跨會員）與固定套餐鎖定狀態，不用先找到會員、點進去才看得到。
     public List<PetResponse> listAllPets() {
         return petRepository.findByIsDeletedFalseOrderByNameAsc().stream()
                 .map(pet -> {

@@ -22,7 +22,7 @@ public class UserResponse {
     private String sourceLabel;       // 中文顯示用
     private boolean profileCompleted; // 是否已填寫過基本資料
 
-    // ── 定型化契約要求蒐集的資料（原本漏掉沒回傳，導致編輯頁每次打開都是空的）──
+    // ── 定型化契約要求蒐集的資料（編輯頁要帶回）──
     private String mailingAddress;
     private String emergencyContactName;
     private String emergencyContactPhone;

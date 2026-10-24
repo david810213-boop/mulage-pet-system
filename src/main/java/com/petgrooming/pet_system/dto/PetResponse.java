@@ -51,9 +51,7 @@ public class PetResponse {
     private String lockedItemName;
     private Double lockedItemPrice;
 
-    // 定型化契約蒐集的寵物資料，原本這個
-    // DTO 完全沒有暴露這幾個欄位，導致 LIFF 編輯毛孩再次打開編輯畫面時，這些
-    // 欄位永遠看起來是空的（不是前端沒填，是後端 API 本來就沒有把資料吐出來）。
+    // 定型化契約蒐集的寵物資料（LIFF 編輯毛孩時要帶回這些欄位）
     private String gender;
     private Boolean isNeutered;
     private boolean hasChip;

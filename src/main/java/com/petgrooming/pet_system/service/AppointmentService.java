@@ -53,9 +53,7 @@ public class AppointmentService {
     private final ClosedDateService closedDateService; // 公休日設定
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
 
-    // 營業時間／時段格線改抽到 BusinessHours 共用常數類別，
-    // 因為新增的「預設時段容量範本」（DefaultSlotCapacityTemplateService）也需要同一份格線，
-    // 避免兩邊各自寫一份、以後改一邊忘了改另一邊。時段長度也從原本固定 2 小時改成 30 分鐘一格。
+    // 營業時間／時段格線（共用 BusinessHours）
     private static final LocalTime OPENING = BusinessHours.OPENING;
     private static final LocalTime CLOSING = BusinessHours.CLOSING;
     private static final int MIN_SIGNATURE_LENGTH = 1000;

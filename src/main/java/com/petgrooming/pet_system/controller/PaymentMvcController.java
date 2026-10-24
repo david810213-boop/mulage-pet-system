@@ -56,9 +56,8 @@ public class PaymentMvcController {
     private final WalkInOrderService walkInOrderService;
     private final GroomingMenuFilter groomingMenuFilter;
 
-    // 交易紀錄輔助方法：把預約結帳 (Transaction) 跟現場開單 (WalkInOrder) 統一格式並合併排序
-    // 這兩者原本是分開的資料表（現場開單獨立設計，不動既有結帳流程），
-    // 但「交易紀錄」頁面應該呈現完整消費全貌，所以這裡合併顯示。
+    // 交易紀錄：預約結帳（Transaction）跟現場開單（WalkInOrder）是兩張資料表，
+    // 「交易紀錄」頁面要呈現完整消費全貌，合併成同一份清單並依付款時間排序
     private List<ConsumptionRecordResponse> buildCombinedRecords(
             List<TransactionResponse> transactions,
             List<WalkInOrder> walkInOrders) {
@@ -148,7 +147,7 @@ public class PaymentMvcController {
     // ── POST /payments/checkout/{appointmentId}/add-grooming-item ──────────
     // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     // customPrice 選填，店員手動輸入自訂價格用
-    // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
+    // （例如剪毛這種價格浮動的項目），空白就照項目設定的固定價格。
     @PostMapping("/checkout/{appointmentId}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long appointmentId,
                                   @RequestParam Long groomingItemId,
@@ -193,8 +192,8 @@ public class PaymentMvcController {
     }
 
     // ── POST /payments/checkout/{appointmentId}/remove-item ────────────────
-    // 從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
-    // 供編輯訂單使用；路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
+    // 結帳前任何項目都能移除（零售商品、服務項目、自訂項目），
+    // 供編輯訂單使用。
     @PostMapping("/checkout/{appointmentId}/remove-item")
     public String removeItem(@PathVariable Long appointmentId,
                              @RequestParam Long itemId,
@@ -254,7 +253,7 @@ public class PaymentMvcController {
             model.addAttribute("errorMsg", e.getMessage());
             addCheckoutBasics(model, appointmentId, user);
             // 組選單與金額預覽時如果又出錯（例如這筆預約資料本身有異常），不能讓第二個例外蓋掉
-            // 原本該看到的錯誤訊息；最差情況就是頁面少了選單與金額預覽，但看得到「為什麼結帳失敗」。
+            // 真正的結帳錯誤訊息；最差情況就是頁面少了選單與金額預覽，但看得到「為什麼結帳失敗」。
             try {
                 addMenuAndPreview(model, appointmentId, user);
             } catch (Exception previewError) {
@@ -264,7 +263,7 @@ public class PaymentMvcController {
             return "payments/checkout";
         } catch (Exception e) {
             // 保底：checkout() 本身如果拋出非預期的例外（不是業務規則的 IllegalArgumentException），
-            // 原本會直接變成一片空白的 Whitelabel 500 錯誤頁，使用者跟店家都看不出發生什麼事。
+            // 不攔下來的話會變成一片空白的 Whitelabel 500 錯誤頁，使用者跟店家都看不出發生什麼事。
             // 這裡攔下來，把完整堆疊記到 log（Railway Logs 搜尋「結帳發生未預期錯誤」就找得到），
             // 畫面則導回結帳頁顯示友善訊息，至少能重試或回報。
             log.error("結帳發生未預期錯誤，預約 #{}，操作人：{}", appointmentId, user.getUsername(), e);
@@ -312,7 +311,7 @@ public class PaymentMvcController {
 
     // ── GET /payments/bank-account ────────────────────────────────────────
     // 店家設定匯款帳號資訊（僅管理員可改，供結帳選匯款時自動帶出）
-    // 改成同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
+    // 同時管理「結帳收款」與「儲值金收款（大額專用）」兩組獨立帳戶
     @RequireRole(UserRole.ADMIN)
     @GetMapping("/bank-account")
     public String bankAccountForm(Model model, @CurrentUser User loginUser) {

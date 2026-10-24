@@ -79,7 +79,7 @@ public class WalkInOrderMvcController {
                 .map(s -> Map.of("id", s.getId(), "name", s.getName()))
                 .toList());
         model.addAttribute("orders", walkInOrderService.listAll());
-        // 待補經手人改成矩陣式表單，取代原本一列一項目的清單
+        // 待補經手人：矩陣式表單（一隻寵物一列）
         model.addAttribute("walkInMatrixRows", pendingOperatorMatrixService.buildWalkInMatrix());
         model.addAttribute("appointmentMatrixRows", pendingOperatorMatrixService.buildAppointmentMatrix());
         model.addAttribute("matrixColumns", PendingOperatorMatrixService.COLUMNS);
@@ -190,8 +190,8 @@ public class WalkInOrderMvcController {
     }
 
     // ── GET /admin/walk-in-orders/{id}/checkout ──────────────────────────
-    // 現場開單結帳畫面統一——跟「預約訂單結帳」同樣風格的專屬結帳頁，
-    // 結帳前先看到逐項目折扣預覽（回洗優惠／會員折扣，兩者擇一），不是原本表格列裡的小下拉選單直接送出。
+    // 現場開單專屬結帳頁（跟預約結帳同樣風格），
+    // 結帳前先看到逐項目折扣預覽（回洗優惠／會員折扣，兩者擇一）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @GetMapping("/{id}/checkout")
     public String checkoutForm(@PathVariable Long id, Model model, @CurrentUser User loginUser) {
@@ -207,10 +207,8 @@ public class WalkInOrderMvcController {
             model.addAttribute("pet", pet);
             // 自訂金額加購用的積分分類下拉選單
             model.addAttribute("performanceCategories", PerformanceCategory.values());
-            // 先抓一份完整、沒被篩過的服務項目清單，
-            // 「新增服務項目」下拉選單的篩選跟「消費明細補上體重級距標記」都從這份
-            // 完整清單衍生，不要各自分開查——原本的 bug 就是兩邊各自查了不同時機/
-            // 條件的清單，導致這張單已經選定的項目沒辦法反查回自己的體重級距。
+            // 先抓一份完整、沒被篩過的服務項目清單，「新增服務項目」選單的篩選跟「消費明細補上體重級距標記」
+            // 都從這份清單衍生，不要各自分開查——兩邊查到不同的清單時，這張單已選的項目會反查不到自己的體重級距。
             var allGroomingItems = groomingService.getAllItems();
             Map<Long, String> tierByItemId = allGroomingItems.stream()
                     .filter(i -> i.getDogWeightTier() != null)
@@ -270,7 +268,7 @@ public class WalkInOrderMvcController {
     // ── POST /admin/walk-in-orders/{id}/add-grooming-item ────────────────
     // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
     // customPrice 選填，店員手動輸入自訂價格用
-    // （例如剪毛這種價格浮動的項目），空白就照項目原本的固定價格。
+    // （例如剪毛這種價格浮動的項目），空白就照項目設定的固定價格。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/add-grooming-item")
     public String addGroomingItem(@PathVariable Long id,
@@ -314,8 +312,7 @@ public class WalkInOrderMvcController {
     }
 
     // ── POST /admin/walk-in-orders/{id}/remove-item ──────────────────────
-    // 從「只能移除零售商品」放寬成「結帳前任何項目都能移除」，
-    // 路由名稱同步從 remove-retail-item 改成更通用的 remove-item。
+    // 結帳前任何項目都能移除（零售商品、服務項目、自訂項目）。
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PostMapping("/{id}/remove-item")
     public String removeItem(@PathVariable Long id,

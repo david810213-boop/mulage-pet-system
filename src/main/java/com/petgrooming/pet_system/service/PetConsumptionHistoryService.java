@@ -6,11 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 「這隻寵物是不是既有客戶（有沒有任何一筆已結帳消費紀錄）」的共用判斷邏輯。
- *
- * 原本這段邏輯寫在 {@link DogFirstVisitDiscountService} 裡（判斷狗狗首次體驗優惠用），
- * 現在「僅限既有客戶」項目限制（例如貓咪基礎保養）也需要同一套判斷，所以抽成獨立的共用
- * service，兩邊都呼叫這裡，只維護一份。
+ * 「這隻寵物是不是既有客戶（有沒有任何一筆已結帳消費紀錄）」的共用判斷邏輯，
+ * 狗狗首次體驗優惠與「僅限既有客戶」項目限制（例如貓咪基礎保養）共用。
  */
 @Service
 @RequiredArgsConstructor

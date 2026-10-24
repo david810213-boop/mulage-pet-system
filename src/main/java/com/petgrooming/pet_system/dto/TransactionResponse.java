@@ -6,7 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-// API 回傳的交易資料（對應原本 Transaction.toString()）
+// API 回傳的交易資料
 @Data
 public class TransactionResponse {
     private Long id;

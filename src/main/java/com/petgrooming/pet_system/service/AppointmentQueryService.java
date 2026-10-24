@@ -123,15 +123,7 @@ public class AppointmentQueryService {
     }
 
     // ── 店家後台查詢所有預約（含內部備注）──────────────────────────
-    // 這支方法是專案裡已知效能問題
-    // （Dashboard/預約列表載入慢）的根本原因。原本 findAll() 之後，DTO 轉換
-    // 逐筆存取 a.getUser()（觸發一次額外查詢）、a.getSelectedItems()（EAGER
-    // 多對多，也是逐筆額外查詢），加上迴圈內對每一筆預約各呼叫一次
-    // transactionRepository.findByAppointmentId()查有沒有待對帳的匯款交易，
-    // 三個來源疊加，資料一多，單次載入可能觸發幾百條 SQL。現在全部改成批次
-    // 查詢：findAllWithUserAndItems() 用 JOIN FETCH 把預約、使用者、選擇項目
-    // 一次查完；待對帳交易改成 findByAppointmentIdIn() 一次撈出全部再用 id
-    // 分組，迴圈內只查 Map，不再另外打資料庫。
+    // 預約、使用者、選擇項目用 JOIN FETCH 一次查完；開單項目與交易紀錄批次查詢再用 id 分組（避免 N+1）。
     public List<AppointmentAdminResponse> getAllForAdmin() {
         return toAdminResponses(appointmentRepository.findAllWithUserAndItems());
     }
@@ -160,9 +152,7 @@ public class AppointmentQueryService {
                         .collect(Collectors.groupingBy(
                                 ci -> ci.getAppointment().getId()));
 
-        // 批次撈出全部預約對應的交易紀錄，取代原本
-        // 迴圈內逐筆呼叫 transactionRepository.findByAppointmentId() 的寫法。
-        // 一筆預約理論上最多一筆交易（結帳時建立），用 id 分組後每組取第一筆即可。
+        // 批次撈出這些預約對應的交易紀錄。一筆預約理論上最多一筆交易（結帳時建立），用 id 分組後每組取第一筆即可。
         Map<Long, Transaction> transactionByAppt =
                 transactionRepository.findByAppointmentIdIn(
                                 appointments.stream().map(Appointment::getId).toList())

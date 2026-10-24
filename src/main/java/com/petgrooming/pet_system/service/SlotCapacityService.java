@@ -32,9 +32,7 @@ import java.util.Optional;
 public class SlotCapacityService {
 
     private final SlotCapacityRepository slotRepo;
-    // 時段容量範本——新建立一天的時段計數列時，
-    // 初始上限改成讀這份範本（每個時段可以分別設定不同預設值），
-    // 不再是所有時段統一寫死同一個數字。
+    // 時段容量範本：新建立一天的時段計數列時，初始上限讀這份範本（每個時段可以分別設定不同預設值）
     private final DefaultSlotCapacityTemplateService defaultSlotCapacityTemplateService;
     private final EntityManager entityManager;
 

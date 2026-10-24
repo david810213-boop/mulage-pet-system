@@ -18,8 +18,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 矩陣式待補經手人表單。取代原本一列一項目的扁平清單，
- * 改成「一隻寵物一列、橫向固定欄位」的表格，本次消費沒出現的項目那一格直接顯示「無」，
+ * 矩陣式待補經手人表單：「一隻寵物一列、橫向固定欄位」，本次消費沒出現的項目那一格直接顯示「無」，
  * 只有實際有這個項目、還沒填經手人的格子才會出現下拉選單。
  */
 @Service
@@ -87,7 +86,7 @@ public class PendingOperatorMatrixService {
 
     // ── 員工手機版「待補經手人」────────────────────────
     // 跟上面兩支矩陣方法同一份資料來源（未填經手人、且有積分的項目），
-    // 改成「一張單一組、一個項目一列」的格式，預約單跟現場單合在一起、新的排前面。
+    // 以「一張單一組、一個項目一列」呈現，預約單跟現場單合在一起、新的排前面。
     @Transactional(readOnly = true)
     public List<MobilePendingOperatorGroup> buildMobileGroups() {
         List<MobilePendingOperatorGroup> result = new ArrayList<>();

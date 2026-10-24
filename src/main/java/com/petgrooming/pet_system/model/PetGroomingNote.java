@@ -30,9 +30,7 @@ public class PetGroomingNote {
     @ToString.Exclude
     private Pet pet;
 
-    // 對應的預約（供追溯是哪一次服務留下的備註）
-    // 現場單核對也會留紀錄，那種紀錄沒有預約 id，改成可為 null
-    // （資料庫既有欄位的 NOT NULL 由 Flyway V17 放寬）
+    // 對應的預約（追溯是哪一次服務留下的備註）；現場單核對留下的紀錄沒有預約 id，可為 null
     @Column(name = "appointment_id")
     private Long appointmentId;
 

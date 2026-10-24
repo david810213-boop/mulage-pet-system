@@ -34,7 +34,7 @@ public class AppointmentController {
     private final ClosedDateService closedDateService;
 
     // ── POST /api/appointments ─────────────────────────────────────────────
-    // 建立預約（對應原本 bookAppointment），身分取自 JWT，店家網頁與顧客 LINE 共用
+    // 建立預約，身分取自 JWT，店家網頁與顧客 LINE 共用
     @PostMapping
     public ResponseEntity<?> book(
             @RequestBody AppointmentRequest req,
@@ -46,14 +46,14 @@ public class AppointmentController {
     }
 
     // ── GET /api/appointments/my ───────────────────────────────────────────
-    // 查詢自己的預約紀錄（對應原本 viewAppointments）
+    // 查詢自己的預約紀錄
     @GetMapping("/my")
     public ResponseEntity<List<AppointmentResponse>> getMyAppointments(@CurrentUser String username) {
         return ResponseEntity.ok(appointmentQueryService.getMyAppointments(username));
     }
 
     // ── GET /api/appointments ──────────────────────────────────────────────
-    // 查詢所有預約（STAFF / ADMIN，對應原本 viewAllAppointments）
+    // 查詢所有預約（STAFF / ADMIN）
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> getAllAppointments() {
@@ -75,7 +75,7 @@ public class AppointmentController {
     }
 
     // ── GET /api/appointments/slots?date=2025-06-01[&petType=DOG] ──────────
-    // 查詢某天可預約時段（對應原本 generateDailySlots + getAvailableSlots）。
+    // 查詢某天可預約時段。
     // 帶入 petType 時，該時段限定的物種跟這隻寵物不符
     // 也會反映在 available 上；petType 格式不合法（不是 DOG/CAT）就當作沒帶，
     // 不讓前端傳壞值時整支 API 500。

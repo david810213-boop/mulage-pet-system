@@ -17,12 +17,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 後台「完整編輯寵物資料」頁面。原本「會員信息」
- * 寵物分頁裡的快速編輯表單只有名字/品種/體重/年齡，跟 LIFF「新增/編輯毛孩」
- * 蒐集的完整資料（性別、絕育、晶片、個性、病史、指定獸醫院）對不上，店家在
- * 後台看不到、也改不了這些欄位。這裡新增一個獨立頁面，內容跟 LIFF 那份
- * 完全對齊，用一般的 select/checkbox 呈現（後台是店員用，不用像 LIFF 那樣
- * 做成大按鈕點選的樣式）。
+ * 後台「完整編輯寵物資料」頁面：欄位跟 LIFF「新增/編輯毛孩」蒐集的完整資料
+ * （性別、絕育、晶片、個性、病史、指定獸醫院）完全對齊，用一般的 select/checkbox 呈現
+ * （後台是店員用，不用做成 LIFF 那樣的大按鈕）。
  */
 @Controller
 @RequestMapping("/admin/pets")
@@ -49,13 +46,9 @@ public class PetEditMvcController {
         model.addAttribute("healthOptions", List.of(
                 "心臟病", "氣喘", "氣管塌陷", "白內障", "癲癇", "心絲蟲", "艾利希體", "腹膜炎",
                 "腹積水", "手術外傷未癒合", "髖關節問題", "骨折", "腸炎", "血便", "血尿", "懷孕", "傳染性疾病"));
-        // 原本畫面上用 Thymeleaf 的
-        // #strings.arraySplit(...).?[...] 這種選擇運算式去判斷「這個標籤有沒有
-        // 被勾選過」，執行時很容易噴例外（例如 personalityTags 是空字串時的邊界
-        // 情況處理不夠穩健），一旦噴例外，Thymeleaf 串流輸出模式下畫面會從那個
-        // 位置整個截斷，後面病史/獸醫院/儲存按鈕全部不會渲染出來，就是你截圖
-        // 看到的狀況。改成在後端先把逗號分隔字串轉成真正的 List<String>，畫面上
-        // 只需要單純的 contains() 判斷，不用在樣板裡做字串運算，穩定很多。
+        // 在後端先把逗號分隔字串轉成 List<String>，畫面只做 contains() 判斷。
+        // 不要在樣板裡用 #strings.arraySplit(...).?[...] 做字串運算：空字串等邊界情況會噴例外，
+        // Thymeleaf 串流輸出時畫面會從那裡整個截斷（後面的病史、獸醫院、儲存按鈕都不見）。
         model.addAttribute("selectedPersonalityTags", splitToList(petResponse.getPersonalityTags()));
         model.addAttribute("selectedHealthTags", splitToList(petResponse.getHealthHistory()));
         return "admin/pet-edit";

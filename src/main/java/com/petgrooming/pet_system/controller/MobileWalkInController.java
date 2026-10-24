@@ -37,8 +37,8 @@ import java.util.Map;
  * 員工手機版：現場開單。
  *
  * 流程跟網頁版現場開單完全相同：開單 → 結束服務 → 核對（家長簽名）→ 結帳；
- * 純零售單（沒有美容服務項目）開單後直接結帳。後端全部呼叫既有的
- * WalkInOrderService，沒有另外實作任何業務規則。
+ * 純零售單（沒有美容服務項目）開單後直接結帳。後端呼叫跟網頁版相同的
+ * 現場單 service，沒有另外實作任何業務規則。
  *
  * 跟網頁版的差異（手機版操作調整）：
  * - 選客人改成「搜尋 → 點毛孩」兩步，菜單由伺服器端依毛孩體型篩好再送出
@@ -232,6 +232,7 @@ public class MobileWalkInController {
         return retailItems;
     }
 
+    // 開單失敗時帶回原本的 member / pet / guest 參數，只允許這三個參數，避免被塞入其他內容
     private String safeQuery(String backQuery) {
         if (backQuery == null || backQuery.isBlank()) {
             return "";

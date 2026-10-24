@@ -18,24 +18,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * 資安修正 / 架構調整（2026-08-22）：服務項目（GroomingItem）相關的種子資料、
- * 套餐組成、以及各種「每次啟動都跑一次」的資料校正邏輯，已經全部搬到 Flyway
- * 遷移檔案（見 src/main/resources/db/migration/V1~V7），改由
- * {@link DataSeedMigrationRunner} 負責執行。
+ * 啟動時建立「建立一次、之後由店家在後台自行調整」的種子資料：預設帳號、積分獎勵金級距、
+ * 匯款收款帳戶、固定公休星期，一律逐筆檢查是否已存在才建立。
  *
- * 搬移原因：這裡原本的寫法（用 groomingItemRepository.count()==0 判斷「只在全新
- * 資料庫時建立」）已經造成過兩次事故——正式站資料庫早就不是空的，count()==0
- * 永遠不成立，新增的種子資料實際上從來沒有真正被種進正式站過，直到改用
- * existsByItemCode() 逐筆檢查才修正。Flyway 用資料庫本身的
- * flyway_schema_history 表追蹤每個遷移檔案「保證只執行一次」，不用再靠
- * 這種手刻的條件判斷去模擬，從根本上解決這個反覆出現的問題。
- *
- * 這個檔案現在只保留「跟 GroomingItem 無關」的種子資料：預設帳號、積分獎勵金
- * 級距、匯款收款帳戶、固定公休星期——這幾項本來就沒有踩過上面那個坑（要嘛用
- * existsByUsername()/findByPurpose().isEmpty() 這種正確的逐筆檢查，要嘛是
- * 「建立一次讓店家後續自行在後台調整」這種真正只需要跑一次的情境，沒有
- * Flyway 要解決的那種「需要持續新增資料」的問題，所以保留原本寫法即可，
- * 不用跟著搬。
+ * 服務項目（GroomingItem）與套餐組成的種子資料由 Flyway 遷移檔管理（db/migration），不要加在這裡：
+ * 用 count()==0 之類的條件判斷「只在全新資料庫建立」，在已有資料的正式站永遠不會成立，
+ * 新種子資料會種不進去。見 docs/adr/0001-flyway-after-hibernate.md。
  */
 @Component
 @RequiredArgsConstructor
@@ -66,7 +54,7 @@ public class DataInitializer implements ApplicationRunner {
         warnIfDefaultPasswordStillActive("staff@pet.com", "staff123", "美容師小洪（STAFF）");
         warnIfDefaultPasswordStillActive("user@pet.com", "user123", "測試會員（CUSTOMER）");
 
-        // 積分獎勵金級距（改成可在後台編輯的資料表，這裡只是種子資料，僅在資料表是空的時候建立一次）
+        // 積分獎勵金級距：種子資料，僅在資料表是空的時候建立一次，之後由店家在後台編輯
         if (bonusTierRepository.count() == 0) {
             bonusTierRepository.save(BonusTier.builder().minPoints(3001).maxPoints(3350).bonusAmount(1200).build());
             bonusTierRepository.save(BonusTier.builder().minPoints(3351).maxPoints(3700).bonusAmount(1600).build());
@@ -79,8 +67,8 @@ public class DataInitializer implements ApplicationRunner {
             log.info("積分獎勵金級距種子資料初始化完成");
         }
 
-        // 店家匯款帳號資訊，僅在還沒設定過時建立預設（佔位）資料，店家可自行到後台修改
-        // 改成兩組獨立帳戶——結帳收款 / 儲值金收款（大額專用），各自檢查、各自補齊
+        // 店家匯款帳號：結帳收款與儲值金收款（大額專用）是兩組獨立帳戶，各自檢查、各自補齊
+        // 預設（佔位）資料，店家再到後台修改
         if (bankAccountInfoRepository.findByPurpose(BankAccountPurpose.CHECKOUT).isEmpty()) {
             bankAccountInfoRepository.save(BankAccountInfo.builder()
                     .purpose(BankAccountPurpose.CHECKOUT)

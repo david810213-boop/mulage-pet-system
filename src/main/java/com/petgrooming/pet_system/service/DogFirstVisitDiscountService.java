@@ -32,8 +32,7 @@ import java.util.Set;
  * 資料來源涵蓋範圍：跟 CatRewashDiscountService 一致——預約（Appointment）
  * 與現場開單（WalkInOrder，須有綁定會員）都納入判斷是否為首次消費。
  *
- * 「是不是既有客戶」的查詢邏輯已抽成 {@link PetConsumptionHistoryService}
- * 共用，這裡不再自己重複實作，改成呼叫共用 service。
+ * 「是不是既有客戶」的查詢邏輯共用 {@link PetConsumptionHistoryService}。
  */
 @Service
 @RequiredArgsConstructor

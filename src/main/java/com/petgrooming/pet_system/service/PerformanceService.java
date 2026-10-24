@@ -374,7 +374,7 @@ public class PerformanceService {
                     .filter(r -> r.getCategory() == c)
                     .mapToDouble(PerformanceRecord::getPoints).sum();
             pointsByCategory.put(c, pts);
-            // 有分數的項目：次數＝積分 ÷ 每次分數（拆給同事的算半次，維持原本顯示）；
+            // 有分數的項目：次數＝積分 ÷ 每次分數（拆給同事的算半次）；
             // 不計分的項目（例如「完成」）：直接數筆數，拆分產生的子紀錄不重複計算
             countByCategory.put(c, c.getDefaultPoints() > 0
                     ? pts / c.getDefaultPoints()
@@ -392,7 +392,7 @@ public class PerformanceService {
                 .build();
     }
 
-    // ── 私有：依積分查獎勵金（改成查後台可編輯的 bonus_tiers 資料表）────
+    // ── 私有：依積分查獎勵金（後台可編輯的 bonus_tiers 資料表）────
     private int calcBonus(int points) {
         for (BonusTier tier : bonusTierRepository.findAllByOrderByMinPointsAsc()) {
             if (points >= tier.getMinPoints() && points <= tier.getMaxPoints()) {
