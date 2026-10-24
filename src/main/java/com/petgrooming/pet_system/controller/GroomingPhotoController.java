@@ -5,6 +5,7 @@ import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.service.CloudinaryService;
 import com.petgrooming.pet_system.service.GroomingNotePhotoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,12 +31,12 @@ public class GroomingPhotoController {
     @PostMapping
     public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file) {
         CloudinaryService.UploadResult r = photoService.uploadTemp(file);
-        return ResponseEntity.ok(Map.of("url", r.url(), "publicId", r.publicId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("url", r.url(), "publicId", r.publicId()));
     }
 
     @DeleteMapping
-    public ResponseEntity<Map<String, String>> delete(@RequestParam String publicId) {
+    public ResponseEntity<Void> delete(@RequestParam String publicId) {
         photoService.deleteTemp(publicId);
-        return ResponseEntity.ok(Map.of("message", "已移除"));
+        return ResponseEntity.noContent().build();
     }
 }

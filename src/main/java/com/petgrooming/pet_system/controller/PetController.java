@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.service.PetDiscountStatusService;
 import com.petgrooming.pet_system.service.PetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,7 +40,7 @@ public class PetController {
         PetResponse res = petService.addPet(username, petRequest);
         operationLogService.logByUsername(username, "CUSTOMER", "ADD_PET",
                 "寵物 " + res.getName() + " #" + res.getId(), res.getBreed());
-        return ResponseEntity.ok(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     // ── PUT /api/pets/{petId} ────────────────────────────────────────────────
@@ -68,7 +69,7 @@ public class PetController {
         petService.deletePet(petId);
         operationLogService.logByUsername(username, "CUSTOMER", "DELETE_PET",
                 "寵物 #" + petId, null);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // ── GET /api/pets/cat-breeds ────────────────────────────────────────────

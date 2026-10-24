@@ -65,6 +65,6 @@ public class AdminPetController {
     @DeleteMapping("/{petId}")
     public ResponseEntity<?> deletePet(@PathVariable Long petId) {
         petService.deletePet(petId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

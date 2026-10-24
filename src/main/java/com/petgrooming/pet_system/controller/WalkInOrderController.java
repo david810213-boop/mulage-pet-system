@@ -8,6 +8,7 @@ import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +34,7 @@ public class WalkInOrderController {
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody WalkInOrderCreateRequest req, @CurrentUser String username) {
-        return ResponseEntity.ok(walkInOrderService.create(req, username));
+        return ResponseEntity.status(HttpStatus.CREATED).body(walkInOrderService.create(req, username));
     }
 
     @RequireRole({ UserRole.ADMIN, UserRole.STAFF })

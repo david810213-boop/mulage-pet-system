@@ -11,6 +11,7 @@ import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,7 +68,7 @@ public class UserController {
         UserResponse res = userService.createStaff(req);
         operationLogService.logByUsername(username,
                 "AUTH", "CREATE_STAFF", "新員工 " + res.getUsername(), null);
-        return ResponseEntity.ok(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
 }
