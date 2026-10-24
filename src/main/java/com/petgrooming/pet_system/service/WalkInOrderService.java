@@ -726,7 +726,7 @@ public class WalkInOrderService {
     }
 
     // 需求 8 修正：消費明細要能看出每個項目實際套用的是回洗優惠還是會員折扣，
-    // 邏輯比照 AppointmentService.getAppointmentDetail()：只有已結帳的單才反推得出「實際」套用哪一種，
+    // 邏輯比照 AppointmentDetailService.getAppointmentDetail()：只有已結帳的單才反推得出「實際」套用哪一種，
     // 未結帳（尚未決定付款方式）則只標示 rewashEligible，不填 appliedDiscountType。
     // 需求（追加）：狗狗首次體驗優惠比照同樣模式，跟回洗優惠是互斥品種、不會同一個項目都符合。
     private void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {

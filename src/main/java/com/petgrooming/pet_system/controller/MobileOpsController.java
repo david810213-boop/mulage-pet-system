@@ -31,7 +31,7 @@ import java.util.List;
  *
  * 待補經手人：預約單跟現場單合在同一頁，一張單一張卡片、一個項目一列選經手人，
  * 按一次「儲存」全部寫入（跟網頁版矩陣表單的「統一儲存」同樣概念），
- * 分別呼叫既有的 AppointmentService.fillItemOperator() / WalkInOrderService.fillOperator()。
+ * 分別呼叫既有的 AppointmentItemService.fillItemOperator() / WalkInOrderService.fillOperator()。
  *
  * 儲值審核：顧客在 LINE 送出的轉帳儲值申請，確認入帳或駁回，
  * 呼叫既有的 TopUpService.confirm() / reject()。店家手動加值仍在網頁版（有 CSRF 保護）。
