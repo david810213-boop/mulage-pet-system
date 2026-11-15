@@ -940,6 +940,7 @@ svg.i {
 }
 
 .stage.confirm,
+.stage.deposit,
 .stage.wire {
   background: var(--amber-soft);
   color: var(--amber-ink);

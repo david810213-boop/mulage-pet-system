@@ -23,4 +23,30 @@ public final class StoreRules {
 
     /** 簽名圖片 data URL 的最短長度，太短代表只點了一下或沒簽。 */
     public static final int MIN_SIGNATURE_LENGTH = 1000;
+
+    /** 線上預約只開放「今天＋此天數」以後的日期；更近的時段請顧客聯繫官方 LINE，由店員代客預約。 */
+    public static final int ONLINE_BOOKING_MIN_DAYS_AHEAD = 3;
+
+    // ── 預約訂金（店家公告《預約須知｜訂金及取消規範》，見 docs/adr/0009-booking-deposit.md）──
+
+    /** 同一天預約兩位以上時，每位（首次大型犬除外）的訂金。 */
+    public static final int DEPOSIT_PER_PET = 500;
+
+    /** 首次體驗的大型犬，不論當天幾位都收這個金額。 */
+    public static final int DEPOSIT_LARGE_DOG_FIRST_VISIT = 1000;
+
+    /** 體重達到這個數值（公斤）的狗視為大型犬（對應體重級距的大型犬、特大型犬）。 */
+    public static final double DEPOSIT_LARGE_DOG_MIN_KG = 23.0;
+
+    /** 預約送出後必須在幾小時內付清訂金，逾期自動取消。 */
+    public static final int DEPOSIT_PAYMENT_HOURS = 24;
+
+    /** 距離預約開始至少這麼多小時取消，訂金全額退還；也是可以改期的最晚時間。 */
+    public static final int DEPOSIT_FULL_REFUND_HOURS = 72;
+
+    /** 距離預約開始至少這麼多小時（未達全額退款門檻）取消，退一半；更晚取消不退。 */
+    public static final int DEPOSIT_HALF_REFUND_HOURS = 24;
+
+    /** 已付訂金的預約可以改期的次數。 */
+    public static final int DEPOSIT_MAX_RESCHEDULES = 1;
 }

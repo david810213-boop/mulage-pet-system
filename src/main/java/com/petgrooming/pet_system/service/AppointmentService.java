@@ -53,6 +53,7 @@ public class AppointmentService {
     private final SlotCapacityService slotCapacityService; // 時段名額控管
     private final ClosedDateService closedDateService; // 公休日設定
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
+    private final BookingDepositService bookingDepositService; // 預約訂金
 
     // 營業時間／時段格線（共用 BusinessHours）
     private static final LocalTime OPENING = BusinessHours.OPENING;
@@ -89,21 +90,31 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(
                 newAppointment(req, user, pet, items, signature, assessment));
-        log.info("[預約建立] #{} 寫入完成：金額 {}，項目 {} 項", saved.getId(), saved.getTotalAmount(), items.size());
+        int depositDue = bookingDepositService.applyAfterBooking(saved, pet, returningPet);
+        log.info("[預約建立] #{} 寫入完成：金額 {}，項目 {} 項，待付訂金 {}",
+                saved.getId(), saved.getTotalAmount(), items.size(), depositDue);
 
-        appointmentNotificationService.notifyBooked(saved, user, pet, req);
+        appointmentNotificationService.notifyBooked(saved, user, pet, req, depositDue);
         return AppointmentResponse.from(saved);
     }
 
-    /** 任何人都不能預約過去的日期；顧客自己不能預約當天（請改聯繫店家），店員代客可以。 */
+    /**
+     * 任何人都不能預約過去的日期；顧客線上只能預約三日後的時段（店家公告《預約須知》），
+     * 更近的時段請聯繫官方 LINE，由店員代客預約。
+     */
     private static void validateBookingDate(LocalDate date, boolean staffAssisted) {
         if (date == null || date.isBefore(LocalDate.now())) {
             throw new AppointmentException("不能預約已經過去的日期，請重新選擇");
         }
-        if (!staffAssisted && date.isEqual(LocalDate.now())) {
-            throw new AppointmentException(
-                    "不開放當天提出預約申請，如需要預約當日，請直接聯繫官方 LINE 或致電 0902-301-820");
+        if (!staffAssisted && date.isBefore(earliestOnlineBookingDate())) {
+            throw new AppointmentException("線上預約開放" + StoreRules.ONLINE_BOOKING_MIN_DAYS_AHEAD
+                    + "日後的時段，如需預約三日內的時段，請聯繫官方 LINE 客服或致電 0902-301-820，由專人協助安排");
         }
+    }
+
+    /** 顧客線上可以預約的最早日期。 */
+    public static LocalDate earliestOnlineBookingDate() {
+        return LocalDate.now().plusDays(StoreRules.ONLINE_BOOKING_MIN_DAYS_AHEAD);
     }
 
     /** 寵物必須存在且屬於預約人；不屬於時回同樣的訊息，不透露寵物是否存在。 */
@@ -226,6 +237,7 @@ public class AppointmentService {
                 .contractAgreedAt(LocalDateTime.now())
                 .contractVersion(ContractInfo.VERSION)
                 .photoShareConsent(Boolean.TRUE.equals(req.getPhotoShareConsent()))
+                .depositNoticeAgreedAt(Boolean.TRUE.equals(req.getDepositNoticeAgreed()) ? LocalDateTime.now() : null)
                 .firstVisitAssessment(assessment)
                 .build();
         if (req.getStaffId() != null) {
@@ -258,6 +270,12 @@ public class AppointmentService {
             throw new AppointmentException("此預約已完成結帳，無法直接取消，請先處理退款");
         }
 
+        // 已付訂金的取消涉及退款比例與退款帳戶，依公告請顧客透過官方 LINE 由店員處理
+        if (!isStaffOrAdmin && appointment.depositCredit() > 0) {
+            throw new AppointmentException("此預約已支付訂金，如需取消請聯繫官方 LINE 客服，由專人協助辦理退款");
+        }
+        boolean storeCause = isStaffOrAdmin && req != null && Boolean.TRUE.equals(req.getStoreCause());
+
         appointment.setStatus(AppointmentStatus.CANCELLED);
         appointment.setCancelledAt(LocalDateTime.now());
         appointment.setCancelReason(req != null ? req.getReason() : null);
@@ -276,6 +294,11 @@ public class AppointmentService {
 
         // Google 日曆串接——取消的同時把店家日曆上對應的事件刪掉
         googleCalendarService.deleteEvent(saved);
+
+        bookingDepositService.onCancelled(saved, storeCause);
+        if (isOwner && !isStaffOrAdmin) {
+            appointmentNotificationService.notifyStaffCustomerCancelled(saved);
+        }
 
         return AppointmentResponse.from(saved);
     }
@@ -320,6 +343,9 @@ public class AppointmentService {
         if (appointment.isCancelled()) {
             throw new AppointmentException("此預約已取消，無法確認");
         }
+        if (appointment.isAwaitingDeposit()) {
+            throw new AppointmentException("這筆預約還沒收到訂金，請先到「訂金核帳」確認入帳，或在該頁免收訂金");
+        }
 
         appointment.setStatus(AppointmentStatus.CONFIRMED);
         appointment.setConfirmedTime(confirmedTime != null ? confirmedTime : LocalDateTime.now());
@@ -332,6 +358,77 @@ public class AppointmentService {
         googleCalendarService.syncEvent(saved);
         appointmentRepository.save(saved); // 補存 googleCalendarEventId
 
+        return AppointmentResponse.from(saved);
+    }
+
+    // ── 改期（店家操作）────────────────────────────────────────────────
+    // 已付訂金的預約依公告只能在預約前 72 小時以上改期一次，訂金跟著轉到新日期；沒有訂金的預約不限。
+    @Transactional
+    public AppointmentResponse reschedule(Long appointmentId, LocalDate newDate, LocalTime newStart, String username) {
+        User staff = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到使用者"));
+        if (!staff.isStaffOrAdmin()) {
+            throw new AppointmentException(ErrorCode.FORBIDDEN, "權限不足：僅店家 / 員工可改期");
+        }
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppointmentException(ErrorCode.NOT_FOUND, "找不到該預約"));
+        if (appointment.isCancelled() || appointment.isPaid()
+                || appointment.getStatus() == AppointmentStatus.IN_PROGRESS
+                || appointment.getStatus() == AppointmentStatus.COMPLETED) {
+            throw new AppointmentException("只有還沒開始服務的預約可以改期");
+        }
+        if (newDate == null || newStart == null) {
+            throw new AppointmentException("請選擇新的日期與時間");
+        }
+        LocalDate oldDate = appointment.getDate();
+        LocalTime oldStart = appointment.getStartTime();
+        if (newDate.equals(oldDate) && newStart.equals(oldStart)) {
+            throw new AppointmentException("新的時段和原本相同");
+        }
+        boolean hasDeposit = appointment.depositCredit() > 0;
+        if (hasDeposit && !DepositPolicy.canRescheduleWithDeposit(
+                oldDate.atTime(oldStart), LocalDateTime.now(), appointment.getRescheduleCount())) {
+            throw new AppointmentException(appointment.getRescheduleCount() >= StoreRules.DEPOSIT_MAX_RESCHEDULES
+                    ? "已付訂金的預約只能改期一次，這筆已經改期過了；如需取消請依退款規則辦理"
+                    : "已付訂金的預約須在預約前 72 小時以上才能改期；如需取消請依退款規則辦理");
+        }
+
+        LocalTime newEnd = newStart.plusMinutes(
+                java.time.Duration.between(oldStart, appointment.getEndTime()).toMinutes());
+        AppointmentRequest probe = new AppointmentRequest();
+        probe.setDate(newDate);
+        probe.setStartTime(newStart);
+        probe.setEndTime(newEnd);
+        if (newDate.isBefore(LocalDate.now())) {
+            throw new AppointmentException("不能改到已經過去的日期");
+        }
+        validateTimeSlot(probe);
+
+        slotCapacityService.ensureSlot(newDate, newStart);
+        PetType allowed = slotCapacityService.getAllowedPetType(newDate, newStart);
+        if (allowed != null && !allowed.name().equals(appointment.getPetType())) {
+            throw new AppointmentException("此時段目前僅開放" + allowed.getDescription() + "預約，請選擇其他時段");
+        }
+        slotCapacityService.reserve(newDate, newStart);
+        slotCapacityService.release(oldDate, oldStart);
+
+        appointment.setRescheduledFrom(oldDate + " " + oldStart);
+        appointment.setDate(newDate);
+        appointment.setStartTime(newStart);
+        appointment.setEndTime(newEnd);
+        appointment.setReminderSent(false);
+        if (hasDeposit) {
+            appointment.setRescheduleCount(appointment.getRescheduleCount() + 1);
+        }
+        Appointment saved = appointmentRepository.save(appointment);
+        bookingDepositService.onRescheduled(saved, oldDate);
+        log.info("[預約改期] #{} {} {} → {} {}（{}）", saved.getId(), oldDate, oldStart, newDate, newStart, staff.getName());
+
+        if (saved.getStatus() == AppointmentStatus.CONFIRMED) {
+            googleCalendarService.syncEvent(saved);
+            appointmentRepository.save(saved);
+        }
+        appointmentNotificationService.sendRescheduled(saved);
         return AppointmentResponse.from(saved);
     }
 }

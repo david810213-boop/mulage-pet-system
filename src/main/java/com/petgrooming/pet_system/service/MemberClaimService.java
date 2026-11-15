@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.enums.MemberCardTier;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.MemberException;
+import com.petgrooming.pet_system.model.DepositPayment;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.Wallet;
@@ -12,6 +13,7 @@ import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalletRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
+import com.petgrooming.pet_system.repository.DepositPaymentRepository;
 import com.petgrooming.pet_system.repository.TopUpRequestRepository;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.model.TopUpRequest;
@@ -38,6 +40,7 @@ public class MemberClaimService {
     private final WalletRepository walletRepository;
     private final WalkInOrderRepository walkInOrderRepository;
     private final TopUpRequestRepository topUpRequestRepository;
+    private final DepositPaymentRepository depositPaymentRepository;
     private final AppointmentRepository appointmentRepository;
 
     // 用途：顧客第一次用 LINE 登入時系統會自動建一筆空白新帳號（既有機制，不動它），
@@ -228,6 +231,13 @@ public class MemberClaimService {
             t.setUser(target);
         }
         topUpRequestRepository.saveAll(topUps);
+
+        // 過戶訂金匯款紀錄（外鍵指向來源帳號，不過戶的話下面刪除來源帳號會失敗）
+        List<DepositPayment> depositPayments = depositPaymentRepository.findByUserId(imported.getId());
+        for (DepositPayment d : depositPayments) {
+            d.setUser(target);
+        }
+        depositPaymentRepository.saveAll(depositPayments);
 
         // 儲值餘額加總到目標會員的錢包，不是覆蓋；沒有餘額也要把來源帳號的
         // 空錢包刪掉，不然會卡外鍵讓下面刪除來源帳號失敗。

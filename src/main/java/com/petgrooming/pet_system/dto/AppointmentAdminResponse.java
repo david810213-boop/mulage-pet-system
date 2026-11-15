@@ -49,6 +49,18 @@ public class AppointmentAdminResponse {
     private boolean pendingWireTransfer; // 已結帳選匯款，但店家尚未確認收款
     private Long pendingTransactionId;   // 待確認收款的交易紀錄 id
 
+    // ── 預約訂金與改期 ──────────────────────────────────────────────
+    private int depositShare;            // 應付訂金份額
+    private int depositPaid;             // 已收訂金
+    private int depositCredit;           // 尚未折抵或退還的訂金
+    private LocalDateTime depositDueAt;  // 待付訂金的付款期限
+    private int depositRefundAmount;     // 應退訂金
+    private int depositForfeitedAmount;  // 不退（沒收）的訂金
+    private String depositRefundStatus;  // NONE / PENDING / DONE
+    private String depositRefundStatusLabel;
+    private int rescheduleCount;
+    private String rescheduledFrom;
+
     public static AppointmentAdminResponse from(Appointment a) {
         AppointmentAdminResponse res = new AppointmentAdminResponse();
         res.setId(a.getId());
@@ -76,6 +88,16 @@ public class AppointmentAdminResponse {
         res.setFinalCheckNote(a.getFinalCheckNote());
         res.setCheckinOrderConfirmed(a.isCheckinOrderConfirmed());
         res.setServiceEndedDone(a.isServiceEndedDone());
+        res.setDepositShare(a.getDepositShare());
+        res.setDepositPaid(a.getDepositPaid());
+        res.setDepositCredit(a.depositCredit());
+        res.setDepositDueAt(a.getDepositDueAt());
+        res.setDepositRefundAmount(a.getDepositRefundAmount());
+        res.setDepositForfeitedAmount(a.getDepositForfeitedAmount());
+        res.setDepositRefundStatus(a.getDepositRefundStatus().name());
+        res.setDepositRefundStatusLabel(a.getDepositRefundStatus().getLabel());
+        res.setRescheduleCount(a.getRescheduleCount());
+        res.setRescheduledFrom(a.getRescheduledFrom());
         return res;
     }
 }

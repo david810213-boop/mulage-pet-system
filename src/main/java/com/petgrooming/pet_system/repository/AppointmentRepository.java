@@ -3,9 +3,12 @@ package com.petgrooming.pet_system.repository;
 import java.util.Optional;
 import org.springframework.data.repository.query.Param;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.enums.DepositRefundStatus;
 import com.petgrooming.pet_system.model.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -87,4 +90,22 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // 只讀回判斷用的欄位：鎖定讀取一定讀到最新已提交的值，不受快取中的舊實體與交易快照影響（見 docs/adr/0008）。
     @Query(value = "select paid from appointments where id = :id for update", nativeQuery = true)
     Optional<Boolean> lockPaidById(@Param("id") Long id);
+
+    // ── 預約訂金 ─────────────────────────────────────────────────────
+    // 同一會員同一天的有效預約（訂金以這一組為單位計算）
+    List<Appointment> findByUserIdAndDateAndStatusNotOrderByIdAsc(Long userId, LocalDate date, AppointmentStatus status);
+
+    // 同上，但以 SELECT ... FOR UPDATE 讀取：要改寫份額時用，讀到其他交易剛提交的預約（見 docs/adr/0009）
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Appointment a WHERE a.user.id = :userId AND a.date = :date AND a.status <> :status ORDER BY a.id")
+    List<Appointment> lockByUserIdAndDateAndStatusNot(@Param("userId") Long userId, @Param("date") LocalDate date,
+                                                      @Param("status") AppointmentStatus status);
+
+    // 待付訂金清單、逾期掃描（JOIN FETCH 使用者，避免逐筆查詢）
+    @Query("SELECT a FROM Appointment a JOIN FETCH a.user WHERE a.status = :status ORDER BY a.date, a.startTime")
+    List<Appointment> findWithUserByStatus(@Param("status") AppointmentStatus status);
+
+    @Query("SELECT a FROM Appointment a JOIN FETCH a.user "
+            + "WHERE a.depositRefundStatus = :status ORDER BY a.id")
+    List<Appointment> findWithUserByDepositRefundStatus(@Param("status") DepositRefundStatus status);
 }

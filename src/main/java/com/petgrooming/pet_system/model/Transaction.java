@@ -49,5 +49,16 @@ public class Transaction {
 
     private LocalDateTime paymentTime;      // 付款時間（付款後才填入）
 
-    private String handledBy;              // 經手人（對應原本 staffName）
+    private String handledBy;
+
+    // 結帳時折抵的預約訂金（訂金於預約前已匯款收取）。finalAmount 仍是這次服務的完整金額，
+    // 營收報表照舊累計；當下實際向顧客收取的是 finalAmount - depositApplied。
+    @Column(name = "deposit_applied", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int depositApplied = 0;
+
+    /** 結帳當下實際向顧客收取（或從儲值金扣除）的金額。 */
+    public int collectedAmount() {
+        return Math.max(0, finalAmount - depositApplied);
+    }              // 經手人（對應原本 staffName）
 }

@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
+import com.petgrooming.pet_system.service.BookingDepositService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import org.springframework.format.annotation.DateTimeFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,6 +52,7 @@ public class MobileOpsController {
     private final AppointmentItemService appointmentItemService;
     private final WalkInOrderOperatorService walkInOrderOperatorService;
     private final TopUpService topUpService;
+    private final BookingDepositService bookingDepositService;
     private final OperationLogService operationLogService;
     private final MobileViewHelper view;
 
@@ -167,5 +171,79 @@ public class MobileOpsController {
             ra.addFlashAttribute("toastError", "駁回失敗：" + e.getMessage());
         }
         return "redirect:/m/topups";
+    }
+
+    // ── 訂金核帳（預約訂金目前人工核帳）──────────────────────────────────
+    @GetMapping("/deposits")
+    public String deposits(Model model, @CurrentUser User user) {
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        model.addAttribute("user", user);
+        model.addAttribute("payments", bookingDepositService.pendingPayments());
+        model.addAttribute("awaiting", bookingDepositService.awaitingAppointments());
+        model.addAttribute("refunds", bookingDepositService.pendingRefunds());
+        model.addAttribute("dateFmt", DATE_FMT);
+        model.addAttribute("dateTimeFmt", DATE_TIME_FMT);
+        model.addAttribute("activeTab", "more");
+        return "m/deposits";
+    }
+
+    @PostMapping("/deposits/{id}/confirm")
+    public String confirmDeposit(@PathVariable Long id, RedirectAttributes ra, @CurrentUser User user) {
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        try {
+            var result = bookingDepositService.confirmPayment(id, user.getName());
+            operationLogService.log(user, "APPOINTMENT", "DEPOSIT_CONFIRM",
+                    "訂金匯款 #" + id, result.customerName() + " " + result.date() + " +$" + result.amount() + "（手機版）");
+            ra.addFlashAttribute("toast", result.outstandingNow() == 0
+                    ? "已入帳，" + result.customerName() + " 當天的預約已確認"
+                    : "已入帳，但當天還差 NT$ " + result.outstandingNow());
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("toastError", "確認失敗：" + e.getMessage());
+        }
+        return "redirect:/m/deposits";
+    }
+
+    @PostMapping("/deposits/{id}/reject")
+    public String rejectDeposit(@PathVariable Long id, @RequestParam(required = false) String reason,
+            RedirectAttributes ra, @CurrentUser User user) {
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        try {
+            bookingDepositService.rejectPayment(id, user.getName(), reason);
+            operationLogService.log(user, "APPOINTMENT", "DEPOSIT_REJECT", "訂金匯款 #" + id,
+                    (reason == null ? "" : reason.trim()) + "（手機版）");
+            ra.addFlashAttribute("toast", "已駁回，系統已通知顧客");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("toastError", "駁回失敗：" + e.getMessage());
+        }
+        return "redirect:/m/deposits";
+    }
+
+    // 免收訂金：同一會員同一天的預約都不收，必須填原因（記入操作紀錄）
+    @PostMapping("/deposits/waive")
+    public String waiveDeposit(@RequestParam Long userId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String reason, RedirectAttributes ra, @CurrentUser User user) {
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        if (reason == null || reason.isBlank()) {
+            ra.addFlashAttribute("toastError", "請填寫免收訂金的原因");
+            return "redirect:/m/deposits";
+        }
+        try {
+            int confirmed = bookingDepositService.waive(userId, date);
+            operationLogService.log(user, "APPOINTMENT", "DEPOSIT_WAIVE", "會員 #" + userId + " " + date,
+                    reason.trim() + "（手機版）");
+            ra.addFlashAttribute("toast", "已免收訂金，" + confirmed + " 筆預約已確認");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("toastError", "操作失敗：" + e.getMessage());
+        }
+        return "redirect:/m/deposits";
     }
 }
