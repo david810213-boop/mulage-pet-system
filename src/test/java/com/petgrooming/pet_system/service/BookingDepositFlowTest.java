@@ -34,7 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 class BookingDepositFlowTest extends IntegrationTestBase {
 
-    private static final LocalTime TEN = LocalTime.of(10, 0);
+    private static final LocalTime NOON = LocalTime.of(12, 0);
     private static final LocalTime TWO_PM = LocalTime.of(14, 0);
 
     @Autowired
@@ -63,7 +63,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
         User customer = testData.customer();
         PetResponse dog = testData.dog(customer);
 
-        AppointmentResponse booked = book(customer, dog, testData.openFutureDate(), TEN);
+        AppointmentResponse booked = book(customer, dog, testData.openFutureDate(), NOON);
 
         assertThat(booked.getStatus()).isEqualTo(AppointmentStatus.PENDING_CONFIRM);
         assertThat(booked.getDepositShare()).isZero();
@@ -74,7 +74,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
         User customer = testData.customer();
         User staff = testData.staff();
         LocalDate date = testData.openFutureDate();
-        AppointmentResponse first = book(customer, testData.dog(customer), date, TEN);
+        AppointmentResponse first = book(customer, testData.dog(customer), date, NOON);
         AppointmentResponse second = book(customer, testData.cat(customer), date, TWO_PM);
 
         assertThat(second.getStatus()).isEqualTo(AppointmentStatus.AWAITING_DEPOSIT);
@@ -106,7 +106,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void firstVisitLargeDogAwaitsDepositEvenAlone() {
         User customer = testData.customer();
 
-        AppointmentResponse booked = book(customer, testData.largeDog(customer), testData.openFutureDate(), TEN);
+        AppointmentResponse booked = book(customer, testData.largeDog(customer), testData.openFutureDate(), NOON);
 
         assertThat(booked.getStatus()).isEqualTo(AppointmentStatus.AWAITING_DEPOSIT);
         assertThat(booked.getDepositShare()).isEqualTo(1000);
@@ -116,7 +116,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void largeDogWithCatPaysFifteenHundred() {
         User customer = testData.customer();
         LocalDate date = testData.openFutureDate();
-        book(customer, testData.largeDog(customer), date, TEN);
+        book(customer, testData.largeDog(customer), date, NOON);
         book(customer, testData.cat(customer), date, TWO_PM);
 
         assertThat(bookingDepositService.status(customer.getUsername(), date).outstanding()).isEqualTo(1500);
@@ -127,7 +127,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
         User customer = testData.customer();
         walletRepository.save(Wallet.builder().user(customer).balance(3000).build());
         LocalDate date = testData.openFutureDate();
-        book(customer, testData.dog(customer), date, TEN);
+        book(customer, testData.dog(customer), date, NOON);
 
         AppointmentResponse second = book(customer, testData.cat(customer), date, TWO_PM);
 
@@ -140,7 +140,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void previewMatchesWhatTheNextBookingWillCost() {
         User customer = testData.customer();
         LocalDate date = testData.openFutureDate();
-        book(customer, testData.dog(customer), date, TEN);
+        book(customer, testData.dog(customer), date, NOON);
 
         assertThat(bookingDepositService.preview(customer.getUsername(), testData.cat(customer).getId(), date).amount())
                 .isEqualTo(1000);
@@ -150,7 +150,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void overdueDepositCancelsTheBookingAndReleasesTheSeat() {
         User customer = testData.customer();
         LocalDate date = testData.openFutureDate();
-        AppointmentResponse first = book(customer, testData.dog(customer), date, TEN);
+        AppointmentResponse first = book(customer, testData.dog(customer), date, NOON);
         AppointmentResponse second = book(customer, testData.cat(customer), date, TWO_PM);
         Appointment overdue = reload(second);
         overdue.setDepositDueAt(LocalDateTime.now().minusMinutes(1));
@@ -168,7 +168,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void reportedPaymentBeforeDeadlineIsNotExpired() {
         User customer = testData.customer();
         LocalDate date = testData.openFutureDate();
-        AppointmentResponse booked = book(customer, testData.largeDog(customer), date, TEN);
+        AppointmentResponse booked = book(customer, testData.largeDog(customer), date, NOON);
         bookingDepositService.submitPayment(customer.getUsername(), new DepositPaymentRequest(date, "54321", null));
         DepositPayment payment = depositPaymentRepository.findById(pendingPaymentId(customer, date)).orElseThrow();
         payment.setCreatedAt(LocalDateTime.now().minusMinutes(10));
@@ -206,7 +206,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     @Test
     void customerCanCancelUnpaidAwaitingBooking() {
         User customer = testData.customer();
-        AppointmentResponse booked = book(customer, testData.largeDog(customer), testData.openFutureDate(), TEN);
+        AppointmentResponse booked = book(customer, testData.largeDog(customer), testData.openFutureDate(), NOON);
 
         appointmentService.cancel(booked.getId(), new CancelAppointmentRequest(), customer.getUsername());
 
@@ -218,7 +218,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void staffCannotManuallyConfirmWithoutDeposit() {
         User customer = testData.customer();
         User staff = testData.staff();
-        AppointmentResponse booked = book(customer, testData.largeDog(customer), testData.openFutureDate(), TEN);
+        AppointmentResponse booked = book(customer, testData.largeDog(customer), testData.openFutureDate(), NOON);
 
         assertThatThrownBy(() -> appointmentService.confirm(booked.getId(), null, staff.getUsername()))
                 .isInstanceOf(AppointmentException.class)
@@ -229,7 +229,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     void waivingConfirmsTheDay() {
         User customer = testData.customer();
         LocalDate date = testData.openFutureDate();
-        AppointmentResponse booked = book(customer, testData.largeDog(customer), date, TEN);
+        AppointmentResponse booked = book(customer, testData.largeDog(customer), date, NOON);
 
         bookingDepositService.waive(customer.getId(), date);
 
@@ -245,17 +245,17 @@ class BookingDepositFlowTest extends IntegrationTestBase {
         AppointmentResponse booked = paidLargeDog(customer, staff, date);
         LocalDate newDate = testData.openFutureDate();
 
-        appointmentService.reschedule(booked.getId(), newDate, TEN, staff.getUsername());
+        appointmentService.reschedule(booked.getId(), newDate, NOON, staff.getUsername());
 
         Appointment moved = reload(booked);
         assertThat(moved.getDate()).isEqualTo(newDate);
         assertThat(moved.getDepositPaid()).isEqualTo(1000);
         assertThat(moved.getRescheduleCount()).isEqualTo(1);
-        assertThat(slotCapacityService.bookedCount(date, TEN)).isZero();
-        assertThat(slotCapacityService.bookedCount(newDate, TEN)).isEqualTo(1);
+        assertThat(slotCapacityService.bookedCount(date, NOON)).isZero();
+        assertThat(slotCapacityService.bookedCount(newDate, NOON)).isEqualTo(1);
 
         LocalDate thirdDate = testData.openFutureDate();
-        assertThatThrownBy(() -> appointmentService.reschedule(booked.getId(), thirdDate, TEN, staff.getUsername()))
+        assertThatThrownBy(() -> appointmentService.reschedule(booked.getId(), thirdDate, NOON, staff.getUsername()))
                 .isInstanceOf(AppointmentException.class)
                 .hasMessageContaining("一次");
     }
@@ -276,7 +276,7 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     }
 
     private AppointmentResponse paidLargeDog(User customer, User staff, LocalDate date) {
-        AppointmentResponse booked = book(customer, testData.largeDog(customer), date, TEN);
+        AppointmentResponse booked = book(customer, testData.largeDog(customer), date, NOON);
         bookingDepositService.submitPayment(customer.getUsername(), new DepositPaymentRequest(date, "12345", null));
         bookingDepositService.confirmPayment(pendingPaymentId(customer, date), staff.getName());
         assertThat(reload(booked).getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);

@@ -80,7 +80,8 @@ class StaffPagesSmokeTest extends IntegrationTestBase {
     @Test
     void slotManagementPagesAndClosedDates() throws Exception {
         User staff = testData.staff();
-        LocalDate date = TestData.uniqueFutureDate();
+        // 要驗證「不是公休日」，必須挑開店日（固定公休星期會讓某些未來日期落在公休）
+        LocalDate date = testData.openFutureDate();
 
         Map<String, Object> model = page(staff, get("/appointments/slots-manage").param("date", date.toString()),
                 "appointments/slots-manage");
