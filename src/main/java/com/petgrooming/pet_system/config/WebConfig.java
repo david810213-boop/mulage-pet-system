@@ -76,6 +76,21 @@ public class WebConfig implements WebMvcConfigurer {
                 return bean;
         }
 
+        // LIFF 頁面是靜態 HTML，Spring 預設不送 Cache-Control，LINE 內建瀏覽器會依 Last-Modified
+        // 自行推估快取時間，部署後仍顯示舊版頁面（新版 API 回傳的新狀態在舊頁面上顯示不出來）。
+        // no-cache 讓瀏覽器每次都先向伺服器確認，沒有變動時回 304，不用重新下載。
+        @Bean
+        public FilterRegistrationBean<Filter> liffNoCacheFilter() {
+                FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<>();
+                bean.setFilter((ServletRequest req, ServletResponse res, FilterChain chain) -> {
+                        ((HttpServletResponse) res).setHeader("Cache-Control", "no-cache");
+                        chain.doFilter(req, res);
+                });
+                bean.addUrlPatterns("/liff/*");
+                bean.setOrder(3);
+                return bean;
+        }
+
         // 打開網站根目錄（不帶任何路徑）時，導向後台首頁；
         // 未登入的話會照常被 LoginInterceptor 攔截、轉去登入頁，行為跟直接打 /dashboard 一致。
         @Override
