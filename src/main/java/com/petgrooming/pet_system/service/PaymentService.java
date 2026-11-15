@@ -48,6 +48,7 @@ public class PaymentService {
     private final GroomingItemRepository groomingItemRepository;
     private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
     private final RetailProductService retailProductService; // 預約結帳頁加購零售商品，結帳時扣庫存
+    private final BookingDepositService bookingDepositService; // 結帳折抵預約訂金
 
     // ── 1. 結帳 ────────────────────────────────────────────────────────────
     /**
@@ -66,7 +67,9 @@ public class PaymentService {
 
         deductRetailStock(appointmentId);
         PaymentMethod method = req.getPaymentMethod();
+        int depositBefore = appointment.getDepositApplied();
         int finalAmount = chargeAmount(appointment, method, user.isStaffOrAdmin());
+        int depositApplied = appointment.getDepositApplied() - depositBefore;
 
         Transaction transaction = transactionRepository.save(Transaction.builder()
                 .appointment(appointment)
@@ -74,6 +77,7 @@ public class PaymentService {
                 .paymentMethod(method)
                 .baseAmount(appointment.getTotalAmount())
                 .finalAmount(finalAmount)
+                .depositApplied(depositApplied)
                 .paid(method != PaymentMethod.WIRE_TRANSFER)
                 .paymentTime(method == PaymentMethod.WIRE_TRANSFER ? null : LocalDateTime.now())
                 .handledBy(isOwner ? "會員自助（" + user.getName() + "）" : "員工：" + user.getName())
@@ -81,6 +85,7 @@ public class PaymentService {
 
         if (method == PaymentMethod.WIRE_TRANSFER) {
             log.info("預約 #{} 選擇匯款結帳，進入待對帳狀態，等待店家確認收款", appointment.getId());
+            appointmentRepository.save(appointment); // 保存訂金折抵
             return TransactionResponse.from(transaction);
         }
         appointment.setPaid(true);
@@ -131,14 +136,19 @@ public class PaymentService {
      */
     private int chargeAmount(Appointment appointment, PaymentMethod method, boolean byStaff) {
         if (method != PaymentMethod.WALLET) {
-            return method.calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
+            int amount = method.calculateFinalAmount(calculateAmountWithRewashDiscount(appointment));
+            bookingDepositService.applyAtCheckout(appointment, amount);
+            return amount;
         }
         if (!byStaff) {
             throw new PaymentException("儲值金結帳僅限店家/員工於後台操作");
         }
         String member = appointment.getUser().getUsername();
         int amount = calculateWalletAmountPerItem(appointment, walletService.getWallet(member).getDiscount());
-        walletService.deduct(member, amount, appointment.getId());
+        int collect = amount - bookingDepositService.applyAtCheckout(appointment, amount);
+        if (collect > 0) {
+            walletService.deduct(member, collect, appointment.getId());
+        }
         return amount;
     }
 
@@ -261,12 +271,16 @@ public class PaymentService {
 
         // 1. 若原本用儲值金付款，退回儲值餘額
         if (transaction.getPaymentMethod() == PaymentMethod.WALLET) {
-            walletService.refund(
-                    appointment.getUser().getUsername(),
-                    transaction.getFinalAmount(),
-                    appointmentId,
-                    "預約 #" + appointmentId + " 退款");
+            if (transaction.collectedAmount() > 0) {
+                walletService.refund(
+                        appointment.getUser().getUsername(),
+                        transaction.collectedAmount(),
+                        appointmentId,
+                        "預約 #" + appointmentId + " 退款");
+            }
         }
+        // 結帳時折抵的訂金回到預約上，重新結帳時再折抵一次
+        appointment.setDepositApplied(Math.max(0, appointment.getDepositApplied() - transaction.getDepositApplied()));
 
         // 2. 刪除這筆預約已經記過的所有績效積分（接進/完成/接出/服務項目）
         List<PerformanceRecord> records =

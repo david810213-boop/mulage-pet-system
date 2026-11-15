@@ -1,6 +1,7 @@
 package com.petgrooming.pet_system.model;
 
 import com.petgrooming.pet_system.enums.AppointmentStatus;
+import com.petgrooming.pet_system.enums.DepositRefundStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -84,8 +85,9 @@ public class Appointment {
     private String memberNote;
 
     // ── 取消預約相關 ─────────────────────────────────────────────────────
+    // 存成 VARCHAR（見 docs/adr/0006-varchar-enum.md）；既有資料表的原生 ENUM 欄位由 V19 遷移改型別
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 30, columnDefinition = "varchar(30) not null default 'CONFIRMED'")
     @Builder.Default
     private AppointmentStatus status = AppointmentStatus.CONFIRMED;
 
@@ -188,6 +190,76 @@ public class Appointment {
     @Column(name = "first_visit_assessment", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean firstVisitAssessment = false;
+
+    // ── 預約訂金（規則見 BookingDepositService）──────────────────────────
+    // 同一會員同一天的有效預約合起來計算訂金，每筆記自己的份額，部分取消、退款、結帳折抵都逐筆處理。
+    @Column(name = "deposit_share", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int depositShare = 0;
+
+    // 已收到、分配到這筆預約的訂金（可能大於份額：同日其他預約取消後，剩下的訂金保留到結帳折抵）
+    @Column(name = "deposit_paid", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int depositPaid = 0;
+
+    // 建立預約當下判斷：首次體驗的大型犬（之後重新計算份額不用再查消費紀錄與體重）
+    @Column(name = "deposit_large_first_visit", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean depositLargeFirstVisit = false;
+
+    // 待付訂金的付款期限，逾期由排程自動取消
+    @Column(name = "deposit_due_at")
+    private LocalDateTime depositDueAt;
+
+    // 店員免收這一天的訂金（原因記在操作紀錄）
+    @Column(name = "deposit_waived", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean depositWaived = false;
+
+    // 結帳時折抵的訂金
+    @Column(name = "deposit_applied", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int depositApplied = 0;
+
+    // 取消或結帳後應退還顧客的訂金，與沒收（不退）的部分
+    @Column(name = "deposit_refund_amount", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int depositRefundAmount = 0;
+
+    @Column(name = "deposit_forfeited_amount", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int depositForfeitedAmount = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deposit_refund_status", nullable = false, length = 20,
+            columnDefinition = "varchar(20) not null default 'NONE'")
+    @Builder.Default
+    private DepositRefundStatus depositRefundStatus = DepositRefundStatus.NONE;
+
+    @Column(name = "deposit_refunded_at")
+    private LocalDateTime depositRefundedAt;
+
+    // 顧客在 LIFF 勾選已閱讀《預約須知｜訂金及取消規範》的時間
+    @Column(name = "deposit_notice_agreed_at")
+    private LocalDateTime depositNoticeAgreedAt;
+
+    // ── 改期 ─────────────────────────────────────────────────────────
+    @Column(name = "reschedule_count", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    private int rescheduleCount = 0;
+
+    // 最近一次改期前的原時段（顯示用，例如「11/20 12:00 改期」）
+    @Column(name = "rescheduled_from", length = 40)
+    private String rescheduledFrom;
+
+    /** 這筆預約還保留著、尚未折抵或退還的訂金。 */
+    public int depositCredit() {
+        return Math.max(0, depositPaid - depositApplied - depositRefundAmount - depositForfeitedAmount);
+    }
+
+    public boolean isAwaitingDeposit() {
+        return status == AppointmentStatus.AWAITING_DEPOSIT;
+    }
 
     public boolean isCancelled() {
         return status == AppointmentStatus.CANCELLED;

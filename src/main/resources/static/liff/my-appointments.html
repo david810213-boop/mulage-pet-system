@@ -818,6 +818,8 @@
           badge = '<span class="status-badge past">已完成</span>';
         } else if (a.paid) {
           badge = '<span class="status-badge paid">已付款</span>';
+        } else if (a.status === "AWAITING_DEPOSIT") {
+          badge = '<span class="status-badge unpaid">待付訂金</span>';
         } else {
           badge = '<span class="status-badge unpaid">未付款</span>';
         }
@@ -828,7 +830,23 @@
 
         // 可取消條件：尚未取消、尚未付款、且預約時間還沒到（過去的不給取消）
         const isFuture = !isPastOrCancelledForCancelCheck(a);
-        const canCancel = !a.cancelled && !a.paid && isFuture;
+        // 已付訂金的預約依《預約須知》需透過官方 LINE 取消（涉及退款比例），不提供自行取消
+        const hasDeposit = (a.depositCredit || 0) > 0;
+        const canCancel = !a.cancelled && !a.paid && isFuture && !hasDeposit;
+        const awaitingDeposit = a.status === "AWAITING_DEPOSIT" && !a.cancelled;
+        let depositHtml = "";
+        if (awaitingDeposit) {
+          depositHtml = `<div class="cancel-note" style="color:#8a6f3f;">本次預約需預付訂金，確認收到後預約即成立${a.depositDueAt ? "（請於 " + formatDue(a.depositDueAt) + " 前匯款）" : ""}</div>
+        <button class="calendar-add-btn" style="border:0; cursor:pointer; background:#c9a876; color:#fff;" onclick="event.stopPropagation(); openDepositPanel('${a.date}')">💳 匯款資訊／回報匯款</button>`;
+        } else if (!a.cancelled && (a.depositPaid || 0) > 0) {
+          depositHtml = `<div class="cancel-note">已付訂金 $${a.depositPaid}，將於服務當日結帳時折抵</div>`;
+        }
+        if ((a.depositRefundAmount || 0) > 0) {
+          depositHtml += `<div class="cancel-note">應退訂金 $${a.depositRefundAmount}（${escapeHtml(a.depositRefundStatusLabel || "")}）</div>`;
+        }
+        if ((a.depositForfeitedAmount || 0) > 0) {
+          depositHtml += `<div class="cancel-note">依取消規範不退還的訂金 $${a.depositForfeitedAmount}</div>`;
+        }
 
         // 初次預約還沒開單時，金額由店家現場報價
         const quotePending = a.firstVisitAssessment && !a.paid && !a.totalAmount;
@@ -865,7 +883,9 @@
         <div class="detail-hint">查看完整明細 →</div>
         <button class="calendar-add-btn" style="border:0; cursor:pointer;" onclick="event.stopPropagation(); openContract(${a.id})">📄 查看本次簽署的契約</button>
         ${canAddToCalendar ? `<a class="calendar-add-btn" href="${buildGoogleCalendarUrl(a)}" target="_blank" onclick="event.stopPropagation();">📅 加入我的 Google 日曆</a>` : ""}
+        ${depositHtml}
         ${canCancel ? `<button class="cancel-btn" onclick="event.stopPropagation(); cancelAppointment(${a.id}, '${a.appointmentCode}')">取消預約</button>` : ""}
+        ${!a.cancelled && !a.paid && isFuture && hasDeposit ? `<div class="cancel-note">已付訂金，如需取消或改期請聯繫官方 LINE 客服</div>` : ""}
         ${a.cancelled && a.cancelledBy ? `<div class="cancel-note">取消人：${a.cancelledBy}${a.cancelReason ? "　原因：" + a.cancelReason : ""}</div>` : ""}
         ${!canCancel && !a.cancelled && a.paid ? `<div class="cancel-note">已付款，如需取消請聯繫店家處理退款</div>` : ""}
       </div>
@@ -939,6 +959,127 @@
           await loadAppointments();
         } catch (e) {
           showToast("網路錯誤，請重試", "error");
+        }
+      }
+
+      // ── 預約訂金：匯款資訊與回報匯款 ─────────────────────────────────
+      function formatDue(isoStr) {
+        // 後端回傳 yyyy-MM-ddTHH:mm:ss（台灣時間），只取月/日 時:分顯示
+        const [d, t] = String(isoStr).split("T");
+        const [, m, day] = d.split("-");
+        return Number(m) + "/" + Number(day) + " " + (t || "").substring(0, 5);
+      }
+
+      async function readJsonOrText(res) {
+        const raw = await res.text();
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          return raw;
+        }
+      }
+
+      function closeDepositPanel() {
+        const el = document.getElementById("depositPanel");
+        if (el) el.remove();
+      }
+
+      async function openDepositPanel(date) {
+        closeDepositPanel();
+        const modal = document.createElement("div");
+        modal.id = "depositPanel";
+        modal.style.cssText =
+          "position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;";
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeDepositPanel();
+        });
+        modal.innerHTML = '<div style="background:#fff; border-radius:12px; padding:20px; max-width:360px; width:90%; max-height:86vh; overflow-y:auto; font-size:13.5px; line-height:1.7;" id="depositPanelBody">載入中...</div>';
+        document.body.appendChild(modal);
+        try {
+          const res = await fetch("/api/me/deposits?date=" + encodeURIComponent(date), {
+            headers: { Authorization: "Bearer " + jwtToken, "ngrok-skip-browser-warning": "true" },
+          });
+          const data = await readJsonOrText(res);
+          if (!res.ok) {
+            document.getElementById("depositPanelBody").textContent =
+              "載入失敗：" + (typeof data === "string" ? data : (data && data.message) || res.status);
+            return;
+          }
+          renderDepositPanel(data);
+        } catch (e) {
+          document.getElementById("depositPanelBody").textContent = "網路錯誤，請重試";
+        }
+      }
+
+      function renderDepositPanel(d) {
+        const body = document.getElementById("depositPanelBody");
+        if (!body) return;
+        const bank = d.accountNumber
+          ? `<div style="background:#FBF9F5; border:1px solid #DBD3C4; border-radius:8px; padding:10px 12px; margin:10px 0;">
+              銀行：${escapeHtml(d.bankName || "")}<br />帳號：<b>${escapeHtml(d.accountNumber)}</b><br />戶名：${escapeHtml(d.accountHolder || "")}
+              ${d.qrCodeUrl ? `<img src="${escapeHtml(d.qrCodeUrl)}" style="display:block; max-width:180px; margin:8px auto 0;" />` : ""}
+            </div>`
+          : `<div style="margin:10px 0; color:#8B0000;">店家尚未設定匯款帳號，請聯繫官方 LINE 客服。</div>`;
+        let action;
+        if (d.outstanding <= 0) {
+          action = `<p style="color:#3d6b34; margin:10px 0;">這一天的訂金已付清 ♡</p>`;
+        } else if (d.paymentPending) {
+          action = `<p style="color:#8a6f3f; margin:10px 0;">已收到您回報的匯款 NT$ ${Number(d.pendingAmount).toLocaleString()}，店家核帳中，確認後會以 LINE 通知您。</p>`;
+        } else {
+          action = `
+            ${d.lastRejectReason ? `<p style="color:#8B0000; margin:6px 0;">上次回報未通過：${escapeHtml(d.lastRejectReason)}</p>` : ""}
+            <label style="display:block; margin-top:8px;">匯款帳號後五碼 *</label>
+            <input id="depLast5" inputmode="numeric" maxlength="5" style="width:100%; padding:8px; border:1px solid #DBD3C4; border-radius:6px; box-sizing:border-box;" />
+            <label style="display:block; margin-top:8px;">轉帳時間／備註（選填）</label>
+            <input id="depNote" maxlength="200" placeholder="例如：11/17 14:30 轉帳" style="width:100%; padding:8px; border:1px solid #DBD3C4; border-radius:6px; box-sizing:border-box;" />
+            <button type="button" id="depSubmitBtn" style="width:100%; margin-top:12px; padding:12px; border:none; border-radius:8px; background:#c9a876; color:#fff; font-weight:600;">我已匯款，送出</button>`;
+        }
+        body.innerHTML = `
+          <h3 style="margin:0 0 8px; font-size:16px;">預約訂金｜${escapeHtml(d.date)}</h3>
+          <div>應付訂金：NT$ ${Number(d.required).toLocaleString()}　已入帳：NT$ ${Number(d.paid).toLocaleString()}</div>
+          ${d.outstanding > 0 ? `<div><b>尚需匯款：NT$ ${Number(d.outstanding).toLocaleString()}</b></div>` : ""}
+          ${d.dueAt && d.outstanding > 0 ? `<div style="color:#8B0000;">請於 ${formatDue(d.dueAt)} 前完成匯款，逾期未付款預約將自動取消。</div>` : ""}
+          ${d.outstanding > 0 ? bank : ""}
+          ${action}
+          <p style="font-size:12px; color:#a29a8c; margin:10px 0 0;">訂金將於當日服務結帳時折抵消費金額。取消規範：預約前 72 小時以上取消退還 100%、72 小時內退還 50%、24 小時內恕不退還。</p>
+          <button type="button" onclick="closeDepositPanel()" style="width:100%; margin-top:10px; padding:10px; border:1px solid #DBD3C4; border-radius:8px; background:#fff;">關閉</button>`;
+        const btn = document.getElementById("depSubmitBtn");
+        if (btn) btn.addEventListener("click", () => submitDepositPayment(d.date));
+      }
+
+      async function submitDepositPayment(date) {
+        const last5 = (document.getElementById("depLast5").value || "").trim();
+        const note = (document.getElementById("depNote").value || "").trim();
+        if (!/^\d{5}$/.test(last5)) {
+          showToast("匯款帳號後五碼請填 5 位數字", "error");
+          return;
+        }
+        const btn = document.getElementById("depSubmitBtn");
+        btn.disabled = true;
+        btn.textContent = "送出中...";
+        try {
+          const res = await fetch("/api/me/deposit-payments", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + jwtToken,
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify({ date: date, lastFiveDigits: last5, remitNote: note || null }),
+          });
+          const data = await readJsonOrText(res);
+          if (!res.ok) {
+            showToast("送出失敗：" + (typeof data === "string" ? data : (data && data.message) || res.status), "error");
+            btn.disabled = false;
+            btn.textContent = "我已匯款，送出";
+            return;
+          }
+          showToast("已送出，店家核帳後會通知您", "success");
+          renderDepositPanel(data);
+        } catch (e) {
+          showToast("網路錯誤，請重試", "error");
+          btn.disabled = false;
+          btn.textContent = "我已匯款，送出";
         }
       }
 

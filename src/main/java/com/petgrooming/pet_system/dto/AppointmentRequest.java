@@ -32,4 +32,7 @@ public class AppointmentRequest {
 
     @Schema(description = "契約第二十一條：是否同意分享美容照片（未勾＝不同意）")
     private Boolean photoShareConsent;
+
+    @Schema(description = "顧客已閱讀《預約須知｜訂金及取消規範》（LIFF 預約頁勾選）")
+    private Boolean depositNoticeAgreed;
 }

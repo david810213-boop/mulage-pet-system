@@ -45,6 +45,18 @@ public class AppointmentResponse {
     private String cancelledBy;
     private boolean finalCheckDone; // 進行中核對是否已完成（結帳按鈕的顯示要用到，會員自助結帳時也需要）
 
+    // ── 預約訂金與改期 ──────────────────────────────────────────────
+    private int depositShare;            // 應付訂金份額
+    private int depositPaid;             // 已收訂金
+    private int depositCredit;           // 尚未折抵或退還的訂金
+    private LocalDateTime depositDueAt;  // 待付訂金的付款期限
+    private int depositRefundAmount;     // 應退訂金
+    private int depositForfeitedAmount;  // 不退（沒收）的訂金
+    private String depositRefundStatus;  // NONE / PENDING / DONE
+    private String depositRefundStatusLabel;
+    private int rescheduleCount;
+    private String rescheduledFrom;
+
     // 從 Entity 轉成 DTO 的靜態工廠方法
     public static AppointmentResponse from(Appointment a) {
         AppointmentResponse res = new AppointmentResponse();
@@ -72,6 +84,16 @@ public class AppointmentResponse {
         res.setCancelReason(a.getCancelReason());
         res.setCancelledBy(a.getCancelledBy());
         res.setFinalCheckDone(a.isFinalCheckDone());
+        res.setDepositShare(a.getDepositShare());
+        res.setDepositPaid(a.getDepositPaid());
+        res.setDepositCredit(a.depositCredit());
+        res.setDepositDueAt(a.getDepositDueAt());
+        res.setDepositRefundAmount(a.getDepositRefundAmount());
+        res.setDepositForfeitedAmount(a.getDepositForfeitedAmount());
+        res.setDepositRefundStatus(a.getDepositRefundStatus().name());
+        res.setDepositRefundStatusLabel(a.getDepositRefundStatus().getLabel());
+        res.setRescheduleCount(a.getRescheduleCount());
+        res.setRescheduledFrom(a.getRescheduledFrom());
         return res;
     }
 }

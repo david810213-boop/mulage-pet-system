@@ -22,6 +22,7 @@ import com.petgrooming.pet_system.service.AppointmentCheckInService;
 import com.petgrooming.pet_system.service.AppointmentService;
 import com.petgrooming.pet_system.service.AppointmentDetailService;
 import com.petgrooming.pet_system.service.AppointmentItemService;
+import com.petgrooming.pet_system.service.BookingDepositService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MobileAppointmentCards;
 import com.petgrooming.pet_system.service.MobileViewHelper;
@@ -43,6 +44,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import org.springframework.format.annotation.DateTimeFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -72,6 +75,7 @@ public class MobileAppointmentController {
     private final WalletService walletService;
     private final MobileViewHelper view;
     private final MobileAppointmentCards cards; // 預約卡片、流程階段與日期標籤
+    private final BookingDepositService bookingDepositService; // 預約訂金
 
     private User getLoginUser(HttpServletRequest request) {
         String username = (String) request.getAttribute("tokenUsername");
@@ -111,6 +115,11 @@ public class MobileAppointmentController {
         model.addAttribute("canCheckout", !a.isCancelled() && !a.isPaid() && !a.isPendingWireTransfer()
                 && (a.getStatus() != AppointmentStatus.IN_PROGRESS || a.isFinalCheckDone()));
         model.addAttribute("canCancel", !a.isCancelled() && !a.isPaid());
+        model.addAttribute("canReschedule", !a.isCancelled() && !a.isPaid()
+                && a.getStatus() != AppointmentStatus.IN_PROGRESS && a.getStatus() != AppointmentStatus.COMPLETED);
+        if (a.getDepositCredit() > 0 && !a.isCancelled()) {
+            model.addAttribute("cancelRefund", bookingDepositService.quoteCancel(id, false).refund());
+        }
         model.addAttribute("activeTab", "appointments");
         return "m/appointment-detail";
     }
@@ -140,16 +149,38 @@ public class MobileAppointmentController {
     }
 
     // ── 取消預約 ────────────────────────────────────────────────────────
+    // storeCause：店家因素取消（臨時公休等），已付訂金全額退還
     @PostMapping("/appointments/{id}/cancel")
     public String cancel(@PathVariable Long id, @RequestParam(required = false) String reason,
+            @RequestParam(required = false) Boolean storeCause,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         String finalReason = (reason == null || reason.isBlank()) ? "店家手機版取消" : reason.trim();
         return runAction(id, null, request, redirectAttributes, "CANCEL", "預約已取消",
                 user -> {
                     CancelAppointmentRequest req = new CancelAppointmentRequest();
                     req.setReason(finalReason);
+                    req.setStoreCause(Boolean.TRUE.equals(storeCause));
                     appointmentService.cancel(id, req, user.getUsername());
                 });
+    }
+
+    // ── 改期：已付訂金的預約限預約前 72 小時以上、一次 ─────────────────────
+    @PostMapping("/appointments/{id}/reschedule")
+    public String reschedule(@PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "HH:mm") LocalTime startTime,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return runAction(id, null, request, redirectAttributes, "RESCHEDULE",
+                "已改期為 " + date + " " + startTime,
+                user -> appointmentService.reschedule(id, date, startTime, user.getUsername()));
+    }
+
+    // ── 訂金已匯款退還顧客 ────────────────────────────────────────────────
+    @PostMapping("/appointments/{id}/deposit-refunded")
+    public String depositRefunded(@PathVariable Long id, @RequestParam(required = false) String back,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        return runAction(id, back, request, redirectAttributes, "DEPOSIT_REFUNDED", "已標記訂金退款完成",
+                user -> bookingDepositService.markRefunded(id));
     }
 
     // ── 確認匯款收款（待對帳 → 已完成）────────────────────────────────────
@@ -371,7 +402,9 @@ public class MobileAppointmentController {
         var detail = appointmentDetailService.getAppointmentDetail(id, user.getUsername());
         var wallet = walletService.getWallet(a.getOwnerEmail());
         int balance = wallet.getBalance() == null ? 0 : wallet.getBalance();
-        int walletAmount = paymentService.previewWalletAmount(id);
+        // 已付的預約訂金在結帳時折抵，畫面上的應收金額先扣掉（實際折抵由 PaymentService 結帳時計算）
+        int depositCredit = bookingDepositService.creditFor(id);
+        int walletAmount = Math.max(0, paymentService.previewWalletAmount(id) - depositCredit);
         PetResponse pet = null;
         try {
             pet = appointmentQueryService.getPetForAppointment(id);
@@ -395,7 +428,8 @@ public class MobileAppointmentController {
         model.addAttribute("avInitial", card.getPetInitial());
         model.addAttribute("lines", view.fromAppointmentDetail(detail.getItems()));
         model.addAttribute("baseAmount", detail.getTotalAmount());
-        model.addAttribute("standardAmount", paymentService.previewStandardAmount(id));
+        model.addAttribute("standardAmount", Math.max(0, paymentService.previewStandardAmount(id) - depositCredit));
+        model.addAttribute("depositCredit", depositCredit);
         model.addAttribute("walletAmount", walletAmount);
         model.addAttribute("walletBalance", balance);
         model.addAttribute("walletEnough", balance >= walletAmount);

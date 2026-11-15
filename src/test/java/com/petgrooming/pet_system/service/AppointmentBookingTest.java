@@ -86,7 +86,19 @@ class AppointmentBookingTest extends IntegrationTestBase {
         assertThatThrownBy(() -> appointmentService.book(
                 bookingRequest(dog.getId(), LocalDate.now(), NOON), customer.getUsername()))
                 .isInstanceOf(AppointmentException.class)
-                .hasMessageContaining("不開放當天");
+                .hasMessageContaining("三日內");
+    }
+
+    @Test
+    void customerCanOnlyBookThreeDaysAhead() {
+        User customer = testData.customer();
+        PetResponse dog = testData.dog(customer);
+
+        assertThatThrownBy(() -> appointmentService.book(
+                bookingRequest(dog.getId(), LocalDate.now().plusDays(2), NOON), customer.getUsername()))
+                .isInstanceOf(AppointmentException.class)
+                .hasMessageContaining("三日內");
+        assertThat(AppointmentService.earliestOnlineBookingDate()).isEqualTo(LocalDate.now().plusDays(3));
     }
 
     @Test
