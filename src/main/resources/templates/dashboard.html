@@ -54,6 +54,18 @@
         font-size: 12.5px;
         padding: 1.5rem 0;
       }
+          /* 店務總覽六格統計：桌機、平板橫放一列六格；平板直放與手機兩列各三格 */
+      .dash-stats {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-bottom: 1.5rem;
+      }
+      @media (max-width: 1000px) {
+        .dash-stats {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
     </style>
     <div class="page-wrapper">
       <!-- 共用導覽列 -->
@@ -142,14 +154,7 @@
 
         <!-- ══════════ STAFF / ADMIN：店務總覽 ══════════ -->
         <div th:if="${user.staffOrAdmin}">
-          <div
-            style="
-              display: grid;
-              grid-template-columns: repeat(5, 1fr);
-              gap: 12px;
-              margin-bottom: 1.5rem;
-            "
-          >
+          <div class="dash-stats">
             <div class="stat-card">
               <div class="label">今日預約</div>
               <div class="value" th:text="${todayCount}">0</div>
@@ -166,6 +171,11 @@
               <div class="label">待審核儲值</div>
               <div class="value" th:text="${pendingTopupCount}">0</div>
             </div>
+            <!-- 訂金核帳頁目前只有手機版（平板直接開也適用） -->
+            <a href="/m/deposits" class="stat-card accent" style="display: block; color: inherit; text-decoration: none">
+              <div class="label">待核帳訂金</div>
+              <div class="value" th:text="${pendingDepositCount}">0</div>
+            </a>
             <div class="stat-card">
               <div class="label">會員總數</div>
               <div class="value" th:text="${memberCount}">0</div>
