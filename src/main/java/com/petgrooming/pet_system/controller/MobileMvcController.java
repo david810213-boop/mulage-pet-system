@@ -13,6 +13,7 @@ import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.MobileAppointmentCards;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
 import com.petgrooming.pet_system.service.RetailProductService;
+import com.petgrooming.pet_system.service.BookingDepositService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletResponse;
@@ -53,6 +54,7 @@ public class MobileMvcController {
     private final AppointmentQueryService appointmentQueryService;
     private final AppointmentListService appointmentListService;
     private final TopUpService topUpService;
+    private final BookingDepositService bookingDepositService;
     private final RetailProductService retailProductService;
     private final MobileAppointmentCards cards; // 預約卡片、流程階段與日期標籤
     private final PendingOperatorMatrixService pendingOperatorMatrixService;
@@ -110,6 +112,7 @@ public class MobileMvcController {
         model.addAttribute("upcomingPending", upcomingPending);
         model.addAttribute("pendingConfirmCount", pendingConfirmCount);
         model.addAttribute("pendingTopupCount", topUpService.pending().size());
+        model.addAttribute("pendingDepositCount", bookingDepositService.countPendingPayments());
         model.addAttribute("lowStockCount", lowStockCount);
         model.addAttribute("activeTab", "today");
         return "m/today";

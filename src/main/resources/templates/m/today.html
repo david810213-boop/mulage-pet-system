@@ -17,7 +17,7 @@
       <span class="dot" th:if="${pendingTopupCount > 0}"></span>
     </a>
   </div>
-  <div class="stats">
+  <div class="stats four">
     <div class="stat">
       <div class="n num" th:text="${todayCards.size()}">0</div>
       <div class="l">今日毛孩</div>
@@ -29,6 +29,10 @@
     <a href="/m/topups" class="stat" th:classappend="${pendingTopupCount > 0} ? 'alert'">
       <div class="n num" th:text="${pendingTopupCount}">0</div>
       <div class="l">儲值待審</div>
+    </a>
+    <a href="/m/deposits" class="stat" th:classappend="${pendingDepositCount > 0} ? 'alert'">
+      <div class="n num" th:text="${pendingDepositCount}">0</div>
+      <div class="l">訂金待核</div>
     </a>
   </div>
 </header>

@@ -152,6 +152,16 @@ svg.i {
   gap: 8px;
 }
 
+/* 今日頁四格統計（今日毛孩、待確認、儲值待審、訂金待核） */
+.stats.four {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.stats.four .stat {
+  padding: 10px;
+}
+
 .stat {
   background: var(--forest-2);
   border-radius: 16px;

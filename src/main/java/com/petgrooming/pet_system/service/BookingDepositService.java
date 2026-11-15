@@ -163,6 +163,12 @@ public class BookingDepositService {
                 .toList();
     }
 
+    /** 待核帳的訂金匯款筆數（手機版今日頁統計用，只做 COUNT）。 */
+    @Transactional(readOnly = true)
+    public long countPendingPayments() {
+        return depositPaymentRepository.countByStatus(DepositPaymentStatus.PENDING);
+    }
+
     @Transactional(readOnly = true)
     public List<DepositAppointmentView> awaitingAppointments() {
         return appointmentRepository.findWithUserByStatus(AppointmentStatus.AWAITING_DEPOSIT).stream()

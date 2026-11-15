@@ -3,6 +3,7 @@ package com.petgrooming.pet_system.controller;
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.service.AppointmentQueryService;
+import com.petgrooming.pet_system.service.BookingDepositService;
 import com.petgrooming.pet_system.service.DashboardService;
 import com.petgrooming.pet_system.service.PetService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class DashboardMvcController {
     private final AppointmentQueryService appointmentQueryService;
     private final PetService petService;
     private final DashboardService dashboardService;
+    private final BookingDepositService bookingDepositService;
 
     @GetMapping
     public String dashboard(Model model, @CurrentUser User user) {
@@ -34,6 +36,7 @@ public class DashboardMvcController {
             model.addAttribute("todayRevenue", dashboard.todayRevenue());
             model.addAttribute("pendingConfirmCount", dashboard.pendingConfirmCount());
             model.addAttribute("pendingTopupCount", dashboard.pendingTopups().size());
+            model.addAttribute("pendingDepositCount", bookingDepositService.countPendingPayments());
             model.addAttribute("memberCount", dashboard.memberCount());
             model.addAttribute("pendingAppointments", dashboard.pendingAppointments());
             model.addAttribute("pendingTopups", dashboard.pendingTopups());
