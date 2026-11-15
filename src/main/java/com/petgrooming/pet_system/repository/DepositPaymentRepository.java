@@ -20,6 +20,8 @@ public interface DepositPaymentRepository extends JpaRepository<DepositPayment, 
 
     List<DepositPayment> findByUserIdAndStatus(Long userId, DepositPaymentStatus status);
 
+    long countByStatus(DepositPaymentStatus status);
+
     // 手動綁定既有匯入資料時，過戶這個會員名下的訂金匯款
     List<DepositPayment> findByUserId(Long userId);
 
