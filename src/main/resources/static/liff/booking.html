@@ -414,6 +414,7 @@
           groomingItems = items;
 
           renderForm();
+          loadBookingWindow();
 
           // 簽名檔要抓的 <img>/<p> 元素是 renderForm() 動態產生的 HTML，
           // 之前跟 fetchMyPets/fetchGroomingItems 一起 Promise.all 平行呼叫，
@@ -478,15 +479,73 @@
           '<div class="loading-page" style="color:#8B0000">' + msg + "</div>";
       }
 
-      // 不開放顧客當天自己在 LIFF 提出預約申請，
-      // 日期選擇器最早只能選明天，並在下方顯示提示文字引導改用 LINE/電話聯繫。
-      function tomorrowStr() {
+      // 線上只開放預約三日後的時段（店家公告《預約須知》），三日內請聯繫官方 LINE。
+      // 先用手機日期算出預設值，再以後端 /api/appointments/booking-window 為準（手機時間可能不準）。
+      function localDateStrPlusDays(days) {
         const d = new Date();
-        d.setDate(d.getDate() + 1);
+        d.setDate(d.getDate() + days);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
         return `${y}-${m}-${day}`;
+      }
+      let earliestDate = localDateStrPlusDays(3);
+      let depositPreviewAmount = 0;
+
+      async function loadBookingWindow() {
+        try {
+          const res = await fetch("/api/appointments/booking-window", { headers: authHeaders() });
+          const raw = await res.text();
+          let data = null;
+          try { data = JSON.parse(raw); } catch (e) { data = null; }
+          if (res.ok && data && data.earliestDate) {
+            earliestDate = data.earliestDate;
+            const input = document.getElementById("dateInput");
+            if (input) input.min = earliestDate;
+          }
+        } catch (e) {
+          // 抓不到就沿用手機日期算出的預設值，送出時後端仍會檢查
+        }
+      }
+
+      // 選好毛孩與日期後試算訂金，顯示在預約須知上方，讓家長送出前就知道要不要付訂金
+      async function refreshDepositPreview() {
+        const box = document.getElementById("depositPreview");
+        if (!box) return;
+        depositPreviewAmount = 0;
+        if (!selectedPetId || !selectedDate || selectedDate < earliestDate) {
+          box.style.display = "none";
+          return;
+        }
+        try {
+          const res = await fetch(
+            "/api/me/deposits/preview?petId=" + encodeURIComponent(selectedPetId) +
+              "&date=" + encodeURIComponent(selectedDate),
+            { headers: authHeaders() },
+          );
+          const raw = await res.text();
+          let data = null;
+          try { data = JSON.parse(raw); } catch (e) { data = null; }
+          if (!res.ok || !data) {
+            box.style.display = "none";
+            return;
+          }
+          depositPreviewAmount = data.amount || 0;
+          if (data.amount > 0) {
+            box.innerHTML =
+              "此筆預約需預付訂金 <b>NT$ " + Number(data.amount).toLocaleString() + "</b>" +
+              (data.reason ? "（" + escapeHtml(data.reason) + "）" : "") +
+              "<br />送出後請於 24 小時內完成匯款，確認收到訂金後預約即成立；訂金將於當日服務結帳時折抵。";
+            box.style.display = "block";
+          } else if (data.exempt) {
+            box.innerHTML = "儲值金會員免付訂金 ♡";
+            box.style.display = "block";
+          } else {
+            box.style.display = "none";
+          }
+        } catch (e) {
+          box.style.display = "none";
+        }
       }
 
       function renderForm() {
@@ -534,7 +593,8 @@
         <h3>𖥸 選擇日期與時段</h3>
         <div class="field">
           <label>預約日期 <span class="req">*</span></label>
-          <input type="date" id="dateInput" min="${tomorrowStr()}" onchange="onDateChange()" />
+          <input type="date" id="dateInput" min="${earliestDate}" onchange="onDateChange()" />
+          <div style="font-size:11.5px; color:#a29a8c; margin-top:4px;">線上系統開放預約三日後的時段；如需預約三日內的時段，請聯繫官方 LINE 客服，由專人協助安排。</div>
         </div>
         <div class="field" id="slotsField" style="display:none">
           <label>可預約時段 <span class="req">*</span></label>
@@ -554,6 +614,27 @@
               : '<div class="slots-empty">目前無可預約的服務項目</div>'
           }
         </div>
+      </div>
+
+      <div class="form-card">
+        <h3>𖥸 預約須知｜訂金及取消規範</h3>
+        <div id="depositPreview" style="display:none; margin-bottom:12px; padding:10px 12px; background:#FDF3E3; border:1px solid #E4CFA0; border-radius:8px; font-size:13px; line-height:1.7; color:#8a6f3f;"></div>
+        <div style="background:#FBF9F5; border:1px solid #DBD3C4; border-radius:8px; padding:14px 16px; max-height:320px; overflow-y:auto; font-size:12.5px; line-height:1.8; color:#6b645c;">
+          <p style="font-weight:700; color:#26332B; margin:0 0 4px;">一、預約方式</p>
+          <p style="margin:0 0 10px;">・線上系統開放預約三日後的時段。<br />・如需預約三日內的時段，請聯繫官方 LINE 客服，由專人協助安排。</p>
+          <p style="font-weight:700; color:#26332B; margin:0 0 4px;">二、訂金收取規範</p>
+          <p style="margin:0 0 6px;">以下預約情況需預付訂金（儲值金會員免付）：<br />・同一天預約兩位以上貓咪或狗狗。<br />・首次體驗服務的大型犬（23 公斤以上）。</p>
+          <p style="margin:0 0 6px;">訂金計算方式：<br />・大型犬：$1,000／1 位<br />・貓咪或小狗：2 位 $1,000、3 位 $1,500、4 位 $2,000、5 位 $2,500，每增加一位，訂金加收 $500。<br />・首次體驗的大型犬與其他毛孩同日預約時，訂金分別計算。</p>
+          <p style="margin:0 0 10px;">送出預約後請於 24 小時內完成匯款，逾期未付款，預約將自動取消。訂金將於當日服務結帳時折抵消費金額。</p>
+          <p style="font-weight:700; color:#26332B; margin:0 0 4px;">三、取消預約及訂金退還</p>
+          <p style="margin:0 0 6px;">如需取消已支付訂金的預約，請提前透過官方 LINE 客服告知。已支付訂金的預約，依取消時間辦理退款：</p>
+          <p style="margin:0 0 6px;">・預約前 72 小時以上取消：退還 100% 訂金。<br />・預約前 72 小時內取消：退還 50% 訂金。<br />・預約前 24 小時內取消或未到店：訂金恕不退還。</p>
+          <p style="margin:0;">已支付訂金的預約，可於預約前 72 小時以上透過官方 LINE 改期一次，訂金保留至新日期。</p>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#6b645c; cursor:pointer;">
+          <input type="checkbox" id="depositNoticeAgree" style="width:16px; height:16px; accent-color:#A67C52;" />
+          我已閱讀並同意預約須知（訂金及取消規範）
+        </label>
       </div>
 
       <div class="form-card">
@@ -770,6 +851,7 @@
       async function onPetChange() {
         const sel = document.getElementById("petSelect");
         selectedPetId = sel.value || null;
+        refreshDepositPreview();
         await loadFirstVisitStatus(selectedPetId);
 
         // 依所選毛孩自動勾選建議服務項目
@@ -1024,9 +1106,10 @@
             '<div class="slots-empty">⚠️ 不能預約已經過去的日期，請重新選擇</div>';
           return;
         }
-        if (selectedDate === todayStrCheck) {
+        if (selectedDate < earliestDate) {
+          refreshDepositPreview();
           container.innerHTML =
-            '<div class="slots-empty">⚠️ 不開放當天提出預約申請，如需要預約當日，請直接聯繫官方 LINE 或致電 0902-301-820</div>';
+            '<div class="slots-empty">⚠️ 線上系統開放預約三日後的時段，如需預約三日內的時段，請聯繫官方 LINE 客服或致電 0902-301-820，由專人協助安排</div>';
           return;
         }
 
@@ -1303,6 +1386,11 @@
           showToast("請在簽名板上完成簽名", "error");
           return;
         }
+        const noticeBox = document.getElementById("depositNoticeAgree");
+        if (!noticeBox || !noticeBox.checked) {
+          showToast("請閱讀並同意預約須知（訂金及取消規範）", "error");
+          return;
+        }
 
         const contractSignatureData = signatureCanvas.toDataURL("image/png");
 
@@ -1322,6 +1410,7 @@
               selectedItems: Array.from(selectedItemCodes),
               contractSignatureData: contractSignatureData,
               photoShareConsent: !!(document.getElementById("photoShareConsent") || {}).checked,
+              depositNoticeAgreed: true,
             }),
           });
 
@@ -1358,6 +1447,7 @@
           showBookingSubmittedModal(
             data.appointmentCode,
             bookedPet && !bookedPet.isExistingCustomer,
+            data.status === "AWAITING_DEPOSIT",
           );
           return;
         } catch (e) {
@@ -1379,7 +1469,7 @@
       // 等店家確認」，這隻毛孩如果是第一次消費，額外附上報價僅供參考的提醒。
       // 用彈窗（不是 toast）是因為這兩則訊息都重要、要確保顧客真的看到，
       // 點「我知道了」才會離開這頁去我的預約。
-      function showBookingSubmittedModal(appointmentCode, isFirstVisit) {
+      function showBookingSubmittedModal(appointmentCode, isFirstVisit, awaitingDeposit) {
         const modal = document.createElement("div");
         modal.style.cssText =
           "position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;";
@@ -1389,7 +1479,11 @@
             <h3 style="margin:0 0 12px; font-size:16px;">預約已送出</h3>
             <p style="font-size:13.5px; color:#666; line-height:1.7; margin:0 0 12px;">
               預約編號 ${escapeHtml(appointmentCode)}<br />
-              <strong>預約尚未完成，待店家確認中</strong>，請以收到店家確認訊息後為預訂成功。
+              ${
+                awaitingDeposit
+                  ? `<strong>本次預約需預付訂金${depositPreviewAmount > 0 ? " NT$ " + Number(depositPreviewAmount).toLocaleString() : ""}</strong>，請於 24 小時內完成匯款，並到「我的預約」填寫匯款帳號後五碼；確認收到訂金後預約即成立，逾期未付款將自動取消。`
+                  : `<strong>預約尚未完成，待店家確認中</strong>，請以收到店家確認訊息後為預訂成功。`
+              }
             </p>
             ${
               isFirstVisit

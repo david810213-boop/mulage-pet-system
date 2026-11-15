@@ -97,6 +97,7 @@ public class MobileAppointmentCards {
         if (a.isCancelled()) return "cancelled";
         if (a.isPaid()) return "done";
         if (a.isPendingWireTransfer()) return "wire";
+        if (a.getStatus() == AppointmentStatus.AWAITING_DEPOSIT) return "deposit";
         if (a.getStatus() == AppointmentStatus.PENDING_CONFIRM) return "confirm";
         if (a.getStatus() == AppointmentStatus.CONFIRMED) {
             return a.isCheckinOrderConfirmed() ? "start" : "checkin";
@@ -114,6 +115,7 @@ public class MobileAppointmentCards {
             case "done" -> "已結帳";
             case "wire" -> "待對帳";
             case "confirm" -> "待確認";
+            case "deposit" -> "待付訂金";
             case "checkin" -> "待開單";
             case "start" -> "待開始";
             case "serving" -> "服務中";
@@ -125,7 +127,7 @@ public class MobileAppointmentCards {
     // 詳情頁流程條：0 確認、1 開單、2 服務、3 核對、4 結帳、5 全部完成
     public int stepIndex(String stage) {
         return switch (stage) {
-            case "confirm" -> 0;
+            case "confirm", "deposit" -> 0;
             case "checkin" -> 1;
             case "start", "serving" -> 2;
             case "check" -> 3;

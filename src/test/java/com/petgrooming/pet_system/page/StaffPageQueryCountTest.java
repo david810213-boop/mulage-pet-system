@@ -57,9 +57,12 @@ class StaffPageQueryCountTest extends IntegrationTestBase {
     @Test
     void queryCountDoesNotGrowWithHistory() throws Exception {
         User staff = testData.staff();
-        Long detailId = history(1).get(0);
+        // 首頁預覽前 8 位顧客（依 id），第一次顯示時會順便建立錢包。先建立足夠的顧客並各頁先跑一次，
+        // 讓量測結果不受「這個測試類別排在第幾個執行、資料庫裡已有幾位顧客」影響
+        Long detailId = history(8).get(0);
         String[] pages = {"/dashboard", "/m/today", "/m/appointments/" + detailId, "/appointments", "/m/appointments",
                 "/payments", "/admin/walk-in-orders"};
+        for (String page : pages) measure(staff, page);
         Map<String, QueryCounter.Usage> before = new LinkedHashMap<>();
         for (String page : pages) before.put(page, measure(staff, page));
         history(15);

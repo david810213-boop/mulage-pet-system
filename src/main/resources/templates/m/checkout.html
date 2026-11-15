@@ -35,6 +35,10 @@
       <span class="nm">原價合計</span>
       <span class="pr" th:text="'NT$ ' + ${#numbers.formatInteger(baseAmount, 1, 'COMMA')}">NT$ 1,050</span>
     </div>
+    <div class="line" th:if="${depositCredit != null and depositCredit > 0}">
+      <span class="nm">已付訂金（結帳時折抵，下方金額已扣除）</span>
+      <span class="pr" th:text="'- NT$ ' + ${#numbers.formatInteger(depositCredit, 1, 'COMMA')}">- NT$ 500</span>
+    </div>
   </section>
 
   <button type="button" class="soft-btn" data-open-sheet="sheetRetail" th:unless="${retailProducts.isEmpty()}">

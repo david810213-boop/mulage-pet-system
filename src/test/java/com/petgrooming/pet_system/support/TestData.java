@@ -43,6 +43,11 @@ public class TestData {
         return pet(owner, PetType.DOG, "柴犬", 10.0);
     }
 
+    /** 23 公斤以上的狗，首次預約需預付大型犬訂金。 */
+    public PetResponse largeDog(User owner) {
+        return pet(owner, PetType.DOG, "黃金獵犬", 25.0);
+    }
+
     public PetResponse cat(User owner) {
         return pet(owner, PetType.CAT, "米克斯", 4.0);
     }
@@ -74,6 +79,7 @@ public class TestData {
         req.setStartTime(start);
         req.setEndTime(start.plusHours(2));
         req.setContractSignatureData(SIGNATURE);
+        req.setDepositNoticeAgreed(true);
         return req;
     }
 

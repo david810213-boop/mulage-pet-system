@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.dto.AppointmentRequest;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.Appointment;
+import com.petgrooming.pet_system.model.DepositPayment;
 import com.petgrooming.pet_system.model.GroomingItem; // ⚡ 確保引入的是你動態管理的 Entity 類別
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.User;
@@ -40,8 +41,11 @@ public class AppointmentNotificationService {
      * 新預約通知所有已綁定 LINE 的店家與員工。當天預約已直接確認，立即通知顧客並同步 Google 日曆
      * （待確認的預約要等店家確認時間後，由 confirm() 通知與同步，避免日曆被還會變動的時段佔用）。
      */
-    void notifyBooked(Appointment saved, User user, Pet pet, AppointmentRequest req) {
-        notifyStaffNewBooking(saved);
+    void notifyBooked(Appointment saved, User user, Pet pet, AppointmentRequest req, int depositDue) {
+        notifyStaffNewBooking(saved, depositDue);
+        if (saved.isAwaitingDeposit()) {
+            sendDepositRequest(saved, depositDue);
+        }
         notificationService.sendBookingConfirmation(user.getUsername(), pet.getName(), req.getDate(), req.getStartTime());
         notificationService.scheduleReminder(user.getUsername(), req.getDate(), req.getStartTime());
         if (saved.getStatus() == AppointmentStatus.CONFIRMED) {
@@ -55,9 +59,9 @@ public class AppointmentNotificationService {
     // 低庫存通知同一套「發給所有已綁定 LINE 的員工/店家帳號」機制，不用另外設計。
     // 推播失敗（token 沒設定、帳號沒綁 LINE 等）不應該讓預約本身失敗，
     // pushText() 內部已經處理過這個容錯，這裡不用再包 try-catch。
-    private void notifyStaffNewBooking(Appointment appointment) {
-        String statusText = appointment.getStatus() == AppointmentStatus.CONFIRMED
-                ? "（當天預約，已自動確認）" : "（待確認）";
+    private void notifyStaffNewBooking(Appointment appointment, int depositDue) {
+        String statusText = appointment.isAwaitingDeposit() ? "（待付訂金 $" + depositDue + "）"
+                : appointment.getStatus() == AppointmentStatus.CONFIRMED ? "（當天預約，已自動確認）" : "（待確認）";
         String text = String.format(
                 "\uD83D\uDCC5【新預約通知】%s%s\n毛孩：%s（%s）\n時間：%s %s~%s\n顧客：%s\n金額：%s",
                 appointment.getPetName(), statusText,
@@ -68,6 +72,11 @@ public class AppointmentNotificationService {
                         ? "初次・現場評估（到店後開單報價）"
                         : "$" + appointment.getTotalAmount());
 
+        pushToStaff(text);
+    }
+
+    /** 發給所有已綁定 LINE 的員工與店家帳號。 */
+    private void pushToStaff(String text) {
         List<User> staffAndAdmin = new ArrayList<>(userRepository.findByRole(UserRole.STAFF));
         staffAndAdmin.addAll(userRepository.findByRole(UserRole.ADMIN));
         for (User u : staffAndAdmin) {
@@ -75,6 +84,57 @@ public class AppointmentNotificationService {
                 lineMessagingService.pushText(u.getLineUserId(), text);
             }
         }
+    }
+
+    // ── 取消、改期 ────────────────────────────────────────────────────
+
+    /** 顧客在 LINE 自行取消時通知店家，避免漏看（店家取消不用通知自己）。 */
+    void notifyStaffCustomerCancelled(Appointment a) {
+        pushToStaff(String.format("【顧客取消預約】%s%n時間：%s %s~%s%n顧客：%s%n原因：%s",
+                a.getPetName(), a.getDate(), a.getStartTime(), a.getEndTime(), a.getUser().getName(),
+                a.getCancelReason() == null || a.getCancelReason().isBlank() ? "未填寫" : a.getCancelReason()));
+    }
+
+    void sendRescheduled(Appointment a) {
+        lineMessagingService.pushText(a.getUser().getLineUserId(), String.format(
+                "【慕沐村 Mulage pet】%n%s的預約已改期為 %s %s%n已付的訂金將保留至新的預約日期。",
+                a.getPetName(), a.getDate().format(DateTimeFormatter.ofPattern("M/d")), a.getStartTime()));
+    }
+
+    // ── 預約訂金 ──────────────────────────────────────────────────────
+
+    private static final DateTimeFormatter DUE_FMT = DateTimeFormatter.ofPattern("M/d HH:mm");
+
+    void sendDepositRequest(Appointment a, int amount) {
+        lineMessagingService.pushText(a.getUser().getLineUserId(), String.format(
+                "【慕沐村 Mulage pet】%n" +
+                        "已收到%s %s %s 的預約申請。%n" +
+                        "依預約須知，本次預約需預付訂金 NT$%d，%n" +
+                        "請於 %s 前完成匯款，並在「我的預約」填寫匯款帳號後五碼。%n" +
+                        "確認收到訂金後，預約即成立；逾期未付款，預約將自動取消。%n" +
+                        "訂金將於當日服務結帳時折抵消費金額。",
+                a.getPetName(), a.getDate().format(DateTimeFormatter.ofPattern("M/d")), a.getStartTime(),
+                amount, a.getDepositDueAt() == null ? "期限" : a.getDepositDueAt().format(DUE_FMT)));
+    }
+
+    void notifyStaffDepositSubmitted(DepositPayment p) {
+        pushToStaff(String.format("【訂金待核帳】%s%n預約日期：%s%n金額：$%d%n匯款後五碼：%s",
+                p.getUser().getName(), p.getAppointmentDate(), p.getAmount(), p.getLastFiveDigits()));
+    }
+
+    void sendDepositRejected(DepositPayment p) {
+        lineMessagingService.pushText(p.getUser().getLineUserId(), String.format(
+                "【慕沐村 Mulage pet】%n%s 預約的訂金匯款核對未通過%s。%n請確認匯款資訊後重新填寫，或聯繫官方 LINE 客服。",
+                p.getAppointmentDate().format(DateTimeFormatter.ofPattern("M/d")),
+                p.getRejectReason() == null ? "" : "：" + p.getRejectReason()));
+    }
+
+    void sendDepositExpired(Appointment a) {
+        lineMessagingService.pushText(a.getUser().getLineUserId(), String.format(
+                "【慕沐村 Mulage pet】%n%s %s %s 的預約因未於期限內收到訂金，已自動取消。%n如仍需預約，歡迎重新預約或聯繫官方 LINE 客服。",
+                a.getPetName(), a.getDate().format(DateTimeFormatter.ofPattern("M/d")), a.getStartTime()));
+        pushToStaff(String.format("【逾期未付訂金，已自動取消】%s%n時間：%s %s%n顧客：%s",
+                a.getPetName(), a.getDate(), a.getStartTime(), a.getUser().getName()));
     }
 
 
@@ -98,7 +158,7 @@ public class AppointmentNotificationService {
                         "逾時將酌收一次性延遲服務費$200%n" +
                         "如有特殊情況，請提前與我們詢問\u025e%n%n" +
                         "\u0b68\u0b67 取消／異動%n" +
-                        "預約前 24 小時內臨時取消，下次預約需支付50%% 訂金；未赴約訂金恕不退還。%n" +
+                        "已付訂金的預約，預約前72小時以上取消退還全額、72小時內退還50%%、24小時內恕不退還；未赴約訂金恕不退還。%n" +
                         "會員臨時取消，當次取消費用（美容費用30%%）將直接由儲值金扣除。%n%n" +
                         "\ud83d\udc3e 美容小提醒%n" +
                         "\u30fb腳底毛皆採平剃，如有特殊需求請提前告知%n" +

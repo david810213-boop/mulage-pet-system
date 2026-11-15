@@ -81,6 +81,29 @@
     </th:block>
   </section>
 
+  <section class="panel" th:if="${a.depositShare > 0 or a.depositPaid > 0 or a.depositRefundAmount > 0 or a.rescheduledFrom != null}">
+    <div class="panel-title">訂金與改期</div>
+    <div class="kv" th:if="${a.depositShare > 0}"><span class="k">應付訂金</span>
+      <span class="v num" th:text="'NT$ ' + ${#numbers.formatInteger(a.depositShare, 1, 'COMMA')}">NT$ 500</span></div>
+    <div class="kv" th:if="${a.depositShare > 0 or a.depositPaid > 0}"><span class="k">已收訂金</span>
+      <span class="v num" th:text="'NT$ ' + ${#numbers.formatInteger(a.depositPaid, 1, 'COMMA')}">NT$ 500</span></div>
+    <div class="kv" th:if="${a.depositDueAt != null and a.status.name() == 'AWAITING_DEPOSIT'}"><span class="k">付款期限</span>
+      <span class="v num" th:text="${#temporals.format(a.depositDueAt, 'M/d HH:mm')}">11/17 14:00</span></div>
+    <div class="kv" th:if="${a.depositRefundAmount > 0}"><span class="k">應退訂金</span>
+      <span class="v num" th:text="'NT$ ' + ${#numbers.formatInteger(a.depositRefundAmount, 1, 'COMMA')} + '（' + ${a.depositRefundStatusLabel} + '）'">NT$ 500（待退款）</span></div>
+    <div class="kv" th:if="${a.depositForfeitedAmount > 0}"><span class="k">不退訂金</span>
+      <span class="v num" th:text="'NT$ ' + ${#numbers.formatInteger(a.depositForfeitedAmount, 1, 'COMMA')}">NT$ 250</span></div>
+    <div class="kv" th:if="${a.rescheduledFrom != null}"><span class="k">改期</span>
+      <span class="v" th:text="'原時段 ' + ${a.rescheduledFrom}">原時段 2026-11-20 12:00</span></div>
+    <p th:if="${a.status.name() == 'AWAITING_DEPOSIT'}" style="margin:8px 0 0;font-size:14px">
+      顧客回報匯款後，到 <a href="/m/deposits">訂金核帳</a> 確認入帳；需要時也可以在那裡免收訂金。</p>
+    <form th:if="${a.depositRefundStatus == 'PENDING'}" method="post"
+          th:action="@{/m/appointments/{id}/deposit-refunded(id=${a.id})}" class="btn-row js-once" style="margin-top:10px"
+          th:attr="data-confirm='確認已將 NT$ ' + ${a.depositRefundAmount} + ' 訂金匯還給顧客嗎？'">
+      <button type="submit" class="btn sec">已匯款退還訂金</button>
+    </form>
+  </section>
+
   <section class="panel" th:if="${a.cancelled}">
     <div class="panel-title">取消紀錄</div>
     <p><span th:text="${a.cancelledBy}"></span><th:block th:if="${a.cancelReason != null}">：<span th:text="${a.cancelReason}"></span></th:block></p>
@@ -120,11 +143,13 @@
     <a th:href="@{/m/appointments/{id}/checkout(id=${a.id})}" class="btn" th:classappend="${card.stage == 'pay'} ? 'wood' : 'sec'">前往結帳</a>
   </div>
 
-  <form th:if="${canCancel}" method="post" th:action="@{/m/appointments/{id}/cancel(id=${a.id})}" class="btn-row js-once"
-        data-confirm="確定要取消這筆預約嗎？">
-    <input type="hidden" name="reason" value="店家手機版取消" />
-    <button type="submit" class="btn ghost-danger">取消預約</button>
-  </form>
+  <div th:if="${canReschedule}" class="btn-row">
+    <button type="button" class="btn sec" data-open-sheet="sheetReschedule">改期</button>
+  </div>
+
+  <div th:if="${canCancel}" class="btn-row">
+    <button type="button" class="btn ghost-danger" data-open-sheet="sheetCancel">取消預約</button>
+  </div>
 
   <form th:if="${card.stage == 'done'}" method="post" th:action="@{/m/appointments/{id}/refund(id=${a.id})}" class="btn-row js-once"
         data-confirm="確定要退款嗎？退款後預約會回到「已確認」狀態，需要重新開單、重新結帳。">
@@ -133,6 +158,51 @@
 </div>
 
 <th:block th:replace="~{m/fragments/app :: weightReminder}"></th:block>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetCancel" role="dialog" aria-modal="true" aria-labelledby="hCancel" th:if="${canCancel}">
+  <div class="grab"></div>
+  <h3 id="hCancel">取消預約</h3>
+  <p th:if="${a.depositCredit > 0}" style="margin:0 0 12px;font-size:14px;color:var(--mute)"
+     th:text="'已付訂金 NT$ ' + ${a.depositCredit} + '：現在取消依規定退還 NT$ ' + ${cancelRefund} + '；店家因素取消則全額退還。退款需另外匯給顧客，完成後在明細頁標記。'">
+    已付訂金 NT$ 500：現在取消依規定退還 NT$ 250。</p>
+  <form method="post" th:action="@{/m/appointments/{id}/cancel(id=${a.id})}" class="js-once">
+    <div class="field">
+      <label for="cReason">取消原因</label>
+      <textarea name="reason" id="cReason" maxlength="200" placeholder="例如：顧客透過 LINE 取消"></textarea>
+    </div>
+    <label class="field" style="display:flex;gap:8px;align-items:center" th:if="${a.depositCredit > 0}">
+      <input type="checkbox" name="storeCause" value="true" />店家因素取消（臨時公休等），訂金全額退還
+    </label>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>返回</button>
+      <button type="submit" class="btn pri" style="background:var(--coral-ink)">確定取消</button>
+    </div>
+  </form>
+</section>
+
+<section class="sheet" id="sheetReschedule" role="dialog" aria-modal="true" aria-labelledby="hResched" th:if="${canReschedule}">
+  <div class="grab"></div>
+  <h3 id="hResched">改期</h3>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)"
+     th:text="${a.depositCredit > 0} ? '已付訂金的預約限預約前 72 小時以上改期，且只能改一次，訂金會轉到新日期。' : '服務時長維持不變，會檢查新時段的名額。'">
+    服務時長維持不變，會檢查新時段的名額。</p>
+  <form method="post" th:action="@{/m/appointments/{id}/reschedule(id=${a.id})}" class="js-once">
+    <div class="field">
+      <label for="rDate">新日期</label>
+      <input type="date" name="date" id="rDate" required th:value="${a.date}" />
+    </div>
+    <div class="field">
+      <label for="rTime">開始時間</label>
+      <input type="time" name="startTime" id="rTime" required step="1800" th:value="${#temporals.format(a.startTime, 'HH:mm')}" />
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>返回</button>
+      <button type="submit" class="btn pri">確定改期</button>
+    </div>
+  </form>
+</section>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
 
 <script>
   // 需要二次確認的操作跳確認視窗；送出後按鈕鎖住，避免連點送出兩次

@@ -4,6 +4,8 @@ import org.springframework.data.domain.Pageable;
 import com.petgrooming.pet_system.enums.UserRole;
 import com.petgrooming.pet_system.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -38,4 +40,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 限定 CUSTOMER，避免還沒綁 LINE 的店員帳號剛好電話相同被當成既有會員；
     // 用 findFirst，萬一資料裡同一支電話有兩筆未認領資料也不會直接丟例外。
     Optional<User> findFirstByPhoneAndLineUserIdIsNullAndRoleOrderByIdAsc(String phone, UserRole role);
+
+    // 加鎖讀取：同一會員同時送出多筆預約或訂金操作時依序執行，避免同一天的訂金份額算錯（見 docs/adr/0002）
+    @Query(value = "select id from users where id = :id for update", nativeQuery = true)
+    Optional<Long> lockById(@Param("id") Long id);
 }

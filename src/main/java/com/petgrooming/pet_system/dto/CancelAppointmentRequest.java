@@ -8,4 +8,7 @@ import lombok.Data;
 public class CancelAppointmentRequest {
     @Schema(description = "取消原因（選填）")
     private String reason;
+
+    @Schema(description = "店家因素取消（臨時公休等），已付訂金全額退還；只有店家／員工可以使用")
+    private Boolean storeCause;
 }

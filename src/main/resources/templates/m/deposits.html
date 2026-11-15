@@ -1,0 +1,150 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-Hant-TW">
+<head th:replace="~{m/fragments/app :: head('訂金核帳 · 慕沐村')}"></head>
+<body>
+<svg th:replace="~{m/fragments/app :: icons}"></svg>
+<th:block th:replace="~{m/fragments/app :: toasts}"></th:block>
+
+<header class="topbar">
+  <a href="/m/more" class="icon-btn" aria-label="回更多"><svg class="i"><use href="#i-back"/></svg></a>
+  <div style="flex:1">
+    <div style="font-size:18px">訂金核帳</div>
+    <div class="sub" th:text="${payments.size()} + ' 筆待核帳・' + ${awaiting.size()} + ' 筆待付訂金・' + ${refunds.size()} + ' 筆待退款'">1 筆待核帳</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="section-h"><h2>待核帳</h2><small>顧客已回報匯款</small></div>
+  <div class="empty" th:if="${payments.isEmpty()}">顧客在 LINE 回報的訂金匯款會出現在這裡。</div>
+  <section class="topup" th:each="p : ${payments}">
+    <div class="tp-head">
+      <span class="av" th:text="${p.customerName != null and !p.customerName.isEmpty()} ? ${#strings.substring(p.customerName, 0, 1)} : '客'">陳</span>
+      <div class="t">
+        <span th:text="${p.customerName}">陳小姐</span>
+        <small th:text="'預約 ' + ${p.date.format(dateFmt)} + '・' + ${p.createdAt.format(dateTimeFmt)} + ' 回報'">預約 11/20・11/17 10:12 回報</small>
+      </div>
+      <b class="num" th:text="'NT$ ' + ${#numbers.formatInteger(p.amount, 1, 'COMMA')}">NT$ 1,000</b>
+    </div>
+    <div class="tp-body">
+      <div>匯款帳號後五碼 <b class="num" th:text="${p.lastFiveDigits}">12345</b></div>
+      <div th:if="${p.remitNote != null}" th:text="'備注：' + ${p.remitNote}">備注：11/17 轉帳</div>
+      <div th:if="${p.outstandingNow != p.amount}" style="color:var(--coral-ink)"
+           th:text="'回報後當天預約有變動，目前尚未付清 NT$ ' + ${p.outstandingNow}">回報後當天預約有變動</div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-open-sheet="sheetReject"
+              th:attr="data-id=${p.id},data-name=${p.customerName},data-amount=${p.amount}">駁回</button>
+      <form method="post" th:action="@{/m/deposits/{id}/confirm(id=${p.id})}" class="grow js-once"
+            th:attr="data-confirm='確認已收到 ' + ${p.customerName} + ' 的訂金 NT$ ' + ${p.amount} + ' 嗎？確認後當天的預約會轉為已確認並通知顧客。'">
+        <button type="submit" class="btn pri"><svg class="i"><use href="#i-check"/></svg>確認入帳</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="section-h"><h2>待付訂金</h2><small>逾期未付會自動取消</small></div>
+  <div class="empty" th:if="${awaiting.isEmpty()}">沒有待付訂金的預約。</div>
+  <section class="topup" th:each="w : ${awaiting}">
+    <div class="tp-head">
+      <span class="av" th:text="${#strings.substring(w.petName, 0, 1)}">豆</span>
+      <div class="t">
+        <a th:href="@{/m/appointments/{id}(id=${w.appointmentId})}" th:text="${w.petName} + '（' + ${w.customerName} + '）'">豆豆（陳小姐）</a>
+        <small th:text="${w.date.format(dateFmt)} + ' ' + ${w.startTime} + '・期限 ' + (${w.dueAt != null} ? ${w.dueAt.format(dateTimeFmt)} : '—')">11/20 12:00・期限 11/18 10:00</small>
+      </div>
+      <b class="num" th:text="'NT$ ' + ${#numbers.formatInteger(w.share, 1, 'COMMA')}">NT$ 500</b>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-open-sheet="sheetWaive"
+              th:attr="data-user=${w.userId},data-date=${w.date},data-name=${w.customerName}">免收訂金</button>
+    </div>
+  </section>
+
+  <div class="section-h"><h2>待退款</h2><small>匯款退還顧客後標記完成</small></div>
+  <div class="empty" th:if="${refunds.isEmpty()}">沒有待退款的訂金。</div>
+  <section class="topup" th:each="r : ${refunds}">
+    <div class="tp-head">
+      <span class="av" th:text="${#strings.substring(r.petName, 0, 1)}">豆</span>
+      <div class="t">
+        <a th:href="@{/m/appointments/{id}(id=${r.appointmentId})}" th:text="${r.petName} + '（' + ${r.customerName} + '）'">豆豆（陳小姐）</a>
+        <small th:text="${r.date.format(dateFmt)} + ' ' + ${r.startTime} + (${r.cancelledBy != null} ? '・' + ${r.cancelledBy} : '・結帳後多出的訂金')">11/20 12:00・會員自行取消</small>
+      </div>
+      <b class="num" th:text="'NT$ ' + ${#numbers.formatInteger(r.refundAmount, 1, 'COMMA')}">NT$ 500</b>
+    </div>
+    <div class="btn-row">
+      <form method="post" th:action="@{/m/appointments/{id}/deposit-refunded(id=${r.appointmentId})}" class="grow js-once"
+            th:attr="data-confirm='確認已將 NT$ ' + ${r.refundAmount} + ' 匯還給 ' + ${r.customerName} + ' 嗎？'">
+        <input type="hidden" name="back" value="/m/deposits" />
+        <button type="submit" class="btn pri">已匯款退還</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<div class="sheet-dim" id="sheetDim"></div>
+<section class="sheet" id="sheetReject" role="dialog" aria-modal="true" aria-labelledby="hReject">
+  <div class="grab"></div>
+  <h3 id="hReject">駁回訂金匯款</h3>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)" id="rejectWho"></p>
+  <form method="post" id="rejectForm" class="js-once">
+    <div class="field">
+      <label for="rReason">駁回原因（顧客看得到）</label>
+      <textarea name="reason" id="rReason" maxlength="200" placeholder="例如：查無這筆轉帳，請確認後五碼"></textarea>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri" style="background:var(--coral-ink)">駁回</button>
+    </div>
+  </form>
+</section>
+
+<section class="sheet" id="sheetWaive" role="dialog" aria-modal="true" aria-labelledby="hWaive">
+  <div class="grab"></div>
+  <h3 id="hWaive">免收訂金</h3>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)" id="waiveWho"></p>
+  <form method="post" action="/m/deposits/waive" class="js-once">
+    <input type="hidden" name="userId" id="waiveUser" />
+    <input type="hidden" name="date" id="waiveDate" />
+    <div class="field">
+      <label for="wReason">原因（記入操作紀錄）</label>
+      <textarea name="reason" id="wReason" maxlength="200" required placeholder="例如：熟客，店長同意免收"></textarea>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn sec" data-close-sheet>取消</button>
+      <button type="submit" class="btn pri">免收並確認預約</button>
+    </div>
+  </form>
+</section>
+
+<nav th:replace="~{m/fragments/app :: tabs('more')}"></nav>
+<script th:replace="~{m/fragments/app :: sheets}"></script>
+<script>
+  (function () {
+    document.querySelectorAll("form.js-once").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        if (f.dataset.confirm && !window.confirm(f.dataset.confirm)) { e.preventDefault(); return; }
+        var b = f.querySelector("button[type=submit]");
+        if (b) b.disabled = true;
+      });
+    });
+    document.querySelectorAll("[data-open-sheet=sheetReject]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.getElementById("rejectForm").action = "/m/deposits/" + encodeURIComponent(btn.dataset.id) + "/reject";
+        document.getElementById("rejectWho").textContent =
+          btn.dataset.name + "，NT$ " + Number(btn.dataset.amount || 0).toLocaleString();
+        document.getElementById("rReason").value = "";
+      });
+    });
+    document.querySelectorAll("[data-open-sheet=sheetWaive]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.getElementById("waiveUser").value = btn.dataset.user;
+        document.getElementById("waiveDate").value = btn.dataset.date;
+        document.getElementById("waiveWho").textContent =
+          btn.dataset.name + " " + btn.dataset.date + " 當天的預約都不收訂金，待付訂金的預約會直接確認。";
+        document.getElementById("wReason").value = "";
+      });
+    });
+  })();
+</script>
+<script th:replace="~{m/fragments/app :: pwa}"></script>
+</body>
+</html>
