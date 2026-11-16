@@ -160,31 +160,6 @@
         color: var(--ink-faint);
       }
 
-      .fab-home {
-        position: fixed;
-        left: 50%;
-        bottom: 22px;
-        transform: translateX(-50%);
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: var(--primary-deep);
-        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        z-index: 500;
-        border: 2px solid var(--gold);
-      }
-      .fab-home-icon {
-        font-size: 20px;
-        line-height: 1;
-      }
-      .fab-home:active {
-        opacity: 0.85;
-      }
-
       .loading {
         text-align: center;
         padding: 60px 20px;
@@ -212,10 +187,6 @@
     <a class="add-dashed" href="/liff/add-pet.html">＋ 新增毛孩</a>
 
     <div id="app"><div class="loading">載入中...</div></div>
-
-    <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
-      <span class="fab-home-icon">🏠</span>
-    </a>
 
     <div class="footer-mark">
       <div class="txt">Mulage Pet Salon</div>
@@ -514,5 +485,6 @@
 
       init();
     </script>
+    <script src="/liff/tabbar.js?v=1"></script>
   </body>
 </html>
