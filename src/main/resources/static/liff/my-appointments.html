@@ -16,7 +16,7 @@
     ></script>
     <script src="/liff/liff-config.js?v=1"></script>
     <script src="/liff/contract-loader.js?v=1"></script>
-    <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
+    <link rel="stylesheet" href="/liff/liff-theme.css?v=3" />
     <style>
       body {
         padding-bottom: 100px;
@@ -380,31 +380,6 @@
         background: #8b3a3a;
       }
 
-      .fab-home {
-        position: fixed;
-        left: 50%;
-        bottom: 22px;
-        transform: translateX(-50%);
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: var(--primary-deep);
-        box-shadow: 0 8px 20px rgba(38, 51, 43, 0.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        z-index: 500;
-        border: 2px solid var(--gold);
-      }
-      .fab-home-icon {
-        font-size: 20px;
-        line-height: 1;
-      }
-      .fab-home:active {
-        opacity: 0.85;
-      }
-
       /* 預約明細彈窗 */
       .detail-backdrop {
         position: fixed;
@@ -536,10 +511,6 @@
         <div class="en">my appointments</div>
       </div>
     </div>
-
-    <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
-      <span class="fab-home-icon">🏠</span>
-    </a>
 
     <a class="add-btn" href="/liff/booking.html">＋ 新增預約</a>
 
@@ -1265,5 +1236,6 @@
 
       init();
     </script>
+    <script src="/liff/tabbar.js?v=1"></script>
   </body>
 </html>

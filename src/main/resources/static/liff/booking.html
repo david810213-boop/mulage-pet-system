@@ -16,7 +16,7 @@
     ></script>
     <script src="/liff/liff-config.js?v=1"></script>
     <script src="/liff/contract-loader.js?v=1"></script>
-    <link rel="stylesheet" href="/liff/liff-theme.css?v=2" />
+    <link rel="stylesheet" href="/liff/liff-theme.css?v=3" />
     <style>
       /* ---- 這頁專屬的補充樣式（結構元件在 liff-theme.css，以下是 JS 會產生的
              .form-card / .item-row / .slot-btn 等 class 的實際外觀）---- */
@@ -297,18 +297,18 @@
         width: 46px;
         height: 46px;
         border-radius: 50%;
-        background: var(--primary-deep);
-        box-shadow: 0 8px 18px rgba(38, 51, 43, 0.35);
+        background: #9c846e;
+        box-shadow: 0 8px 18px rgba(120, 98, 78, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
         z-index: 500;
-        border: 2px solid var(--gold);
+        border: 2px solid #faf7f2;
       }
       .fab-home-icon {
-        font-size: 18px;
-        line-height: 1;
+        display: flex;
+        line-height: 0;
       }
       .fab-home:active {
         opacity: 0.85;
@@ -330,7 +330,7 @@
     </div>
 
     <a href="/liff/index.html" class="fab-home" aria-label="返回首頁">
-      <span class="fab-home-icon">🏠</span>
+      <span class="fab-home-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5V20h-5.5v-5h-5v5H4z" /></svg></span>
     </a>
 
     <div id="app"><div class="loading-page">載入中...</div></div>
