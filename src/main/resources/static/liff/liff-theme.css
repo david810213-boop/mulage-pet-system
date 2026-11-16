@@ -173,10 +173,11 @@ img {
   align-items: center;
   gap: 12px;
   padding: 18px 20px 20px;
-  background: var(--primary-deep);
+  /* 與首頁預約主視覺卡同色（設計定案 #9C846E） */
+  background: #9c846e;
   background-image: radial-gradient(
     circle at 88% 0%,
-    rgba(198, 160, 99, 0.14) 0%,
+    rgba(243, 215, 158, 0.22) 0%,
     transparent 45%
   );
 }
@@ -184,8 +185,8 @@ img {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e9e4d8;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,7 +207,7 @@ img {
 .page-head .en {
   font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 9.5px;
-  color: #a9bcae;
+  color: #f6ece0;
   letter-spacing: 2px;
   text-transform: lowercase;
   margin-top: 3px;

@@ -25,9 +25,8 @@
         --link: #7e5f33;
         --avatar: #f1e9da;
         --chip-bg: #f4efe6;
-        --sage-a: #7e907a;
-        --sage-b: #657861;
-        --sage-wave: #8d9e89;
+        --hero: #9c846e;
+        --hero-wave: #8d7765;
         --cream-a: #f3d79e;
         --cream-b: #f2e0d2;
         --apricot: #d98a6c;
@@ -59,7 +58,7 @@
       .page {
         max-width: 480px;
         margin: 0 auto;
-        padding: 18px 20px calc(110px + env(safe-area-inset-bottom));
+        padding: 18px 20px 24px;
         display: flex;
         flex-direction: column;
         gap: 22px;
@@ -164,8 +163,8 @@
         display: block;
         border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 10px 22px rgba(101, 120, 97, 0.32);
-        background: linear-gradient(160deg, var(--sage-a), var(--sage-b));
+        box-shadow: 0 10px 22px rgba(120, 98, 78, 0.3);
+        background: var(--hero);
       }
       .cta-wave {
         position: relative;
@@ -459,53 +458,6 @@
         min-height: 200px;
       }
 
-      /* ── 底部導覽 ── */
-      .tabbar {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 10;
-        background: #ffffff;
-        border-top: 1px solid var(--line);
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-      .tabbar-in {
-        max-width: 480px;
-        margin: 0 auto;
-        height: 74px;
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        align-items: center;
-        padding: 0 6px;
-      }
-      .tab {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        color: var(--ink-soft);
-        font-size: 11px;
-        padding: 8px 0;
-      }
-      .tab.active {
-        color: var(--nav-active);
-        font-weight: 700;
-      }
-      .tab-book {
-        justify-self: center;
-        width: 60px;
-        height: 60px;
-        margin-top: -30px;
-        border-radius: 50%;
-        background: linear-gradient(160deg, var(--sage-a), var(--sage-b));
-        border: 3px solid var(--page);
-        box-shadow: 0 6px 14px rgba(101, 120, 97, 0.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #ffffff;
-      }
     </style>
   </head>
   <body>
@@ -541,7 +493,7 @@
       <a class="cta" href="/liff/booking.html">
         <div class="cta-wave">
           <svg viewBox="0 0 320 40" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0,28 C60,12 110,36 180,22 C240,11 280,32 320,19 L320,0 L0,0 Z" fill="#8D9E89" />
+            <path d="M0,28 C60,12 110,36 180,22 C240,11 280,32 320,19 L320,0 L0,0 Z" fill="#8D7765" />
             <circle cx="270" cy="12" r="1.1" fill="#F3D79E" />
             <circle cx="250" cy="20" r="0.8" fill="#F3D79E" />
             <circle cx="288" cy="8" r="0.6" fill="#F3D79E" />
@@ -573,30 +525,6 @@
         <div class="pets" id="pets"><div class="card empty" style="flex: 1">載入中…</div></div>
       </section>
     </main>
-
-    <nav class="tabbar" aria-label="主要功能">
-      <div class="tabbar-in">
-        <a class="tab active" href="/liff/index.html" aria-current="page">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5V20h-5.5v-5h-5v5H4z" /></svg>
-          首頁
-        </a>
-        <a class="tab" href="/liff/my-pets.html">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="4.6" ry="3.6" /><circle cx="6.3" cy="9.6" r="1.7" /><circle cx="10.6" cy="6.4" r="1.7" /><circle cx="15" cy="6.4" r="1.7" /><circle cx="18.2" cy="9.6" r="1.7" /></svg>
-          毛孩檔案
-        </a>
-        <a class="tab-book" href="/liff/booking.html" aria-label="立即預約">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.2 3.5v3.4M15.8 3.5v3.4M12 12.5v5M9.5 15h5" /></svg>
-        </a>
-        <a class="tab" href="/liff/my-appointments.html">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.2 3.5v3.4M15.8 3.5v3.4M9 15l2 2 4-4" /></svg>
-          我的預約
-        </a>
-        <a class="tab" href="/liff/my-profile.html">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" /><path d="M4.5 20c1.4-3.6 4.2-5.2 7.5-5.2s6.1 1.6 7.5 5.2" /></svg>
-          會員
-        </a>
-      </div>
-    </nav>
 
     <script>
       const LIFF_ID = window.MULAGE_LIFF.index; // LIFF ID 集中在 /liff/liff-config.js
@@ -946,5 +874,6 @@
 
       init();
     </script>
+    <script src="/liff/tabbar.js?v=1"></script>
   </body>
 </html>
