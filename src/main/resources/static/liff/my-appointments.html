@@ -664,6 +664,12 @@
           jwtToken = data?.token || data?.jwtToken || data?.accessToken;
 
           await loadAppointments();
+
+          // 首頁「付訂金」帶 ?deposit=預約日期，直接打開匯款資訊
+          const depositDate = new URLSearchParams(window.location.search).get("deposit");
+          if (depositDate && /^\d{4}-\d{2}-\d{2}$/.test(depositDate)) {
+            openDepositPanel(depositDate);
+          }
         } catch (e) {
           document.getElementById("app").innerHTML =
             '<div class="loading" style="color:#8B0000">初始化失敗：' +

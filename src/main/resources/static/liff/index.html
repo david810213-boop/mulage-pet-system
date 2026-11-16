@@ -1,36 +1,45 @@
 <!doctype html>
 <html lang="zh-Hant">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>慕沐村Mulage pet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Huninn&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600&family=Noto+Sans+TC:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>慕沐村Mulage pet</title>
-    <script
-      charset="utf-8"
-      src="https://static.line-scdn.net/liff/edge/2/sdk.js"
-    ></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="/liff/liff-config.js?v=1"></script>
     <style>
+      /* 色票與字級：設計定案「慕沐村會員首頁改版提案 · 定案色票與字體」 */
       :root {
-        --ink: #2c2a28;
-        --primary: #3a4d3f;
-        --primary-deep: #26332b;
-        --wood: #a67c52;
-        --wood-deep: #8a6440;
-        --gold: #c6a063;
-        --gold-light: #e4cfa0;
-        --forest: #4a6b5d;
-        --paper: #f8f6f1;
-        --paper-2: #f1ece2;
-        --line: #dbd3c4;
-        --line-soft: #e8e2d5;
-        --ink-soft: #6b645c;
-        --ink-faint: #a29a8c;
+        --page: #faf7f2;
+        --card: #ffffff;
+        --line: #e3d6bf;
+        --line-gold: #c9ae7e;
+        --ink: #1f2621;
+        --ink-soft: #5e5a52;
+        --ink-gold: #6e5229;
+        --link: #7e5f33;
+        --avatar: #f1e9da;
+        --chip-bg: #f4efe6;
+        --sage-a: #7e907a;
+        --sage-b: #657861;
+        --sage-wave: #8d9e89;
+        --cream-a: #f3d79e;
+        --cream-b: #f2e0d2;
+        --apricot: #d98a6c;
+        --nav-active: #c46347;
+        --pending-bg: #fdf3e3;
+        --pending-fg: #b87324;
+        --booked-bg: #ebf2ea;
+        --booked-fg: #4e6e4b;
+        --due-bg: #fcece6;
+        --due-fg: #c46347;
+        --serif: "Noto Serif TC", "PingFang TC", serif;
+        --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
       }
       * {
         box-sizing: border-box;
@@ -38,644 +47,566 @@
         padding: 0;
       }
       body {
-        background: var(--paper);
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+        background: var(--page);
+        color: var(--ink);
+        font-family: var(--sans);
         -webkit-font-smoothing: antialiased;
-        min-height: 100vh;
-        padding-bottom: 12px;
+      }
+      a {
+        color: var(--link);
+        text-decoration: none;
+      }
+      .page {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 18px 20px calc(110px + env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
       }
 
-      /* ---------- identity band ---------- */
-      .idband {
+      /* ── 頁首 ── */
+      .brand {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 16px 22px 0;
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 10px;
-        letter-spacing: 2.5px;
-        color: var(--ink-faint);
-        font-weight: 500;
-        text-transform: uppercase;
+        gap: 14px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 14px;
       }
-      .idband .dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--gold);
-        display: inline-block;
-        margin-right: 6px;
-        vertical-align: 1px;
+      .brand img {
+        height: 76px;
+        width: auto;
+        display: block;
       }
-
-      /* ---------- hero / logo ---------- */
-      .hero {
-        padding: 14px 22px 18px;
-        text-align: center;
-        position: relative;
-        background: radial-gradient(
-          ellipse at 50% 0%,
-          rgba(198, 160, 99, 0.1),
-          transparent 60%
-        );
-      }
-      .logo-plate {
-        width: 124px;
-        height: 124px;
-        margin: 6px auto 4px;
-        border-radius: 50%;
-        background: radial-gradient(circle at 35% 30%, #fdfcf9, #f1ece2 70%);
-        box-shadow:
-          inset 0 0 0 1px rgba(198, 160, 99, 0.35),
-          0 10px 22px rgba(58, 77, 63, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-      }
-      .logo-plate img {
-        width: 104%;
-        height: 104%;
-        object-fit: contain;
-      }
-      .hero .rule {
+      .brand-rule {
+        flex: 1;
         display: flex;
         align-items: center;
         gap: 10px;
-        justify-content: center;
-        margin: 9px 0 4px;
       }
-      .hero .rule span {
+      .brand-rule span.l {
+        flex: 1;
         height: 1px;
-        width: 24px;
-        background: var(--line);
+        background: var(--line-gold);
       }
-      .hero .rule em {
-        font-style: normal;
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 10.5px;
+      .brand-rule span.t {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 4px;
+        color: var(--ink-gold);
+        white-space: nowrap;
+      }
+      .greet-date {
+        font-size: 13px;
         color: var(--ink-soft);
-        letter-spacing: 2px;
-        text-transform: lowercase;
       }
-      .hero .greet {
-        font-size: 12.5px;
-        color: var(--ink-soft);
-        margin-top: 5px;
-      }
-      .hero .greet b {
-        color: var(--primary-deep);
-        font-weight: 700;
+      .greet h1 {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 24px;
+        line-height: 1.4;
+        margin-top: 6px;
       }
 
-      /* ---------- membership ticket ---------- */
-      .ticket-wrap {
-        padding: 2px 22px 0;
-      }
-      .ticket {
-        background: linear-gradient(180deg, #fff, #fbf9f5);
-        border: 1px solid var(--line-soft);
-        border-radius: 16px;
-        box-shadow: 0 10px 24px rgba(58, 77, 63, 0.1);
-        position: relative;
-        overflow: hidden;
-        text-decoration: none;
+      /* ── VIP 會員卡 ── */
+      .vip {
         display: block;
+        border-radius: 14px;
+        padding: 6px;
+        color: #4a3531;
+        background: linear-gradient(180deg, #f2ebdc 0%, #f0dbd0 100%);
       }
-      .ticket-top {
+      .vip-in {
+        border: 1px solid var(--line-gold);
+        border-radius: 10px;
+        padding: 16px 18px;
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .vip-row {
+        display: flex;
         justify-content: space-between;
-        padding: 15px 18px 13px;
-      }
-      .ticket-tier {
-        display: flex;
         align-items: center;
-        gap: 9px;
       }
-      .ticket-tier .mark {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        background: linear-gradient(
-          135deg,
-          var(--gold-light),
-          var(--gold) 60%,
-          var(--wood-deep)
-        );
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 10.5px;
-        font-weight: 600;
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-      }
-      .ticket-tier .label {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 10.5px;
-        font-weight: 500;
-        color: var(--wood-deep);
-        letter-spacing: 1.5px;
-        text-transform: lowercase;
-      }
-      .ticket-arrow {
-        color: var(--ink-faint);
-        font-size: 15px;
-      }
-      .perforation {
-        position: relative;
-        height: 1px;
-        margin: 0 18px;
-        border-top: 1.5px dashed var(--line);
-      }
-      .perforation::before,
-      .perforation::after {
-        content: "";
-        position: absolute;
-        top: -8px;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: var(--paper);
-      }
-      .perforation::before {
-        left: -26px;
-      }
-      .perforation::after {
-        right: -26px;
-      }
-      .ticket-bottom {
-        display: flex;
+      .vip-row.bottom {
         align-items: flex-end;
-        justify-content: space-between;
-        padding: 15px 18px 17px;
       }
-      .ticket-balance-label {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 9px;
-        color: var(--ink-faint);
-        letter-spacing: 2px;
-        margin-bottom: 5px;
-        text-transform: lowercase;
-      }
-      .ticket-balance {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-        font-size: 25px;
+      .vip-tier {
+        font-family: var(--serif);
         font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 3px;
+        color: var(--ink-gold);
+      }
+      .vip-state,
+      .vip-label {
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      .vip-balance {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 30px;
+        line-height: 1.2;
         color: var(--ink);
       }
-      .ticket-cta {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 10px;
-        color: var(--forest);
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid var(--forest);
-        padding-bottom: 1px;
-        text-transform: lowercase;
+      .vip-link {
+        font-size: 13px;
+        color: var(--ink-gold);
+        border-bottom: 1px solid var(--line-gold);
+        padding-bottom: 2px;
       }
 
-      /* ---------- CTA invitation card ---------- */
-      .cta-wrap {
-        padding: 14px 22px 0;
-      }
+      /* ── 預約主視覺卡 ── */
       .cta {
-        position: relative;
-        overflow: hidden;
-        border-radius: 16px;
-        text-decoration: none;
         display: block;
-        background: var(--primary-deep);
-        box-shadow: 0 10px 20px rgba(38, 51, 43, 0.3);
-      }
-      .cta-art {
-        position: relative;
-        height: 40px;
+        border-radius: 16px;
         overflow: hidden;
+        box-shadow: 0 10px 22px rgba(101, 120, 97, 0.32);
+        background: linear-gradient(160deg, var(--sage-a), var(--sage-b));
       }
-      .cta-art svg {
+      .cta-wave {
+        position: relative;
+        height: 30px;
+      }
+      .cta-wave svg {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
       }
       .cta-body {
-        padding: 0 16px 15px;
-        position: relative;
-      }
-      .cta-eyebrow {
+        padding: 2px 16px 14px;
         display: flex;
-        align-items: center;
-        gap: 7px;
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 8.5px;
-        letter-spacing: 2px;
-        color: var(--gold-light);
-        font-weight: 500;
-        margin-bottom: 6px;
-        text-transform: lowercase;
-      }
-      .cta-eyebrow::before {
-        content: "";
-        width: 12px;
-        height: 1px;
-        background: var(--gold-light);
-        display: inline-block;
+        flex-direction: column;
+        gap: 6px;
+        color: #ffffff;
       }
       .cta-title {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-        font-size: 15px;
+        font-family: var(--serif);
         font-weight: 600;
-        color: #fff;
-        letter-spacing: 0.5px;
-        line-height: 1.5;
+        font-size: 19px;
+        line-height: 1.4;
+        letter-spacing: 1px;
       }
       .cta-desc {
-        font-size: 10.5px;
-        color: #c3cec5;
-        margin-top: 6px;
+        font-size: 13px;
         line-height: 1.6;
       }
       .cta-foot {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        margin-top: 12px;
-      }
-      .cta-next {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .cta-next .k {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 8px;
-        color: #8ea192;
-        letter-spacing: 1.2px;
-        text-transform: lowercase;
-      }
-      .cta-next .v {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-        font-size: 11.5px;
-        color: var(--gold-light);
-        font-weight: 500;
-      }
-      .cta-btn {
-        display: inline-flex;
         align-items: center;
-        gap: 6px;
-        background: linear-gradient(135deg, var(--gold-light), var(--gold));
-        color: #3a2d16;
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        padding: 12px 22px 12px 24px;
-        border-radius: 999px;
-        box-shadow: 0 6px 16px rgba(198, 160, 99, 0.45);
-        text-transform: lowercase;
-        flex-shrink: 0;
+        margin-top: 4px;
+        border-top: 1px solid rgba(255, 255, 255, 0.28);
+        padding-top: 10px;
       }
-
-      /* ---------- section label ---------- */
-      .board-wrap {
-        padding: 26px 22px 10px;
-      }
-      .board-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 6px;
-      }
-      .board-title .cn {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      .cta-slots {
         font-size: 14px;
         font-weight: 500;
-        color: var(--primary-deep);
-        letter-spacing: 3px;
+        text-decoration: underline;
+        text-underline-offset: 4px;
       }
-      .board-title svg {
-        flex: 1;
-        height: 8px;
-        color: var(--line);
-      }
-      .board-title .en {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 10px;
-        color: var(--ink-faint);
-        letter-spacing: 2px;
-        text-transform: lowercase;
+      .cta-btn {
+        background: linear-gradient(180deg, var(--cream-a), var(--cream-b));
+        color: #3a2d16;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 10px 18px;
+        border-radius: 999px;
+        box-shadow: 0 4px 10px rgba(58, 45, 22, 0.18);
       }
 
-      /* ---------- spotlight bento cards (live data) ---------- */
-      .bento-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        padding: 6px 22px 0;
+      /* ── 區塊標題 ── */
+      .sec {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
-      .bento {
-        background: var(--paper-2);
-        border: 1px solid var(--line-soft);
-        border-radius: 18px;
-        padding: 16px 15px 15px;
-        text-decoration: none;
-        position: relative;
-        overflow: hidden;
-        display: block;
+      .sec-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line-gold);
+        padding-bottom: 8px;
       }
-      .bento .bicon {
-        width: 22px;
-        height: 22px;
-        color: var(--wood-deep);
-        margin-bottom: 14px;
-      }
-      .bento .blabel {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 10px;
-        color: var(--ink-soft);
-        letter-spacing: 1px;
-        text-transform: lowercase;
-      }
-      .bento .bnum {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-        font-size: 28px;
+      .sec-head h2 {
+        font-family: var(--serif);
         font-weight: 600;
+        font-size: 18px;
+        letter-spacing: 2px;
+        color: var(--ink-gold);
+      }
+      .sec-head h2 small {
+        font-family: var(--sans);
+        font-weight: 400;
+        font-size: 14px;
+        letter-spacing: 0;
+        color: var(--ink-soft);
+        margin-left: 4px;
+      }
+      .sec-head a {
+        font-size: 13px;
+      }
+
+      /* ── 共用 ── */
+      .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: var(--avatar);
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 19px;
+        color: var(--ink-gold);
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .chip {
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 2px 9px;
+        white-space: nowrap;
+      }
+      .chip.pending {
+        color: var(--pending-fg);
+        background: var(--pending-bg);
+      }
+      .chip.booked {
+        color: var(--booked-fg);
+        background: var(--booked-bg);
+      }
+      .chip.due {
+        color: var(--due-fg);
+        background: var(--due-bg);
+      }
+      .chip.plain {
+        color: var(--ink-gold);
+        background: var(--avatar);
+        font-weight: 500;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      .empty {
+        padding: 18px 16px;
+        font-size: 13px;
+        color: var(--ink-soft);
+        text-align: center;
+        line-height: 1.7;
+      }
+
+      /* ── 即將到來 ── */
+      .appt {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 16px;
         color: var(--ink);
-        line-height: 1.2;
+      }
+      .appt-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .appt-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .appt-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .appt-name b {
+        font-size: 16px;
+      }
+      .appt-items {
+        font-size: 13px;
+        color: var(--ink-soft);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .appt-when {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .when-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px 10px;
+      }
+      .appt-more {
+        margin-left: auto;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .appt-deposit {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border-top: 1px dashed #d9c6a3;
+        padding-top: 12px;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .appt-deposit b {
+        color: var(--ink);
+      }
+      .btn-apricot {
+        font-size: 14px;
+        font-weight: 700;
+        color: #ffffff;
+        background: var(--apricot);
+        border-radius: 999px;
+        padding: 8px 16px;
+        white-space: nowrap;
+      }
+
+      /* ── 我的毛孩（左右滑動） ── */
+      .pets {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        margin: 0 -20px;
+        padding: 0 20px 4px;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .pets::-webkit-scrollbar {
+        display: none;
+      }
+      .pet {
+        flex: 0 0 152px;
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+      }
+      .pet-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      .pet .avatar {
+        width: 46px;
+        height: 46px;
+        font-size: 18px;
+        border: none;
+      }
+      .pet-name {
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .pet-meta {
+        font-size: 12px;
+        color: var(--ink-soft);
         margin-top: 2px;
       }
-      .bento .bnum span {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      .pet-note {
         font-size: 12px;
-        font-weight: 500;
         color: var(--ink-soft);
-        margin-left: 3px;
+        border-top: 1px solid #efe6d6;
+        padding-top: 8px;
       }
-      .bento .btitle {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--primary-deep);
-        margin-top: 9px;
-        letter-spacing: 0.5px;
-      }
-      .bento .barrow {
-        position: absolute;
-        right: 14px;
-        top: 16px;
-        color: var(--ink-faint);
-        font-size: 13px;
-      }
-
-      /* ---------- quick action tiles (low-frequency) ---------- */
-      .quick-row {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        padding: 10px 22px 4px;
-      }
-      .quick-tile {
+      .pet-btn {
         text-align: center;
-        text-decoration: none;
-        padding: 14px 4px 12px;
-        border-radius: 14px;
-        background: #ffffff;
-        border: 1px solid var(--line-soft);
-        box-shadow: 0 4px 12px rgba(58, 77, 63, 0.06);
-        display: block;
-      }
-      .quick-tile .qicon {
-        width: 19px;
-        height: 19px;
-        margin: 0 auto 8px;
-        color: var(--forest);
-      }
-      .quick-tile .qtitle {
-        font-family: "Huninn", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 500;
         color: var(--ink);
+        background: var(--chip-bg);
+        border-radius: 10px;
+        padding: 9px 0;
+        margin-top: auto;
       }
-      .quick-tile .qcap {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 8.5px;
-        color: var(--ink-faint);
-        letter-spacing: 0.5px;
-        margin-top: 4px;
-        text-transform: lowercase;
+      .pet-btn.primary {
+        color: #ffffff;
+        font-weight: 700;
+        background: var(--apricot);
+      }
+      .pet.add {
+        align-items: center;
+        justify-content: center;
+        border-style: dashed;
+        border-color: var(--line-gold);
+        color: var(--ink-gold);
+        font-size: 14px;
+        min-height: 200px;
       }
 
-      /* ---------- footer mark ---------- */
-      .footer-mark {
+      /* ── 底部導覽 ── */
+      .tabbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        background: #ffffff;
+        border-top: 1px solid var(--line);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .tabbar-in {
+        max-width: 480px;
+        margin: 0 auto;
+        height: 74px;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: center;
+        padding: 0 6px;
+      }
+      .tab {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 26px 0 32px;
-        color: var(--ink-faint);
+        gap: 4px;
+        color: var(--ink-soft);
+        font-size: 11px;
+        padding: 8px 0;
       }
-      .footer-mark img {
-        width: 44px;
-        opacity: 0.5;
+      .tab.active {
+        color: var(--nav-active);
+        font-weight: 700;
       }
-      .footer-mark .txt {
-        font-family: "Bricolage Grotesque", "Huninn", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        font-size: 9px;
-        letter-spacing: 3px;
-        text-transform: uppercase;
+      .tab-book {
+        justify-self: center;
+        width: 60px;
+        height: 60px;
+        margin-top: -30px;
+        border-radius: 50%;
+        background: linear-gradient(160deg, var(--sage-a), var(--sage-b));
+        border: 3px solid var(--page);
+        box-shadow: 0 6px 14px rgba(101, 120, 97, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
       }
     </style>
-    <!-- 舊版 liff-warm.css 已不再被此頁使用（版型已全面重新設計），
-         其他 LIFF 頁面（wallet.html / booking.html 等）維持原本引用，不受影響 -->
   </head>
   <body>
-    <div class="idband">
-      <span><span class="dot"></span>mulage pet</span>
-      <span>會員中心</span>
-    </div>
-
-    <div class="hero">
-      <div class="logo-plate">
-        <img src="/liff/mulage-logo.png" alt="慕沐村 Mulage Pet Logo" />
-      </div>
-      <div class="rule"><span></span><em>member center</em><span></span></div>
-      <div class="greet" id="greeting">您好 👋</div>
-    </div>
-
-    <div class="ticket-wrap">
-      <a class="ticket" href="/liff/wallet.html" id="walletCard">
-        <div class="ticket-top">
-          <div class="ticket-tier">
-            <div class="mark">慕</div>
-            <div class="label" id="walletTier">會員票券</div>
-          </div>
-          <div class="ticket-arrow">›</div>
+    <main class="page">
+      <header class="brand">
+        <img src="/liff/mulage-logo-mark.png" alt="慕沐村" />
+        <div class="brand-rule" aria-hidden="true">
+          <span class="l"></span><span class="t">MULAGE PET</span><span class="l"></span>
         </div>
-        <div class="perforation"></div>
-        <div class="ticket-bottom">
-          <div>
-            <div class="ticket-balance-label">wallet balance</div>
-            <div class="ticket-balance" id="walletBalance">載入中...</div>
+      </header>
+
+      <section class="greet">
+        <div class="greet-date" id="greetDate"></div>
+        <h1 id="greeting">您好</h1>
+      </section>
+
+      <a class="vip" href="/liff/wallet.html">
+        <div class="vip-in">
+          <div class="vip-row">
+            <span class="vip-tier">MULAGE VIP</span>
+            <span class="vip-state" id="walletTier">載入中</span>
           </div>
-          <div class="ticket-cta">查看明細</div>
+          <div class="vip-row bottom">
+            <div>
+              <div class="vip-label">儲值金餘額</div>
+              <div class="vip-balance" id="walletBalance">—</div>
+            </div>
+            <span class="vip-link">儲值與明細 →</span>
+          </div>
         </div>
       </a>
-    </div>
 
-    <div class="cta-wrap">
       <a class="cta" href="/liff/booking.html">
-        <div class="cta-art">
-          <svg viewBox="0 0 320 40" preserveAspectRatio="none">
-            <path
-              d="M0,28 C60,12 110,36 180,22 C240,11 280,32 320,19 L320,0 L0,0 Z"
-              fill="#31423A"
-            />
-            <circle cx="270" cy="12" r="1.1" fill="#C6A063" />
-            <circle cx="250" cy="20" r="0.8" fill="#C6A063" />
-            <circle cx="288" cy="8" r="0.6" fill="#C6A063" />
+        <div class="cta-wave">
+          <svg viewBox="0 0 320 40" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0,28 C60,12 110,36 180,22 C240,11 280,32 320,19 L320,0 L0,0 Z" fill="#8D9E89" />
+            <circle cx="270" cy="12" r="1.1" fill="#F3D79E" />
+            <circle cx="250" cy="20" r="0.8" fill="#F3D79E" />
+            <circle cx="288" cy="8" r="0.6" fill="#F3D79E" />
           </svg>
         </div>
         <div class="cta-body">
-          <div class="cta-eyebrow">reserve a visit</div>
           <div class="cta-title">給毛孩一段<br />被溫柔以待的時光</div>
-          <div class="cta-desc">
-            日式按摩 · 草本洗護<br />六星級沐浴儀式，零烘箱作業
-          </div>
+          <div class="cta-desc">日式按摩 · 草本洗護<br />六星級沐浴儀式，零烘箱作業</div>
           <div class="cta-foot">
-            <div class="cta-next">
-              <span class="k">next available</span>
-              <span class="v">立即查看空檔</span>
-            </div>
+            <span class="cta-slots">查看可預約時段</span>
             <span class="cta-btn">立即預約 →</span>
           </div>
         </div>
       </a>
-    </div>
 
-    <div class="board-wrap">
-      <div class="board-title">
-        <span class="cn">我 的 小 功 能</span>
-        <svg viewBox="0 0 100 8" preserveAspectRatio="none">
-          <path
-            d="M0,4 Q15,0 30,4 T60,4 T90,4 T100,4"
-            stroke="currentColor"
-            stroke-width="1"
-            fill="none"
-          />
-        </svg>
-        <span class="en">for your pet</span>
+      <section class="sec">
+        <div class="sec-head">
+          <h2>即將到來</h2>
+          <a href="/liff/my-appointments.html" id="apptCountLink">我的預約 ›</a>
+        </div>
+        <div id="nextAppt" class="card"><div class="empty">載入中…</div></div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head">
+          <h2>我的毛孩<small id="petsCount"></small></h2>
+          <a href="/liff/add-pet.html">＋ 新增毛孩</a>
+        </div>
+        <div class="pets" id="pets"><div class="card empty" style="flex: 1">載入中…</div></div>
+      </section>
+    </main>
+
+    <nav class="tabbar" aria-label="主要功能">
+      <div class="tabbar-in">
+        <a class="tab active" href="/liff/index.html" aria-current="page">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5V20h-5.5v-5h-5v5H4z" /></svg>
+          首頁
+        </a>
+        <a class="tab" href="/liff/my-pets.html">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="4.6" ry="3.6" /><circle cx="6.3" cy="9.6" r="1.7" /><circle cx="10.6" cy="6.4" r="1.7" /><circle cx="15" cy="6.4" r="1.7" /><circle cx="18.2" cy="9.6" r="1.7" /></svg>
+          毛孩檔案
+        </a>
+        <a class="tab-book" href="/liff/booking.html" aria-label="立即預約">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.2 3.5v3.4M15.8 3.5v3.4M12 12.5v5M9.5 15h5" /></svg>
+        </a>
+        <a class="tab" href="/liff/my-appointments.html">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.2 3.5v3.4M15.8 3.5v3.4M9 15l2 2 4-4" /></svg>
+          我的預約
+        </a>
+        <a class="tab" href="/liff/my-profile.html">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" /><path d="M4.5 20c1.4-3.6 4.2-5.2 7.5-5.2s6.1 1.6 7.5 5.2" /></svg>
+          會員
+        </a>
       </div>
-    </div>
-
-    <div class="bento-row">
-      <a class="bento" href="/liff/my-pets.html">
-        <svg
-          class="bicon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <ellipse cx="12" cy="16.2" rx="4.6" ry="3.6" />
-          <circle cx="6.3" cy="9.6" r="1.7" />
-          <circle cx="10.6" cy="6.4" r="1.7" />
-          <circle cx="15" cy="6.4" r="1.7" />
-          <circle cx="18.2" cy="9.6" r="1.7" />
-        </svg>
-        <span class="barrow">›</span>
-        <div class="blabel" id="petsCap">family members</div>
-        <div class="bnum" id="petsCount">－</div>
-        <div class="btitle">毛孩檔案</div>
-      </a>
-      <a class="bento" href="/liff/my-appointments.html">
-        <svg
-          class="bicon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
-          <path d="M4 10h16" />
-          <path d="M8.2 3.5v3.4M15.8 3.5v3.4" />
-          <circle cx="9" cy="14.3" r="0.9" fill="currentColor" stroke="none" />
-          <circle cx="13" cy="14.3" r="0.9" fill="currentColor" stroke="none" />
-        </svg>
-        <span class="barrow">›</span>
-        <div class="blabel" id="apptCap">upcoming</div>
-        <div class="bnum" id="apptCount">－</div>
-        <div class="btitle">即將到來</div>
-      </a>
-    </div>
-
-    <div class="quick-row">
-      <a class="quick-tile" href="/liff/add-pet.html">
-        <svg
-          class="qicon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        <div class="qtitle">新增毛孩</div>
-        <div class="qcap">new member</div>
-      </a>
-      <a class="quick-tile" href="/liff/wallet.html">
-        <svg
-          class="qicon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="3" y="6.5" width="18" height="13" rx="3" />
-          <path d="M3 10.5h18" />
-          <circle cx="17" cy="14.5" r="1.1" fill="currentColor" stroke="none" />
-        </svg>
-        <div class="qtitle">會員錢包</div>
-        <div class="qcap">wallet</div>
-      </a>
-      <a class="quick-tile" href="/liff/my-profile.html">
-        <svg
-          class="qicon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M4.2 19.8l1-4L15.3 5.7l3 3L8.2 18.8l-4 1z" />
-          <path d="M13.8 7.2l3 3" />
-        </svg>
-        <div class="qtitle">編輯資料</div>
-        <div class="qcap">my profile</div>
-      </a>
-    </div>
-
-    <div class="footer-mark">
-      <img src="/liff/mulage-logo.png" alt="" />
-      <div class="txt">Mulage Pet Salon</div>
-    </div>
+    </nav>
 
     <script>
       const LIFF_ID = window.MULAGE_LIFF.index; // LIFF ID 集中在 /liff/liff-config.js
+      // 距離上次服務超過這個天數、且沒有已排定的預約，毛孩卡片顯示「該洗澡囉」
+      const BATH_REMINDER_DAYS = 30;
+      const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
       let jwtToken = null;
 
       async function init() {
+        renderGreeting(null);
         try {
           await liff.init({ liffId: LIFF_ID });
           if (!liff.isLoggedIn()) {
@@ -691,31 +622,24 @@
             },
             body: JSON.stringify({ idToken: liff.getIDToken() }),
           });
-
-          const data = await res.json().catch(() => null);
-          if (!res.ok) {
+          const data = await readJson(res);
+          if (!res.ok || !data) {
             setWalletError("登入失敗");
             return;
           }
+          jwtToken = data.token || data.jwtToken || data.accessToken;
 
-          jwtToken = data?.token || data?.jwtToken || data?.accessToken;
-
-          // 顯示 LINE 顯示名稱（若有取得個人資料權限）
+          // 顯示 LINE 顯示名稱（沒有個人資料權限就維持預設問候語）
           try {
             const profile = await liff.getProfile();
-            if (profile && profile.displayName) {
-              const g = document.getElementById("greeting");
-              g.innerHTML =
-                "<b>" + profile.displayName + "</b> 您好，歡迎回到慕沐村";
-            }
+            if (profile && profile.displayName) renderGreeting(profile.displayName);
           } catch (e) {
-            /* 沒有權限就維持預設問候語，不影響其他功能 */
+            /* 不影響其他功能 */
           }
 
-          // 平行載入錢包 / 毛孩數 / 預約數，互不阻塞
+          // 錢包與「預約＋毛孩」平行載入；毛孩卡片要用預約紀錄判斷狀態，所以兩者一起抓
           loadWallet();
-          loadPetsCount();
-          loadAppointmentsCount();
+          loadAppointmentsAndPets();
         } catch (e) {
           setWalletError("初始化失敗");
         }
@@ -728,20 +652,45 @@
         };
       }
 
-      function tierLabelText(wallet) {
-        if (!wallet.cardActive) return "尚未開卡";
-        return wallet.cardTierLabel || "會員錢包";
+      // 後端可能回傳純文字錯誤，先讀文字再嘗試解析
+      async function readJson(res) {
+        const raw = await res.text();
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          return null;
+        }
       }
 
+      function escapeHtml(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function renderGreeting(name) {
+        const now = new Date();
+        const h = now.getHours();
+        const hello = h < 11 ? "早安" : h < 18 ? "午安" : "晚安";
+        document.getElementById("greetDate").textContent =
+          now.getMonth() + 1 + " 月 " + now.getDate() + " 日 週" + WEEKDAYS[now.getDay()];
+        document.getElementById("greeting").textContent = name ? name + "，" + hello : hello;
+      }
+
+      // ── 錢包 ────────────────────────────────────────────
       async function loadWallet() {
         try {
           const res = await fetch("/api/wallet", { headers: authHeaders() });
-          if (!res.ok) throw new Error();
-          const wallet = await res.json();
-          document.getElementById("walletTier").textContent =
-            "mulage vip · " + tierLabelText(wallet);
+          const wallet = await readJson(res);
+          if (!res.ok || !wallet) throw new Error();
+          document.getElementById("walletTier").textContent = wallet.cardActive
+            ? wallet.cardTierLabel || "會員"
+            : "尚未開卡";
           document.getElementById("walletBalance").textContent =
-            "$" + (wallet.balance || 0).toLocaleString();
+            "NT$ " + (wallet.balance || 0).toLocaleString();
         } catch (e) {
           setWalletError("點擊查看錢包");
         }
@@ -749,73 +698,250 @@
 
       function setWalletError(msg) {
         document.getElementById("walletBalance").textContent = msg;
+        document.getElementById("walletTier").textContent = "";
       }
 
-      async function loadPetsCount() {
-        const num = document.getElementById("petsCount");
-        const cap = document.getElementById("petsCap");
-        try {
-          const res = await fetch("/api/me/pets", { headers: authHeaders() });
-          if (!res.ok) throw new Error();
-          const pets = await res.json();
-          if (pets.length) {
-            num.innerHTML = pets.length + "<span>隻</span>";
-            cap.textContent = "family members";
-          } else {
-            num.textContent = "0";
-            cap.textContent = "尚未新增";
-          }
-        } catch (e) {
-          num.textContent = "－";
-          cap.textContent = "family members";
-        }
+      // ── 日期工具（後端日期為 yyyy-MM-dd，時間為 HH:mm:ss，皆為台灣時間）──
+      function pad(n) {
+        return String(n).padStart(2, "0");
       }
-
-      async function loadAppointmentsCount() {
-        const num = document.getElementById("apptCount");
-        const cap = document.getElementById("apptCap");
-        try {
-          const res = await fetch("/api/me/appointments", {
-            headers: authHeaders(),
-          });
-          if (!res.ok) throw new Error();
-          const list = await res.json();
-
-          const today = todayStr();
-          const now = new Date();
-          const nowStr =
-            String(now.getHours()).padStart(2, "0") +
-            ":" +
-            String(now.getMinutes()).padStart(2, "0") +
-            ":00";
-          // 修正（2026-09-29）：已取消的預約不算「即將到來」，跟「我的預約」頁
-          // 的分頁規則一致（已取消一律歸入歷史預約）。
-          const upcoming = list.filter((a) => {
-            if (a.cancelled || a.status === "CANCELLED") return false;
-            if (a.date > today) return true;
-            if (a.date < today) return false;
-            return a.endTime > nowStr;
-          });
-
-          if (upcoming.length) {
-            num.innerHTML = upcoming.length + "<span>筆</span>";
-            cap.textContent = "upcoming";
-          } else {
-            num.textContent = "0";
-            cap.textContent = "尚無預約";
-          }
-        } catch (e) {
-          num.textContent = "－";
-          cap.textContent = "upcoming";
-        }
-      }
-
       function todayStr() {
         const d = new Date();
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+      }
+      function nowTimeStr() {
+        const d = new Date();
+        return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":00";
+      }
+      function parseDate(s) {
+        const [y, m, d] = s.split("-").map(Number);
+        return new Date(y, m - 1, d);
+      }
+      function daysBetween(fromStr, toStr) {
+        return Math.round((parseDate(toStr) - parseDate(fromStr)) / 86400000);
+      }
+      function md(s) {
+        const d = parseDate(s);
+        return d.getMonth() + 1 + "/" + d.getDate();
+      }
+      function mdw(s) {
+        return md(s) + "（" + WEEKDAYS[parseDate(s).getDay()] + "）";
+      }
+      function hm(t) {
+        return String(t || "").substring(0, 5);
+      }
+      function mdhm(isoDateTime) {
+        const [d, t] = String(isoDateTime).split("T");
+        return md(d) + " " + hm(t);
+      }
+
+      function isUpcoming(a, today, now) {
+        if (a.cancelled || a.status === "CANCELLED") return false;
+        if (a.date > today) return true;
+        if (a.date < today) return false;
+        return a.endTime > now;
+      }
+
+      // 有服務過的紀錄：已結帳或已完成，且不晚於今天
+      function isServed(a, today) {
+        if (a.cancelled || a.status === "CANCELLED") return false;
+        return a.date <= today && (a.paid || a.status === "COMPLETED");
+      }
+
+      // ── 預約＋毛孩 ───────────────────────────────────────
+      async function loadAppointmentsAndPets() {
+        const [apptRes, petRes] = await Promise.allSettled([
+          fetch("/api/me/appointments", { headers: authHeaders() }).then(async (r) => {
+            const d = await readJson(r);
+            if (!r.ok || !Array.isArray(d)) throw new Error();
+            return d;
+          }),
+          fetch("/api/me/pets", { headers: authHeaders() }).then(async (r) => {
+            const d = await readJson(r);
+            if (!r.ok || !Array.isArray(d)) throw new Error();
+            return d;
+          }),
+        ]);
+        const appts = apptRes.status === "fulfilled" ? apptRes.value : null;
+        const pets = petRes.status === "fulfilled" ? petRes.value : null;
+
+        const today = todayStr();
+        const now = nowTimeStr();
+        const upcoming = (appts || [])
+          .filter((a) => isUpcoming(a, today, now))
+          .sort((x, y) => (x.date + x.startTime).localeCompare(y.date + y.startTime));
+
+        renderNextAppointment(appts, upcoming, pets || [], today);
+        renderPets(pets, appts || [], upcoming, today);
+      }
+
+      function petByName(pets, name) {
+        return pets.find((p) => p.name === name) || null;
+      }
+
+      function avatarHtml(pet, name) {
+        if (pet && pet.photoUrl) {
+          return '<span class="avatar"><img src="' + escapeHtml(pet.photoUrl) + '" alt="" /></span>';
+        }
+        return '<span class="avatar">' + escapeHtml(String(name || "").charAt(0)) + "</span>";
+      }
+
+      function statusChip(a) {
+        if (a.status === "AWAITING_DEPOSIT") return '<span class="chip pending">待付訂金</span>';
+        if (a.status === "PENDING_CONFIRM") return '<span class="chip plain">待確認</span>';
+        if (a.status === "IN_PROGRESS") return '<span class="chip booked">服務中</span>';
+        return '<span class="chip booked">已確認</span>';
+      }
+
+      function countdownText(dateStr, today) {
+        const n = daysBetween(today, dateStr);
+        if (n <= 0) return "今天";
+        if (n === 1) return "明天";
+        return n + " 天後";
+      }
+
+      function renderNextAppointment(appts, upcoming, pets, today) {
+        const box = document.getElementById("nextAppt");
+        const link = document.getElementById("apptCountLink");
+        if (appts === null) {
+          box.innerHTML = '<div class="empty">預約載入失敗，請稍後再試</div>';
+          return;
+        }
+        link.textContent = upcoming.length ? upcoming.length + " 筆預約 ›" : "我的預約 ›";
+        if (!upcoming.length) {
+          box.innerHTML =
+            '<div class="empty">目前沒有即將到來的預約<br /><a href="/liff/booking.html">幫毛孩預約一次舒服的洗護 →</a></div>';
+          return;
+        }
+
+        const a = upcoming[0];
+        const items =
+          a.displayItemNames && a.displayItemNames.length
+            ? a.displayItemNames.join("、")
+            : a.firstVisitAssessment
+              ? "初次評估 · 現場報價"
+              : "";
+        let deposit = "";
+        if (a.status === "AWAITING_DEPOSIT") {
+          deposit =
+            '<div class="appt-deposit"><span>訂金待付' +
+            (a.depositDueAt ? " · " + escapeHtml(mdhm(a.depositDueAt)) + " 前付款" : "") +
+            '</span><span class="btn-apricot">付訂金</span></div>';
+        }
+        box.innerHTML =
+          '<a class="appt" href="/liff/my-appointments.html' +
+          (a.status === "AWAITING_DEPOSIT" ? "?deposit=" + encodeURIComponent(a.date) : "") +
+          '">' +
+          '<div class="appt-top">' +
+          avatarHtml(petByName(pets, a.petName), a.petName) +
+          '<div class="appt-main"><div class="appt-name"><b>' +
+          escapeHtml(a.petName) +
+          "</b>" +
+          statusChip(a) +
+          '</div><div class="appt-items">' +
+          escapeHtml(items) +
+          "</div></div>" +
+          '<span class="chip plain">' +
+          countdownText(a.date, today) +
+          "</span></div>" +
+          '<div class="appt-when">' +
+          '<span class="when-pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7E5F33" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.2 3.5v3.4M15.8 3.5v3.4" /></svg>' +
+          mdw(a.date) +
+          "</span>" +
+          '<span class="when-pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7E5F33" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>' +
+          hm(a.startTime) +
+          "</span>" +
+          '<span class="appt-more">詳情 ›</span></div>' +
+          deposit +
+          "</a>";
+        loadDepositAmount(a);
+      }
+
+      // 待付訂金時補上當天尚未付清的金額（同一天多隻共用一筆訂金）
+      async function loadDepositAmount(a) {
+        if (a.status !== "AWAITING_DEPOSIT") return;
+        try {
+          const res = await fetch("/api/me/deposits?date=" + encodeURIComponent(a.date), {
+            headers: authHeaders(),
+          });
+          const d = await readJson(res);
+          if (!res.ok || !d || !(d.outstanding > 0)) return;
+          const label = document.querySelector("#nextAppt .appt-deposit span");
+          if (label) {
+            label.innerHTML =
+              "訂金 <b>NT$ " +
+              Number(d.outstanding).toLocaleString() +
+              "</b>" +
+              (d.dueAt ? " · " + escapeHtml(mdhm(d.dueAt)) + " 前付款" : "");
+          }
+        } catch (e) {
+          /* 金額抓不到時維持「訂金待付」，點進去仍可看到完整資訊 */
+        }
+      }
+
+      function petMeta(p) {
+        const parts = [];
+        if (p.breed) parts.push(p.breed);
+        else if (p.petTypeLabel) parts.push(p.petTypeLabel);
+        if (p.age != null) parts.push(p.age + " 歲");
+        return parts.join(" · ");
+      }
+
+      function renderPets(pets, appts, upcoming, today) {
+        const box = document.getElementById("pets");
+        const count = document.getElementById("petsCount");
+        if (pets === null) {
+          box.innerHTML = '<div class="card empty" style="flex: 1">毛孩資料載入失敗，請稍後再試</div>';
+          return;
+        }
+        count.textContent = pets.length ? pets.length + " 隻" : "";
+        if (!pets.length) {
+          box.innerHTML =
+            '<a class="card pet add" href="/liff/add-pet.html" style="flex: 1">＋ 新增第一位毛孩</a>';
+          return;
+        }
+
+        box.innerHTML = pets
+          .map((p) => {
+            const next = upcoming.find((a) => a.petName === p.name);
+            const served = appts
+              .filter((a) => a.petName === p.name && isServed(a, today))
+              .sort((x, y) => y.date.localeCompare(x.date))[0];
+            const sinceDays = served ? daysBetween(served.date, today) : null;
+
+            let chip = "";
+            let note;
+            let btn;
+            if (next) {
+              chip = '<span class="chip booked">已預約</span>';
+              note = "下次：" + md(next.date) + " " + hm(next.startTime);
+              btn = '<a class="pet-btn" href="/liff/add-pet.html?editPetId=' + p.id + '">查看檔案</a>';
+            } else {
+              if (sinceDays != null && sinceDays >= BATH_REMINDER_DAYS) {
+                chip = '<span class="chip due">該洗澡囉</span>';
+              }
+              note = sinceDays != null ? "距離上次 " + sinceDays + " 天" : "還沒有服務紀錄";
+              btn = '<a class="pet-btn primary" href="/liff/booking.html?petId=' + p.id + '">幫牠預約</a>';
+            }
+            return (
+              '<div class="card pet">' +
+              '<div class="pet-top">' +
+              avatarHtml(p, p.name) +
+              chip +
+              "</div>" +
+              '<div><div class="pet-name">' +
+              escapeHtml(p.name) +
+              '</div><div class="pet-meta">' +
+              escapeHtml(petMeta(p)) +
+              "</div></div>" +
+              '<div class="pet-note">' +
+              escapeHtml(note) +
+              "</div>" +
+              btn +
+              "</div>"
+            );
+          })
+          .join("");
       }
 
       init();
