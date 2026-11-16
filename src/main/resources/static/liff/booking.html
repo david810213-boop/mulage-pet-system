@@ -415,6 +415,7 @@
 
           renderForm();
           loadBookingWindow();
+          preselectPetFromUrl();
 
           // 簽名檔要抓的 <img>/<p> 元素是 renderForm() 動態產生的 HTML，
           // 之前跟 fetchMyPets/fetchGroomingItems 一起 Promise.all 平行呼叫，
@@ -425,6 +426,16 @@
         } catch (e) {
           renderError("初始化失敗：" + e.message);
         }
+      }
+
+      // 首頁毛孩卡片的「幫牠預約」帶 ?petId=，直接選好那隻毛孩
+      function preselectPetFromUrl() {
+        const petId = new URLSearchParams(window.location.search).get("petId");
+        const sel = document.getElementById("petSelect");
+        if (!petId || !sel) return;
+        if (!myPets.some((p) => String(p.id) === petId)) return;
+        sel.value = petId;
+        onPetChange();
       }
 
       // 抓取乙方固定電子簽名檔，顯示在契約最下方
