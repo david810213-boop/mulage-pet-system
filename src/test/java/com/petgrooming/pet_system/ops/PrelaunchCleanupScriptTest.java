@@ -64,7 +64,7 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
             assertThat(count(st, "SELECT COUNT(*) FROM " + SOURCE_DB + ".appointments")).isPositive();
             long groomingItems = count(st, "SELECT COUNT(*) FROM " + SOURCE_DB + ".grooming_items");
 
-            copyDatabase(root, st);
+            copyDatabase(st);
             try {
                 st.execute("CREATE TABLE users_line_backup_20260927 AS SELECT * FROM users");
                 runScript(root, "scripts/prelaunch-cleanup-preview.sql");
@@ -88,7 +88,7 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
         }
     }
 
-    private static void copyDatabase(Connection root, Statement st) throws SQLException {
+    private static void copyDatabase(Statement st) throws SQLException {
         st.execute("DROP DATABASE IF EXISTS " + COPY_DB);
         st.execute("CREATE DATABASE " + COPY_DB + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         List<String> tables = new ArrayList<>();
@@ -98,7 +98,7 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
                 tables.add(rs.getString(1));
             }
         }
-        root.setCatalog(COPY_DB);
+        st.execute("USE " + COPY_DB);
         st.execute("SET FOREIGN_KEY_CHECKS = 0");
         for (String table : tables) {
             String ddl;
