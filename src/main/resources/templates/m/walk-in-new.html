@@ -171,7 +171,7 @@
         <div class="section-h"><h2>零售商品</h2><small>有庫存的商品</small></div>
         <div class="qty-row" th:each="p : ${retailProducts}">
           <input type="hidden" name="retailProductIds" th:value="${p.id}" />
-          <span class="nm"><span th:text="${p.name}">洗毛精</span><small class="num" th:text="${p.price} + ' 元，庫存 ' + ${p.stockQuantity}">450 元，庫存 8</small></span>
+          <span class="nm"><span th:text="${p.name}">洗毛精</span><small class="num" th:text="${p.price} + ' 元' + (${p.memberPrice != null} ? '（會員價 ' + ${p.memberPrice} + '）' : '') + '，庫存 ' + ${p.stockQuantity}">450 元（會員價 400），庫存 8</small></span>
           <span class="stepper">
             <button type="button" class="js-minus" aria-label="減少">−</button>
             <input type="number" name="retailQuantities" value="0" min="0" th:attr="max=${p.stockQuantity},data-price=${p.price}" inputmode="numeric" aria-label="數量" />

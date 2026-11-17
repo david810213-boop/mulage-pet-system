@@ -19,7 +19,7 @@ import java.util.Optional;
 /**
  * 零售商品／店用洗劑 CSV 批次匯入。
  *
- * 零售商品欄位：名稱,條碼,售價,成本,庫存,說明
+ * 零售商品欄位：名稱,條碼,售價,成本,庫存,說明,會員價（會員價選填；舊格式沒有這一欄也可以匯入）
  * 店用洗劑欄位：名稱,條碼,庫存,安全庫存,成本
  *
  * 規則：
@@ -58,6 +58,10 @@ public class InventoryImportService {
                 int cost = intCol(col(c, 3), "成本", false);
                 int stock = intCol(col(c, 4), "庫存", false);
                 String desc = col(c, 5);
+                // 沒有第 7 欄（舊格式）＝不動會員價；有這一欄但空白＝沒有會員價
+                boolean hasMemberPriceColumn = c.length > 6;
+                String memberPriceRaw = col(c, 6);
+                Integer memberPrice = memberPriceRaw.isEmpty() ? null : intCol(memberPriceRaw, "會員價", true);
 
                 Optional<RetailProduct> existing = code != null
                         ? retailProductRepository.findByBarcode(code)
@@ -72,11 +76,16 @@ public class InventoryImportService {
                 if (existing.isPresent()) {
                     RetailProduct p = existing.get();
                     if (p.isDeleted()) throw new IllegalArgumentException("條碼 " + code + " 是已下架的商品「" + p.getName() + "」");
-                    retailProductService.update(p.getId(), name, price,
-                            desc.isEmpty() ? p.getDescription() : desc, cost, code != null ? code : p.getBarcode());
+                    String keepDesc = desc.isEmpty() ? p.getDescription() : desc;
+                    String keepCode = code != null ? code : p.getBarcode();
+                    if (hasMemberPriceColumn) {
+                        retailProductService.update(p.getId(), name, price, keepDesc, cost, keepCode, memberPrice);
+                    } else {
+                        retailProductService.update(p.getId(), name, price, keepDesc, cost, keepCode);
+                    }
                     updated++;
                 } else {
-                    retailProductService.create(name, price, stock, desc, cost, code);
+                    retailProductService.create(name, price, stock, desc, cost, code, memberPrice);
                     created++;
                 }
                 ok++;

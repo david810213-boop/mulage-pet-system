@@ -152,7 +152,7 @@ public class WalkInOrderService {
         }
         var product = retailProductService.getById(line.getRetailProductId());
         for (int i = 0; i < line.getQuantity(); i++) {
-            order.addItem(buildRetailOrderItem(product));
+            order.addItem(buildRetailOrderItem(product, order.getMember()));
         }
     }
 
@@ -175,8 +175,9 @@ public class WalkInOrderService {
 
         int addedTotal = 0;
         for (int i = 0; i < quantity; i++) {
-            order.addItem(buildRetailOrderItem(product));
-            addedTotal += product.getPrice();
+            WalkInOrderItem item = buildRetailOrderItem(product, order.getMember());
+            order.addItem(item);
+            addedTotal += item.getPrice();
         }
         order.setTotalAmount(order.getTotalAmount() + addedTotal);
         WalkInOrder saved = orderRepository.save(order);
@@ -189,11 +190,13 @@ public class WalkInOrderService {
 
     // 建立一筆零售商品的訂單項目快照，供開單當下加購、結帳頁加購共用同一份邏輯，
     // 避免兩處各寫一次、日後改欄位漏改其中一邊。
-    private WalkInOrderItem buildRetailOrderItem(RetailProduct product) {
+    // 會員卡有效的會員、商品有設會員價時用會員價（沒綁會員的現場單一律售價）。
+    private WalkInOrderItem buildRetailOrderItem(RetailProduct product, User member) {
+        boolean memberPrice = retailProductService.memberPriceApplies(product, member);
         return WalkInOrderItem.builder()
                 .retailProductId(product.getId())
-                .itemName(product.getName())
-                .price(product.getPrice())
+                .itemName(memberPrice ? product.getName() + "（會員價）" : product.getName())
+                .price(memberPrice ? product.getMemberPrice() : product.getPrice())
                 .points(0.0)
                 .performanceCategory(PerformanceCategory.OTHER)
                 .discountEligible(false) // 零售商品不參與會員折扣／回洗優惠，維持原價

@@ -539,7 +539,7 @@
         RETAIL_PRODUCTS.forEach(function (p) {
           const opt = document.createElement('option');
           opt.value = p.id;
-          opt.textContent = p.name + '（$' + p.price + '，庫存 ' + p.stockQuantity + '）';
+          opt.textContent = p.name + '（$' + p.price + (p.memberPrice != null ? '，會員價 $' + p.memberPrice : '') + '，庫存 ' + p.stockQuantity + '）';
           select.appendChild(opt);
         });
 
