@@ -39,6 +39,12 @@ class AssistantActionsTest {
     }
 
     @Test
+    void markdownBoldIsRemoved() {
+        assertThat(AssistantActions.parse("需要付訂金 **$1,000**（每位 $500）").text())
+                .isEqualTo("需要付訂金 $1,000（每位 $500）");
+    }
+
+    @Test
     void depositWithBadDateFallsBackToMyAppointments() {
         AssistantActions.Parsed p = AssistantActions.parse("[[按鈕:deposit:2026-13-40]]");
         assertThat(p.actions()).extracting(Action::url).containsExactly("/liff/my-appointments.html");

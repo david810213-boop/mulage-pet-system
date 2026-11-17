@@ -47,7 +47,9 @@ final class AssistantActions {
         }
         // 按鈕標記應該在最後；模型有時會在標記後面補上按鈕名稱，第一個標記之後的字一律不顯示
         String text = firstTag < 0 ? source : source.substring(0, firstTag);
-        return new Parsed(text.replaceAll("[ \\t]+\\n", "\n").trim(), actions);
+        // 對話面板只顯示純文字，模型偶爾寫的 Markdown 粗體要拿掉
+        String plain = text.replace("**", "").replace("__", "");
+        return new Parsed(plain.replaceAll("[ \\t]+\\n", "\n").trim(), actions);
     }
 
     static Action contact() {
