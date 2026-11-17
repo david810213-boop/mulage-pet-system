@@ -120,6 +120,13 @@ public class MobileAppointmentController {
         if (a.getDepositCredit() > 0 && !a.isCancelled()) {
             model.addAttribute("cancelRefund", bookingDepositService.quoteCancel(id, false).refund());
         }
+        if (!a.isCancelled() && !a.isPaid()) {
+            // 儲值金會員臨時取消扣款：取消表單顯示餘額與規範，預約前 24 小時內特別標示
+            model.addAttribute("walletBalance", walletService.getWallet(a.getOwnerEmail()).getBalance());
+            model.addAttribute("lateCancelWindow", a.getDate() != null && a.getStartTime() != null
+                    && !java.time.LocalDateTime.now().isBefore(
+                            java.time.LocalDateTime.of(a.getDate(), a.getStartTime()).minusHours(24)));
+        }
         model.addAttribute("activeTab", "appointments");
         return "m/appointment-detail";
     }
@@ -153,6 +160,7 @@ public class MobileAppointmentController {
     @PostMapping("/appointments/{id}/cancel")
     public String cancel(@PathVariable Long id, @RequestParam(required = false) String reason,
             @RequestParam(required = false) Boolean storeCause,
+            @RequestParam(required = false) Integer lateCancelCharge,
             HttpServletRequest request, RedirectAttributes redirectAttributes) {
         String finalReason = (reason == null || reason.isBlank()) ? "店家手機版取消" : reason.trim();
         return runAction(id, null, request, redirectAttributes, "CANCEL", "預約已取消",
@@ -160,6 +168,7 @@ public class MobileAppointmentController {
                     CancelAppointmentRequest req = new CancelAppointmentRequest();
                     req.setReason(finalReason);
                     req.setStoreCause(Boolean.TRUE.equals(storeCause));
+                    req.setLateCancelCharge(lateCancelCharge);
                     appointmentService.cancel(id, req, user.getUsername());
                 });
     }

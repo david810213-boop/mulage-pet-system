@@ -42,6 +42,7 @@ public class AppointmentAdminResponse {
     private boolean cancelled;
     private String cancelledBy;
     private String cancelReason;
+    private Integer lateCancelCharge;
     private boolean finalCheckDone;
     private String finalCheckNote;
     private boolean checkinOrderConfirmed;
@@ -84,6 +85,7 @@ public class AppointmentAdminResponse {
         res.setCancelled(a.isCancelled());
         res.setCancelledBy(a.getCancelledBy());
         res.setCancelReason(a.getCancelReason());
+        res.setLateCancelCharge(a.getLateCancelCharge());
         res.setFinalCheckDone(a.isFinalCheckDone());
         res.setFinalCheckNote(a.getFinalCheckNote());
         res.setCheckinOrderConfirmed(a.isCheckinOrderConfirmed());

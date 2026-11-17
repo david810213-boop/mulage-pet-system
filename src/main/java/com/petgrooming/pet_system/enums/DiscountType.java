@@ -11,7 +11,8 @@ public enum DiscountType {
     NONE("原價（不打折）"),
     MEMBER("會員折扣"),
     REWASH("回洗優惠"),
-    FIRST_VISIT("首次體驗優惠"); // 狗狗首次消費 9 折
+    FIRST_VISIT("首次體驗優惠"), // 狗狗首次消費 9 折
+    MULTI_CAT("多貓優惠");
 
     private final String label;
 

@@ -11,4 +11,7 @@ public class CancelAppointmentRequest {
 
     @Schema(description = "店家因素取消（臨時公休等），已付訂金全額退還；只有店家／員工可以使用")
     private Boolean storeCause;
+
+    @Schema(description = "儲值金會員臨時取消或未到店，從儲值金扣的金額（精緻洗或大美容費用的三成）；只有店家／員工可以使用")
+    private Integer lateCancelCharge;
 }
