@@ -27,7 +27,8 @@
        th:attr="data-scan-target='RETAIL-' + ${r.id}">
     <div class="info">
       <span class="nm" th:text="${r.name}">天然洗毛精</span>
-      <small class="num" th:text="'售價 ' + ${#numbers.formatInteger(r.price, 1, 'COMMA')}">售價 450</small>
+      <small class="num" th:text="'售價 ' + ${#numbers.formatInteger(r.price, 1, 'COMMA')}
+          + (${r.memberPrice != null} ? '・會員價 ' + ${#numbers.formatInteger(r.memberPrice, 1, 'COMMA')} : '')">售價 450・會員價 400</small>
     </div>
     <div class="qty num" th:text="${r.out} ? '缺貨' : ${r.stock}">3</div>
     <div class="acts">

@@ -117,7 +117,7 @@
       <label for="rItem">商品</label>
       <select name="retailProductId" id="rItem" required>
         <option th:each="p : ${retailProducts}" th:value="${p.id}"
-                th:text="${p.name} + '（' + ${p.price} + '，庫存 ' + ${p.stockQuantity} + '）'">洗毛精（450，庫存 8）</option>
+                th:text="${p.name} + '（' + ${p.price} + (${p.memberPrice != null} ? '，會員價 ' + ${p.memberPrice} : '') + '，庫存 ' + ${p.stockQuantity} + '）'">洗毛精（450，庫存 8）</option>
       </select>
     </div>
     <div class="field">

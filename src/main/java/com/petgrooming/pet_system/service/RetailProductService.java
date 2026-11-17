@@ -3,7 +3,10 @@ package com.petgrooming.pet_system.service;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.InventoryException;
 import com.petgrooming.pet_system.model.RetailProduct;
+import com.petgrooming.pet_system.model.User;
+import com.petgrooming.pet_system.model.Wallet;
 import com.petgrooming.pet_system.repository.RetailProductRepository;
+import com.petgrooming.pet_system.repository.WalletRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ public class RetailProductService {
 
     private final RetailProductRepository retailProductRepository;
     private final BarcodeService barcodeService; // 條碼
+    private final WalletRepository walletRepository;
     private final EntityManager entityManager;
 
     public List<RetailProduct> listActive() {
@@ -86,6 +90,43 @@ public class RetailProductService {
                 .build());
     }
 
+    /** 會員價必須在 0 到售價之間；null 表示沒有會員價。 */
+    public static void checkMemberPrice(int price, Integer memberPrice) {
+        if (memberPrice == null) return;
+        if (memberPrice < 0) throw new InventoryException("會員價不可為負數");
+        if (memberPrice > price) throw new InventoryException("會員價不可高於售價");
+    }
+
+    /** 新增商品並設定會員價（memberPrice 為 null＝沒有會員價）。 */
+    @Transactional
+    public RetailProduct create(String name, int price, int stockQuantity, String description, int unitCost,
+            String barcode, Integer memberPrice) {
+        checkMemberPrice(price, memberPrice);
+        RetailProduct product = create(name, price, stockQuantity, description, unitCost, barcode);
+        product.setMemberPrice(memberPrice);
+        return retailProductRepository.save(product);
+    }
+
+    /** 修改商品與會員價；barcode 為 null＝不改條碼，memberPrice 為 null＝清除會員價。 */
+    @Transactional
+    public void update(Long id, String name, int price, String description, int unitCost, String barcode,
+            Integer memberPrice) {
+        checkMemberPrice(price, memberPrice);
+        RetailProduct product = getById(id);
+        product.setMemberPrice(null); // 先清掉，調降售價時才不會被舊的會員價擋下
+        update(id, name, price, description, unitCost, barcode != null ? barcode : product.getBarcode());
+        product.setMemberPrice(memberPrice);
+        retailProductRepository.save(product);
+    }
+
+    /** 這位顧客買這項商品是否適用會員價：商品有會員價，且顧客的會員卡在有效期內。 */
+    public boolean memberPriceApplies(RetailProduct product, User customer) {
+        if (product.getMemberPrice() == null || customer == null || customer.getId() == null) {
+            return false;
+        }
+        return walletRepository.findByUserId(customer.getId()).map(Wallet::isCardActive).orElse(false);
+    }
+
     @Transactional
     public void update(Long id, String name, int price, String description, int unitCost) {
         update(id, name, price, description, unitCost, getById(id).getBarcode());
@@ -106,6 +147,9 @@ public class RetailProductService {
         product.setPrice(price);
         product.setDescription(description == null || description.isBlank() ? null : description.trim());
         product.setUnitCost(unitCost);
+        if (product.getMemberPrice() != null && product.getMemberPrice() > price) {
+            throw new InventoryException("售價不可低於會員價（$" + product.getMemberPrice() + "），請先調整會員價");
+        }
         retailProductRepository.save(product);
     }
 
