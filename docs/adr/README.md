@@ -14,5 +14,6 @@
 | [0007](0007-csv-encoding.md) | CSV 匯入先偵測編碼（UTF-8 BOM／UTF-8／Big5／GBK） |
 | [0008](0008-duplicate-submission.md) | 金流操作防重複送出：狀態列加鎖＋請求識別碼 |
 | [0009](0009-booking-deposit.md) | 預約訂金以「同一會員同一天」為一組計算，份額記在每筆預約上，人工核帳 |
+| [0010](0010-muma-assistant.md) | 慕馬 AI 小助手：Claude Haiku 加唯讀工具，題數與預算雙重上限，按鈕只來自白名單 |
 
 新增 ADR：複製任一份的格式（背景、決策、後果），編號接續，並更新上表。
