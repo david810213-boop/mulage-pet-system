@@ -155,6 +155,7 @@ public class AppointmentDetailService {
                 .discountEligible(memberEligible)
                 .rewashEligible(offers.applies(DiscountType.REWASH, category))
                 .firstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category))
+                .multiCatEligible(offers.applies(DiscountType.MULTI_CAT, category))
                 .appliedDiscountType(discounts.paid()
                         ? offers.resolve(100.0, category, memberEligible && discounts.paidByWallet(),
                                 discounts.memberRate()).type()

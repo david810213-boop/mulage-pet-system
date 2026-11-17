@@ -217,6 +217,7 @@ public class WalkInPaymentService {
             line.setRewashEligible(offers.applies(DiscountType.REWASH, category));
             // 狗狗、貓咪首次體驗共用同一個欄位顯示（前端只在意「是不是首次體驗」）
             line.setFirstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category));
+            line.setMultiCatEligible(offers.applies(DiscountType.MULTI_CAT, category));
             if (order.isPaid()) {
                 line.setAppliedDiscountType(offers.resolve(entity.getPrice(), category,
                         entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());

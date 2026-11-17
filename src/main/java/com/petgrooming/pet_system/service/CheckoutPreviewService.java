@@ -24,6 +24,7 @@ public class CheckoutPreviewService {
     private final CatRewashDiscountService catRewashDiscountService;
     private final DogFirstVisitDiscountService dogFirstVisitDiscountService;
     private final CatFirstVisitDiscountService catFirstVisitDiscountService;
+    private final MultiCatDiscountService multiCatDiscountService;
 
     /** 結帳頁顯示的會員儲值金資訊與「用儲值金付款」的預估扣款金額。 */
     public record WalletPreview(Integer balance, boolean lowBalance, double discount,
@@ -32,17 +33,20 @@ public class CheckoutPreviewService {
 
     public WalletPreview forAppointment(String memberUsername, List<DetailItem> items, String petType) {
         return preview(memberUsername, petType, items.stream()
-                .map(i -> new Line(i.getPrice(), i.isFirstVisitEligible(), i.isRewashEligible(), i.isDiscountEligible()))
+                .map(i -> new Line(i.getPrice(), i.isFirstVisitEligible(), i.isRewashEligible(), i.isMultiCatEligible(),
+                        i.isDiscountEligible()))
                 .toList());
     }
 
     public WalletPreview forWalkIn(String memberUsername, List<ItemLine> items, String petType) {
         return preview(memberUsername, petType, items.stream()
-                .map(i -> new Line(i.getPrice(), i.isFirstVisitEligible(), i.isRewashEligible(), i.isDiscountEligible()))
+                .map(i -> new Line(i.getPrice(), i.isFirstVisitEligible(), i.isRewashEligible(), i.isMultiCatEligible(),
+                        i.isDiscountEligible()))
                 .toList());
     }
 
-    private record Line(int price, boolean firstVisitEligible, boolean rewashEligible, boolean discountEligible) {
+    private record Line(int price, boolean firstVisitEligible, boolean rewashEligible, boolean multiCatEligible,
+                        boolean discountEligible) {
     }
 
     private WalletPreview preview(String memberUsername, String petType, List<Line> lines) {
@@ -62,7 +66,8 @@ public class CheckoutPreviewService {
     private double linePrice(Line line, boolean isDog, double discount) {
         SpecialDiscountPolicy special = line.firstVisitEligible()
                 ? (isDog ? dogFirstVisitDiscountService : catFirstVisitDiscountService)
-                : line.rewashEligible() ? catRewashDiscountService : null;
+                : line.rewashEligible() ? catRewashDiscountService
+                : line.multiCatEligible() ? multiCatDiscountService : null;
         return DiscountCalculator.resolve(line.price(), special, line.discountEligible(), discount).price();
     }
 }
