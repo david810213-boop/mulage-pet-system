@@ -15,7 +15,7 @@
       src="https://static.line-scdn.net/liff/edge/2/sdk.js"
     ></script>
     <script src="/liff/liff-config.js?v=1"></script>
-    <script src="/liff/contract-loader.js?v=1"></script>
+    <script src="/liff/contract-loader.js?v=2"></script>
     <link rel="stylesheet" href="/liff/liff-theme.css?v=3" />
     <style>
       body {
@@ -993,7 +993,7 @@
         if (!body) return;
         const bank = d.accountNumber
           ? `<div style="background:#FBF9F5; border:1px solid #DBD3C4; border-radius:8px; padding:10px 12px; margin:10px 0;">
-              銀行：${escapeHtml(d.bankName || "")}<br />帳號：<b>${escapeHtml(d.accountNumber)}</b><br />戶名：${escapeHtml(d.accountHolder || "")}
+              ${MulageBank.rows(d)}
               ${d.qrCodeUrl ? `<img src="${escapeHtml(d.qrCodeUrl)}" style="display:block; max-width:180px; margin:8px auto 0;" />` : ""}
             </div>`
           : `<div style="margin:10px 0; color:#8B0000;">店家尚未設定匯款帳號，請聯繫官方 LINE 客服。</div>`;
@@ -1236,6 +1236,7 @@
 
       init();
     </script>
+    <script src="/liff/bank-info.js?v=1"></script>
     <script src="/liff/tabbar.js?v=1"></script>
   </body>
 </html>

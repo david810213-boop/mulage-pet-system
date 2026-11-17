@@ -7,7 +7,7 @@
   var cache = null;
   function fetchBody() {
     if (!cache) {
-      cache = fetch("/liff/contract-body.html?v=20261002", { cache: "no-cache" }).then(function (res) {
+      cache = fetch("/liff/contract-body.html?v=20261117", { cache: "no-cache" }).then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.text();
       });
