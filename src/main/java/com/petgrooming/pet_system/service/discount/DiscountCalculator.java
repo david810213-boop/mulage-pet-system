@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.service.CatFirstVisitDiscountService;
 import com.petgrooming.pet_system.service.CatRewashDiscountService;
 import com.petgrooming.pet_system.service.DogFirstVisitDiscountService;
+import com.petgrooming.pet_system.service.MultiCatDiscountService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,8 +15,8 @@ import java.util.List;
  * 結帳折扣的統一規則：服務促銷與會員儲值折扣「擇優不疊加」，逐項目計算。
  *
  * <ul>
- *   <li>服務促銷依優先順序：狗狗首次體驗 → 貓咪首次體驗 → 貓咪 90 天回洗。
- *       實際上互斥（分屬狗／貓的項目分類；首次體驗代表沒有洗澡紀錄，不可能同時符合回洗）</li>
+ *   <li>服務促銷依優先順序：狗狗首次體驗 → 貓咪首次體驗 → 貓咪 90 天回洗 → 多貓優惠。
+ *       前三者實際上互斥；多貓優惠可能跟首次體驗或回洗同時符合，三者都是 9 折，取排在前面的當作標示</li>
  *   <li>會員折扣只限儲值金付款，且項目本身可享會員折扣（GroomingItem.discountEligible）</li>
  *   <li>兩者都適用時取價格較低者；同價時以服務促銷計</li>
  * </ul>
@@ -29,8 +30,9 @@ public class DiscountCalculator {
 
     public DiscountCalculator(DogFirstVisitDiscountService dogFirstVisit,
                               CatFirstVisitDiscountService catFirstVisit,
-                              CatRewashDiscountService catRewash) {
-        this.policies = List.of(dogFirstVisit, catFirstVisit, catRewash);
+                              CatRewashDiscountService catRewash,
+                              MultiCatDiscountService multiCat) {
+        this.policies = List.of(dogFirstVisit, catFirstVisit, catRewash, multiCat);
     }
 
     public EligibleOffers eligibleOffers(Appointment appointment) {

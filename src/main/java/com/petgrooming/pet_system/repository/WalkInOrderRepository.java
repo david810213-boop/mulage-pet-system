@@ -19,6 +19,10 @@ public interface WalkInOrderRepository extends JpaRepository<WalkInOrder, Long> 
     // 查某會員名下、某寵物名稱的所有已結帳現場單（現場開單有會員時，同樣列入回洗優惠歷史計算）
     List<WalkInOrder> findByMemberIdAndPetNameAndPaidTrue(Long memberId, String petName);
 
+    /** 某會員某段時間內開的現場單（多貓優惠判斷同一天帶了幾位貓咪）。 */
+    List<WalkInOrder> findByMemberIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long memberId, LocalDateTime from, LocalDateTime to);
+
     // 某會員的現場單
     List<WalkInOrder> findByMemberUsernameOrderByCreatedAtDesc(String username);
 
