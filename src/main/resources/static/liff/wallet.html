@@ -607,10 +607,8 @@
         try {
           const info = await api("/api/payments/bank-account");
           box.innerHTML =
-            "轉帳資訊<br/>" +
-            "銀行：" + (info.bankName || "尚未設定") + "<br/>" +
-            "帳號：<b>" + (info.accountNumber || "尚未設定") + "</b><br/>" +
-            "戶名：" + (info.accountHolder || "尚未設定") + "<br/>" +
+            "轉帳資訊" +
+            MulageBank.rows(info) +
             (info.qrCodeUrl
               ? '<img src="' + info.qrCodeUrl + '" style="width:140px;height:140px;object-fit:contain;border:1px solid #e3dccc;border-radius:8px;margin-top:8px;display:block;" />'
               : "") +
@@ -682,6 +680,7 @@
 
       init();
     </script>
+    <script src="/liff/bank-info.js?v=1"></script>
     <script src="/liff/tabbar.js?v=1"></script>
   </body>
 </html>
