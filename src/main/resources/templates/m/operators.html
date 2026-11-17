@@ -53,6 +53,33 @@
       </div>
     </section>
   </form>
+
+  <!-- 事後補第二經手人：已有第一位、還沒有第二位的項目，一次補一個 -->
+  <section class="op-second" th:unless="${secondCandidates.isEmpty()}">
+    <h2 class="op-second-title">補第二經手人</h2>
+    <p style="font-size:13px;color:var(--mute);margin:4px 4px 12px"
+       th:text="'最近 ' + ${secondDays} + ' 天只選了一位經手人的項目。補上第二位後，兩人積分各半。'">最近 14 天只選了一位經手人的項目。</p>
+    <form method="post" action="/m/operators/second" class="op-group op-line-form" th:each="c : ${secondCandidates}">
+      <input type="hidden" name="kind" th:value="${c.kind}" />
+      <input type="hidden" name="itemId" th:value="${c.itemId}" />
+      <div class="op-line">
+        <div class="op-info">
+          <a th:href="${c.kind == 'A'} ? @{/m/appointments/{id}(id=${c.orderId})} : @{/m/walk-in/{id}(id=${c.orderId})}"
+             th:text="(${c.petName != null and !c.petName.isEmpty()} ? ${c.petName} : '（未填毛孩）') + '，' + ${c.code} + '，' + ${c.date.format(dateFmt)}">豆豆，AP017，9/24</a>
+          <span th:text="${c.categoryLabel} + '：' + ${c.firstOperatorName}">剪毛：小芸</span>
+          <small th:text="${c.itemName} + '，' + ${#numbers.formatDecimal(c.points, 1, 1)} + ' 分'">中型犬-短毛-精緻洗，20.0 分</small>
+        </div>
+        <div class="op-sel">
+          <select name="staffId2" aria-label="第二經手人" required>
+            <option value="">第二位</option>
+            <option th:each="s : ${staffOptions}" th:unless="${s.id == c.firstOperatorId}"
+                    th:value="${s.id}" th:text="${s.name}">小芸</option>
+          </select>
+          <button type="submit" class="btn">補上</button>
+        </div>
+      </div>
+    </form>
+  </section>
 </main>
 
 <div class="actionbar" th:unless="${groups.isEmpty()}">
@@ -65,6 +92,13 @@
 <th:block th:if="${groups.isEmpty()}"><nav th:replace="~{m/fragments/app :: tabs('more')}"></nav></th:block>
 <script>
   (function () {
+    document.querySelectorAll(".op-line-form").forEach(function (f) {
+      f.addEventListener("submit", function () {
+        var b = f.querySelector("button[type=submit]");
+        b.disabled = true;
+        b.textContent = "儲存中…";
+      });
+    });
     var form = document.getElementById("opForm");
     if (!form) return;
     var selects = form.querySelectorAll("select[name=staffIds]");

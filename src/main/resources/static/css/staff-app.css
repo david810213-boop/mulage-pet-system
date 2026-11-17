@@ -2886,3 +2886,33 @@ body.login-page {
 .op-fill select[name=staffId2] {
   font-size: 13.5px;
 }
+
+/* ── 事後補第二經手人 ─────────────────────────────────────────────── */
+.op-second {
+  margin-top: 22px;
+}
+
+.op-second-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 4px 2px;
+}
+
+.op-line-form + .op-line-form {
+  margin-top: 8px;
+}
+
+.op-line-form .op-info a {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.op-line-form .op-info span {
+  display: block;
+}
+
+.op-line-form .op-sel .btn {
+  padding: 7px 10px;
+  font-size: 13.5px;
+}

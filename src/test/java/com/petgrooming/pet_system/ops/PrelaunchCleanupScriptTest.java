@@ -76,6 +76,8 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
                 assertThat(count(st, "SELECT COUNT(*) FROM transactions")).isZero();
                 assertThat(count(st, "SELECT COUNT(*) FROM walk_in_orders")).isZero();
                 assertThat(count(st, "SELECT COUNT(*) FROM wallets")).isZero();
+                assertThat(count(st, "SELECT COUNT(*) FROM retail_products")).isZero();
+                assertThat(count(st, "SELECT COUNT(*) FROM store_supplies")).isZero();
                 assertThat(count(st, "SELECT COALESCE(SUM(booked), 0) FROM slot_capacity")).isZero();
                 assertThat(count(st, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '"
                         + COPY_DB + "' AND table_name = 'users_line_backup_20260927'")).isZero();

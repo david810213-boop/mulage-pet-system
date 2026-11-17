@@ -10,6 +10,7 @@ import com.petgrooming.pet_system.service.AppointmentItemService;
 import com.petgrooming.pet_system.service.MobileViewHelper;
 import com.petgrooming.pet_system.service.OperationLogService;
 import com.petgrooming.pet_system.service.PendingOperatorMatrixService;
+import com.petgrooming.pet_system.service.SecondOperatorService;
 import com.petgrooming.pet_system.service.BookingDepositService;
 import com.petgrooming.pet_system.service.TopUpService;
 import com.petgrooming.pet_system.service.WalkInOrderOperatorService;
@@ -54,6 +55,7 @@ public class MobileOpsController {
     private final TopUpService topUpService;
     private final BookingDepositService bookingDepositService;
     private final OperationLogService operationLogService;
+    private final SecondOperatorService secondOperatorService;
     private final MobileViewHelper view;
 
     // ── 待補經手人 ──────────────────────────────────────────────────────
@@ -68,6 +70,8 @@ public class MobileOpsController {
         model.addAttribute("lineCount", groups.stream().mapToInt(g -> g.getLines().size()).sum());
         model.addAttribute("dateFmt", DATE_FMT);
         model.addAttribute("staffOptions", view.staffOptions());
+        model.addAttribute("secondCandidates", secondOperatorService.candidates(LocalDate.now()));
+        model.addAttribute("secondDays", SecondOperatorService.CANDIDATE_DAYS);
         model.addAttribute("activeTab", "more");
         return "m/operators";
     }
@@ -120,6 +124,30 @@ public class MobileOpsController {
             ra.addFlashAttribute("toast", "已補填 " + filled + " 筆經手人");
         } else {
             ra.addFlashAttribute("toastError", "還沒選任何經手人");
+        }
+        return "redirect:/m/operators";
+    }
+
+    // 事後補第二經手人：一次補一個項目，積分已入帳的會把第一位的積分對半分過去
+    @PostMapping("/operators/second")
+    public String addSecondOperator(RedirectAttributes ra,
+            @RequestParam String kind,
+            @RequestParam Long itemId,
+            @RequestParam(required = false) Long staffId2,
+            @CurrentUser User user) {
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+        try {
+            boolean appointment = "A".equals(kind);
+            String name = appointment
+                    ? secondOperatorService.addToAppointmentItem(itemId, staffId2)
+                    : secondOperatorService.addToWalkInItem(itemId, staffId2);
+            operationLogService.log(user, appointment ? "APPOINTMENT" : "WALKIN", "FILL_OPERATOR2",
+                    "項目 #" + itemId, "補第二經手人 " + name + "（手機版）");
+            ra.addFlashAttribute("toast", "已補第二經手人：" + name + "，兩人積分各半");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("toastError", "沒有補成功：" + e.getMessage());
         }
         return "redirect:/m/operators";
     }
