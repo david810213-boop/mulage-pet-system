@@ -11,7 +11,7 @@
 - **資料庫**：MySQL，Spring Data JPA + Hibernate 7.2.12，`ddl-auto: update`，服務項目種子資料另用 Flyway 管理（見第五節）
 - **建置**：Maven（`mvn clean compile`、`mvn spring-boot:run`，本機跑在 **port 8081**）。`pom.xml` 有 `<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>`，這個設定務必保留，不要移除（原因見第四節）
 - **其他函式庫**：Lombok、Apache POI（Excel 匯出，產生活頁簿的程式放在 `export` 套件，共用工具見 `ExcelSupport`）、Cloudinary SDK（圖片雲端儲存）、Google Calendar API
-- **前端**：純 HTML + 原生 JS（LIFF 頁面），無框架
+- **前端**：純 HTML + 原生 JS（LIFF 頁面），無框架。LIFF 頁面共用 `liff-theme.css` 與底部導覽列 `tabbar.js`；`/liff/*` 已由 `WebConfig` 回傳 `Cache-Control: no-cache`，共用 CSS／JS 改版時仍在引用處遞增 `?v=` 版本號
 - **套件名稱**：`com.petgrooming.pet_system`
 
 ## 二、部署與環境
@@ -33,7 +33,7 @@
 - **⚠️ 重要**：新增任何 `/api/**` 端點，如果是要給「未登入狀態」呼叫的（例如 LINE 登入/綁定），**一定要手動加進 `WebConfig` 攔截器的白名單**（踩過這個坑：`/api/line/bind` 一開始漏加）
 - **CSRF**：以 Cookie 登入的 POST／PUT／PATCH／DELETE 一律由 `CsrfInterceptor` 檢查 token，以 Bearer 登入（LIFF）與未登入的請求不檢查。員工頁面的 token 由共用 head 片段載入的 `/js/csrf.js` 自動補到表單與 fetch，**新頁面一定要用 `fragments/header :: common-head` 或 `m/fragments/app :: head`**，不用自己寫；確定無法帶 token 的端點才標 `@SkipCsrf`
 - **API 路徑規則**：資源名稱用複數（`/api/top-ups`）、登入者自己的資料放 `/api/me/**`、管理功能放 `/api/admin/**`（`RoleInterceptor` 另外以路徑限制員工角色，與 `@RequireRole` 雙重保護）、網址以數字 id 識別會員而非帳號、URL 不放動詞（用 HTTP 方法表達，狀態轉換如 `/confirm`、`/cancel` 除外）。改路徑時舊路徑先保留並登記在 `DeprecatedApiInterceptor`，log 不再出現「已淘汰的 API」後再移除
-- 老客戶用電話號碼自助認領既有匯入資料（既有會員資料匯入功能，見 `docs/功能總覽與測試手冊.md` 七之一）
+- 老客戶用電話號碼＋毛孩名字自助認領既有匯入資料（見 `docs/既有會員資料匯入與LINE自助認領流程.md`，摘要在 `docs/功能總覽與測試手冊.md` 4-13、4-18）
 
 ## 四、Java 特殊符號編碼踩坑（教訓成本很高，務必詳讀）
 
@@ -88,4 +88,5 @@
 - **業務規則、折扣邏輯、預約篩選細節、完整測試流程** → 讀 `docs/功能總覽與測試手冊.md`
 - **遇到編譯錯誤、環境設定問題、想查過去踩過的坑的完整記錄** → 讀 `docs/疑難排解與環境設定指南.md`
 - **上線前檢查、資安待辦事項** → 讀 `docs/正式上線前準備工作清單.md`
-- **想知道某個設計為什麼這樣做**（Flyway 執行時機、悲觀鎖、例外設計、折扣擇優、快照、列舉、CSV 編碼、金流防重複送出）→ 讀 `docs/adr/`
+- **想知道某個設計為什麼這樣做**（Flyway 執行時機、悲觀鎖、例外設計、折扣擇優、快照、列舉、CSV 編碼、金流防重複送出、預約訂金）→ 讀 `docs/adr/`
+- **既有會員 CSV 匯入、LINE 自助認領** → 讀 `docs/既有會員資料匯入與LINE自助認領流程.md`
