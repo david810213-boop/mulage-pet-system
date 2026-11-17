@@ -135,6 +135,7 @@
       ".mm-welcome{display:flex;flex-direction:column;align-items:center;gap:8px;margin:8px 0;color:#6e5229;" +
       "font-size:14px;text-align:center;line-height:1.6}" +
       ".mm-welcome img{width:140px}" +
+      ".mm-note{margin-top:10px;font-size:11.5px;color:#a29a8c;line-height:1.6}" +
       ".mm-wait img{width:104px}" +
       ".mm-chips{display:flex;gap:6px;overflow-x:auto;padding:8px 14px;scrollbar-width:none}" +
       ".mm-chips::-webkit-scrollbar{display:none}" +
@@ -298,7 +299,8 @@
     if (!items.length) {
       el.body.innerHTML =
         '<div class="mm-welcome"><img src="' + IMG + 'hello.webp" alt="">' +
-        "<div>" + greeting() + "～我是慕馬<br>預約、訂金、儲值的問題都可以問我喔！</div></div>";
+        "<div>" + greeting() + "～我是慕馬<br>預約、訂金、儲值的問題都可以問我喔！</div>" +
+        '<div class="mm-note">提問內容會傳送給 AI 服務產生回答，不會用於訓練模型。<br>請勿輸入身分證字號、銀行帳號等敏感資料。</div></div>';
       return;
     }
     items.forEach(function (m) {
