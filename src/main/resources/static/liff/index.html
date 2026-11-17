@@ -271,6 +271,19 @@
         height: 100%;
         object-fit: cover;
       }
+      .avatar-icon {
+        display: none;
+        width: 62%;
+        height: 62%;
+      }
+      .avatar.no-photo .avatar-icon {
+        display: block;
+      }
+      .avatar-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
       .chip {
         font-size: 12px;
         font-weight: 700;
@@ -707,11 +720,42 @@
         return pets.find((p) => p.name === name) || null;
       }
 
-      function avatarHtml(pet, name) {
+      // 沒有照片時依物種顯示線條圖示（線條色取 .avatar 的文字色）
+      const PET_ICONS = {
+        DOG:
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M6.6 5.2C4.6 5 3 7.6 3.2 10.2c.1 1.1.9 1.6 1.7 1.1"/>' +
+          '<path d="M17.4 5.2c2-.2 3.6 2.4 3.4 5-.1 1.1-.9 1.6-1.7 1.1"/>' +
+          '<path d="M6.6 5.2C8 4.4 9.9 4 12 4s4 .4 5.4 1.2c1.1 1.6 1.7 3.6 1.7 5.8 0 4.7-3.2 8.5-7.1 8.5S4.9 15.7 4.9 11c0-2.2.6-4.2 1.7-5.8Z"/>' +
+          '<circle cx="9.4" cy="10.6" r=".95" fill="currentColor" stroke="none"/><circle cx="14.6" cy="10.6" r=".95" fill="currentColor" stroke="none"/>' +
+          '<path d="M10.7 13.6h2.6L12 15Z" fill="currentColor"/><path d="M12 15v1.1M10.6 16.8c.8.6 2 .6 2.8 0"/></svg>',
+        CAT:
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M5 10.2V4.3l4.2 3h5.6l4.2-3v5.9c0 4.9-3.1 9-7 9s-7-4.1-7-9Z"/>' +
+          '<circle cx="9.3" cy="11.6" r=".95" fill="currentColor" stroke="none"/><circle cx="14.7" cy="11.6" r=".95" fill="currentColor" stroke="none"/>' +
+          '<path d="M11 14.2h2L12 15.3Z" fill="currentColor"/><path d="M3 13.6l4 .5M3.4 16.3l3.8-.9M21 13.6l-4 .5M20.6 16.3l-3.8-.9"/></svg>',
+        OTHER:
+          '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">' +
+          '<ellipse cx="7" cy="9.5" rx="1.9" ry="2.4"/><ellipse cx="17" cy="9.5" rx="1.9" ry="2.4"/>' +
+          '<ellipse cx="10.1" cy="5.8" rx="1.8" ry="2.3"/><ellipse cx="13.9" cy="5.8" rx="1.8" ry="2.3"/>' +
+          '<path d="M12 11.2c-2.6 0-5 3.2-5 5.3 0 1.5 1.2 2.2 2.5 2.2 1 0 1.6-.5 2.5-.5s1.5.5 2.5.5c1.3 0 2.5-.7 2.5-2.2 0-2.1-2.4-5.3-5-5.3Z"/></svg>',
+      };
+
+      function petIcon(pet) {
+        const type = pet && pet.petType;
+        return PET_ICONS[type] || PET_ICONS.OTHER;
+      }
+
+      function avatarHtml(pet) {
+        const icon = '<span class="avatar-icon">' + petIcon(pet) + "</span>";
         if (pet && pet.photoUrl) {
-          return '<span class="avatar"><img src="' + escapeHtml(pet.photoUrl) + '" alt="" /></span>';
+          // 照片載入失敗（網址失效）時退回圖示
+          return (
+            '<span class="avatar"><img src="' + escapeHtml(pet.photoUrl) + '" alt="" loading="lazy" ' +
+            "onerror=\"this.parentNode.classList.add('no-photo');this.remove()\" />" + icon + "</span>"
+          );
         }
-        return '<span class="avatar">' + escapeHtml(String(name || "").charAt(0)) + "</span>";
+        return '<span class="avatar no-photo">' + icon + "</span>";
       }
 
       function statusChip(a) {
@@ -761,7 +805,7 @@
           (a.status === "AWAITING_DEPOSIT" ? "?deposit=" + encodeURIComponent(a.date) : "") +
           '">' +
           '<div class="appt-top">' +
-          avatarHtml(petByName(pets, a.petName), a.petName) +
+          avatarHtml(petByName(pets, a.petName)) +
           '<div class="appt-main"><div class="appt-name"><b>' +
           escapeHtml(a.petName) +
           "</b>" +
@@ -854,7 +898,7 @@
             return (
               '<div class="card pet">' +
               '<div class="pet-top">' +
-              avatarHtml(p, p.name) +
+              avatarHtml(p) +
               chip +
               "</div>" +
               '<div><div class="pet-name">' +
