@@ -21,6 +21,8 @@ UNION ALL SELECT '積分紀錄', COUNT(*) FROM performance_records
 UNION ALL SELECT '月結績效', COUNT(*) FROM monthly_performance
 UNION ALL SELECT '美容紀錄', COUNT(*) FROM pet_grooming_notes
 UNION ALL SELECT '美容照片', COUNT(*) FROM grooming_note_photos
+UNION ALL SELECT '零售商品', COUNT(*) FROM retail_products
+UNION ALL SELECT '店用洗劑', COUNT(*) FROM store_supplies
 UNION ALL SELECT '洗劑領用紀錄', COUNT(*) FROM supply_usage_records
 UNION ALL SELECT '操作紀錄', COUNT(*) FROM operation_logs
 UNION ALL SELECT '防重複送出識別碼', COUNT(*) FROM idempotency_keys
