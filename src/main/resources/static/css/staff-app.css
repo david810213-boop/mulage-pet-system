@@ -2913,6 +2913,7 @@ body.login-page {
 }
 
 .op-line-form .op-sel .btn {
-  padding: 7px 10px;
-  font-size: 13.5px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 14px;
 }
