@@ -31,19 +31,23 @@ final class AssistantActions {
     }
 
     static Parsed parse(String raw) {
-        Matcher m = TAG.matcher(raw == null ? "" : raw);
+        String source = raw == null ? "" : raw;
+        Matcher m = TAG.matcher(source);
         Set<String> seen = new LinkedHashSet<>();
         List<Action> actions = new ArrayList<>();
-        StringBuilder text = new StringBuilder();
+        int firstTag = -1;
         while (m.find()) {
-            m.appendReplacement(text, "");
+            if (firstTag < 0) {
+                firstTag = m.start();
+            }
             Action a = toAction(m.group(1), m.group(2));
             if (a != null && actions.size() < MAX_ACTIONS && seen.add(a.url())) {
                 actions.add(a);
             }
         }
-        m.appendTail(text);
-        return new Parsed(text.toString().replaceAll("[ \\t]+\\n", "\n").trim(), actions);
+        // 按鈕標記應該在最後；模型有時會在標記後面補上按鈕名稱，第一個標記之後的字一律不顯示
+        String text = firstTag < 0 ? source : source.substring(0, firstTag);
+        return new Parsed(text.replaceAll("[ \\t]+\\n", "\n").trim(), actions);
     }
 
     static Action contact() {

@@ -127,7 +127,8 @@ public class AssistantTools {
         sb.append(upcoming.isEmpty() ? "即將到來：沒有\n" : "即將到來：\n");
         for (AppointmentResponse a : upcoming) {
             sb.append("- ").append(a.getAppointmentCode()).append("｜").append(a.getPetName()).append("｜")
-                    .append(a.getDate()).append(' ').append(a.getStartTime().format(HM)).append("｜")
+                    .append(day(a.getDate())).append(' ').append(a.getStartTime().format(HM))
+                    .append("（按鈕日期 ").append(a.getDate()).append("）｜")
                     .append(a.getStatusLabel()).append("｜項目：")
                     .append(a.isFirstVisitAssessment() ? "初次・現場評估" : String.join("、", names(a)))
                     .append("｜金額：").append(a.isFirstVisitAssessment() ? "現場報價" : "$" + a.getTotalAmount());
@@ -141,7 +142,7 @@ public class AssistantTools {
         }
         sb.append(recent.isEmpty() ? "最近完成：沒有" : "最近完成：");
         for (AppointmentResponse a : recent) {
-            sb.append("\n- ").append(a.getPetName()).append("｜").append(a.getDate()).append("｜")
+            sb.append("\n- ").append(a.getPetName()).append("｜").append(day(a.getDate())).append("｜")
                     .append(String.join("、", names(a)));
         }
         return sb.toString();
@@ -154,10 +155,10 @@ public class AssistantTools {
     private String deposit(User user, LocalDate date) {
         DepositStatusResponse d = bookingDepositService.status(user.getUsername(), date);
         if (d.required() == 0) {
-            return date + "：不需要訂金";
+            return day(date) + "：不需要訂金";
         }
         StringBuilder sb = new StringBuilder();
-        sb.append(date).append("：應付 $").append(d.required()).append("，已付 $").append(d.paid())
+        sb.append(day(date)).append("：應付 $").append(d.required()).append("，已付 $").append(d.paid())
                 .append("，尚需匯款 $").append(d.outstanding());
         if (d.dueAt() != null && d.outstanding() > 0) {
             sb.append("，付款期限 ").append(d.dueAt().format(MD_HM));
@@ -177,7 +178,7 @@ public class AssistantTools {
         if (w.getCardTierLabel() != null && !"無".equals(w.getCardTierLabel())) {
             sb.append("，會員卡 ").append(w.getCardTierLabel()).append(w.isCardActive() ? "（有效）" : "（已到期）");
             if (w.getCardExpiresAt() != null) {
-                sb.append("，到期日 ").append(w.getCardExpiresAt());
+                sb.append("，到期日 ").append(day(w.getCardExpiresAt()));
             }
         } else {
             sb.append("，尚未開卡");
@@ -204,7 +205,7 @@ public class AssistantTools {
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             LocalDate d = start.plusDays(i);
-            String label = d + "（" + weekday(d.getDayOfWeek()) + "）";
+            String label = day(d);
             if (d.isBefore(LocalDate.now())) {
                 lines.add(label + "：已過");
                 continue;
@@ -219,7 +220,8 @@ public class AssistantTools {
             lines.add(label + "：" + (times.isEmpty() ? "已額滿" : times)
                     + (d.isBefore(earliest) ? "（三日內，線上不能預約，請聯繫店家）" : ""));
         }
-        return String.join("\n", lines);
+        return "查詢範圍 " + day(start) + " 起 " + n + " 天（這是查詢的天數，不是預約期限；線上最早可約 "
+                + day(earliest) + "，之後的日期都能約）：\n" + String.join("\n", lines);
     }
 
     private String menu(User user, String petName) {
@@ -251,7 +253,7 @@ public class AssistantTools {
                 .map(AssistantTools::weekday).collect(Collectors.joining("、"));
         List<ClosedDate> upcoming = closedDateService.listUpcoming();
         String extra = upcoming.stream().limit(10)
-                .map(c -> c.getDate() + (c.getReason() == null || c.getReason().isBlank() ? "" : "（" + c.getReason() + "）"))
+                .map(c -> day(c.getDate()) + (c.getReason() == null || c.getReason().isBlank() ? "" : "（" + c.getReason() + "）"))
                 .collect(Collectors.joining("、"));
         return "固定公休：" + (fixed.isEmpty() ? "無" : fixed) + "\n其他公休：" + (extra.isEmpty() ? "目前沒有" : extra);
     }
@@ -265,6 +267,13 @@ public class AssistantTools {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /** 跟回答一樣用「11/24（二）」的格式，模型照抄就不會寫成 2026-11-24（週二）；不是今年才加年份。 */
+    static String day(LocalDate d) {
+        String md = (d.getYear() == LocalDate.now().getYear() ? "" : d.getYear() + "/")
+                + d.getMonthValue() + "/" + d.getDayOfMonth();
+        return md + "（" + weekday(d.getDayOfWeek()).substring(1) + "）";
     }
 
     private static String weekday(DayOfWeek d) {

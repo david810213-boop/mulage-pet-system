@@ -28,9 +28,22 @@ public class AssistantReviewService {
         return repository.findForReview(LocalDate.now().minusDays(REVIEW_DAYS).atStartOfDay(),
                         PageRequest.of(0, REVIEW_LIMIT)).stream()
                 .map(m -> new AssistantLogView(m.getCreatedAt(), m.getUser().getName(),
-                        AssistantMessage.ROLE_USER.equals(m.getRole()), m.getContent(), m.getPage(),
+                        AssistantMessage.ROLE_USER.equals(m.getRole()), shown(m), m.getPage(),
                         m.getCostUsd(), m.isFallback()))
                 .toList();
+    }
+
+    /** 慕馬的回答照顧客看到的樣子顯示：去掉按鈕標記，按鈕名稱列在後面。 */
+    private static String shown(AssistantMessage m) {
+        if (AssistantMessage.ROLE_USER.equals(m.getRole())) {
+            return m.getContent();
+        }
+        AssistantActions.Parsed parsed = AssistantActions.parse(m.getContent());
+        if (parsed.actions().isEmpty()) {
+            return parsed.text();
+        }
+        return parsed.text() + "\n［按鈕：" + parsed.actions().stream()
+                .map(a -> a.label()).collect(java.util.stream.Collectors.joining("、")) + "］";
     }
 
     @Transactional(readOnly = true)

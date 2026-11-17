@@ -20,6 +20,25 @@ class AssistantActionsTest {
     }
 
     @Test
+    void wordsAfterTheFirstButtonAreDropped() {
+        AssistantActions.Parsed p = AssistantActions.parse("詳細可以到毛孩檔案查看。\n\n[[按鈕:pets]] 毛孩檔案");
+        assertThat(p.text()).isEqualTo("詳細可以到毛孩檔案查看。");
+        assertThat(p.actions()).extracting(Action::label).containsExactly("毛孩檔案");
+    }
+
+    @Test
+    void datesUseTheSameFormatAsAnswers() {
+        int year = java.time.LocalDate.now().getYear();
+        assertThat(AssistantTools.day(java.time.LocalDate.of(year, 8, 14))).endsWith("8/14（" +
+                weekdayOf(java.time.LocalDate.of(year, 8, 14)) + "）");
+        assertThat(AssistantTools.day(java.time.LocalDate.of(year + 1, 1, 5))).startsWith((year + 1) + "/1/5（");
+    }
+
+    private static String weekdayOf(java.time.LocalDate d) {
+        return "一二三四五六日".substring(d.getDayOfWeek().getValue() - 1, d.getDayOfWeek().getValue());
+    }
+
+    @Test
     void depositWithBadDateFallsBackToMyAppointments() {
         AssistantActions.Parsed p = AssistantActions.parse("[[按鈕:deposit:2026-13-40]]");
         assertThat(p.actions()).extracting(Action::url).containsExactly("/liff/my-appointments.html");
