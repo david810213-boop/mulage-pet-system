@@ -52,6 +52,9 @@ public class AppointmentItemService {
         }
 
         var product = retailProductService.getById(retailProductId);
+        boolean member = retailProductService.memberPriceApplies(product, appointment.getUser());
+        int unitPrice = member ? product.getMemberPrice() : product.getPrice();
+        String itemName = member ? product.getName() + "（會員價）" : product.getName();
 
         int addedTotal = 0;
         for (int i = 0; i < quantity; i++) {
@@ -59,13 +62,13 @@ public class AppointmentItemService {
                     .builder()
                     .appointment(appointment)
                     .retailProductId(product.getId())
-                    .itemName(product.getName())
-                    .price(product.getPrice())
+                    .itemName(itemName)
+                    .price(unitPrice)
                     .points(0.0)
                     .performanceCategory(PerformanceCategory.OTHER)
                     .build();
             appointmentItemRepository.save(item);
-            addedTotal += product.getPrice();
+            addedTotal += unitPrice;
         }
         appointment.setTotalAmount(appointment.getTotalAmount() + addedTotal);
         appointmentRepository.save(appointment);

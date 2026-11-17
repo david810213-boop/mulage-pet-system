@@ -44,6 +44,10 @@ public class RetailProduct {
     @Column(length = 300)
     private String description;
 
+    // 會員價：會員卡在有效期內的顧客購買時使用；null＝沒有會員價，一律照售價
+    @Column(name = "member_price")
+    private Integer memberPrice;
+
     // 條碼（原廠國際條碼，或系統產生的店內條碼 20 開頭 EAN-13）。
     // 零售商品與店用洗劑之間也不能重複（BarcodeService 檢查）。
     @Column(length = 32, unique = true)

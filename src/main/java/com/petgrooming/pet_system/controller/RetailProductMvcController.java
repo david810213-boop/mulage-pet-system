@@ -80,10 +80,12 @@ public class RetailProductMvcController {
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
                          @RequestParam(required = false) String barcode, // 留空＝系統產生
+                         @RequestParam(required = false) Integer memberPrice, // 留空＝沒有會員價
                          RedirectAttributes ra,
                          @CurrentUser User user) {
         try {
-            var product = retailProductService.create(name, price, stockQuantity, description, unitCost, barcode);
+            var product = retailProductService.create(name, price, stockQuantity, description, unitCost, barcode,
+                    memberPrice);
             operationLogService.log(user, "RETAIL", "CREATE_RETAIL_PRODUCT",
                     "新增商品：" + product.getName(), null);
             ra.addFlashAttribute("successMsg", "已新增商品「" + product.getName() + "」");
@@ -101,15 +103,12 @@ public class RetailProductMvcController {
                          @RequestParam(required = false) String description,
                          @RequestParam(defaultValue = "0") int unitCost,
                          @RequestParam(required = false) String barcode,
+                         @RequestParam(required = false) Integer memberPrice, // 留空＝清除會員價
                          RedirectAttributes ra,
                          @CurrentUser User user) {
         try {
             // 表單沒帶條碼欄位＝不改條碼；帶了空白＝改回系統產生的店內條碼
-            if (barcode == null) {
-                retailProductService.update(id, name, price, description, unitCost);
-            } else {
-                retailProductService.update(id, name, price, description, unitCost, barcode);
-            }
+            retailProductService.update(id, name, price, description, unitCost, barcode, memberPrice);
             operationLogService.log(user, "RETAIL", "UPDATE_RETAIL_PRODUCT", "更新商品 #" + id, null);
             ra.addFlashAttribute("successMsg", "已更新商品資訊");
         } catch (IllegalArgumentException e) {

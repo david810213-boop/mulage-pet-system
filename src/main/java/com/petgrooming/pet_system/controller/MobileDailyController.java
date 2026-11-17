@@ -217,6 +217,7 @@ public class MobileDailyController {
             m.put("id", p.getId());
             m.put("name", p.getName());
             m.put("price", p.getPrice());
+            m.put("memberPrice", p.getMemberPrice());
             m.put("stock", p.getStockQuantity());
             m.put("low", p.getStockQuantity() > 0 && p.getStockQuantity() <= StoreRules.LOW_STOCK_THRESHOLD);
             m.put("out", p.getStockQuantity() <= 0);
