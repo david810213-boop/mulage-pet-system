@@ -4,6 +4,7 @@ import com.petgrooming.pet_system.config.AssistantSettings;
 import com.petgrooming.pet_system.dto.AssistantMessageRequest;
 import com.petgrooming.pet_system.dto.AssistantQuotaResponse;
 import com.petgrooming.pet_system.dto.AssistantReplyResponse;
+import com.petgrooming.pet_system.dto.AssistantTrialView;
 import com.petgrooming.pet_system.exception.AssistantException;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.model.AssistantMessage;
@@ -80,27 +81,69 @@ public class AssistantService {
         List<Map<String, Object>> messages = history(user);
         messages.add(textMessage("user", message));
 
-        Usage usage = Usage.ZERO;
-        String answer;
+        Turn turn;
         try {
-            LlmResult result = null;
-            for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
-                result = llmClient.send(prompt.cachedSystem(),
-                        prompt.dynamicSystem(LocalDateTime.now(), user.getName(), req.page()),
-                        tools.definitions(), messages);
-                usage = usage.plus(result.usage());
-                if (!"tool_use".equals(result.stopReason())) {
-                    break;
-                }
-                messages.add(Map.of("role", "assistant", "content", result.content()));
-                messages.add(Map.of("role", "user", "content", runTools(result.content(), user)));
-            }
-            answer = text(result);
+            turn = converse(user, messages, req.page());
         } catch (AssistantUnavailableException e) {
             log.warn("[慕馬] 呼叫失敗：{}", e.getMessage());
             return fallback(user, message, req.page(), UNAVAILABLE, "error", remaining);
         }
+        save(user, AssistantMessage.ROLE_USER, message, req.page(), Usage.ZERO, 0, false);
+        save(user, AssistantMessage.ROLE_ASSISTANT, turn.answer(), req.page(), turn.usage(), turn.cost(), false);
+        return new AssistantReplyResponse(turn.text(), turn.actions(), turn.mood(), remaining - 1);
+    }
 
+    /**
+     * 後台試問：店長以指定會員的身分問一題，用來在開放前用測試資料檢查回答。
+     * 不看開關與測試名單（金鑰有設定就能用），不扣該會員的每日題數，只受每月預算限制；不帶前面的對話。
+     */
+    public AssistantTrialView trial(User member, String question) {
+        String message = question == null ? "" : question.trim();
+        if (message.isEmpty() || message.length() > settings.getMaxInputChars()) {
+            throw new AssistantException("問題請在 1～" + settings.getMaxInputChars() + " 字之間");
+        }
+        double spent = repository.sumCostSince(LocalDate.now().withDayOfMonth(1).atStartOfDay());
+        if (spent >= settings.getMonthlyBudgetUsd() * BUDGET_GUARD) {
+            throw new AssistantException("本月花費已達預算上限，慕馬暫停回答");
+        }
+        List<Map<String, Object>> messages = new ArrayList<>();
+        messages.add(textMessage("user", message));
+        Turn turn;
+        try {
+            turn = converse(member, messages, AssistantMessage.PAGE_TRIAL);
+        } catch (AssistantUnavailableException e) {
+            throw new AssistantException("呼叫失敗：" + e.getMessage());
+        }
+        save(member, AssistantMessage.ROLE_USER, message, AssistantMessage.PAGE_TRIAL, Usage.ZERO, 0, false);
+        save(member, AssistantMessage.ROLE_ASSISTANT, turn.answer(), AssistantMessage.PAGE_TRIAL, turn.usage(),
+                turn.cost(), false);
+        return new AssistantTrialView(member.getName(), message, turn.text(), turn.actions(), turn.mood(),
+                turn.toolsUsed(), turn.cost(), turn.usage().input() + turn.usage().cacheRead() + turn.usage().cacheWrite(),
+                turn.usage().output());
+    }
+
+    /** 一次問答的結果：原始回答（含按鈕標記）、拆好的文字與按鈕、用量與用到的工具。 */
+    private record Turn(String answer, String text, List<AssistantReplyResponse.Action> actions, String mood,
+                        Usage usage, double cost, List<String> toolsUsed) {
+    }
+
+    /** 呼叫模型；模型要查資料時執行工具再送回去，最多 MAX_TOOL_ROUNDS 輪。 */
+    private Turn converse(User user, List<Map<String, Object>> messages, String page) {
+        Usage usage = Usage.ZERO;
+        List<String> toolsUsed = new ArrayList<>();
+        LlmResult result = null;
+        for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
+            result = llmClient.send(prompt.cachedSystem(),
+                    prompt.dynamicSystem(LocalDateTime.now(), user.getName(), page),
+                    tools.definitions(), messages);
+            usage = usage.plus(result.usage());
+            if (!"tool_use".equals(result.stopReason())) {
+                break;
+            }
+            messages.add(Map.of("role", "assistant", "content", result.content()));
+            messages.add(Map.of("role", "user", "content", runTools(result.content(), user, toolsUsed)));
+        }
+        String answer = text(result);
         AssistantActions.Parsed parsed = AssistantActions.parse(answer);
         String text = parsed.text();
         List<AssistantReplyResponse.Action> actions = parsed.actions();
@@ -109,10 +152,8 @@ public class AssistantService {
             actions = List.of(AssistantActions.contact());
         }
         double cost = settings.costUsd(usage.input(), usage.output(), usage.cacheRead(), usage.cacheWrite());
-        save(user, AssistantMessage.ROLE_USER, message, req.page(), Usage.ZERO, 0, false);
-        save(user, AssistantMessage.ROLE_ASSISTANT, answer, req.page(), usage, cost, false);
         String mood = actions.stream().anyMatch(a -> AssistantActions.CONTACT.equals(a.type())) ? "unsure" : "answer";
-        return new AssistantReplyResponse(text, actions, mood, remaining - 1);
+        return new Turn(answer, text, actions, mood, usage, cost, toolsUsed);
     }
 
     private int remainingToday(User user) {
@@ -141,7 +182,8 @@ public class AssistantService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> runTools(List<Map<String, Object>> content, User user) {
+    private List<Map<String, Object>> runTools(List<Map<String, Object>> content, User user,
+                                               List<String> toolsUsed) {
         List<Map<String, Object>> results = new ArrayList<>();
         for (Map<String, Object> block : content) {
             if (!"tool_use".equals(block.get("type"))) {
@@ -150,6 +192,7 @@ public class AssistantService {
             Object input = block.get("input");
             Map<String, Object> args = input instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
             String name = String.valueOf(block.get("name"));
+            toolsUsed.add(name);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("type", "tool_result");
             result.put("tool_use_id", block.get("id"));

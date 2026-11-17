@@ -35,6 +35,8 @@ public class AssistantMessage {
 
     public static final String ROLE_USER = "USER";
     public static final String ROLE_ASSISTANT = "ASSISTANT";
+    /** 後台試問的紀錄：不算進會員的每日題數，也不當作會員之後提問的前後文。 */
+    public static final String PAGE_TRIAL = "admin-trial";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

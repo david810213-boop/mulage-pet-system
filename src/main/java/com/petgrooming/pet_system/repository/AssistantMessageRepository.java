@@ -14,6 +14,7 @@ public interface AssistantMessageRepository extends JpaRepository<AssistantMessa
     @Query("""
         select count(a) from AssistantMessage a
         where a.user.id = :userId and a.role = 'ASSISTANT' and a.fallback = false and a.createdAt >= :from
+          and (a.page is null or a.page <> 'admin-trial')
     """)
     long countAnsweredSince(@Param("userId") Long userId, @Param("from") LocalDateTime from);
 
@@ -24,6 +25,7 @@ public interface AssistantMessageRepository extends JpaRepository<AssistantMessa
     @Query("""
         select a from AssistantMessage a
         where a.user.id = :userId and a.createdAt >= :from and a.fallback = false
+          and (a.page is null or a.page <> 'admin-trial')
         order by a.createdAt desc, a.id desc
     """)
     List<AssistantMessage> findRecent(@Param("userId") Long userId, @Param("from") LocalDateTime from,

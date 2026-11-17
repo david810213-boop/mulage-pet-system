@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.petgrooming.pet_system.dto.AssistantMessageRequest;
 import com.petgrooming.pet_system.dto.AssistantReplyResponse;
+import com.petgrooming.pet_system.dto.AssistantTrialView;
 import com.petgrooming.pet_system.exception.AssistantException;
 import com.petgrooming.pet_system.model.AssistantMessage;
 import com.petgrooming.pet_system.model.User;
@@ -132,6 +133,25 @@ class AssistantServiceTest extends IntegrationTestBase {
         List<Map<String, Object>> sent = FakeLlm.CALLS.get(FakeLlm.CALLS.size() - 1);
         assertThat(sent).extracting(m -> m.get("role")).containsExactly("user", "assistant", "user");
         assertThat(sent.get(0).get("content")).isEqualTo("吉米的訂金多少？");
+    }
+
+    @Test
+    void staffTrialUsesMemberDataWithoutUsingQuotaOrHistory() {
+        User member = testData.customer();
+        walletRepository.save(Wallet.builder().user(member).balance(3100).build());
+        FakeLlm.reply(c -> FakeLlm.toolUse("toolu_t", "get_my_wallet", Map.of()));
+        FakeLlm.reply(c -> FakeLlm.text("還有 $3,100 喔！[[按鈕:wallet]]"));
+
+        AssistantTrialView trial = assistantService.trial(member, "我還有多少儲值金？");
+
+        assertThat(trial.text()).isEqualTo("還有 $3,100 喔！");
+        assertThat(trial.toolsUsed()).containsExactly("get_my_wallet");
+        assertThat(FakeLlm.lastToolResult()).contains("3100");
+        assertThat(assistantService.quota(member).remaining()).isEqualTo(3);
+
+        FakeLlm.reply(c -> FakeLlm.text("好的"));
+        ask(member, "謝謝");
+        assertThat(FakeLlm.CALLS.get(FakeLlm.CALLS.size() - 1)).hasSize(1);
     }
 
     @Test
