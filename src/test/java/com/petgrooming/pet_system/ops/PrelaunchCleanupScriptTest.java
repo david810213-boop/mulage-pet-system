@@ -34,6 +34,22 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
     private static final String SOURCE_DB = "petdb";
     private static final String COPY_DB = "cleanup_check";
 
+    // 店家的正式設定（11/17 確認）：預約時段管理、積分獎勵金對照表、美容服務項目價目、貓咪品種毛髮分類、
+    // 體重定價門檻、乙方簽名檔、匯款帳號。清除腳本不能動到這些表的任何一筆。
+    private static final List<String> SETTINGS = List.of(
+            "SELECT COUNT(*) FROM default_slot_capacity_template",
+            "SELECT COUNT(*) FROM slot_capacity",
+            "SELECT COALESCE(SUM(capacity), 0) FROM slot_capacity",
+            "SELECT COUNT(*) FROM closed_date",
+            "SELECT COUNT(*) FROM weekly_closure_setting",
+            "SELECT COUNT(*) FROM bonus_tiers",
+            "SELECT COUNT(*) FROM grooming_items",
+            "SELECT COUNT(*) FROM grooming_item_components",
+            "SELECT COUNT(*) FROM cat_breed_coat_mappings",
+            "SELECT COUNT(*) FROM pricing_settings",
+            "SELECT COUNT(*) FROM company_signature",
+            "SELECT COUNT(*) FROM bank_account_info");
+
     @Autowired
     private TestData testData;
 
@@ -62,9 +78,11 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
         try (Connection root = DriverManager.getConnection(datasourceUrl, "root", password);
                 Statement st = root.createStatement()) {
             assertThat(count(st, "SELECT COUNT(*) FROM " + SOURCE_DB + ".appointments")).isPositive();
-            long groomingItems = count(st, "SELECT COUNT(*) FROM " + SOURCE_DB + ".grooming_items");
-
             copyDatabase(st);
+            List<Long> settingsBefore = new ArrayList<>();
+            for (String sql : SETTINGS) {
+                settingsBefore.add(count(st, sql));
+            }
             try {
                 st.execute("CREATE TABLE users_line_backup_20260927 AS SELECT * FROM users");
                 runScript(root, "scripts/prelaunch-cleanup-preview.sql");
@@ -83,7 +101,9 @@ class PrelaunchCleanupScriptTest extends IntegrationTestBase {
                         + COPY_DB + "' AND table_name = 'users_line_backup_20260927'")).isZero();
 
                 assertThat(count(st, "SELECT COUNT(*) FROM users WHERE id = " + staff.getId())).isOne();
-                assertThat(count(st, "SELECT COUNT(*) FROM grooming_items")).isEqualTo(groomingItems);
+                for (int i = 0; i < SETTINGS.size(); i++) {
+                    assertThat(count(st, SETTINGS.get(i))).as(SETTINGS.get(i)).isEqualTo(settingsBefore.get(i));
+                }
             } finally {
                 st.execute("DROP DATABASE IF EXISTS " + COPY_DB);
             }
