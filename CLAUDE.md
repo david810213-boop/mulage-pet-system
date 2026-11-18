@@ -24,7 +24,7 @@
 - **本機資料庫**：Docker 容器 `pet-mysql`，對外 **port 3307**（容器內部仍是 3306）；⚠️ 這台電腦另外還有一個**原生 MySQL（port 3306）**，連線前務必先確認 port
 - **連線正式環境資料庫**：`railway link` → `railway connect MySQL`（走 SSH tunnel，不用開 Public Networking）
 - **本機與正式環境資料庫完全獨立、不同步**
-- **環境變數**（`application.yml` 用 `${...}` 讀取，不寫死在檔案裡）：`DB_HOST/PORT/NAME/USERNAME/PASSWORD`、`JWT_SECRET`、`LINE_CHANNEL_ID`、`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`、`CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET`、`GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON_BASE64`、`GOOGLE_CALENDAR_ID`（後兩個沒設定會自動停用該功能，不影響其他功能）
+- **環境變數**（`application.yml` 用 `${...}` 讀取，不寫死在檔案裡）：`DB_HOST/PORT/NAME/USERNAME/PASSWORD`、`JWT_SECRET`、`LINE_CHANNEL_ID`、`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`、`CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET`、`GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON_BASE64`、`GOOGLE_CALENDAR_ID`（後兩個沒設定會自動停用該功能，不影響其他功能）；慕馬 AI 小助手：`ANTHROPIC_API_KEY`、`ASSISTANT_ENABLED`（預設關閉）、`ASSISTANT_TESTERS`（會員 id 清單，空白＝全部開放），設計見 `docs/adr/0010-muma-assistant.md`
 
 ## 三、雙軌身分認證架構
 
