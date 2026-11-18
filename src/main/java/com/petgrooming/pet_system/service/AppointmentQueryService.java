@@ -27,6 +27,7 @@ import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.utils.ContractInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
