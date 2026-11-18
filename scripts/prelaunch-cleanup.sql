@@ -39,6 +39,7 @@ DELETE FROM store_supplies;
 DELETE FROM idempotency_keys;
 DELETE FROM line_bind_tokens;
 DELETE FROM operation_logs;
+DELETE FROM assistant_messages;
 DELETE FROM users WHERE role = 'CUSTOMER';
 
 -- 員工帳號留下，但測試期間累積的登入失敗次數與鎖定一併清掉
