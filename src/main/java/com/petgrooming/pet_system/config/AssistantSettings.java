@@ -33,7 +33,7 @@ public class AssistantSettings {
             @Value("${assistant.model:claude-haiku-5-5}") String model,
             @Value("${assistant.monthly-budget-usd:19}") double monthlyBudgetUsd,
             @Value("${assistant.daily-question-limit:20}") int dailyQuestionLimit,
-            @Value("${assistant.max-output-tokens:400}") int maxOutputTokens,
+            @Value("${assistant.max-output-tokens:1024}") int maxOutputTokens,
             @Value("${assistant.history-messages:6}") int historyMessages,
             @Value("${assistant.max-input-chars:200}") int maxInputChars,
             @Value("${assistant.price.input:0.10}") double priceInput,
