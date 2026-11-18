@@ -1,5 +1,6 @@
 package com.petgrooming.pet_system.repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.repository.query.Param;
 import com.petgrooming.pet_system.enums.AppointmentStatus;
@@ -108,4 +109,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @Query("SELECT a FROM Appointment a JOIN FETCH a.user "
             + "WHERE a.depositRefundStatus = :status ORDER BY a.id")
     List<Appointment> findWithUserByDepositRefundStatus(@Param("status") DepositRefundStatus status);
+
+    /** 取消時沒收的訂金或臨時取消扣的儲值金，以取消時間算進營收。 */
+    @Query("""
+            select a from Appointment a
+            where a.status = com.petgrooming.pet_system.enums.AppointmentStatus.CANCELLED
+              and a.cancelledAt >= :from and a.cancelledAt < :to
+              and (a.depositForfeitedAmount > 0 or a.lateCancelCharge > 0)
+            """)
+    List<Appointment> findCancellationIncomeBetween(
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

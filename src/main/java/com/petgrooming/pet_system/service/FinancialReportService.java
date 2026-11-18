@@ -2,12 +2,14 @@ package com.petgrooming.pet_system.service;
 
 import com.petgrooming.pet_system.dto.FinancialReportResponse;
 import com.petgrooming.pet_system.enums.TopUpStatus;
+import com.petgrooming.pet_system.model.Appointment;
 import com.petgrooming.pet_system.model.AppointmentItem;
 import com.petgrooming.pet_system.model.TopUpRequest;
 import com.petgrooming.pet_system.model.Transaction;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.model.WalkInOrderItem;
 import com.petgrooming.pet_system.repository.AppointmentItemRepository;
+import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.RetailProductRepository;
 import com.petgrooming.pet_system.repository.SupplyUsageRecordRepository;
 import com.petgrooming.pet_system.repository.TopUpRequestRepository;
@@ -40,6 +42,11 @@ public class FinancialReportService {
     private final TopUpRequestRepository topUpRequestRepository;
     private final RetailProductRepository retailProductRepository;
     private final SupplyUsageRecordRepository supplyUsageRecordRepository;
+    private final AppointmentRepository appointmentRepository;
+
+    private static final String CANCELLATION = "取消扣款";
+    /** 取消收入查詢的起點：涵蓋系統上線前後的所有紀錄。 */
+    private static final LocalDateTime ALL_TIME = LocalDateTime.of(2020, 1, 1, 0, 0);
 
     /**
      * 當日與當月的業績、儲值、零售營收與成本。
@@ -63,13 +70,15 @@ public class FinancialReportService {
         report.setTodayRevenueTotal(sumSince(orders, todayStart, PaidOrder::amount));
         report.setTodayRevenueWallet(sumSince(orders, todayStart, PaidOrder::walletAmount));
         report.setTodayRevenueNonWallet(sumSince(orders, todayStart, PaidOrder::nonWalletAmount));
-        report.setTodayOrderCount(sumSince(orders, todayStart, o -> 1));
+        report.setTodayOrderCount(sumSince(orders, todayStart, o -> o.isCancellation() ? 0 : 1));
+        report.setTodayCancellationIncome(sumSince(orders, todayStart, o -> o.isCancellation() ? o.amount() : 0));
         report.setTodayTopupCollected(topUpsSince(topUps, todayStart));
         report.setTodayRetailRevenue(sumSince(orders, todayStart, PaidOrder::retailRevenue));
         report.setMonthRevenueTotal(monthRevenue);
         report.setMonthRevenueWallet(sumSince(orders, monthStart, PaidOrder::walletAmount));
         report.setMonthRevenueNonWallet(sumSince(orders, monthStart, PaidOrder::nonWalletAmount));
-        report.setMonthOrderCount(sumSince(orders, monthStart, o -> 1));
+        report.setMonthOrderCount(sumSince(orders, monthStart, o -> o.isCancellation() ? 0 : 1));
+        report.setMonthCancellationIncome(sumSince(orders, monthStart, o -> o.isCancellation() ? o.amount() : 0));
         report.setMonthTopupCollected(topUpsSince(topUps, monthStart));
         report.setMonthRetailRevenue(sumSince(orders, monthStart, PaidOrder::retailRevenue));
         report.setMonthRetailCostEstimate(monthRetailCost);
@@ -98,6 +107,10 @@ public class FinancialReportService {
                 return Optional.empty();
             }
             return Optional.of((int) Math.round(amount * 100.0 / baseAmount));
+        }
+
+        boolean isCancellation() {
+            return CANCELLATION.equals(source);
         }
 
         int walletAmount() {
@@ -143,6 +156,20 @@ public class FinancialReportService {
                     w.getTotalAmount(), w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount(), w.getCreatedBy(),
                     retailItems.stream().mapToInt(WalkInOrderItem::getPrice).sum(),
                     estimatedCost(retailItems.stream().map(WalkInOrderItem::getRetailProductId).toList(), retailUnitCosts)));
+        }
+        // 店家規定（2026-11-18）：沒收的訂金與臨時取消扣的儲值金算營業收入，以取消時間計
+        for (Appointment a : appointmentRepository.findCancellationIncomeBetween(ALL_TIME, LocalDateTime.now())) {
+            String code = String.format("AP%03d", a.getId());
+            if (a.getDepositForfeitedAmount() > 0) {
+                orders.add(new PaidOrder(CANCELLATION, code + " 訂金不退", a.getCancelledAt(),
+                        PaymentMethod.WIRE_TRANSFER, a.getDepositForfeitedAmount(), a.getDepositForfeitedAmount(),
+                        a.getCancelledBy(), 0, 0));
+            }
+            if (a.getLateCancelCharge() != null && a.getLateCancelCharge() > 0) {
+                orders.add(new PaidOrder(CANCELLATION, code + " 臨時取消扣款", a.getCancelledAt(),
+                        PaymentMethod.WALLET, a.getLateCancelCharge(), a.getLateCancelCharge(),
+                        a.getCancelledBy(), 0, 0));
+            }
         }
         return orders;
     }

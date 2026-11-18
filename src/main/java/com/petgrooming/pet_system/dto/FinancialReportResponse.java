@@ -29,6 +29,7 @@ public class FinancialReportResponse {
     private int todayOrderCount;         // 當日結帳筆數（預約+現場單合計）
     private int todayTopupCollected;     // 當日儲值總額（預收款，不計入業績，僅供參考）
     private int todayRetailRevenue;      // 當日零售商品營收（已含在 todayRevenueTotal 業績裡，這裡單獨拆出來看）
+    private int todayCancellationIncome; // 當日取消扣款收入（訂金不退＋臨時取消扣儲值金，已含在 todayRevenueTotal）
 
     // ── 當月 ──────────────────────────────────────────────────────────
     private int monthRevenueTotal;
@@ -37,6 +38,7 @@ public class FinancialReportResponse {
     private int monthOrderCount;
     private int monthTopupCollected;
     private int monthRetailRevenue;      // 當月零售商品營收（已含在 monthRevenueTotal 業績裡）
+    private int monthCancellationIncome; // 當月取消扣款收入（已含在 monthRevenueTotal）
 
     // ── 成本（庫存資料帶入，當月）──────────────────────────────────
     private int monthRetailCostEstimate;  // 零售商品成本估算（用目前進貨單價回推，非逐筆歷史成本）
@@ -66,7 +68,7 @@ public class FinancialReportResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RevenueDetailLine {
-        private String sourceLabel;   // 「預約結帳」或「現場開單」
+        private String sourceLabel;   // 「預約結帳」「現場開單」或「取消扣款」
         private String code;
         private LocalDateTime paymentTime;
         private String paymentMethodLabel;

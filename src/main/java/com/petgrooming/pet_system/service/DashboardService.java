@@ -90,7 +90,7 @@ public class DashboardService {
         int walkInRevenue = walkInOrderService.findPaidOrdersBetween(from, to).stream()
                 .mapToInt(w -> w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount())
                 .sum();
-        return appointmentRevenue + walkInRevenue;
+        return appointmentRevenue + walkInRevenue + appointmentQueryService.cancellationIncomeBetween(from, to);
     }
 
     private Map<String, WalletResponse> walletsOf(List<User> customers) {
