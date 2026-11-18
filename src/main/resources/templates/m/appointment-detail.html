@@ -107,6 +107,7 @@
   <section class="panel" th:if="${a.cancelled}">
     <div class="panel-title">取消紀錄</div>
     <p><span th:text="${a.cancelledBy}"></span><th:block th:if="${a.cancelReason != null}">：<span th:text="${a.cancelReason}"></span></th:block></p>
+    <p th:if="${a.lateCancelCharge != null and a.lateCancelCharge > 0}" th:text="'臨時取消已從儲值金扣 NT$ ' + ${a.lateCancelCharge}"></p>
   </section>
 </main>
 
@@ -174,6 +175,14 @@
     <label class="field" style="display:flex;gap:8px;align-items:center" th:if="${a.depositCredit > 0}">
       <input type="checkbox" name="storeCause" value="true" />店家因素取消（臨時公休等），訂金全額退還
     </label>
+    <div class="field" th:if="${walletBalance != null and walletBalance > 0}">
+      <label for="cCharge">臨時取消扣儲值金（選填）</label>
+      <input type="number" name="lateCancelCharge" id="cCharge" min="0" th:max="${walletBalance}" step="1"
+             inputmode="numeric" placeholder="不扣請留空" />
+      <p style="margin:6px 0 0;font-size:13px;color:var(--mute)"
+         th:text="(${lateCancelWindow} ? '已在預約前 24 小時內。' : '') + '儲值金會員 24 小時內取消或未到店：扣精緻洗費用的三成；預約大美容則扣大美容費用的三成。目前餘額 NT$ ' + ${walletBalance} + '。'">
+        儲值金會員 24 小時內取消或未到店：扣精緻洗費用的三成。</p>
+    </div>
     <div class="btn-row">
       <button type="button" class="btn sec" data-close-sheet>返回</button>
       <button type="submit" class="btn pri" style="background:var(--coral-ink)">確定取消</button>

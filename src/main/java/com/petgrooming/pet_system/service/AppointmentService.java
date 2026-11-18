@@ -54,6 +54,7 @@ public class AppointmentService {
     private final ClosedDateService closedDateService; // 公休日設定
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final BookingDepositService bookingDepositService; // 預約訂金
+    private final WalletService walletService; // 儲值金會員臨時取消扣款
 
     // 營業時間／時段格線（共用 BusinessHours）
     private static final LocalTime OPENING = BusinessHours.OPENING;
@@ -275,6 +276,20 @@ public class AppointmentService {
             throw new AppointmentException("此預約已支付訂金，如需取消請聯繫官方 LINE 客服，由專人協助辦理退款");
         }
         boolean storeCause = isStaffOrAdmin && req != null && Boolean.TRUE.equals(req.getStoreCause());
+        int lateCancelCharge = isStaffOrAdmin && req != null && req.getLateCancelCharge() != null
+                ? req.getLateCancelCharge() : 0;
+        if (lateCancelCharge < 0) {
+            throw new AppointmentException("扣款金額不能是負數");
+        }
+        if (lateCancelCharge > 0 && storeCause) {
+            throw new AppointmentException("店家因素取消不扣儲值金");
+        }
+        // 店家規範：儲值金會員（免付訂金）24 小時內取消或未到店，從儲值金扣精緻洗（或大美容）費用的三成。
+        // 扣多少由店員依預約項目判斷，所以 24 小時內的取消改由店員處理
+        if (!isStaffOrAdmin && isWithinLateCancelWindow(appointment)
+                && hasWalletBalance(appointment.getUser().getUsername())) {
+            throw new AppointmentException("預約前 24 小時內取消，儲值金會員請聯繫官方 LINE 客服，由店家協助辦理");
+        }
 
         appointment.setStatus(AppointmentStatus.CANCELLED);
         appointment.setCancelledAt(LocalDateTime.now());
@@ -282,6 +297,13 @@ public class AppointmentService {
         appointment.setCancelledBy(isOwner
                 ? "會員自行取消（" + user.getName() + "）"
                 : "員工取消：" + user.getName());
+
+        if (lateCancelCharge > 0) {
+            walletService.deduct(appointment.getUser().getUsername(), lateCancelCharge, appointment.getId(),
+                    "臨時取消扣款：預約 #" + appointment.getId() + "（" + appointment.getDate() + " "
+                            + appointment.getPetName() + "）");
+            appointment.setLateCancelCharge(lateCancelCharge);
+        }
 
         // 釋放該時段名額，讓其他人可以遞補
         slotCapacityService.release(appointment.getDate(), appointment.getStartTime());
@@ -301,6 +323,17 @@ public class AppointmentService {
         }
 
         return AppointmentResponse.from(saved);
+    }
+
+    private boolean hasWalletBalance(String username) {
+        Integer balance = walletService.getWallet(username).getBalance();
+        return balance != null && balance > 0;
+    }
+
+    /** 預約開始前 24 小時內（含已過預約時間、未到店）。 */
+    static boolean isWithinLateCancelWindow(Appointment appointment) {
+        LocalDateTime start = LocalDateTime.of(appointment.getDate(), appointment.getStartTime());
+        return !LocalDateTime.now().isBefore(start.minusHours(24));
     }
 
     // ── 店家設定預約備注（雙可見性）────────────────────────────────

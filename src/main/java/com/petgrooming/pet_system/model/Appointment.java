@@ -97,6 +97,15 @@ public class Appointment {
     @Column(name = "cancel_reason")
     private String cancelReason;
 
+    /** 儲值金會員臨時取消（預約前 24 小時內）或未到店時，店員從儲值金扣的金額；沒有扣為 null。 */
+    @Column(name = "late_cancel_charge")
+    private Integer lateCancelCharge;
+
+    /** 取消帶來的收入：沒收的訂金（匯款收的）＋臨時取消從儲值金扣的金額。 */
+    public int cancellationIncome() {
+        return depositForfeitedAmount + (lateCancelCharge != null ? lateCancelCharge : 0);
+    }
+
     // 記錄由誰取消（顯示用文字，例如「會員自行取消」「員工：王小美」）
     @Column(name = "cancelled_by")
     private String cancelledBy;
