@@ -27,7 +27,9 @@ import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.utils.ContractInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -286,5 +288,13 @@ public class AppointmentQueryService {
 
     public Optional<Appointment> findAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId);
+    }
+
+    /** 期間內取消帶來的收入（沒收的訂金＋臨時取消扣的儲值金），以取消時間計。 */
+    @Transactional(readOnly = true)
+    public int cancellationIncomeBetween(LocalDateTime from, LocalDateTime to) {
+        return appointmentRepository.findCancellationIncomeBetween(from, to).stream()
+                .mapToInt(Appointment::cancellationIncome)
+                .sum();
     }
 }
