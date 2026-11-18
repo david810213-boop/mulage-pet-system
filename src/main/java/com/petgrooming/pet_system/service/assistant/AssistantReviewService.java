@@ -8,6 +8,7 @@ import com.petgrooming.pet_system.repository.AssistantMessageRepository;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,10 @@ public class AssistantReviewService {
 
     private final AssistantSettings settings;
     private final AssistantMessageRepository repository;
+
+    /** Anthropic 以美金計費，後台另外換算台幣給店長參考；匯率用固定值估算，不即時查詢。 */
+    @Value("${assistant.usd-to-twd:32}")
+    private double usdToTwd;
 
     @Transactional(readOnly = true)
     public List<AssistantLogView> recentLogs() {
@@ -53,6 +58,7 @@ public class AssistantReviewService {
                 repository.sumCostSince(today.withDayOfMonth(1).atStartOfDay()),
                 settings.getMonthlyBudgetUsd(),
                 repository.countQuestionsSince(today.atStartOfDay()),
-                repository.countQuestionsSince(today.withDayOfMonth(1).atStartOfDay()));
+                repository.countQuestionsSince(today.withDayOfMonth(1).atStartOfDay()),
+                usdToTwd);
     }
 }

@@ -81,6 +81,7 @@ assistant:
   monthly-budget-usd: ${ASSISTANT_MONTHLY_BUDGET_USD:19}
   daily-question-limit: ${ASSISTANT_DAILY_LIMIT:20}
   max-output-tokens: 1024
+  usd-to-twd: ${ASSISTANT_USD_TO_TWD:32}
   history-messages: 6
   max-input-chars: 200
   price:

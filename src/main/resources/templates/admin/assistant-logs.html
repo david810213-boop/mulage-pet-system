@@ -13,7 +13,7 @@
         <div class="card" style="margin-bottom: 1rem">
           <h3 style="margin: 0 0 4px">試問慕馬</h3>
           <p style="font-size: 13px; color: var(--brown-light); margin: 0 0 12px">
-            以指定會員的身分問一題，慕馬會查這位會員的預約、訂金、儲值金與毛孩資料來回答。不扣會員的每日題數；每題約 US$0.001～0.003，算進本月花費。
+            以指定會員的身分問一題，慕馬會查這位會員的預約、訂金、儲值金與毛孩資料來回答。不扣會員的每日題數；每題約 NT$0.05～0.3，算進本月花費。
           </p>
           <form method="post" action="/admin/assistant-logs/trial" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
             <input type="text" name="keyword" th:value="${trialKeyword}" placeholder="會員姓名或電話" required style="width: 180px" />
@@ -42,8 +42,9 @@
             <div style="font-size: 12px; color: var(--brown-light); margin-top: 6px"
                  th:text="'查詢：' + (${#lists.isEmpty(trial.toolsUsed)} ? '無' : ${#strings.listJoin(trial.toolsUsed, '、')})
                           + '｜' + (${trial.mood} == 'unsure' ? '轉真人｜' : '')
-                          + '輸入 ' + ${trial.inputTokens} + ' / 輸出 ' + ${trial.outputTokens} + ' tokens｜US$ '
-                          + ${#numbers.formatDecimal(trial.costUsd, 1, 4)}"></div>
+                          + '輸入 ' + ${trial.inputTokens} + ' / 輸出 ' + ${trial.outputTokens} + ' tokens｜約 NT$ '
+                          + ${#numbers.formatDecimal(trial.costUsd * usage.usdToTwd, 1, 2)}
+                          + '（US$ ' + ${#numbers.formatDecimal(trial.costUsd, 1, 4)} + '）'"></div>
           </div>
         </div>
 
@@ -54,7 +55,9 @@
           </div>
           <div>
             <div style="font-size: 12px; color: var(--brown-light)">本月花費 ／ 預算</div>
-            <b th:text="'US$ ' + ${#numbers.formatDecimal(usage.monthCostUsd, 1, 2)} + ' ／ ' + ${#numbers.formatDecimal(usage.monthlyBudgetUsd, 1, 2)}">US$ 1.20 ／ 19.00</b>
+            <b th:text="'約 NT$ ' + ${#numbers.formatInteger(usage.monthCostUsd * usage.usdToTwd, 1, 'COMMA')} + ' ／ ' + ${#numbers.formatInteger(usage.monthlyBudgetUsd * usage.usdToTwd, 1, 'COMMA')}">約 NT$ 38 ／ 608</b>
+            <div style="font-size: 12px; color: var(--brown-light)"
+                 th:text="'US$ ' + ${#numbers.formatDecimal(usage.monthCostUsd, 1, 2)} + ' ／ ' + ${#numbers.formatDecimal(usage.monthlyBudgetUsd, 1, 2)} + '（1 美元以 ' + ${#numbers.formatDecimal(usage.usdToTwd, 1, 1)} + ' 元估算）'">US$ 1.20 ／ 19.00（1 美元以 32.0 元估算）</div>
           </div>
           <div>
             <div style="font-size: 12px; color: var(--brown-light)">今天提問</div>
@@ -74,7 +77,7 @@
               <th style="width: 60px">誰</th>
               <th>內容</th>
               <th style="width: 90px">頁面</th>
-              <th style="width: 80px">花費</th>
+              <th style="width: 80px">花費（台幣）</th>
             </tr>
           </thead>
           <tbody>
@@ -87,7 +90,8 @@
               <td th:text="${l.fromCustomer} ? '顧客' : (${l.fallback} ? '慕馬（備用）' : '慕馬')"></td>
               <td th:text="${l.content}" style="white-space: pre-wrap"></td>
               <td th:text="${l.page} == 'admin-trial' ? '後台試問' : (${l.page} ?: '—')"></td>
-              <td th:text="${l.fromCustomer} ? '' : '$' + ${#numbers.formatDecimal(l.costUsd, 1, 4)}"></td>
+              <td th:text="${l.fromCustomer} ? '' : 'NT$' + ${#numbers.formatDecimal(l.costUsd * usage.usdToTwd, 1, 2)}"
+                  th:title="${l.fromCustomer} ? null : 'US$ ' + ${#numbers.formatDecimal(l.costUsd, 1, 4)}"></td>
             </tr>
           </tbody>
         </table>
