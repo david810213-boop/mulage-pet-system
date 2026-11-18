@@ -14,9 +14,10 @@ public interface LlmClient {
      * @param dynamicSystem 每次不同的系統提示（今天日期、顧客姓名、所在頁面）
      * @param tools 工具定義
      * @param messages 對話內容
+     * @param allowTools false 時仍帶工具定義（對話裡有工具呼叫紀錄時 API 要求要帶），但不准再呼叫，強制模型用文字回答
      */
     LlmResult send(String cachedSystem, String dynamicSystem, List<Map<String, Object>> tools,
-                   List<Map<String, Object>> messages);
+                   List<Map<String, Object>> messages, boolean allowTools);
 
     /** 一次呼叫的結果：回應內容區塊、停止原因、用量。 */
     record LlmResult(List<Map<String, Object>> content, String stopReason, Usage usage) {
