@@ -81,7 +81,7 @@ public class MobileViewHelper {
     public List<MobileLineItemView> fromAppointmentDetail(List<AppointmentDetailResponse.DetailItem> items) {
         return items.stream().map(it -> {
             String[] n = discountNote(it.isRetailItem(), it.isFirstVisitEligible(),
-                    it.isRewashEligible(), it.isDiscountEligible());
+                    it.isRewashEligible(), it.isMultiCatEligible(), it.isDiscountEligible());
             return MobileLineItemView.builder()
                     .id(it.getItemId())
                     .name(it.getName())
@@ -97,7 +97,8 @@ public class MobileViewHelper {
     public List<MobileLineItemView> fromWalkIn(List<WalkInOrderResponse.ItemLine> items, boolean withDiscountNote) {
         return items.stream().map(it -> {
             String[] n = withDiscountNote
-                    ? discountNote(it.isRetailItem(), it.isFirstVisitEligible(), it.isRewashEligible(), it.isDiscountEligible())
+                    ? discountNote(it.isRetailItem(), it.isFirstVisitEligible(), it.isRewashEligible(),
+                            it.isMultiCatEligible(), it.isDiscountEligible())
                     : new String[] { it.isRetailItem() ? "零售商品" : null, null };
             return MobileLineItemView.builder()
                     .id(it.getItemId())
@@ -113,7 +114,8 @@ public class MobileViewHelper {
     }
 
     // 回傳 {說明文字, 有優惠時非 null}；判斷順序跟網頁版結帳頁消費明細一致
-    private String[] discountNote(boolean retail, boolean firstVisit, boolean rewash, boolean memberEligible) {
+    private String[] discountNote(boolean retail, boolean firstVisit, boolean rewash, boolean multiCat,
+                                  boolean memberEligible) {
         if (retail) {
             return new String[] { "零售商品，不打折", null };
         }
@@ -122,6 +124,9 @@ public class MobileViewHelper {
         }
         if (rewash) {
             return new String[] { "回洗優惠 9 折", "ok" };
+        }
+        if (multiCat) {
+            return new String[] { "多貓優惠 9 折", "ok" };
         }
         if (memberEligible) {
             return new String[] { "儲值金付款可享會員折扣", null };
