@@ -37,7 +37,7 @@ public class AnthropicLlmClient implements LlmClient {
 
     @Override
     public LlmResult send(String cachedSystem, String dynamicSystem, List<Map<String, Object>> tools,
-                          List<Map<String, Object>> messages) {
+                          List<Map<String, Object>> messages, boolean allowTools) {
         if (settings.getApiKey().isEmpty()) {
             throw new AssistantUnavailableException("未設定 ANTHROPIC_API_KEY");
         }
@@ -52,6 +52,9 @@ public class AnthropicLlmClient implements LlmClient {
         body.put("max_tokens", settings.getMaxOutputTokens());
         body.put("system", List.of(cachedBlock, Map.of("type", "text", "text", dynamicSystem)));
         body.put("tools", tools);
+        if (!allowTools) {
+            body.put("tool_choice", Map.of("type", "none"));
+        }
         body.put("messages", messages);
 
         Map<?, ?> res;

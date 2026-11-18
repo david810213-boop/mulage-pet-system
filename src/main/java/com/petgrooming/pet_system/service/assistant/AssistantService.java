@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AssistantService {
 
-    static final int MAX_TOOL_ROUNDS = 3;
+    static final int MAX_TOOL_ROUNDS = 4;
     /** 本月花費到預算的這個比例就停止呼叫模型，留一點緩衝給已經送出的請求。 */
     static final double BUDGET_GUARD = 0.95;
     private static final int HISTORY_HOURS = 2;
@@ -127,23 +127,38 @@ public class AssistantService {
                         Usage usage, double cost, List<String> toolsUsed) {
     }
 
-    /** 呼叫模型；模型要查資料時執行工具再送回去，最多 MAX_TOOL_ROUNDS 輪。 */
+    /**
+     * 呼叫模型；模型要查資料時執行工具再送回去，最多 MAX_TOOL_ROUNDS 輪。
+     * 工具輪數用完或模型沒有給文字時，再呼叫一次並禁止使用工具，讓模型用已查到的資料回答，
+     * 避免顧客只看到「不太確定」。
+     */
     private Turn converse(User user, List<Map<String, Object>> messages, String page) {
-        Usage usage = Usage.ZERO;
         List<String> toolsUsed = new ArrayList<>();
-        LlmResult result = null;
-        for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
-            result = llmClient.send(prompt.cachedSystem(),
-                    prompt.dynamicSystem(LocalDateTime.now(), user.getName(), page),
-                    tools.definitions(), messages);
+        LlmResult result = call(user, messages, page, true);
+        Usage usage = result.usage();
+        for (int round = 1; round < MAX_TOOL_ROUNDS && isToolUse(result); round++) {
+            addToolResults(messages, result, user, toolsUsed);
+            result = call(user, messages, page, true);
             usage = usage.plus(result.usage());
-            if (!"tool_use".equals(result.stopReason())) {
-                break;
-            }
-            messages.add(Map.of("role", "assistant", "content", result.content()));
-            messages.add(Map.of("role", "user", "content", runTools(result.content(), user, toolsUsed)));
         }
         String answer = text(result);
+        // 輪數用完時就算有文字，也只是「我查一下」這類開場白，一樣要重問
+        if (answer.isEmpty() || isToolUse(result)) {
+            log.warn("[慕馬] 沒有完整回答，改為禁止工具再問一次：stop_reason={}，工具={}，內容={}",
+                    result.stopReason(), toolsUsed, blockTypes(result));
+            if (isToolUse(result)) {
+                addToolResults(messages, result, user, toolsUsed);
+            } else if (!result.content().isEmpty()) {
+                messages.add(Map.of("role", "assistant", "content", result.content()));
+                messages.add(textMessage("user", "請根據上面查到的資料，直接用文字回答顧客的問題。"));
+            }
+            LlmResult retry = call(user, messages, page, false);
+            usage = usage.plus(retry.usage());
+            answer = text(retry);
+            if (answer.isEmpty()) {
+                log.warn("[慕馬] 重問仍沒有文字回答：stop_reason={}，內容={}", retry.stopReason(), blockTypes(retry));
+            }
+        }
         AssistantActions.Parsed parsed = AssistantActions.parse(answer);
         String text = parsed.text();
         List<AssistantReplyResponse.Action> actions = parsed.actions();
@@ -153,7 +168,9 @@ public class AssistantService {
         }
         double cost = settings.costUsd(usage.input(), usage.output(), usage.cacheRead(), usage.cacheWrite());
         String mood = actions.stream().anyMatch(a -> AssistantActions.CONTACT.equals(a.type())) ? "unsure" : "answer";
-        return new Turn(answer, text, actions, mood, usage, cost, toolsUsed);
+        // 存進對話紀錄的內容不能是空的：下一題會帶著這段對話送出，API 不接受空白的回答
+        String saved = answer.isEmpty() ? text : answer;
+        return new Turn(saved, text, actions, mood, usage, cost, toolsUsed);
     }
 
     private int remainingToday(User user) {
@@ -200,6 +217,28 @@ public class AssistantService {
             results.add(result);
         }
         return results;
+    }
+
+    private LlmResult call(User user, List<Map<String, Object>> messages, String page, boolean allowTools) {
+        return llmClient.send(prompt.cachedSystem(),
+                prompt.dynamicSystem(LocalDateTime.now(), user.getName(), page),
+                tools.definitions(), messages, allowTools);
+    }
+
+    /** 模型要求呼叫工具（含被 max_tokens 截斷但已經寫出工具呼叫的情況）。 */
+    private static boolean isToolUse(LlmResult result) {
+        return "tool_use".equals(result.stopReason())
+                || result.content().stream().anyMatch(b -> "tool_use".equals(b.get("type")));
+    }
+
+    private void addToolResults(List<Map<String, Object>> messages, LlmResult result, User user,
+                                List<String> toolsUsed) {
+        messages.add(Map.of("role", "assistant", "content", result.content()));
+        messages.add(Map.of("role", "user", "content", runTools(result.content(), user, toolsUsed)));
+    }
+
+    private static List<Object> blockTypes(LlmResult result) {
+        return result.content().stream().map(b -> b.get("type")).toList();
     }
 
     private static String text(LlmResult result) {

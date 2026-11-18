@@ -44,6 +44,7 @@ class AssistantServiceTest extends IntegrationTestBase {
     void reset() {
         FakeLlm.SCRIPT.clear();
         FakeLlm.CALLS.clear();
+        FakeLlm.ALLOW_TOOLS.clear();
     }
 
     @Test
@@ -122,6 +123,37 @@ class AssistantServiceTest extends IntegrationTestBase {
     }
 
     @Test
+    void toolRoundsUsedUpStillGivesTextAnswer() {
+        User user = testData.customer();
+        for (int i = 0; i < AssistantService.MAX_TOOL_ROUNDS; i++) {
+            String id = "toolu_" + i;
+            FakeLlm.reply(c -> FakeLlm.toolUse(id, "get_closed_dates", Map.of()));
+        }
+        FakeLlm.reply(c -> FakeLlm.text("週四、週五公休喔！"));
+
+        AssistantReplyResponse reply = ask(user, "哪天公休？");
+
+        assertThat(reply.text()).isEqualTo("週四、週五公休喔！");
+        assertThat(reply.mood()).isEqualTo("answer");
+        assertThat(FakeLlm.ALLOW_TOOLS).hasSize(AssistantService.MAX_TOOL_ROUNDS + 1).last().isEqualTo(false);
+    }
+
+    @Test
+    void emptyAnswerIsNotSavedBlankForTheNextQuestion() {
+        User user = testData.customer();
+        FakeLlm.reply(c -> new LlmClient.LlmResult(List.of(), "max_tokens", new LlmClient.Usage(1000, 400, 0, 0)));
+        FakeLlm.reply(c -> new LlmClient.LlmResult(List.of(), "end_turn", new LlmClient.Usage(1000, 0, 0, 0)));
+
+        AssistantReplyResponse first = ask(user, "營業時間？");
+        FakeLlm.reply(c -> FakeLlm.text("11:00～19:30 喔"));
+        ask(user, "那營業時間呢？");
+
+        assertThat(first.text()).isEqualTo(AssistantService.EMPTY_ANSWER);
+        List<Map<String, Object>> sent = FakeLlm.CALLS.get(FakeLlm.CALLS.size() - 1);
+        assertThat(sent).extracting(m -> m.get("content")).doesNotContain("");
+    }
+
+    @Test
     void historyIsSentOnTheNextQuestion() {
         User user = testData.customer();
         FakeLlm.reply(c -> FakeLlm.text("吉米 11/24 要付 $1,000 訂金喔"));
@@ -177,6 +209,7 @@ class AssistantServiceTest extends IntegrationTestBase {
     static class FakeLlm implements LlmClient {
         static final Deque<Function<List<Map<String, Object>>, LlmResult>> SCRIPT = new ArrayDeque<>();
         static final List<List<Map<String, Object>>> CALLS = new ArrayList<>();
+        static final List<Boolean> ALLOW_TOOLS = new ArrayList<>();
 
         static void reply(Function<List<Map<String, Object>>, LlmResult> step) {
             SCRIPT.add(step);
@@ -201,8 +234,9 @@ class AssistantServiceTest extends IntegrationTestBase {
 
         @Override
         public LlmResult send(String cachedSystem, String dynamicSystem, List<Map<String, Object>> tools,
-                              List<Map<String, Object>> messages) {
+                              List<Map<String, Object>> messages, boolean allowTools) {
             CALLS.add(List.copyOf(messages));
+            ALLOW_TOOLS.add(allowTools);
             Function<List<Map<String, Object>>, LlmResult> step = SCRIPT.poll();
             if (step == null) {
                 return text("（沒有排定回應）");
