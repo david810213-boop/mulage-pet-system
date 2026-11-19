@@ -31,7 +31,8 @@
 | 預約訂金試算、回報匯款、查看退款 | 財務報表（Excel 匯出） | 訂金核帳（確認入帳、駁回、免收、待退款）、預約改期 |
 | 儲值、查詢消費紀錄 | | 我的績效、洗劑領用、零售庫存、時段管理、交易紀錄 |
 | 線上閱讀並簽署定型化契約，「我的預約」可查看已簽版本 | 員工績效自動計算 | 可加入主畫面，離線時顯示提示頁 |
-| 加入 Google 日曆；首頁顯示下一筆預約，各頁共用底部導覽列 | | |
+| 加入 Google 日曆；首頁顯示下一筆預約，各頁共用底部導覽列 | 慕馬對話紀錄：抽查 AI 回答、本月花費（換算台幣）、後台試問 | 儲值金會員臨時取消時扣款 |
+| AI 小助手「慕馬」：回答預約、價目、空位、訂金、儲值與毛孩問題，答不了轉真人 | 多貓優惠、取消扣款收入列入財務報表 | |
 
 觸控裝置登入網頁版時會自動導向手機版（以 `navigator.maxTouchPoints` 偵測，涵蓋會偽裝成桌面瀏覽器的 iPadOS）。
 
@@ -46,10 +47,10 @@
 | 認證 / 授權 | JWT + 自訂 Interceptor 角色權限機制、BCrypt 密碼雜湊 |
 | 資安 | CSRF Token（所有以 Cookie 登入的寫入請求）、金流防重複送出（狀態列加鎖＋Idempotency-Key）、登入失敗次數鎖定、自助認領查詢次數限制 |
 | 前端 | Thymeleaf（後台網頁版＋員工手機版 PWA）、LINE LIFF SDK + 原生 HTML/CSS/JS（顧客端） |
-| 第三方整合 | LINE Login、LINE Messaging API、Cloudinary（圖片雲端儲存）、Google Calendar API |
+| 第三方整合 | LINE Login、LINE Messaging API、Cloudinary（圖片雲端儲存）、Google Calendar API、Anthropic Claude API（Tool Use、Prompt Caching） |
 | 檔案匯出 | Apache POI（財務報表 Excel 匯出） |
-| 監控與維運 | Sentry 錯誤追蹤、Spring Boot Actuator 健康檢查、Dependabot 每週掃描依賴版本 |
-| 品質與測試 | 200 多項整合測試（Testcontainers 啟動 MySQL 8，含並發與 SQL 查詢條數測試）、ArchUnit 分層規則、GitHub Actions CI、Checkstyle／SpotBugs 靜態分析 |
+| 監控與維運 | Sentry 錯誤追蹤、Spring Boot Actuator 健康檢查、Dependabot 每週掃描依賴版本、每日加密備份（Railway Cron 排程 `mysqldump` → AES-256 加密 → Google 雲端硬碟，保留 30 天） |
+| 品質與測試 | 300 多項整合測試（Testcontainers 啟動 MySQL 8，含並發與 SQL 查詢條數測試）、ArchUnit 分層規則、GitHub Actions CI、Checkstyle／SpotBugs 靜態分析 |
 | API 文件 | springdoc-openapi（Swagger UI，僅開發環境開放） |
 | 部署 | Railway（App + MySQL），連動 GitHub 推送後自動部署 |
 
@@ -150,6 +151,21 @@
 
 **並發陷阱**：重算份額前已經鎖住會員列，但 MySQL 預設的可重複讀隔離等級下，一般查詢讀的是交易開始時的快照，同一會員同時送出兩筆預約時仍會漏算對方剛提交的那一筆。改成以 `SELECT ... FOR UPDATE` 讀取當天預約（加鎖讀取一定讀到最新版本），寫成架構決策紀錄 `docs/adr/0009`。
 
+
+### 15. AI 小助手：讓模型查資料，但不讓它碰到別人的資料
+
+**問題**：店家希望在 LINE 會員頁加一個 AI 小助手回答常見問題，但答案有一半要即時查（自己的預約、訂金、儲值金、空位、價目），另一半是店家規則；同時每月預算只有約 NT$600，而且模型不能替顧客預約、取消或付款，也不能被誘導查別人的資料或產生釣魚連結。
+
+**解法**：用 Claude Haiku 的 Tool Use。工具全部唯讀、只包裝既有 service 方法，參數裡**沒有會員 id**，一律以登入者身分查詢，從結構上排除越權查詢。店家規則寫成知識文件，與角色設定一起標記 Prompt Caching，之後的提問只付約 1/10 的讀取價格；時間、顧客稱呼、所在頁面放在快取之後，不讓快取失效。按鈕只能由模型寫代碼標記、後端對照白名單換成固定網址，模型自己寫的網址一律丟棄。成本設兩層上限：每人每天題數，以及本月累計花費到預算 95% 就停止呼叫，Anthropic Console 另設同額 spend limit 當第二道防線。呼叫模型可能要好幾秒，刻意不包在資料庫交易裡，避免占住連線。
+
+**上線前實測抓到的問題**：首頁提問正常，其他頁面卻一律回「不太確定」。原因是在預約頁等頁面，模型會連續查毛孩、價目、空位，超過工具輪數上限、或把輸出額度花在工具呼叫上，最後沒有產生任何文字。修正為工具輪數用完或沒有文字時，再呼叫一次並以 `tool_choice: none` 禁止工具，讓模型用已查到的資料作答；同時不把空白回答存進對話紀錄（下一題會帶著歷史送出，API 不接受空白訊息），並在 log 記下停止原因與用到的工具。設計見 `docs/adr/0010`。
+
+### 16. 資料庫備份：只靠一次還原測試才算數
+
+**問題**：Railway 目前的方案沒有內建資料庫備份，測試期間也真實發生過一次資料被級聯刪除的事故。
+
+**解法**：另開一個 Railway Cron 服務，每天凌晨用 `mysqldump --single-transaction` 匯出，gzip 壓縮後以 AES-256（PBKDF2 20 萬次迭代）加密，再用 rclone 上傳到店家的 Google 雲端硬碟，超過 30 天自動刪除。只走 Railway 內部網路，資料庫不開公開連線；雲端硬碟授權只用 `drive.file` 範圍，看不到店家硬碟裡的其他檔案；OAuth 同意畫面發布為正式版，避免測試狀態下授權 7 天就失效。設定完成後實際下載一份、解密、還原到本機另一個資料庫，比對各表筆數與正式站一致，才算完成。
+
 ---
 
 ## 業務邏輯複雜度（節選）
@@ -165,6 +181,8 @@
 - **初次預約**：新客線上預約只選時段，由店家到店後現場評估報價，未完成的初次預約不可重複送出
 - **預約訂金與取消規範**：線上只開放三日後的時段；同一天兩位以上每位 $500、首次大型犬（23 公斤以上）每位 $1,000，儲值金會員免付；取消依距離預約時間退全額、一半或不退，店家因素全額退；已付訂金的預約可在 72 小時前改期一次，訂金跟著走
 - **代客預約交易一致性**：建立預約與佔用時段名額在同一交易內，任一步驟失敗即退回名額
+- **多貓優惠**：同一會員同一天兩位以上貓咪做大美容，各享 9 折，與其他折扣擇優不疊加；以結帳當下這一天的預約與現場單判斷
+- **儲值金會員臨時取消**：預約前 24 小時內不能在 LINE 自行取消，由店員取消時從儲值金扣款；取消扣款與沒收的訂金以取消當天認列營收，報表另列「取消扣款收入」、不算結帳筆數
 - **定型化契約**：依主管機關應記載事項修訂（審閱期、儲值金與履約保障、逾時費、個資告知），影像使用改為另行勾選同意，並記錄每位會員簽署的契約版本
 
 ---
@@ -174,7 +192,7 @@
 ```
 src/main/java/com/petgrooming/pet_system/
 ├── controller/     REST API（顧客端）+ MVC Controller（後台頁面）
-├── service/        商業邏輯層（discount/ 為折扣策略）
+├── service/        商業邏輯層（discount/ 為折扣策略、assistant/ 為 AI 小助手）
 ├── export/         Excel 匯出（財務報表、員工業績、回洗清單）
 ├── model/          JPA Entity
 ├── dto/            Request / Response 物件，嚴格區分內外部可見欄位
@@ -193,9 +211,11 @@ src/main/resources/
 ├── db/migration/   Flyway 種子資料遷移檔案
 ├── static/liff/    LIFF 顧客端頁面（各自對應獨立 LIFF App，ID 集中於 liff-config.js；共用樣式 liff-theme.css、底部導覽列 tabbar.js）
 ├── static/pwa/     手機版 PWA manifest、Service Worker、圖示
-└── static/js/      CSRF token 自動補上、掃碼、美容照片上傳等共用腳本
+├── static/js/      CSRF token 自動補上、掃碼、美容照片上傳等共用腳本
+└── assistant/      AI 小助手的知識文件（knowledge.md）
 
-docs/adr/           架構決策紀錄（悲觀鎖、例外設計、折扣擇優、防重複送出、預約訂金等）
+docs/adr/           架構決策紀錄（悲觀鎖、例外設計、折扣擇優、防重複送出、預約訂金、AI 小助手等）
+backup/             每日資料庫加密備份（Railway Cron 服務：Dockerfile、備份腳本、設定與還原步驟）
 docs/              功能總覽與測試手冊、疑難排解指南、上線前檢查清單
 config/             Checkstyle、SpotBugs 設定
 ```
@@ -210,6 +230,7 @@ docker start pet-mysql
 
 # 2. 設定環境變數（資料庫連線、JWT 密鑰、LINE / Cloudinary / Google Calendar 金鑰、Sentry DSN 等）
 #    請透過環境變數注入，不寫死於程式碼；Google Calendar 與 Sentry 未設定時會自動停用
+#    AI 小助手預設關閉，需要時設定 ANTHROPIC_API_KEY、ASSISTANT_ENABLED=true
 
 # 3. 啟動應用程式
 mvn spring-boot:run
