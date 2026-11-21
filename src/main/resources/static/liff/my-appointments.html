@@ -633,9 +633,10 @@
           }
 
           jwtToken = data?.token || data?.jwtToken || data?.accessToken;
-          // 還沒填過資料的顧客（新客、或還沒認領匯入資料的老客人）一律先到報到頁：
-          // 從首頁或選單直接進來的老客人如果跳過認領自己填資料，會變成一人兩個帳號
-          if (data && data.user && data.user.role === "CUSTOMER" && data.user.profileCompleted === false) {
+          // 還沒報到的顧客（新客、或還沒認領匯入資料的老客人）一律先到報到頁：
+          // 從首頁或選單直接進來的老客人如果跳過認領自己填資料，會變成一人兩個帳號。
+          // 用「有沒有電話」判斷：填資料與認領都會寫入電話；profileCompleted 要連選填欄位都填才算，不能拿來判斷
+          if (data && data.user && data.user.role === "CUSTOMER" && !data.user.phone) {
             window.location.replace("/liff/new-customer.html");
             return;
           }
