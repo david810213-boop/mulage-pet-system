@@ -133,11 +133,11 @@
                           style="display: flex; gap: 4px; align-items: center;">
                       <input type="hidden" name="name" th:value="${s.name}" />
                       <input type="number" name="safetyStockThreshold" th:value="${s.safetyStockThreshold}"
-                             style="width: 55px; font-size: 12px;" title="安全庫存量" required />
+                             style="width: 70px; font-size: 12px;" title="安全庫存量" required />
                       <input type="number" name="unitCost" th:value="${s.unitCost}"
-                             style="width: 55px; font-size: 12px;" title="進貨單價" required />
+                             style="width: 80px; font-size: 12px;" title="進貨單價" required />
                       <input type="text" name="barcode" th:value="${s.barcode}" autocomplete="off"
-                             style="width: 110px; font-size: 12px;" placeholder="條碼（空白＝自動）" title="條碼" />
+                             style="width: 140px; font-size: 12px;" placeholder="條碼（空白＝自動）" title="條碼" />
                       <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">儲存</button>
                     </form>
                     <!-- 盤點，只有店長（管理者）能用 -->
