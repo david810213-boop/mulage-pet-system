@@ -342,7 +342,8 @@
                       color: var(--brown-mid);
                     "
                   >
-                    <input type="hidden" name="discountEligible" value="false" />
+                    <!-- Spring 的勾選框標記：沒勾時才會用到。不能用同名 hidden，兩個值同時送出時會取第一個（false），勾了也存不進去 -->
+                    <input type="hidden" name="_discountEligible" value="on" />
                     <input
                       type="checkbox"
                       name="discountEligible"
@@ -373,7 +374,7 @@
                       color: var(--brown-mid);
                     "
                   >
-                    <input type="hidden" name="requiresExistingCustomer" value="false" />
+                    <input type="hidden" name="_requiresExistingCustomer" value="on" />
                     <input
                       type="checkbox"
                       name="requiresExistingCustomer"
