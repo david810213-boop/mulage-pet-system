@@ -494,6 +494,7 @@
                   <form
                     th:action="@{/admin/grooming/update/{id}(id=${item.id})}"
                     method="post"
+                    data-batch-edit
                     style="
                       display: flex;
                       flex-direction: column;
@@ -817,5 +818,86 @@
         </div>
       </div>
     </div>
+    <!-- 改了好幾項時可以一次儲存，不用每存一項就整頁重新載入 -->
+    <div id="batchSaveBar" style="display:none; position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:50; background:#26332b; color:#fff; border-radius:999px; padding:10px 12px 10px 22px; align-items:center; gap:14px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,.2);">
+      <span id="batchSaveText"></span>
+      <button type="button" id="batchSaveBtn" style="background:#c6a063; color:#26332b; border:none; border-radius:999px; padding:8px 18px; font-size:14px; font-weight:700; cursor:pointer;">全部儲存</button>
+    </div>
+    <script>
+      (function () {
+        var forms = Array.prototype.slice.call(document.querySelectorAll("form[data-batch-edit]"));
+        if (!forms.length) return;
+        var bar = document.getElementById("batchSaveBar");
+        var text = document.getElementById("batchSaveText");
+        var btn = document.getElementById("batchSaveBtn");
+        var saving = false;
+
+        function snapshot(form) {
+          return new URLSearchParams(new FormData(form)).toString();
+        }
+        forms.forEach(function (f) { f.dataset.original = snapshot(f); });
+
+        function dirtyForms() {
+          return forms.filter(function (f) { return snapshot(f) !== f.dataset.original; });
+        }
+        function refresh() {
+          var dirty = dirtyForms();
+          forms.forEach(function (f) {
+            f.style.outline = dirty.indexOf(f) >= 0 ? "2px solid #c6a063" : "";
+            f.style.outlineOffset = "4px";
+          });
+          bar.style.display = dirty.length ? "flex" : "none";
+          text.textContent = "有 " + dirty.length + " 項修改還沒儲存";
+        }
+        forms.forEach(function (f) {
+          f.addEventListener("input", refresh);
+          f.addEventListener("change", refresh);
+        });
+
+        btn.addEventListener("click", async function () {
+          var dirty = dirtyForms();
+          if (!dirty.length || saving) return;
+          for (var i = 0; i < dirty.length; i++) {
+            if (!dirty[i].reportValidity()) return;
+          }
+          saving = true;
+          btn.disabled = true;
+          var failed = [];
+          for (var j = 0; j < dirty.length; j++) {
+            var f = dirty[j];
+            text.textContent = "儲存中 " + (j + 1) + " / " + dirty.length;
+            try {
+              var res = await fetch(f.action, { method: "POST", body: new URLSearchParams(new FormData(f)) });
+              // 後端成功時會重導回管理首頁；沒有重導代表驗證失敗、留在原頁顯示錯誤
+              if (res.ok && res.redirected) {
+                f.dataset.original = snapshot(f);
+              } else {
+                failed.push(f.querySelector("input[name=name]").value);
+              }
+            } catch (e) {
+              failed.push(f.querySelector("input[name=name]").value);
+            }
+          }
+          saving = false;
+          btn.disabled = false;
+          if (failed.length) {
+            refresh();
+            alert("以下項目沒有存成功，請檢查內容後再試一次：\n" + failed.join("\n"));
+            return;
+          }
+          window.location.reload();
+        });
+
+        window.addEventListener("beforeunload", function (e) {
+          if (!saving && dirtyForms().length) {
+            e.preventDefault();
+            e.returnValue = "";
+          }
+        });
+        forms.forEach(function (f) {
+          f.addEventListener("submit", function () { f.dataset.original = snapshot(f); });
+        });
+      })();
+    </script>
   </body>
 </html>
