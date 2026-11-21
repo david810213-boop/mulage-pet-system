@@ -25,6 +25,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -147,7 +149,7 @@ public class AdminMvcController {
             model.addAttribute("allUsers", userService.getAllUsers());
             model.addAttribute("allStaff", userService.getAllStaff());
             model.addAttribute("groomingItems", groomingService.getAllItems());
-            model.addAttribute("errorMsg", "服務項目修改資料格式錯誤！");
+            model.addAttribute("errorMsg", "修改失敗：" + describeErrors(bindingResult));
             return "admin/home"; // 留在原地
         }
 
@@ -227,7 +229,7 @@ public class AdminMvcController {
             model.addAttribute("allUsers", userService.getAllUsers());
             model.addAttribute("allStaff", userService.getAllStaff());
             model.addAttribute("groomingItems", groomingService.getAllItems());
-            model.addAttribute("errorMsg", "新增失敗：請檢查輸入欄位是否正確！");
+            model.addAttribute("errorMsg", "新增失敗：" + describeErrors(bindingResult));
             return "admin/home"; // 留在原地改考卷
         }
 
@@ -245,4 +247,26 @@ public class AdminMvcController {
         }
     }
 
+    private static final Map<String, String> GROOMING_FIELD_LABELS = Map.of(
+            "itemCode", "項目代碼",
+            "name", "項目名稱",
+            "description", "說明描述",
+            "price", "定價",
+            "points", "積分分類",
+            "performanceCategory", "績效分類",
+            "applicablePetType", "適用物種");
+
+    /** 把表單驗證錯誤整理成店家看得懂的一句話，例如「定價：價格必須大於 0」。 */
+    private static String describeErrors(BindingResult bindingResult) {
+        String detail = bindingResult.getFieldErrors().stream()
+                .map(e -> {
+                    String label = GROOMING_FIELD_LABELS.getOrDefault(e.getField(), e.getField());
+                    // 型別轉換失敗（例如定價填了文字）時預設訊息是英文例外，改成固定說法
+                    String msg = e.isBindingFailure() ? "格式不正確" : e.getDefaultMessage();
+                    return label + "：" + msg;
+                })
+                .distinct()
+                .collect(Collectors.joining("；"));
+        return detail.isEmpty() ? "請檢查輸入欄位是否正確" : detail;
+    }
 }
