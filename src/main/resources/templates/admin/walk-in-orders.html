@@ -394,8 +394,12 @@
         // 沒鎖定則先比體重級距，毛長已定義（短毛/長毛/中長毛）才再篩到唯一
         // 一項，毛長未定義維持顯示該體重級距全部項目，不誤擋。
         const isDog = petType === 'DOG';
-        const lockedItemId = isDog ? pet.lockedGroomingItemId : null;
-        const dogTier = isDog && !lockedItemId && typeof pet.weight === 'number'
+        // 鎖定的套餐已經下架（不在清單裡）時當作沒鎖定，否則選單會整個空掉
+        const lockedItemId = isDog && pet.lockedGroomingItemId
+          && items.some(function (i) { return i.id === pet.lockedGroomingItemId; })
+          ? pet.lockedGroomingItemId : null;
+        // 依體型的加購（tierAddon）鎖定套餐時也要依體重篩選，所以有體重就算出級距
+        const dogTier = isDog && typeof pet.weight === 'number' && pet.weight > 0
           ? computeDogWeightTier(pet.weight)
           : null;
         const dogCoatType = pet.coatType ? String(pet.coatType).toUpperCase() : null;
@@ -407,7 +411,7 @@
             return false;
           }
           if (isDog && item.dogWeightTier) {
-            if (lockedItemId) return item.id === lockedItemId;
+            if (lockedItemId && !item.tierAddon) return item.id === lockedItemId;
             if (dogTier && item.dogWeightTier !== dogTier) return false;
             if (dogTier && coatDefined && item.dogCoatLength) {
               return String(item.dogCoatLength).toUpperCase() === dogCoatType;
@@ -784,7 +788,7 @@
         }
         if (typeof pet.weight !== 'number') return null;
         const candidates = filterItemsForPet(GROOMING_ITEMS, pet)
-          .filter(function (i) { return i.dogWeightTier; });
+          .filter(function (i) { return i.dogWeightTier && !i.tierAddon; });
         const match = candidates[0];
         return match ? match.itemCode : null;
       }

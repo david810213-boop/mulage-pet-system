@@ -353,7 +353,8 @@ public class PaymentService {
     // ── 結帳金額計算（擇優規則見 DiscountCalculator）──────────────────────
 
     /** 計價用的項目：優先用到店開單的實際項目；沒有的話退回顧客線上勾選的項目。 */
-    private record PriceLine(double price, PerformanceCategory category, boolean memberDiscountEligible) {
+    private record PriceLine(double price, PerformanceCategory category, boolean tierAddon,
+                             boolean memberDiscountEligible) {
     }
 
     private List<PriceLine> priceLines(Appointment appointment) {
@@ -361,17 +362,21 @@ public class PaymentService {
         if (checkinItems.isEmpty()) {
             return appointment.getSelectedItems().stream()
                     .map(item -> new PriceLine(item.getPrice() != null ? item.getPrice() : 0,
-                            item.getPerformanceCategory(), item.isDiscountEligible()))
+                            item.getPerformanceCategory(), item.isTierAddon(), item.isDiscountEligible()))
                     .toList();
         }
         // 開單項目的會員折扣資格以服務項目目前的設定為準；零售商品、自訂項目（沒有對應服務項目）不打折，
         // 服務項目已被刪除時視為可打折
-        Map<Long, Boolean> eligibleByItemId = groomingItemRepository.findAllById(checkinItems.stream()
+        Map<Long, GroomingItem> sourceById = groomingItemRepository.findAllById(checkinItems.stream()
                         .map(AppointmentItem::getGroomingItemId).filter(Objects::nonNull).distinct().toList())
-                .stream().collect(Collectors.toMap(GroomingItem::getId, GroomingItem::isDiscountEligible));
+                .stream().collect(Collectors.toMap(GroomingItem::getId, gi -> gi));
         return checkinItems.stream()
-                .map(item -> new PriceLine(item.getPrice(), item.getPerformanceCategory(),
-                        item.getGroomingItemId() != null && eligibleByItemId.getOrDefault(item.getGroomingItemId(), true)))
+                .map(item -> {
+                    GroomingItem source = item.getGroomingItemId() != null ? sourceById.get(item.getGroomingItemId()) : null;
+                    return new PriceLine(item.getPrice(), item.getPerformanceCategory(),
+                            source != null && source.isTierAddon(),
+                            item.getGroomingItemId() != null && (source == null || source.isDiscountEligible()));
+                })
                 .toList();
     }
 
@@ -379,7 +384,7 @@ public class PaymentService {
     private int calculateWalletAmountPerItem(Appointment appointment, double memberDiscountRate) {
         EligibleOffers offers = discountCalculator.eligibleOffers(appointment);
         double total = priceLines(appointment).stream()
-                .mapToDouble(line -> offers.resolve(line.price(), line.category(),
+                .mapToDouble(line -> offers.resolve(line.price(), line.category(), line.tierAddon(),
                         line.memberDiscountEligible(), memberDiscountRate).price())
                 .sum();
         return (int) Math.round(total);
@@ -392,7 +397,7 @@ public class PaymentService {
             return appointment.getTotalAmount();
         }
         double total = priceLines(appointment).stream()
-                .mapToDouble(line -> offers.resolve(line.price(), line.category(), false, 1.0).price())
+                .mapToDouble(line -> offers.resolve(line.price(), line.category(), line.tierAddon(), false, 1.0).price())
                 .sum();
         return (int) Math.round(total);
     }

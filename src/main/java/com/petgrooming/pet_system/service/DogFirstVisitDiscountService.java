@@ -23,10 +23,9 @@ import java.util.Set;
  *
  * 跟貓咪 90 天回洗優惠是兩套獨立機制：
  *   - 觸發條件相反：回洗優惠看「有沒有回訪」，首次體驗看「是不是第一次」
- *   - 適用品項範圍：只套用在狗狗洗吹 package 項目（PerformanceCategory
- *     為 BATH_SMALL / BATH_LARGE，對應「小型犬洗吹」「大型犬洗吹」），
- *     不套用在耳道調理、接送、除廢毛等額外加購項目——跟貓咪回洗優惠
- *     只套用在洗澡項目、不套用在 AD/HC 等加購項目，是同樣的設計原則。
+ *   - 適用品項範圍：狗狗洗吹 package 項目（PerformanceCategory 為 BATH_SMALL / BATH_LARGE），
+ *     以及依體型的基礎／AD／HC 定制調理加購（店家確認，見 docs/adr/0011）；
+ *     不套用在耳道調理、接送、除廢毛等單項加購。
  *   - 一樣跟會員儲值折扣「只能擇一」，取對顧客較優惠的那個，不疊加。
  *
  * 資料來源涵蓋範圍：跟 CatRewashDiscountService 一致——預約（Appointment）
@@ -87,6 +86,11 @@ public class DogFirstVisitDiscountService implements SpecialDiscountPolicy {
     @Override
     public boolean appliesTo(PerformanceCategory category) {
         return isDogPackageCategory(category);
+    }
+
+    @Override
+    public boolean appliesTo(PerformanceCategory category, boolean tierAddon) {
+        return tierAddon || isDogPackageCategory(category);
     }
 
     @Override

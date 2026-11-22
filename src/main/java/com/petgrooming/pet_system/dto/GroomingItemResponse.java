@@ -29,6 +29,8 @@ public class GroomingItemResponse {
     private Boolean isPackage;
     // LIFF 預約頁要顯示「原價劃掉+折扣價」，需要知道這個項目是否參與會員儲值折扣。
     private boolean discountEligible;
+    // 依體型×毛長篩選的加購（見 GroomingItem.tierAddon）
+    private boolean tierAddon;
 
     // 靜態工廠：將 Entity 映射成 DTO
     public static GroomingItemResponse from(GroomingItem item) {
@@ -47,6 +49,7 @@ public class GroomingItemResponse {
         res.setDogWeightTier(item.getDogWeightTier() != null ? item.getDogWeightTier().name() : null);
         res.setDogCoatLength(item.getDogCoatLength() != null ? item.getDogCoatLength().name() : null);
         res.setDiscountEligible(item.isDiscountEligible());
+        res.setTierAddon(item.isTierAddon());
         return res;
     }
 }

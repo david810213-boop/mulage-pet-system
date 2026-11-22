@@ -43,7 +43,8 @@ public class GroomingMenuFilter {
     /**
      * 在 filterFor() 的基礎上，再依這隻寵物的體型進一步篩選（店家規定，網頁版與手機版一致）：
      * <ul>
-     *   <li>狗狗：已鎖定固定套餐只顯示該套餐；否則依體重級距（毛長已定義時再依毛長）篩選。
+     *   <li>狗狗：已鎖定固定套餐只顯示該套餐（鎖定的套餐已下架則當作沒鎖定）；否則依體重級距（毛長已定義時再依毛長）篩選。
+     *       依體型×毛長的加購（tierAddon）不管有沒有鎖定，都依體重級距與毛長篩選。
      *       還沒填體重時不顯示有體重級距的套餐，頁面須以 {@link #needsWeight} 提醒店員先填寫體重</li>
      *   <li>貓咪：只顯示符合毛髮分類的項目；品種不在對照表（沒有分類）時無從判斷，顯示全部</li>
      *   <li>與體型無關的項目（加購、指甲修剪等）一律顯示</li>
@@ -54,15 +55,16 @@ public class GroomingMenuFilter {
         var base = filterFor(items, isExisting, petType);
         if (pet == null) return base;
 
-        Long lockedItemId = pet.getLockedGroomingItemId();
         boolean isDog = "DOG".equalsIgnoreCase(petType);
         boolean isCat = "CAT".equalsIgnoreCase(petType);
+        // 鎖定的套餐已經下架（不在清單裡）時當作沒鎖定，否則選單會整個空掉
+        Long lockedItemId = pet.getLockedGroomingItemId() != null
+                && base.stream().anyMatch(i -> i.getId().equals(pet.getLockedGroomingItemId()))
+                ? pet.getLockedGroomingItemId() : null;
 
-        final boolean weightMissing = needsWeight(petType, pet);
-        final DogWeightTier dogTier =
-                isDog && lockedItemId == null && !weightMissing
-                        ? DogWeightTier.forWeight(pet.getWeight())
-                        : null;
+        final boolean hasWeight = pet.getWeight() != null && pet.getWeight() > 0;
+        // 加購也要依體重級距篩選，所以鎖定套餐的狗一樣要算出級距
+        final DogWeightTier dogTier = isDog && hasWeight ? DogWeightTier.forWeight(pet.getWeight()) : null;
         final CoatType petCoatType = pet.getCoatType();
         final boolean coatDefined = isDog
                 && (petCoatType == CoatType.SHORT
@@ -73,12 +75,13 @@ public class GroomingMenuFilter {
 
         return base.stream()
                 .filter(i -> {
-                    // 狗狗：已鎖定固定套餐的話，只顯示那個固定項目；沒鎖定則依體重級距＋毛長篩選
                     if (i.getDogWeightTier() != null) {
-                        if (lockedItemId != null) return i.getId().equals(lockedItemId);
-                        if (weightMissing) return false;
-                        if (dogTier != null && !i.getDogWeightTier().equals(dogTier.name())) return false;
-                        if (dogTier != null && coatDefined && i.getDogCoatLength() != null) {
+                        // 已鎖定固定套餐：套餐只顯示鎖定的那一項，加購照體型與毛長篩選
+                        if (lockedItemId != null && !i.isTierAddon()) return i.getId().equals(lockedItemId);
+                        // 還沒填體重：判斷不出級距，頁面另外提醒店員先填體重
+                        if (dogTier == null) return false;
+                        if (!i.getDogWeightTier().equals(dogTier.name())) return false;
+                        if (coatDefined && i.getDogCoatLength() != null) {
                             return i.getDogCoatLength().equals(petCoatType.name());
                         }
                         return true;
