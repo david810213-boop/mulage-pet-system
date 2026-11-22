@@ -19,18 +19,32 @@ public record EligibleOffers(List<SpecialDiscountPolicy> policies) {
 
     /** 這個分類的項目可套用的促銷；沒有則為空。 */
     public Optional<SpecialDiscountPolicy> offerFor(PerformanceCategory category) {
-        return policies.stream().filter(p -> p.appliesTo(category)).findFirst();
+        return offerFor(category, false);
+    }
+
+    /** 同上；tierAddon 表示這是依體型的加購（見 {@link SpecialDiscountPolicy#appliesTo(PerformanceCategory, boolean)}）。 */
+    public Optional<SpecialDiscountPolicy> offerFor(PerformanceCategory category, boolean tierAddon) {
+        return policies.stream().filter(p -> p.appliesTo(category, tierAddon)).findFirst();
     }
 
     /** 這個分類的項目是否符合某一種促銷（例如明細標示「符合首次體驗優惠」，狗貓不分）。 */
     public boolean applies(DiscountType type, PerformanceCategory category) {
-        return policies.stream().anyMatch(p -> p.type() == type && p.appliesTo(category));
+        return applies(type, category, false);
+    }
+
+    public boolean applies(DiscountType type, PerformanceCategory category, boolean tierAddon) {
+        return policies.stream().anyMatch(p -> p.type() == type && p.appliesTo(category, tierAddon));
     }
 
     /** 這個項目在促銷與會員折扣之間擇優。 */
     public DiscountResolution resolve(double price, PerformanceCategory category,
                                       boolean memberDiscountApplicable, double memberDiscountRate) {
-        return DiscountCalculator.resolve(price, offerFor(category).orElse(null),
+        return resolve(price, category, false, memberDiscountApplicable, memberDiscountRate);
+    }
+
+    public DiscountResolution resolve(double price, PerformanceCategory category, boolean tierAddon,
+                                      boolean memberDiscountApplicable, double memberDiscountRate) {
+        return DiscountCalculator.resolve(price, offerFor(category, tierAddon).orElse(null),
                 memberDiscountApplicable, memberDiscountRate);
     }
 }

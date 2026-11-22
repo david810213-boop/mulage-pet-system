@@ -55,6 +55,31 @@ class GroomingMenuFilterTest {
     }
 
     @Test
+    void tierAddonsFollowWeightAndCoatEvenWhenLocked() {
+        GroomingItemResponse adSmallShort = addon(8L, "SMALL", "SHORT");
+        GroomingItemResponse adSmallLong = addon(9L, "SMALL", "LONG");
+        GroomingItemResponse adMediumShort = addon(10L, "MEDIUM", "SHORT");
+        List<GroomingItemResponse> withAddons =
+                List.of(nails, dogSmall, dogMedium, adSmallShort, adSmallLong, adMediumShort);
+
+        PetResponse dog = dog(4.0, CoatType.SHORT);
+        assertThat(filter.filterForPetShape(withAddons, true, "DOG", dog))
+                .containsExactly(nails, dogSmall, adSmallShort);
+
+        dog.setLockedGroomingItemId(dogMedium.getId());
+        assertThat(filter.filterForPetShape(withAddons, true, "DOG", dog))
+                .containsExactly(nails, dogMedium, adSmallShort);
+    }
+
+    @Test
+    void lockOnRemovedPackageIsIgnored() {
+        PetResponse dog = dog(4.0, CoatType.SHORT);
+        dog.setLockedGroomingItemId(999L);
+
+        assertThat(filter.filterForPetShape(menu, true, "DOG", dog)).containsExactly(nails, dogSmall);
+    }
+
+    @Test
     void catSeesOnlyItsCoatCategory() {
         PetResponse cat = new PetResponse();
         cat.setCatCoatCategory(CatCoatCategory.LONG_HAIR);
@@ -81,6 +106,12 @@ class GroomingMenuFilterTest {
         dog.setWeight(weight);
         dog.setCoatType(coat);
         return dog;
+    }
+
+    private static GroomingItemResponse addon(Long id, String weightTier, String coat) {
+        GroomingItemResponse item = item(id, "DOG", weightTier, coat, null);
+        item.setTierAddon(true);
+        return item;
     }
 
     private static GroomingItemResponse item(Long id, String petType, String weightTier, String coat, String catCoat) {

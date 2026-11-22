@@ -91,6 +91,16 @@ class DiscountRulesTest {
                 .isCloseTo(1000, within(0.001));
     }
 
+    @Test
+    void dogFirstVisitAlsoAppliesToTierAddonsButNotSingleAddons() {
+        var offers = new EligibleOffers(List.of(dogFirstVisit));
+
+        assertThat(offers.offerFor(PerformanceCategory.OTHER, true)).contains(dogFirstVisit); // 基礎定制調理加購
+        assertThat(offers.offerFor(PerformanceCategory.HC, true)).contains(dogFirstVisit);
+        assertThat(offers.offerFor(PerformanceCategory.OTHER, false)).isEmpty(); // 單項加購（刷牙等）
+        assertThat(offers.resolve(500, PerformanceCategory.AD, true, false, 1.0).price()).isCloseTo(450, within(0.001));
+    }
+
     @ParameterizedTest(name = "單筆儲值 {0} → {1}")
     @CsvSource({
             "0, NONE", "4999, NONE",

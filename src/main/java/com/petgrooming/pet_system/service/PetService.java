@@ -231,6 +231,9 @@ public class PetService {
                 .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
         var item = groomingItemRepository.findById(groomingItemId)
                 .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到服務項目 #" + groomingItemId));
+        if (item.isTierAddon()) {
+            throw new PetException("加購項目不能鎖定為固定套餐，請選精緻洗");
+        }
         pet.setLockedGroomingItemId(groomingItemId);
         petRepository.save(pet);
         return PetResponse.from(pet, item);
