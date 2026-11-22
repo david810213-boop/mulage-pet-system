@@ -107,9 +107,15 @@ public class GroomingItem {
 
     // 狗狗套餐項目再依「毛長」細分：搭配 Pet.coatType（店家後台定義的毛長）自動篩選，
     // 只顯示符合這隻狗實際毛長的那一種，跟體重級距篩選疊加使用（兩個條件都要符合）。
-    // 沿用 CoatType（它還有 MEDIUM/UNDEFINED，但狗狗品項只會標記 SHORT 或 LONG），不另建功能重複的 enum。
+    // 沿用 CoatType（狗狗品項標記 SHORT／MEDIUM／LONG，UNDEFINED 不用在品項上），不另建功能重複的 enum。
     // null = 跟毛長無關的項目（貓咪項目、通用加購），不受這個欄位篩選影響。
     @Enumerated(EnumType.STRING)
     @Column(name = "dog_coat_length")
     private CoatType dogCoatLength;
+
+    // 依體型×毛長篩選的加購（基礎／中階 AD／高階 HC 定制調理），跟精緻洗搭配；
+    // 篩選方式跟精緻洗一樣，但不能拿來鎖定固定套餐，鎖定與假日規則也不擋它。見 docs/adr/0011
+    @Column(name = "tier_addon", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean tierAddon = false;
 }

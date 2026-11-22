@@ -10,6 +10,8 @@ import com.petgrooming.pet_system.model.PerformanceRecord;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.model.WalkInOrderItem;
+import com.petgrooming.pet_system.model.GroomingItem;
+import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PerformanceRecordRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
 import com.petgrooming.pet_system.repository.WalkInOrderRepository;
@@ -20,7 +22,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 現場單的結帳、匯款確認、退款與金額計算（折扣擇優規則見 DiscountCalculator），以及消費明細的折扣標示。
@@ -36,6 +42,7 @@ public class WalkInPaymentService {
     private final PerformanceRecordRepository performanceRecordRepository;
     private final RetailProductService retailProductService; // 結帳時扣零售商品庫存
     private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
+    private final GroomingItemRepository groomingItemRepository;
 
     // ── 結帳 ─────────────────────────────────────────────────────────────
     // 選現金/信用卡/LinePay：純標記已付款（金流在店家手上完成，系統只留紀錄）。
@@ -202,6 +209,7 @@ public class WalkInPaymentService {
     // 狗狗首次體驗優惠比照同樣模式，跟回洗優惠是互斥品種、不會同一個項目都符合。
     void populateDiscountInfo(WalkInOrderResponse res, WalkInOrder order) {
         EligibleOffers offers = discountCalculator.eligibleOffers(order);
+        Set<Long> tierAddonIds = tierAddonItemIds(order);
         boolean paidByWallet = order.isPaid()
                 && order.getPaymentMethod() == PaymentMethod.WALLET;
         double memberDiscountRate = paidByWallet
@@ -214,12 +222,13 @@ public class WalkInPaymentService {
             WalkInOrderItem entity = entities.get(i);
             WalkInOrderResponse.ItemLine line = lines.get(i);
             PerformanceCategory category = entity.getPerformanceCategory();
-            line.setRewashEligible(offers.applies(DiscountType.REWASH, category));
+            boolean tierAddon = tierAddonIds.contains(entity.getGroomingItemId());
+            line.setRewashEligible(offers.applies(DiscountType.REWASH, category, tierAddon));
             // 狗狗、貓咪首次體驗共用同一個欄位顯示（前端只在意「是不是首次體驗」）
-            line.setFirstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category));
-            line.setMultiCatEligible(offers.applies(DiscountType.MULTI_CAT, category));
+            line.setFirstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category, tierAddon));
+            line.setMultiCatEligible(offers.applies(DiscountType.MULTI_CAT, category, tierAddon));
             if (order.isPaid()) {
-                line.setAppliedDiscountType(offers.resolve(entity.getPrice(), category,
+                line.setAppliedDiscountType(offers.resolve(entity.getPrice(), category, tierAddon,
                         entity.isDiscountEligible() && paidByWallet, memberDiscountRate).type());
             }
         }
@@ -257,9 +266,10 @@ public class WalkInPaymentService {
      */
     private int calculateWalletAmountPerItem(WalkInOrder order, double discount) {
         EligibleOffers offers = discountCalculator.eligibleOffers(order);
+        Set<Long> tierAddonIds = tierAddonItemIds(order);
         double total = order.getItems().stream()
                 .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(),
-                        item.isDiscountEligible(), discount).price())
+                        tierAddonIds.contains(item.getGroomingItemId()), item.isDiscountEligible(), discount).price())
                 .sum();
         return (int) Math.round(total);
     }
@@ -270,9 +280,22 @@ public class WalkInPaymentService {
         if (offers.isEmpty()) {
             return order.getTotalAmount();
         }
+        Set<Long> tierAddonIds = tierAddonItemIds(order);
         double total = order.getItems().stream()
-                .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(), false, 1.0).price())
+                .mapToDouble(item -> offers.resolve(item.getPrice(), item.getPerformanceCategory(),
+                        tierAddonIds.contains(item.getGroomingItemId()), false, 1.0).price())
                 .sum();
         return (int) Math.round(total);
+    }
+
+    /** 這張單裡屬於「依體型加購」的服務項目 id（開單項目只存分類，分不出加購跟單項加購）。 */
+    private Set<Long> tierAddonItemIds(WalkInOrder order) {
+        List<Long> ids = order.getItems().stream()
+                .map(WalkInOrderItem::getGroomingItemId).filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Collections.emptySet(); // 零售商品的 groomingItemId 是 null，Set.of() 查 null 會丟例外
+        }
+        return groomingItemRepository.findAllById(ids).stream()
+                .filter(GroomingItem::isTierAddon).map(GroomingItem::getId).collect(Collectors.toSet());
     }
 }

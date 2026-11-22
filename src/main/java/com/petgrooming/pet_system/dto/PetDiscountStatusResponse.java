@@ -30,4 +30,5 @@ public class PetDiscountStatusResponse {
     private String specialDiscountLabel;    // "首次體驗優惠" / "回洗優惠" / null（都不符合）
     private Double specialDiscountRate;     // 0.9，都不符合則為 null
     private List<String> specialDiscountCategories; // 這個特殊優惠適用的積分分類名稱清單
+    private boolean specialDiscountTierAddons;      // 這個特殊優惠也適用依體型的加購（tierAddon 項目）
 }
