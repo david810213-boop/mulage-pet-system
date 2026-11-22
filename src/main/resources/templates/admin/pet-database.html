@@ -86,6 +86,7 @@
           pet.coatType === "LONG" ||
           pet.coatType === "MEDIUM";
         return GROOMING_ITEMS.filter((i) => {
+          if (i.tierAddon) return false; // 加購不能鎖定
           if (i.dogWeightTier !== tier) return false;
           if (coatDefined && i.dogCoatLength) return i.dogCoatLength === pet.coatType;
           return true;

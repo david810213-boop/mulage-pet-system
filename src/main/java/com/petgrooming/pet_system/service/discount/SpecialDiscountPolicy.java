@@ -22,6 +22,14 @@ public interface SpecialDiscountPolicy {
     /** 這個積分分類的項目是否適用這個促銷。 */
     boolean appliesTo(PerformanceCategory category);
 
+    /**
+     * 這個項目是否適用這個促銷。tierAddon：依體型的加購（基礎／AD／HC 定制調理），
+     * 分類分不出它跟單項加購（同樣是 OTHER）的差別，所以另外傳。
+     */
+    default boolean appliesTo(PerformanceCategory category, boolean tierAddon) {
+        return appliesTo(category);
+    }
+
     /** 這筆預約結帳時是否有資格。 */
     boolean isEligible(Appointment appointment);
 

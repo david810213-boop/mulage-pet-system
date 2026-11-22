@@ -54,11 +54,11 @@ public class PetDiscountStatusService {
         double memberDiscountRate = walletService.getWallet(owner.getUsername()).getDiscount();
         SpecialOffer offer = specialOffer(isCat, isDog, firstVisitEligible, rewashEligible);
         return new PetDiscountStatusResponse(petType, firstVisitEligible, rewashEligible, lastBathDaysAgo,
-                memberDiscountRate, offer.label(), offer.rate(), offer.categories());
+                memberDiscountRate, offer.label(), offer.rate(), offer.categories(), offer.tierAddons());
     }
 
-    private record SpecialOffer(String label, Double rate, List<String> categories) {
-        static final SpecialOffer NONE = new SpecialOffer(null, null, List.of());
+    private record SpecialOffer(String label, Double rate, List<String> categories, boolean tierAddons) {
+        static final SpecialOffer NONE = new SpecialOffer(null, null, List.of(), false);
     }
 
     /**
@@ -68,15 +68,15 @@ public class PetDiscountStatusService {
     private static SpecialOffer specialOffer(boolean isCat, boolean isDog, boolean firstVisitEligible, boolean rewashEligible) {
         if (isCat && firstVisitEligible) {
             return new SpecialOffer("首次體驗優惠", CatFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE,
-                    List.of("BATH_CAT_S", "BATH_CAT_L"));
+                    List.of("BATH_CAT_S", "BATH_CAT_L"), false);
         }
         if (isDog && firstVisitEligible) {
             return new SpecialOffer("首次體驗優惠", DogFirstVisitDiscountService.FIRST_VISIT_DISCOUNT_RATE,
-                    List.of("BATH_SMALL", "BATH_LARGE"));
+                    List.of("BATH_SMALL", "BATH_LARGE"), true);
         }
         if (isCat && rewashEligible) {
             return new SpecialOffer("定期養護禮遇", CatRewashDiscountService.REWASH_DISCOUNT_RATE,
-                    List.of("BATH_CAT_S", "BATH_CAT_L"));
+                    List.of("BATH_CAT_S", "BATH_CAT_L"), false);
         }
         return SpecialOffer.NONE;
     }

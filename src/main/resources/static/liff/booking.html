@@ -780,8 +780,9 @@
 
         const specialApplicable =
           status.specialDiscountRate &&
-          status.specialDiscountCategories &&
-          status.specialDiscountCategories.indexOf(item.performanceCategory) !== -1;
+          ((status.specialDiscountCategories &&
+            status.specialDiscountCategories.indexOf(item.performanceCategory) !== -1) ||
+            (status.specialDiscountTierAddons && item.tierAddon));
         const memberApplicable =
           item.discountEligible &&
           typeof status.memberDiscountRate === "number" &&
@@ -813,7 +814,7 @@
              </div>`
           : `<div class="item-price">$${item.price}</div>`;
         return `
-      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-dog-coat-length="${item.dogCoatLength || ""}" data-is-package="${item.isPackage ? "true" : "false"}">
+      <div class="item-row" data-item-id="${item.id}" data-requires-existing="${item.requiresExistingCustomer ? "true" : "false"}" data-applicable-pet-type="${item.applicablePetType || ""}" data-cat-coat-category="${item.catCoatCategory || ""}" data-dog-weight-tier="${item.dogWeightTier || ""}" data-dog-coat-length="${item.dogCoatLength || ""}" data-is-package="${item.isPackage ? "true" : "false"}" data-tier-addon="${item.tierAddon ? "true" : "false"}">
         <label class="item-check">
           <input type="checkbox" value="${item.itemCode}" data-price="${item.price}" />
           <div>
@@ -946,12 +947,19 @@
         // 還沒鎖定：依這隻狗目前的體重篩出對應級距，只顯示那 6 項（短毛/長毛×3等級）。
         // 不受影響：沒有標 dogWeightTier 的項目（通用加購），維持原本篩選邏輯不變。
         const isDog = petType === "DOG";
+        // 鎖定的套餐已經下架（不在清單裡）時當作沒鎖定，否則顧客什麼都選不到
         const dogLockedItemId =
-          isDog && pet ? pet.lockedGroomingItemId || null : null;
+          isDog && pet && pet.lockedGroomingItemId &&
+          groomingItems.some((it) => String(it.id) === String(pet.lockedGroomingItemId))
+            ? pet.lockedGroomingItemId
+            : null;
         const dogWeightTier =
           isDog && pet && !dogLockedItemId
             ? computeDogWeightTier(pet.weight)
             : null;
+        // 依體型的加購（基礎／中階 AD／高階 HC 定制調理）鎖定套餐時也要依體重篩選
+        const dogAddonTier =
+          isDog && pet && pet.weight > 0 ? computeDogWeightTier(pet.weight) : null;
         // 狗狗菜單再依「毛長」細分——店家後台如果已經
         // 幫這隻狗定義過毛長，除了體重級距要符合，毛長也要符合。
         // 中長毛現在也有自己對應的套餐了（DOG049~072），一併算「已定義」。
@@ -1011,6 +1019,7 @@
             const itemDogTier = row.dataset.dogWeightTier || "";
             const itemDogCoat = row.dataset.dogCoatLength || "";
             const isPackage = row.dataset.isPackage === "true";
+            const isTierAddon = row.dataset.tierAddon === "true";
             const itemId = row.dataset.itemId;
             const cb = row.querySelector("input[type=checkbox]");
             const blockedByExisting = requiresExisting && !isExisting;
@@ -1021,7 +1030,8 @@
               catCoatCategory &&
               itemCoatCategory !== catCoatCategory;
             // 假日只能選套餐：非套餐項目（沒有副組成）在假日整列隱藏。
-            const blockedByHoliday = isHoliday && !isPackage;
+            // 依體型的加購（AD／HC 等）店家規定假日也能加購
+            const blockedByHoliday = isHoliday && !isPackage && !isTierAddon;
             // 店家反饋鎖定固定套餐後，畫面應該只顯示
             // 鎖定的那一項，連通用加購項目（指甲修剪等，沒有標體重級距）也要
             // 一併隱藏——這是對 2026-08-24 原始設計的調整：原本「不受影響：
@@ -1029,8 +1039,16 @@
             // 套餐時，除了鎖定的那一項，其餘全部隱藏，不分有沒有標體重級距」。
             // 還沒鎖定的狗（依體重篩選中）維持原樣，加購項目不受影響。
             let blockedByDogLock = false;
-            if (dogLockedItemId) {
+            if (dogLockedItemId && !isTierAddon) {
               blockedByDogLock = String(itemId) !== String(dogLockedItemId);
+            }
+            // 依體型的加購：不管有沒有鎖定，都依體重級距與毛長篩選；沒有體重就不顯示
+            let blockedByAddonShape = false;
+            if (isTierAddon) {
+              blockedByAddonShape =
+                !dogAddonTier ||
+                itemDogTier !== dogAddonTier ||
+                (coatDefined && itemDogCoat && itemDogCoat !== petCoatType);
             }
             // 只有「有標體重級距」的項目（DOG 主力套餐）才受依體重篩選規則影響，
             // 通用加購項目（itemDogTier 是空字串）在「還沒鎖定」的狀態下不受影響。
@@ -1058,6 +1076,7 @@
               blockedByDogTier ||
               blockedByDogCoat ||
               blockedByDogLock ||
+              blockedByAddonShape ||
               blockedByHoliday
             ) {
               row.style.display = "none";

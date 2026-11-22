@@ -102,6 +102,11 @@ public class AppointmentDetailService {
                 discountCalculator.eligibleOffers(appointment));
     }
 
+    /** 明細項目的體重級距只給「可以鎖定成固定套餐」的項目；依體型的加購不能鎖定，不標。 */
+    private static String lockableTier(GroomingItem item) {
+        return item.getDogWeightTier() != null && !item.isTierAddon() ? item.getDogWeightTier().name() : null;
+    }
+
     /** 有到店開單項目時以開單項目為準（含經手人與加購商品），否則列出預約時選的項目。 */
     private List<AppointmentDetailResponse.DetailItem> detailItems(Appointment appointment, DiscountContext discounts) {
         List<AppointmentItem> checkinItems = appointmentItemRepository.findByAppointmentId(appointment.getId());
@@ -109,10 +114,10 @@ public class AppointmentDetailService {
             return appointment.getSelectedItems().stream()
                     .map(item -> withDiscounts(AppointmentDetailResponse.DetailItem.builder()
                                     .groomingItemId(item.getId())
-                                    .dogWeightTier(item.getDogWeightTier() != null ? item.getDogWeightTier().name() : null)
+                                    .dogWeightTier(lockableTier(item))
                                     .name(item.getName())
                                     .price((int) Math.round(item.getPrice())),
-                            item.getPerformanceCategory(), item.isDiscountEligible(), discounts))
+                            item.getPerformanceCategory(), item.isTierAddon(), item.isDiscountEligible(), discounts))
                     .toList();
         }
         Map<Long, GroomingItem> groomingItems = groomingItemRepository.findAllById(checkinItems.stream()
@@ -124,13 +129,13 @@ public class AppointmentDetailService {
                     return withDiscounts(AppointmentDetailResponse.DetailItem.builder()
                                     .itemId(ci.getId())
                                     .groomingItemId(ci.getGroomingItemId())
-                                    .dogWeightTier(source != null && source.getDogWeightTier() != null
-                                            ? source.getDogWeightTier().name() : null)
+                                    .dogWeightTier(source != null ? lockableTier(source) : null)
                                     .name(ci.getItemName())
                                     .price(ci.getPrice())
                                     .operatorName(ci.getOperatorStaff() != null ? ci.getOperatorStaff().getName() : null)
                                     .retailItem(ci.getRetailProductId() != null),
-                            ci.getPerformanceCategory(), memberDiscountEligible(ci, source), discounts);
+                            ci.getPerformanceCategory(), source != null && source.isTierAddon(),
+                            memberDiscountEligible(ci, source), discounts);
                 })
                 .toList();
     }
@@ -148,16 +153,17 @@ public class AppointmentDetailService {
      * 用跟結帳相同的擇優規則反推標籤；未結帳（尚未決定付款方式）則不填。
      */
     private AppointmentDetailResponse.DetailItem withDiscounts(AppointmentDetailResponse.DetailItem.DetailItemBuilder item,
-                                                                PerformanceCategory category, boolean memberEligible,
+                                                                PerformanceCategory category, boolean tierAddon,
+                                                                boolean memberEligible,
                                                                 DiscountContext discounts) {
         EligibleOffers offers = discounts.offers();
         return item
                 .discountEligible(memberEligible)
-                .rewashEligible(offers.applies(DiscountType.REWASH, category))
-                .firstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category))
-                .multiCatEligible(offers.applies(DiscountType.MULTI_CAT, category))
+                .rewashEligible(offers.applies(DiscountType.REWASH, category, tierAddon))
+                .firstVisitEligible(offers.applies(DiscountType.FIRST_VISIT, category, tierAddon))
+                .multiCatEligible(offers.applies(DiscountType.MULTI_CAT, category, tierAddon))
                 .appliedDiscountType(discounts.paid()
-                        ? offers.resolve(100.0, category, memberEligible && discounts.paidByWallet(),
+                        ? offers.resolve(100.0, category, tierAddon, memberEligible && discounts.paidByWallet(),
                                 discounts.memberRate()).type()
                         : null)
                 .build();

@@ -211,7 +211,7 @@ public class WalkInOrderMvcController {
             // 都從這份清單衍生，不要各自分開查——兩邊查到不同的清單時，這張單已選的項目會反查不到自己的體重級距。
             var allGroomingItems = groomingService.getAllItems();
             Map<Long, String> tierByItemId = allGroomingItems.stream()
-                    .filter(i -> i.getDogWeightTier() != null)
+                    .filter(i -> i.getDogWeightTier() != null && !i.isTierAddon())
                     .collect(Collectors.toMap(
                             GroomingItemResponse::getId,
                             GroomingItemResponse::getDogWeightTier));
