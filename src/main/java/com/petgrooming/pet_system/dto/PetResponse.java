@@ -50,6 +50,22 @@ public class PetResponse {
     private Long lockedGroomingItemId;
     private String lockedItemName;
     private Double lockedItemPrice;
+    // 固定組合（客製化鎖定）的全部項目與鎖定時的固定價；lockedItemName／lockedItemPrice
+    // 是整組的名稱串接與總價，舊畫面直接沿用就能顯示整組
+    private List<LockedItemView> lockedItems = new ArrayList<>();
+
+    public record LockedItemView(Long groomingItemId, String itemCode, String name, int price) {
+    }
+
+    /** 套用固定組合：整組名稱用「＋」串起來、價格加總，空清單代表沒有鎖定。 */
+    public void applyLockedCombo(List<LockedItemView> combo) {
+        this.lockedItems = new ArrayList<>(combo);
+        if (combo.isEmpty()) {
+            return;
+        }
+        this.lockedItemName = String.join("＋", combo.stream().map(LockedItemView::name).toList());
+        this.lockedItemPrice = (double) combo.stream().mapToInt(LockedItemView::price).sum();
+    }
 
     // 定型化契約蒐集的寵物資料（LIFF 編輯毛孩時要帶回這些欄位）
     private String gender;

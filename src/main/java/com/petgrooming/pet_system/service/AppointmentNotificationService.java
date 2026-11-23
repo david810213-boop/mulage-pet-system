@@ -80,6 +80,9 @@ public class AppointmentNotificationService {
         List<User> staffAndAdmin = new ArrayList<>(userRepository.findByRole(UserRole.STAFF));
         staffAndAdmin.addAll(userRepository.findByRole(UserRole.ADMIN));
         for (User u : staffAndAdmin) {
+            if (!u.isActiveAccount() || u.isPartTime()) {
+                continue;
+            }
             if (u.getLineUserId() != null && !u.getLineUserId().isBlank()) {
                 lineMessagingService.pushText(u.getLineUserId(), text);
             }

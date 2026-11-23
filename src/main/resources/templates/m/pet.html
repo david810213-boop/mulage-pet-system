@@ -42,7 +42,7 @@
   <div class="lock-box" th:if="${pet.lockedGroomingItemId != null}" id="lockBox" th:attr="data-pet-id=${pet.id}">
     <svg class="i"><use href="#i-lock"/></svg>
     <div class="t">
-      <small>固定套餐</small>
+      <small>固定組合</small>
       <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
     </div>
     <button type="button" id="unlockBtn">解鎖</button>

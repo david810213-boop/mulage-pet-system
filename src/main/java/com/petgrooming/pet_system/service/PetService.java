@@ -10,12 +10,10 @@ import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PetException;
 import com.petgrooming.pet_system.model.CatBreedCoatMapping;
-import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.PetGroomingNote;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.CatBreedCoatMappingRepository;
-import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PetGroomingNoteRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
 import com.petgrooming.pet_system.repository.UserRepository;
@@ -42,7 +40,7 @@ public class PetService {
     private final PetGroomingNoteRepository petGroomingNoteRepository;
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final CatBreedCoatMappingRepository catBreedCoatMappingRepository; // 菜單簡化
-    private final GroomingItemRepository groomingItemRepository; // 狗狗鎖定套餐查詢
+    private final PetComboLockService petComboLockService; // 固定組合（客製化鎖定）
     private final GroomingNotePhotoService groomingNotePhotoService; // 美容紀錄照片
 
     // ── 1. 新增寵物 ───────────────────────────────────────────────────────
@@ -178,22 +176,17 @@ public class PetService {
         User owner = userRepository.findByUsername(username)
                 .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到該使用者：" + username));
 
-        return petRepository.findByOwnerUsername(username)
-                .stream()
+        List<Pet> pets = petRepository.findByOwnerUsername(username).stream()
                 .filter(pet -> !pet.isDeleted()) // 軟刪除的寵物不出現在清單裡
-                .map(pet -> {
-                    // 已鎖定固定套餐的狗，順便查出項目名稱/價格一起帶回去，
-                    // 前端才不用為了顯示鎖定資訊再多打一次 API。
-                    GroomingItem lockedItem = pet.getLockedGroomingItemId() != null
-                            ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
-                            : null;
-                    PetResponse res = PetResponse.from(pet, lockedItem);
-                    // 帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
-                    res.setIsExistingCustomer(
-                            petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pet.getName(), null));
-                    return res;
-                })
                 .toList();
+        // 固定組合一起帶回去，前端不用為了顯示鎖定資訊再多打一次 API
+        List<PetResponse> responses = petComboLockService.toResponses(pets);
+        for (int i = 0; i < pets.size(); i++) {
+            // 帶入「是不是既有客戶」，供預約表單過濾「僅限既有客戶」項目用
+            responses.get(i).setIsExistingCustomer(
+                    petConsumptionHistoryService.hasPriorPaidService(owner.getId(), pets.get(i).getName(), null));
+        }
+        return responses;
     }
 
     // ── 3. 店家定義寵物毛長────────────────────────────────────────
@@ -212,14 +205,7 @@ public class PetService {
     // ── 寵物信息管理頁面 ──────────────────────────
     // 後台集中管理所有寵物（跨會員）與固定套餐鎖定狀態，不用先找到會員、點進去才看得到。
     public List<PetResponse> listAllPets() {
-        return petRepository.findByIsDeletedFalseOrderByNameAsc().stream()
-                .map(pet -> {
-                    var lockedItem = pet.getLockedGroomingItemId() != null
-                            ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
-                            : null;
-                    return PetResponse.from(pet, lockedItem);
-                })
-                .toList();
+        return petComboLockService.toResponses(petRepository.findByIsDeletedFalseOrderByNameAsc());
     }
 
     // ── 3之2. 狗狗定價流程簡化：鎖定/解鎖固定套餐（新增）───────────────────
@@ -227,27 +213,14 @@ public class PetService {
     // 這個項目「鎖」在寵物資料上，之後不用再重複選單。
     @Transactional
     public PetResponse lockGroomingItem(Long petId, Long groomingItemId) {
-        Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
-        var item = groomingItemRepository.findById(groomingItemId)
-                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到服務項目 #" + groomingItemId));
-        if (item.isTierAddon()) {
-            throw new PetException("加購項目不能鎖定為固定套餐，請選精緻洗");
-        }
-        pet.setLockedGroomingItemId(groomingItemId);
-        petRepository.save(pet);
-        return PetResponse.from(pet, item);
+        return petComboLockService.lockSingle(petId, groomingItemId);
     }
 
     // 用途：狗狗生病消瘦、換季毛況差很多、或當初選錯了，店員手動解鎖，
     // 恢復成「依體重自動篩選」的狀態。
     @Transactional
     public PetResponse unlockGroomingItem(Long petId) {
-        Pet pet = petRepository.findById(petId)
-                .orElseThrow(() -> new PetException(ErrorCode.NOT_FOUND, "找不到寵物 #" + petId));
-        pet.setLockedGroomingItemId(null);
-        petRepository.save(pet);
-        return PetResponse.from(pet);
+        return petComboLockService.unlock(petId);
     }
 
     // ── 4. 更新寵物體重（新增）──────────────────────────────────────────
@@ -262,10 +235,7 @@ public class PetService {
         // 邏輯）也要跟著重新算一次，維持資料一致。
         pet.setSizeCategory(PetSizeCategory.determine(pet.getPetType(), weight));
         petRepository.save(pet);
-        var lockedItem = pet.getLockedGroomingItemId() != null
-                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
-                : null;
-        return PetResponse.from(pet, lockedItem);
+        return petComboLockService.toResponse(pet);
     }
 
 

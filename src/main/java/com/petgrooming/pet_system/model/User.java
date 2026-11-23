@@ -61,7 +61,13 @@ public class User {
 
     @Builder.Default
     @Column(name = "is_active")
-    private Boolean isActive = true;    // 帳號是否啟用（預留停用功能）
+    private Boolean isActive = true;    // 停用的員工不能登入、不出現在經手人選單，積分紀錄保留
+
+    // 代班美容師：只幫忙美容、不用系統，由正職開單時選為經手人記積分。
+    // 帳號密碼是系統產生的佔位值，不能登入；姓名後面帶「（代班）」，所有報表直接看得出來。
+    @Builder.Default
+    @Column(name = "is_part_time", nullable = false, columnDefinition = "boolean default false")
+    private boolean partTime = false;
 
     // ── 登入暴力破解防護 ─────────────────────────
     // 只用在帳密登入（LoginController.login），LINE 顧客端用 idToken 驗證，
@@ -133,5 +139,7 @@ public class User {
     public boolean isStaff()         { return role == UserRole.STAFF; }
     public boolean isCustomer()      { return role == UserRole.CUSTOMER; }
     public boolean isStaffOrAdmin()  { return isStaff() || isAdmin(); }
+    /** 舊資料的 is_active 可能是 null，視為啟用。 */
+    public boolean isActiveAccount() { return !Boolean.FALSE.equals(isActive); }
 
 }

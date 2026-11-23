@@ -2,11 +2,14 @@ package com.petgrooming.pet_system.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.petgrooming.pet_system.annotation.RequireRole;
+import com.petgrooming.pet_system.dto.LockComboRequest;
 import com.petgrooming.pet_system.dto.LockGroomingItemRequest;
+import com.petgrooming.pet_system.exception.PetException;
 import com.petgrooming.pet_system.dto.PetResponse;
 import com.petgrooming.pet_system.dto.SetCoatTypeRequest;
 import com.petgrooming.pet_system.dto.UpdatePetWeightRequest;
 import com.petgrooming.pet_system.enums.UserRole;
+import com.petgrooming.pet_system.service.PetComboLockService;
 import com.petgrooming.pet_system.service.PetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminPetController {
 
     private final PetService petService;
+    private final PetComboLockService petComboLockService;
 
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PutMapping("/{petId}/coat-type")
@@ -42,6 +46,19 @@ public class AdminPetController {
     public ResponseEntity<?> lockGroomingItem(@PathVariable Long petId,
                                                @Valid @RequestBody LockGroomingItemRequest body) {
         return ResponseEntity.ok(petService.lockGroomingItem(petId, body.groomingItemId()));
+    }
+
+    /** 結帳核對時，把這張單的服務項目（照這張單的價格）鎖定成固定組合。 */
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PutMapping("/{petId}/locked-combo")
+    public ResponseEntity<PetResponse> lockCombo(@PathVariable Long petId, @RequestBody LockComboRequest body) {
+        if (body.walkInOrderId() != null) {
+            return ResponseEntity.ok(petComboLockService.lockFromWalkInOrder(petId, body.walkInOrderId()));
+        }
+        if (body.appointmentId() != null) {
+            return ResponseEntity.ok(petComboLockService.lockFromAppointment(petId, body.appointmentId()));
+        }
+        throw new PetException("請提供現場單或預約編號");
     }
 
     /** 狗狗生病消瘦、換季毛況差很多、或當初選錯了，店員手動解鎖，恢復依體重自動篩選。 */

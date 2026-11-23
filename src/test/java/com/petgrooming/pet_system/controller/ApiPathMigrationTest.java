@@ -20,6 +20,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
+import java.util.List;
 
 import static com.petgrooming.pet_system.support.TestData.bookingRequest;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -134,7 +135,9 @@ class ApiPathMigrationTest extends IntegrationTestBase {
         String staff = staffToken();
         String items = body(get("/api/grooming-items").param("includeNonBookable", "true")
                 .header("Authorization", staff));
-        Number itemId = JsonPath.read(items, "$[0].id");
+        // 固定組合一定要有一項精緻洗（有體重級距、不是加購）
+        List<Number> packageIds = JsonPath.read(items, "$[?(@.dogWeightTier != null && @.tierAddon == false)].id");
+        Number itemId = packageIds.get(0);
 
         mvc.perform(put("/api/admin/pets/{id}/locked-item", dog.getId()).header("Authorization", staff)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"groomingItemId\":" + itemId + "}"))

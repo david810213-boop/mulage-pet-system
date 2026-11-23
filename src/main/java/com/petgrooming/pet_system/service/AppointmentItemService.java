@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 預約的訂單項目（到店開單後的服務項目、自訂項目、零售商品加購）：結帳前編輯、經手人與積分。
@@ -36,6 +37,7 @@ public class AppointmentItemService {
     private final PerformanceService performanceService;
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final RetailProductService retailProductService; // 結帳頁加購零售商品
+    private final PetComboLockService petComboLockService; // 固定組合：照鎖定時的固定價
 
     // ── 預約結帳頁加購零售商品 ────────────────────────────
     // 結帳前都可以加購（不受核對/checkinOrderConfirmed 限制，零售商品不是美容服務，
@@ -122,10 +124,13 @@ public class AppointmentItemService {
         // 後面也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
         var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
         boolean hasCustomPrice = customPrice != null && customPrice >= 0;
-        String mainItemName = (itemComponents.isEmpty() ? gi.getName()
-                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）")
-                + (hasCustomPrice ? "（自訂價格）" : "");
-        int actualPrice = hasCustomPrice ? customPrice : (int) Math.round(gi.getPrice());
+        Map<Long, Integer> locked = hasCustomPrice ? Map.of() : petComboLockService.lockedPrices(
+                petComboLockService.findPet(appointment.getUser(), appointment.getPetName()).orElse(null));
+        String baseName = itemComponents.isEmpty() ? gi.getName()
+                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+        String mainItemName = hasCustomPrice ? baseName + "（自訂價格）"
+                : PetComboLockService.labelIfLocked(locked, gi, baseName);
+        int actualPrice = hasCustomPrice ? customPrice : PetComboLockService.priceFor(locked, gi);
 
         AppointmentItem item = AppointmentItem
                 .builder()
