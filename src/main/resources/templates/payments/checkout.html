@@ -13,8 +13,8 @@
         <div class="card" th:if="${pet != null and pet.lockedGroomingItemId != null}"
              style="margin-bottom: 1rem; background:#fff8e6; border:1px solid #e6c366;">
           <p style="margin: 0; font-size: 13px;">
-            🔒 這隻狗已經有固定套餐：<strong th:text="${pet.lockedItemName}"></strong>
-            （$<span th:text="${pet.lockedItemPrice}"></span>），下方新增服務項目時只會顯示這一項。
+            🔒 這隻狗已經有固定組合：<strong th:text="${pet.lockedItemName}"></strong>
+            （共 $<span th:text="${pet.lockedItemPrice}"></span>，固定價），預約與開單時整組自動帶入；精緻洗只會顯示組合裡那一項，加購可以另外加。
           </p>
           <button type="button" th:onclick="'unlockPet(' + ${pet.id} + ')'" class="btn btn-outline" style="padding:4px 10px; font-size:12px; margin-top: 8px;">
             🔓 解鎖，重新報價
@@ -26,8 +26,8 @@
         <div class="card" th:if="${pet != null and pet.lockedGroomingItemId == null and pet.petType.name() == 'DOG'}"
              style="margin-bottom: 1rem;">
           <p style="margin: 0 0 8px; font-size: 13px; color: var(--brown-light);">
-            如果這隻狗已經定型（以後體型不會再變），可以把目前選定的洗澡套餐鎖定成固定套餐，
-            以後不用再重新選單。幼犬（還會長大）請不要鎖定。
+            如果這隻狗已經定型（以後體型不會再變），可以把這張單的服務項目（精緻洗＋加購）照這次的價格鎖定成固定組合，
+            之後預約、開單整組自動帶入，價格固定不受調價影響。幼犬（還會長大）請不要鎖定。
           </p>
           <div id="lockButtonArea"></div>
         </div>
@@ -223,6 +223,7 @@
     <script th:inline="javascript">
       const PET = /*[[${pet}]]*/ null;
       const DETAIL_ITEMS = /*[[${detailItems}]]*/ [];
+      const APPOINTMENT_ID = /*[[${appointmentId}]]*/ null;
 
       function findLockableItem() {
         if (!PET || PET.lockedGroomingItemId || !DETAIL_ITEMS) return null;
@@ -247,24 +248,28 @@
         btn.type = 'button';
         btn.className = 'btn btn-primary';
         btn.style.cssText = 'padding:6px 14px; font-size:13px;';
-        btn.textContent = '🔒 鎖定「' + lockable.name + '」為固定套餐';
-        btn.onclick = function () { lockPet(lockable.groomingItemId); };
+        btn.textContent = '🔒 鎖定本次服務項目為固定組合（含「' + lockable.name + '」）';
+        btn.onclick = function () { lockPet(); };
         area.appendChild(btn);
       }
 
-      async function lockPet(groomingItemId) {
+      async function lockPet() {
         if (!PET) return;
+        if (!confirm('鎖定後，這隻狗之後預約、開單都會整組帶入這張單的服務項目，價格固定為這次的價格，確定嗎？')) return;
         try {
-          const res = await fetch('/api/admin/pets/' + PET.id + '/locked-item', {
+          const res = await fetch('/api/admin/pets/' + PET.id + '/locked-combo', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ groomingItemId: groomingItemId }),
+            body: JSON.stringify({ appointmentId: APPOINTMENT_ID }),
           });
           if (!res.ok) {
-            alert('鎖定失敗，請重試');
+            const text = await res.text();
+            let msg = '鎖定失敗，請重試';
+            try { msg = JSON.parse(text).message || msg; } catch (e) { /* 純文字錯誤 */ }
+            alert(msg);
             return;
           }
-          alert('已鎖定！下次這隻狗的訂單會直接帶出這個套餐');
+          alert('已鎖定！下次這隻狗的訂單會整組帶入固定組合');
           window.location.reload();
         } catch (e) {
           alert('網路錯誤，請重試');
@@ -272,7 +277,7 @@
       }
 
       async function unlockPet(petId) {
-        if (!confirm('確定要解鎖嗎？解鎖後下次開單會恢復成依體重重新選套餐。')) return;
+        if (!confirm('確定要解鎖嗎？解鎖後固定組合會清除，下次開單會恢復成依體重重新選套餐。')) return;
         try {
           const res = await fetch('/api/admin/pets/' + petId + '/locked-item', { method: 'DELETE' });
           if (!res.ok) {

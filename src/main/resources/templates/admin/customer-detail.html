@@ -768,11 +768,11 @@
                       font-size: 12.5px;
                     "
                   >
-                    🔒 已鎖定固定套餐：<strong
+                    🔒 已鎖定固定組合：<strong
                       th:text="${p.lockedItemName}"
                     ></strong>
                     （$<span th:text="${p.lockedItemPrice}"></span
-                    >），預約/現場開單時只會帶出這一項
+                    >，固定價），預約/現場開單時整組帶入
                     <button
                       type="button"
                       th:onclick="'unlockPetAdmin(' + ${p.id} + ')'"

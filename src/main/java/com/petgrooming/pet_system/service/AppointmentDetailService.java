@@ -46,6 +46,7 @@ public class AppointmentDetailService {
     private final DiscountCalculator discountCalculator;
     private final PetGroomingNoteRepository petGroomingNoteRepository;
     private final GroomingNotePhotoService groomingNotePhotoService;
+    private final PetComboLockService petComboLockService; // 固定組合：照鎖定時的固定價
 
     /** 預約明細（顧客 LIFF 與後台共用）。只有預約本人與員工可以查看。 */
     @Transactional(readOnly = true)
@@ -111,12 +112,14 @@ public class AppointmentDetailService {
     private List<AppointmentDetailResponse.DetailItem> detailItems(Appointment appointment, DiscountContext discounts) {
         List<AppointmentItem> checkinItems = appointmentItemRepository.findByAppointmentId(appointment.getId());
         if (checkinItems.isEmpty()) {
+            Map<Long, Integer> locked = petComboLockService.lockedPrices(
+                    petComboLockService.findPet(appointment.getUser(), appointment.getPetName()).orElse(null));
             return appointment.getSelectedItems().stream()
                     .map(item -> withDiscounts(AppointmentDetailResponse.DetailItem.builder()
                                     .groomingItemId(item.getId())
                                     .dogWeightTier(lockableTier(item))
                                     .name(item.getName())
-                                    .price((int) Math.round(item.getPrice())),
+                                    .price(PetComboLockService.priceFor(locked, item)),
                             item.getPerformanceCategory(), item.isTierAddon(), item.isDiscountEligible(), discounts))
                     .toList();
         }

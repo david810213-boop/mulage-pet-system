@@ -49,6 +49,7 @@ public class PaymentService {
     private final DiscountCalculator discountCalculator; // 首次體驗／回洗優惠與會員折扣擇優
     private final RetailProductService retailProductService; // 預約結帳頁加購零售商品，結帳時扣庫存
     private final BookingDepositService bookingDepositService; // 結帳折抵預約訂金
+    private final PetComboLockService petComboLockService; // 固定組合：照鎖定時的固定價
 
     // ── 1. 結帳 ────────────────────────────────────────────────────────────
     /**
@@ -360,8 +361,10 @@ public class PaymentService {
     private List<PriceLine> priceLines(Appointment appointment) {
         List<AppointmentItem> checkinItems = appointmentItemRepository.findByAppointmentId(appointment.getId());
         if (checkinItems.isEmpty()) {
+            Map<Long, Integer> locked = petComboLockService.lockedPrices(
+                    petComboLockService.findPet(appointment.getUser(), appointment.getPetName()).orElse(null));
             return appointment.getSelectedItems().stream()
-                    .map(item -> new PriceLine(item.getPrice() != null ? item.getPrice() : 0,
+                    .map(item -> new PriceLine(PetComboLockService.priceFor(locked, item),
                             item.getPerformanceCategory(), item.isTierAddon(), item.isDiscountEligible()))
                     .toList();
         }

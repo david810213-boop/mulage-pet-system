@@ -48,7 +48,7 @@
   <div class="lock-box" th:if="${pet != null and pet.lockedGroomingItemId != null}">
     <svg class="i"><use href="#i-lock"/></svg>
     <div class="t">
-      <small>固定套餐</small>
+      <small>固定組合</small>
       <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
     </div>
     <span class="num" th:if="${pet.lockedItemPrice != null}" th:text="'NT$ ' + ${#numbers.formatDecimal(pet.lockedItemPrice, 1, 'COMMA', 0, 'POINT')}">900</span>

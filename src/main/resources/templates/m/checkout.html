@@ -52,10 +52,10 @@
   <div class="form-err" data-scan-msg style="margin:-6px 0 10px"></div>
 
   <div class="lock-box" th:if="${lockItemId != null}" id="lockBox"
-       th:attr="data-pet-id=${lockPetId},data-item-id=${lockItemId}">
+       th:attr="data-pet-id=${lockPetId},data-item-id=${lockItemId},data-source-key=${lockSourceKey},data-source-id=${lockSourceId}">
     <svg class="i"><use href="#i-lock"/></svg>
     <div class="t">
-      <small>這隻狗已經定型的話，可以鎖定成固定套餐</small>
+      <small>這隻狗已經定型的話，可以把這張單的服務項目照這次價格鎖定成固定組合</small>
       <span th:text="${lockItemName}">中型犬-中長毛-精緻洗</span>
     </div>
     <button type="button" id="lockBtn">鎖定</button>
@@ -181,12 +181,14 @@
     if (lockBtn) {
       lockBtn.addEventListener("click", function () {
         var box = document.getElementById("lockBox");
-        if (!window.confirm("鎖定後，這隻狗下次預約、開單都會直接帶出這個套餐，確定嗎？")) return;
+        if (!window.confirm("鎖定後，這隻狗之後預約、開單都會整組帶入這張單的服務項目，價格固定為這次的價格，確定嗎？")) return;
         lockBtn.disabled = true;
-        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/locked-item", {
+        var lockBody = {};
+        lockBody[box.dataset.sourceKey] = Number(box.dataset.sourceId);
+        fetch("/api/admin/pets/" + encodeURIComponent(box.dataset.petId) + "/locked-combo", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ groomingItemId: Number(box.dataset.itemId) })
+          body: JSON.stringify(lockBody)
         }).then(function (res) {
           return res.text().then(function (t) {
             if (!res.ok) {
@@ -196,7 +198,7 @@
             }
           });
         }).then(function () {
-          box.querySelector("small").textContent = "已鎖定為固定套餐";
+          box.querySelector("small").textContent = "已鎖定為固定組合";
           lockBtn.remove();
         }).catch(function (e) { lockBtn.disabled = false; window.alert(e.message); });
       });

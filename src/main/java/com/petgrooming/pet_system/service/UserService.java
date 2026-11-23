@@ -59,7 +59,8 @@ public class UserService {
     // 讓 Controller 可以跟「帳號或密碼錯誤」分開顯示不同文字，不會混淆使用者。
     public Optional<User> authenticate(String username, String password) {
         Optional<User> userOpt = userRepository.findByUsername(username)
-                .filter(u -> Boolean.TRUE.equals(u.getIsActive()));
+                .filter(User::isActiveAccount)
+                .filter(u -> !u.isPartTime());
         if (userOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -272,12 +273,22 @@ public class UserService {
     }
 
     // 經手人下拉選單（員工＋管理者），只給 id 跟姓名，不把整個 User 丟進頁面
+    /** 經手人選單：啟用中的員工（含代班）與管理員，只給 id、姓名。 */
     public List<Map<String, Object>> operatorOptions() {
         List<User> list = new ArrayList<>(getAllStaffEntities());
         list.addAll(getAllAdminEntities());
         return list.stream()
-                .<Map<String, Object>>map(u -> Map.of("id", u.getId(), "name", u.getName()))
+                .filter(User::isActiveAccount)
+                .<Map<String, Object>>map(u -> Map.of("id", u.getId(),
+                        "name", u.getName() == null || u.getName().isBlank() ? u.getUsername() : u.getName()))
                 .toList();
+    }
+
+    /** 啟用中、綁定 LINE 的員工與管理員，供推播通知。 */
+    public List<User> activeStaffAndAdmins() {
+        List<User> list = new ArrayList<>(getAllStaffEntities());
+        list.addAll(getAllAdminEntities());
+        return list.stream().filter(User::isActiveAccount).filter(u -> !u.isPartTime()).toList();
     }
 
     public List<User> getAllStaffEntities() {
@@ -328,6 +339,62 @@ public class UserService {
         return UserResponse.from(userRepository.save(staff));
     }
 
+    /** 新增代班：只有姓名（選填電話），帳號密碼用佔位值，不能登入。 */
+    public UserResponse createPartTimeStaff(String name, String phone) {
+        String trimmed = name == null ? "" : name.trim();
+        if (trimmed.isEmpty()) {
+            throw new MemberException("請填寫代班姓名");
+        }
+        User staff = User.builder()
+                .username("parttime_" + UUID.randomUUID().toString().substring(0, 8))
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .name(withPartTimeLabel(trimmed))
+                .phone(phone == null || phone.isBlank() ? null : phone.trim())
+                .role(UserRole.STAFF)
+                .partTime(true)
+                .isActive(true)
+                .build();
+        return UserResponse.from(userRepository.save(staff));
+    }
+
+    /** 代班轉正職：補設登入帳號密碼，姓名拿掉「（代班）」，積分紀錄不變。 */
+    public void promotePartTimeStaff(Long userId, String username, String password) {
+        User user = getUserEntityById(userId);
+        if (!user.isPartTime()) {
+            throw new MemberException("這位員工不是代班");
+        }
+        if (username == null || username.isBlank() || password == null || password.length() < 4) {
+            throw new MemberException("請填寫帳號，密碼至少 4 碼");
+        }
+        if (userRepository.existsByUsername(username.trim())) {
+            throw new MemberException("帳號已存在：" + username.trim());
+        }
+        user.setUsername(username.trim());
+        user.setPassword(passwordEncoder.encode(password));
+        user.setName(user.getName().replace(PART_TIME_LABEL, ""));
+        user.setPartTime(false);
+        userRepository.save(user);
+    }
+
+    /** 停用／重新啟用員工。停用後不能登入、不出現在經手人選單，積分紀錄保留。 */
+    public void setStaffActive(Long userId, boolean active, User operator) {
+        User user = getUserEntityById(userId);
+        if (!user.isStaffOrAdmin()) {
+            throw new MemberException("只能停用員工帳號");
+        }
+        if (!active && operator != null && operator.getId().equals(userId)) {
+            throw new MemberException("不能停用自己的帳號");
+        }
+        user.setIsActive(active);
+        userRepository.save(user);
+    }
+
+    private static final String PART_TIME_LABEL = "（代班）";
+
+    private static String withPartTimeLabel(String name) {
+        return name.endsWith(PART_TIME_LABEL) ? name : name + PART_TIME_LABEL;
+    }
+
     // ── 9. ADMIN 重設員工／管理員密碼（不需驗證舊密碼，僅 ADMIN 可操作）──────
     public void resetPassword(Long userId, ResetPasswordRequest req) {
         User user = userRepository.findById(userId)
@@ -335,6 +402,9 @@ public class UserService {
         if (user.isCustomer()) {
             // 顧客帳號走 LINE 登入，沒有密碼登入需求，不開放重設
             throw new MemberException("顧客帳號不支援密碼重設");
+        }
+        if (user.isPartTime()) {
+            throw new MemberException("代班不能登入，需要登入請改用「轉正職」設定帳號密碼");
         }
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);

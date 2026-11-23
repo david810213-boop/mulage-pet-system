@@ -31,12 +31,17 @@ public class UserResponse {
     // 會員搜尋若是靠寵物名搜到，標出是哪隻毛孩（其他情況為 null）
     private String matchedPetNames;
 
+    private boolean active = true;
+    private boolean partTime;
+
     public static UserResponse from(User user) {
         UserResponse res = new UserResponse();
         res.setId(user.getId());
         res.setUsername(user.getUsername());
         res.setName(user.getName());
         res.setRole(user.getRole());
+        res.setActive(user.isActiveAccount());
+        res.setPartTime(user.isPartTime());
         res.setPhone(user.getPhone());
         res.setAge(user.getAge());
         res.setOccupation(user.getOccupation());

@@ -94,7 +94,7 @@
                      要跳去會員信息才能解鎖太繁瑣，直接在這裡加解鎖按鈕。
                      刻意不整頁 reload（跟結帳頁不同），避免洗掉店員已經填的其他欄位。 -->
                 <div id="lockedPetBanner" style="display:none; margin-top:6px; padding:6px 8px; background:#fff8e6; border:1px solid #e6c366; border-radius:var(--radius-sm); font-size:12px;">
-                  🔒 已鎖定固定套餐：<strong id="lockedPetItemName"></strong>（$<span id="lockedPetItemPrice"></span>）
+                  🔒 固定組合：<strong id="lockedPetItemName"></strong>（共 $<span id="lockedPetItemPrice"></span>，送出後整組自動帶入、照固定價計算）
                   <button type="button" onclick="unlockCurrentPet()" class="btn btn-outline" style="padding:2px 8px; font-size:11px; margin-left:6px;">🔓 解鎖，重新報價</button>
                 </div>
               </div>
@@ -837,15 +837,18 @@
           banner.style.display = 'none';
           return;
         }
-        document.getElementById('lockedPetItemName').textContent = locked.name;
-        document.getElementById('lockedPetItemPrice').textContent = locked.price;
+        const combo = pet.lockedItems && pet.lockedItems.length ? pet.lockedItems : null;
+        document.getElementById('lockedPetItemName').textContent = combo
+          ? combo.map(function (c) { return c.name + ' $' + c.price; }).join('＋')
+          : locked.name;
+        document.getElementById('lockedPetItemPrice').textContent = combo ? pet.lockedItemPrice : locked.price;
         banner.style.display = 'block';
       }
 
       async function unlockCurrentPet() {
         const pet = currentPetsData.find(function (p) { return p.name === petSelect.value; });
         if (!pet) return;
-        if (!confirm('確定要解鎖嗎？解鎖後這隻狗會恢復成依體重重新選套餐。')) return;
+        if (!confirm('確定要解鎖嗎？解鎖後固定組合會清除，這隻狗會恢復成依體重重新選套餐。')) return;
         try {
           const res = await fetch('/api/admin/pets/' + pet.id + '/locked-item', { method: 'DELETE' });
           if (!res.ok) {

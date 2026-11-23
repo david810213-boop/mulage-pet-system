@@ -98,7 +98,7 @@
            id="lockBox" th:attr="data-pet-id=${pet.id}">
         <svg class="i"><use href="#i-lock"/></svg>
         <div class="t">
-          <small>已鎖定固定套餐，只顯示這一項</small>
+          <small>已鎖定固定組合，送出後整組自動帶入、照固定價計算</small>
           <span th:text="${pet.lockedItemName}">中型犬-中長毛-精緻洗</span>
         </div>
         <button type="button" id="unlockBtn">解鎖重新報價</button>

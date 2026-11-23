@@ -73,11 +73,7 @@ public class WalkInOrderMvcController {
                 .toList());
         // 經手人改綁員工帳號，前端下拉選單資料來源（STAFF + ADMIN，店主可能也會親自美容）
         // ⚠️ 絕不能把 User entity 整包丟進頁面（含密碼雜湊），只給 id + 姓名
-        List<User> staffAndAdmin = new ArrayList<>(userService.getAllStaffEntities());
-        staffAndAdmin.addAll(userService.getAllAdminEntities());
-        model.addAttribute("staffList", staffAndAdmin.stream()
-                .map(s -> Map.of("id", s.getId(), "name", s.getName()))
-                .toList());
+        model.addAttribute("staffList", userService.operatorOptions());
         model.addAttribute("orders", walkInOrderService.listAll());
         // 待補經手人：矩陣式表單（一隻寵物一列）
         model.addAttribute("walkInMatrixRows", pendingOperatorMatrixService.buildWalkInMatrix());

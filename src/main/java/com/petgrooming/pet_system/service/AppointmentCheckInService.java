@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 預約到店後的流程：到店開單、開始服務、結束服務（通知家長接回）、核對（接待送出）。
@@ -46,6 +47,7 @@ public class AppointmentCheckInService {
     private final AppointmentItemService appointmentItemService; // 訂單項目、經手人與積分
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final GroomingItemComponentRepository groomingItemComponentRepository; // 套餐組成
+    private final PetComboLockService petComboLockService; // 固定組合：照鎖定時的固定價
 
     // ── 店員開始服務：CONFIRMED → IN_PROGRESS（寵物已到店開始施作）──────────
     @Transactional
@@ -177,6 +179,8 @@ public class AppointmentCheckInService {
             throw new AppointmentException("請至少選擇一項服務項目");
         }
 
+        Map<Long, Integer> locked = petComboLockService.lockedPrices(
+                petComboLockService.findPet(appointment.getUser(), appointment.getPetName()).orElse(null));
         int total = 0;
         for (int idx = 0; idx < itemCodes.size(); idx++) {
             String code = itemCodes.get(idx);
@@ -203,8 +207,8 @@ public class AppointmentCheckInService {
                     .builder()
                     .appointment(appointment)
                     .groomingItemId(gi.getId())
-                    .itemName(mainItemName)
-                    .price((int) Math.round(gi.getPrice()))
+                    .itemName(PetComboLockService.labelIfLocked(locked, gi, mainItemName))
+                    .price(PetComboLockService.priceFor(locked, gi))
                     .points(gi.getPoints())
                     .performanceCategory(gi.getPerformanceCategory())
                     .build();

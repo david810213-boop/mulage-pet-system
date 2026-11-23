@@ -450,6 +450,8 @@ public class MobileAppointmentController {
             model.addAttribute("lockPetId", pet.getId());
             model.addAttribute("lockItemId", lockable.getGroomingItemId());
             model.addAttribute("lockItemName", lockable.getName());
+            model.addAttribute("lockSourceKey", "appointmentId");
+            model.addAttribute("lockSourceId", id);
         }
         model.addAttribute("activeTab", "appointments");
         return "m/checkout";

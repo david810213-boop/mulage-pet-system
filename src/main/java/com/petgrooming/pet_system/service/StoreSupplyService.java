@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -139,8 +138,7 @@ public class StoreSupplyService {
                 "\u26A0\uFE0F【庫存不足提醒】慕沐村店用洗劑「%s」剩餘 %d（安全庫存量 %d），請盡快叫貨補貨。",
                 supply.getName(), supply.getStockQuantity(), supply.getSafetyStockThreshold());
 
-        List<User> staffAndAdmin = new ArrayList<>(userService.getAllStaffEntities());
-        staffAndAdmin.addAll(userService.getAllAdminEntities());
+        List<User> staffAndAdmin = userService.activeStaffAndAdmins();
 
         int notified = 0;
         for (User u : staffAndAdmin) {

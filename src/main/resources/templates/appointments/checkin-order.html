@@ -53,8 +53,8 @@
             style="margin-bottom: 1.25rem; background:#fff8e6; border:1px solid #e6c366;"
           >
             <p style="margin: 0; font-size: 13px;">
-              🔒 這隻狗已經有固定套餐：<strong th:text="${pet.lockedItemName}"></strong>
-              （$<span th:text="${pet.lockedItemPrice}"></span>），上方菜單只會顯示這一項。
+              🔒 這隻狗已經有固定組合：<strong th:text="${pet.lockedItemName}"></strong>
+              （共 $<span th:text="${pet.lockedItemPrice}"></span>，固定價），開單照固定價計算；精緻洗只會顯示組合裡那一項。
             </p>
             <button
               type="button"

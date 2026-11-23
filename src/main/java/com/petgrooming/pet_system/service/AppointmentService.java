@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 預約：建立（時段名額、契約簽名、首次評估）、取消、確認、店家備註。
@@ -55,6 +56,7 @@ public class AppointmentService {
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final BookingDepositService bookingDepositService; // 預約訂金
     private final WalletService walletService; // 儲值金會員臨時取消扣款
+    private final PetComboLockService petComboLockService; // 固定組合（客製化鎖定）
 
     // 營業時間／時段格線（共用 BusinessHours）
     private static final LocalTime OPENING = BusinessHours.OPENING;
@@ -87,7 +89,8 @@ public class AppointmentService {
         if (assessment) {
             rejectIfAssessmentPending(user, pet);
         }
-        List<GroomingItem> items = assessment ? new ArrayList<>() : resolveBookableItems(req.getSelectedItems(), returningPet);
+        List<GroomingItem> items = assessment ? new ArrayList<>() : withComboItems(pet,
+                resolveBookableItems(req.getSelectedItems(), returningPet, petComboLockService.activeComboItems(pet)));
 
         Appointment saved = appointmentRepository.save(
                 newAppointment(req, user, pet, items, signature, assessment));
@@ -195,7 +198,22 @@ public class AppointmentService {
      * 把前端送來的項目代碼換成資料庫中仍在販售的項目，並檢查「僅限既有客戶」的項目。
      * 回傳可變清單：交給 Hibernate 寫入多對多關聯時不能是唯讀清單（曾因此導致預約寫入後沒有項目）。
      */
-    private List<GroomingItem> resolveBookableItems(List<String> itemCodes, boolean returningPet) {
+    /** 固定組合一律帶入（顧客線上不能移除），已經選了的不重複加。 */
+    private List<GroomingItem> withComboItems(Pet pet, List<GroomingItem> items) {
+        List<GroomingItem> result = new ArrayList<>(items);
+        for (GroomingItem comboItem : petComboLockService.activeComboItems(pet)) {
+            if (result.stream().noneMatch(i -> i.getId().equals(comboItem.getId()))) {
+                result.add(comboItem);
+            }
+        }
+        return result;
+    }
+
+    private List<GroomingItem> resolveBookableItems(List<String> itemCodes, boolean returningPet,
+                                                    List<GroomingItem> comboItems) {
+        if ((itemCodes == null || itemCodes.isEmpty()) && !comboItems.isEmpty()) {
+            return new ArrayList<>();
+        }
         if (itemCodes == null || itemCodes.isEmpty()) {
             throw new AppointmentException("請至少選擇一項美容服務項目！");
         }
@@ -221,7 +239,8 @@ public class AppointmentService {
     private Appointment newAppointment(AppointmentRequest req, User user, Pet pet, List<GroomingItem> items,
                                        String signature, boolean assessment) {
         boolean sameDay = req.getDate().isEqual(LocalDate.now());
-        int total = (int) items.stream().mapToDouble(GroomingItem::getPrice).sum();
+        Map<Long, Integer> locked = petComboLockService.lockedPrices(pet);
+        int total = items.stream().mapToInt(i -> PetComboLockService.priceFor(locked, i)).sum();
         Appointment appointment = Appointment.builder()
                 .user(user)
                 .petName(pet.getName())
