@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -385,8 +386,48 @@ public class UserService {
         if (!active && operator != null && operator.getId().equals(userId)) {
             throw new MemberException("不能停用自己的帳號");
         }
+        if (!active && user.isAdmin()) {
+            requireAnotherActiveAdmin(userId);
+        }
         user.setIsActive(active);
         userRepository.save(user);
+    }
+
+    /** 設為管理員／取消管理員。代班要先轉正職；不能改自己，也要保留至少一位啟用中的管理員。 */
+    public void setStaffAdmin(Long userId, boolean admin, User operator) {
+        User user = getUserEntityById(userId);
+        if (!user.isStaffOrAdmin()) {
+            throw new MemberException("只能調整員工帳號");
+        }
+        if (operator != null && operator.getId().equals(userId)) {
+            throw new MemberException("不能調整自己的管理員權限");
+        }
+        if (admin && user.isPartTime()) {
+            throw new MemberException("代班不能登入，請先轉正職再設為管理員");
+        }
+        if (!admin && user.isAdmin()) {
+            requireAnotherActiveAdmin(userId);
+        }
+        user.setRole(admin ? UserRole.ADMIN : UserRole.STAFF);
+        userRepository.save(user);
+    }
+
+    /** 員工清單：正職、代班與管理員，啟用中的排前面。 */
+    public List<UserResponse> getStaffAndAdmins() {
+        List<User> list = new ArrayList<>(getAllAdminEntities());
+        list.addAll(getAllStaffEntities());
+        return list.stream()
+                .sorted(Comparator.comparing((User u) -> !u.isActiveAccount()))
+                .map(UserResponse::from)
+                .toList();
+    }
+
+    private void requireAnotherActiveAdmin(Long userId) {
+        boolean hasOther = getAllAdminEntities().stream()
+                .anyMatch(a -> !a.getId().equals(userId) && a.isActiveAccount() && !a.isPartTime());
+        if (!hasOther) {
+            throw new MemberException("至少要保留一位啟用中的管理員");
+        }
     }
 
     private static final String PART_TIME_LABEL = "（代班）";
