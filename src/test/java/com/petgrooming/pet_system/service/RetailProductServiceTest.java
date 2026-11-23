@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +39,24 @@ class RetailProductServiceTest extends IntegrationTestBase {
         assertThatThrownBy(() -> retailProductService.adjustStock(product.getId(), -2))
                 .isInstanceOf(InventoryException.class);
         assertThat(stockOf(product)).isEqualTo(1);
+    }
+
+    @Test
+    void batchAdjustmentSavesAllOrNothing() {
+        RetailProduct brush = newProduct(5);
+        RetailProduct shampoo = newProduct(1);
+
+        retailProductService.adjustStockBatch(Map.of(brush.getId(), 30, shampoo.getId(), -1));
+        assertThat(stockOf(brush)).isEqualTo(35);
+        assertThat(stockOf(shampoo)).isZero();
+
+        Map<Long, Integer> bad = new LinkedHashMap<>();
+        bad.put(brush.getId(), 10);
+        bad.put(shampoo.getId(), -1);
+        assertThatThrownBy(() -> retailProductService.adjustStockBatch(bad))
+                .isInstanceOf(InventoryException.class)
+                .hasMessageContaining("全部都沒有儲存");
+        assertThat(stockOf(brush)).isEqualTo(35);
     }
 
     @Test

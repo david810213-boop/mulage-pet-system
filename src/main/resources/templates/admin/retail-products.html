@@ -146,7 +146,8 @@
                     <!-- 調整庫存 -->
                     <form method="post" th:action="@{/admin/retail-products/{id}/adjust-stock(id=${p.id})}"
                           style="display: flex; gap: 4px; align-items: center;">
-                      <input type="number" name="delta" placeholder="±數量" style="width: 65px; font-size: 12px;" required />
+                      <input type="number" name="delta" placeholder="±數量" style="width: 65px; font-size: 12px;" required
+                             data-stock-delta th:data-product-id="${p.id}" th:data-product-name="${p.name}" />
                       <button type="submit" class="btn btn-outline" style="padding: 3px 8px; font-size: 12px;">調庫存</button>
                     </form>
                     <!-- 盤點，只有店長（管理者）能用 -->
@@ -170,6 +171,73 @@
         </div>
       </div>
     </div>
+    <!-- 好幾項商品一起進貨時，各列「調庫存」填好數量後一次儲存 -->
+    <form id="stockBatchForm" method="post" th:action="@{/admin/retail-products/adjust-stock-batch}" style="display:none;"></form>
+    <div id="stockBatchBar" style="display:none; position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:50; background:#26332b; color:#fff; border-radius:999px; padding:10px 12px 10px 22px; align-items:center; gap:14px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,.2);">
+      <span id="stockBatchText"></span>
+      <button type="button" id="stockBatchBtn" style="background:#c6a063; color:#26332b; border:none; border-radius:999px; padding:8px 18px; font-size:14px; font-weight:700; cursor:pointer;">全部儲存</button>
+    </div>
+    <script>
+      (function () {
+        var inputs = Array.prototype.slice.call(document.querySelectorAll("input[data-stock-delta]"));
+        if (!inputs.length) return;
+        var bar = document.getElementById("stockBatchBar");
+        var text = document.getElementById("stockBatchText");
+        var btn = document.getElementById("stockBatchBtn");
+        var form = document.getElementById("stockBatchForm");
+        var submitting = false;
+
+        function filled() {
+          return inputs.filter(function (i) { return i.value !== "" && Number(i.value) !== 0; });
+        }
+        function refresh() {
+          var list = filled();
+          inputs.forEach(function (i) {
+            i.style.outline = list.indexOf(i) >= 0 ? "2px solid #c6a063" : "";
+          });
+          bar.style.display = list.length ? "flex" : "none";
+          text.textContent = "有 " + list.length + " 項庫存調整還沒儲存";
+        }
+        inputs.forEach(function (i) { i.addEventListener("input", refresh); });
+
+        btn.addEventListener("click", function () {
+          var list = filled();
+          if (!list.length || submitting) return;
+          for (var k = 0; k < list.length; k++) {
+            if (!list[k].reportValidity()) return;
+          }
+          var summary = list.map(function (i) {
+            var n = Number(i.value);
+            return "・" + i.dataset.productName + "　" + (n > 0 ? "+" : "") + n;
+          }).join("\n");
+          if (!confirm("確定要調整以下 " + list.length + " 項商品的庫存嗎？\n" + summary)) return;
+          // 只送出有填的項目；共用 head 的 csrf.js 會在送出時補上 token
+          Array.prototype.slice.call(form.querySelectorAll("input[name=productIds],input[name=deltas]"))
+            .forEach(function (el) { el.remove(); });
+          list.forEach(function (i) {
+            var id = document.createElement("input");
+            id.type = "hidden"; id.name = "productIds"; id.value = i.dataset.productId;
+            var d = document.createElement("input");
+            d.type = "hidden"; d.name = "deltas"; d.value = String(Math.trunc(Number(i.value)));
+            form.appendChild(id); form.appendChild(d);
+          });
+          submitting = true;
+          btn.disabled = true;
+          text.textContent = "儲存中…";
+          form.requestSubmit ? form.requestSubmit() : form.submit();
+        });
+
+        window.addEventListener("beforeunload", function (e) {
+          if (!submitting && filled().length) {
+            e.preventDefault();
+            e.returnValue = "";
+          }
+        });
+        inputs.forEach(function (i) {
+          i.form.addEventListener("submit", function () { submitting = true; });
+        });
+      })();
+    </script>
     <script src="/js/barcode-scan.js?v=2"></script>
   </body>
 </html>
