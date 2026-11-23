@@ -15,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -163,6 +165,33 @@ public class RetailProductMvcController {
             operationLogService.log(user, "RETAIL", "ADJUST_RETAIL_STOCK",
                     "商品 #" + id + " 庫存調整 " + (delta >= 0 ? "+" : "") + delta, null);
             ra.addFlashAttribute("successMsg", "庫存已調整");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin/retail-products";
+    }
+
+    // 一次儲存多項商品的庫存調整（productIds 與 deltas 一一對應）
+    @RequireRole({UserRole.ADMIN, UserRole.STAFF})
+    @PostMapping("/adjust-stock-batch")
+    public String adjustStockBatch(@RequestParam List<Long> productIds,
+                                   @RequestParam List<Integer> deltas,
+                                   RedirectAttributes ra,
+                                   @CurrentUser User user) {
+        try {
+            if (productIds.size() != deltas.size()) {
+                throw new IllegalArgumentException("調整資料不完整，請重新整理頁面後再試一次");
+            }
+            Map<Long, Integer> changes = new LinkedHashMap<>();
+            for (int i = 0; i < productIds.size(); i++) {
+                if (deltas.get(i) != null && deltas.get(i) != 0) {
+                    changes.merge(productIds.get(i), deltas.get(i), Integer::sum);
+                }
+            }
+            retailProductService.adjustStockBatch(changes);
+            changes.forEach((id, delta) -> operationLogService.log(user, "RETAIL", "ADJUST_RETAIL_STOCK",
+                    "商品 #" + id + " 庫存調整 " + (delta >= 0 ? "+" : "") + delta + "（批次）", null));
+            ra.addFlashAttribute("successMsg", "已調整 " + changes.size() + " 項商品的庫存");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMsg", e.getMessage());
         }

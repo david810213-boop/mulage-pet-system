@@ -163,6 +163,27 @@ public class RetailProductService {
         retailProductRepository.save(product);
     }
 
+    /**
+     * 一次調整多項商品的庫存（productId → 增減數量）。任一項會變成負數就整批不存，
+     * 錯誤訊息帶出商品名稱，店員改好再送一次即可。
+     */
+    @Transactional
+    public void adjustStockBatch(Map<Long, Integer> deltas) {
+        if (deltas.isEmpty()) {
+            throw new InventoryException("沒有要調整的商品，請先在「調庫存」欄位填數量");
+        }
+        for (Map.Entry<Long, Integer> entry : deltas.entrySet()) {
+            RetailProduct product = lockProduct(entry.getKey());
+            int newQuantity = product.getStockQuantity() + entry.getValue();
+            if (newQuantity < 0) {
+                throw new InventoryException("「" + product.getName() + "」庫存不可調整為負數（目前庫存 "
+                        + product.getStockQuantity() + "），這次全部都沒有儲存");
+            }
+            product.setStockQuantity(newQuantity);
+            retailProductRepository.save(product);
+        }
+    }
+
     // ── 盤點——輸入實際數量，回傳差額 ──
     @Transactional
     public int stocktake(Long id, int actual) {
