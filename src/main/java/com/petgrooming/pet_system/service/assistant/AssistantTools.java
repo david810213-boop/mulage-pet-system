@@ -44,7 +44,7 @@ public class AssistantTools {
     private static final DateTimeFormatter MD_HM = DateTimeFormatter.ofPattern("M/d HH:mm");
     private static final DateTimeFormatter HM = DateTimeFormatter.ofPattern("HH:mm");
     private static final int MAX_SLOT_DAYS = 7;
-    private static final int MAX_MENU_ITEMS = 15;
+    private static final int MAX_MENU_ITEMS = 25;
 
     private final AppointmentQueryService appointmentQueryService;
     private final BookingDepositService bookingDepositService;
@@ -242,9 +242,16 @@ public class AssistantTools {
         if (groomingMenuFilter.needsWeight(type, pet)) {
             sb.append("\n（還沒填體重，請先到毛孩檔案補上體重才看得到套餐）");
         }
-        items.stream().limit(MAX_MENU_ITEMS).forEach(i -> sb.append("\n- ").append(i.getName()).append("：$")
-                .append(i.getPrice() == null ? "現場報價" : String.valueOf(i.getPrice().intValue())));
+        items.stream().limit(MAX_MENU_ITEMS).forEach(i -> sb.append("\n- ").append(i.getName()).append("：")
+                .append(priceLabel(i)));
         return sb.toString();
+    }
+
+    /** 「到店面議」的加購價格是 0（見 V22），不能報成 $0。 */
+    private static String priceLabel(GroomingItemResponse item) {
+        if (item.getPrice() == null) return "現場報價";
+        if (item.isTierAddon() && item.getPrice() <= 0) return "到店面議";
+        return "$" + item.getPrice().intValue();
     }
 
     private String closedDates() {
