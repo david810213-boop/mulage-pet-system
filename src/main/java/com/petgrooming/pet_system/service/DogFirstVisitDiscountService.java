@@ -25,6 +25,7 @@ import java.util.Set;
  *   - 觸發條件相反：回洗優惠看「有沒有回訪」，首次體驗看「是不是第一次」
  *   - 適用品項範圍：狗狗洗吹 package 項目（PerformanceCategory 為 BATH_SMALL / BATH_LARGE），
  *     以及依體型的基礎／AD／HC 定制調理加購（店家確認，見 docs/adr/0011）；
+ *     依體型的大美容（剪毛）加購不適用——首次體驗不能選大美容（店家確認）；
  *     不套用在耳道調理、接送、除廢毛等單項加購。
  *   - 一樣跟會員儲值折扣「只能擇一」，取對顧客較優惠的那個，不疊加。
  *
@@ -90,7 +91,8 @@ public class DogFirstVisitDiscountService implements SpecialDiscountPolicy {
 
     @Override
     public boolean appliesTo(PerformanceCategory category, boolean tierAddon) {
-        return tierAddon || isDogPackageCategory(category);
+        if (tierAddon) return category != PerformanceCategory.TRIM;
+        return isDogPackageCategory(category);
     }
 
     @Override
