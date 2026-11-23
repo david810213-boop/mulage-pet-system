@@ -109,6 +109,11 @@
       "filter:drop-shadow(0 6px 10px rgba(110,82,41,.28));transition:left .25s ease,right .25s ease,opacity .2s,width .2s;cursor:pointer}" +
       ".mm-fab img{width:100%;display:block;pointer-events:none;-webkit-user-drag:none}" +
       ".mm-fab.dragging{transition:none}" +
+      // 頭上的「AI小助理」標籤：顧客反映看不出這隻馬是做什麼的
+      ".mm-tag{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-2px);white-space:nowrap;" +
+      "background:#fff;color:#8a6a3b;border:1px solid #e4cfa0;border-radius:999px;padding:2px 8px;" +
+      "font-size:11px;font-weight:700;line-height:1.5;letter-spacing:.5px;pointer-events:none;" +
+      "box-shadow:0 2px 6px rgba(110,82,41,.18)}" +
       ".mm-fab.hello{width:92px;animation:mm-pop .35s ease-out}" +
       "@keyframes mm-pop{from{transform:scale(.7)}to{transform:scale(1)}}" +
       ".mm-mask{position:fixed;inset:0;background:rgba(40,30,20,.35);z-index:9000;opacity:0;transition:opacity .2s}" +
@@ -175,8 +180,8 @@
     el.fab = document.createElement("div");
     el.fab.className = "mm-fab";
     el.fab.setAttribute("role", "button");
-    el.fab.setAttribute("aria-label", "問慕馬");
-    el.fab.innerHTML = '<img src="' + IMG + 'full.webp" alt="慕馬">';
+    el.fab.setAttribute("aria-label", "AI小助理慕馬");
+    el.fab.innerHTML = '<span class="mm-tag">AI小助理</span><img src="' + IMG + 'full.webp" alt="慕馬">';
     document.body.appendChild(el.fab);
     placeFab(store(POS_KEY) || { side: "right", bottom: defaultBottom });
 
