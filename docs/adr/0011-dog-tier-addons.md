@@ -23,4 +23,4 @@
 ## 補充：大美容（剪毛造型）加購（2026-11-24，V22）
 - 電剪、半手剪、全手剪沿用同一套 `tier_addon` 機制（CUT001～CUT036），積分分類 `TRIM`，每項積分依店家指定個別設定。
 - 只建中長毛、長毛兩組，短毛的狗自然篩不到。價格是起價，實際差額由店員以自訂金額加購補收；「到店面議」的項目價格為 0，LIFF 顯示「到店面議」。
-- 首次體驗不能選大美容，所以狗狗首次體驗 9 折排除 `TRIM` 的加購（`DogFirstVisitDiscountService.appliesTo`）。
+- 首次體驗線上不開放大美容（LINE 初次預約本來就不選項目），店內開單可以加，但不適用首次體驗 9 折，會員折扣照常：狗狗首次體驗 9 折排除 `TRIM` 的加購（`DogFirstVisitDiscountService.appliesTo`），項目本身 `discount_eligible = true`。
