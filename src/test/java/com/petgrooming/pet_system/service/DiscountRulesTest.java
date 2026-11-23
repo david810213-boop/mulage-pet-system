@@ -98,6 +98,7 @@ class DiscountRulesTest {
         assertThat(offers.offerFor(PerformanceCategory.OTHER, true)).contains(dogFirstVisit); // 基礎定制調理加購
         assertThat(offers.offerFor(PerformanceCategory.HC, true)).contains(dogFirstVisit);
         assertThat(offers.offerFor(PerformanceCategory.OTHER, false)).isEmpty(); // 單項加購（刷牙等）
+        assertThat(offers.offerFor(PerformanceCategory.TRIM, true)).isEmpty(); // 大美容加購：首次體驗不能選
         assertThat(offers.resolve(500, PerformanceCategory.AD, true, false, 1.0).price()).isCloseTo(450, within(0.001));
     }
 
