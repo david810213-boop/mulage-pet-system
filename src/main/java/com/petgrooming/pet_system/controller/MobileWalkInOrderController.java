@@ -305,6 +305,8 @@ public class MobileWalkInOrderController {
                         model.addAttribute("lockPetId", pet.getId());
                         model.addAttribute("lockItemId", it.getGroomingItemId());
                         model.addAttribute("lockItemName", it.getItemName());
+                        model.addAttribute("lockSourceKey", "walkInOrderId");
+                        model.addAttribute("lockSourceId", id);
                     });
         }
         model.addAttribute("activeTab", "walkin");

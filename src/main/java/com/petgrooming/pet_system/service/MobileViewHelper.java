@@ -4,12 +4,9 @@ import com.petgrooming.pet_system.dto.AppointmentDetailResponse;
 import com.petgrooming.pet_system.dto.MobileLineItemView;
 import com.petgrooming.pet_system.dto.WalkInOrderResponse;
 import com.petgrooming.pet_system.model.AppointmentItem;
-import com.petgrooming.pet_system.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,16 +49,7 @@ public class MobileViewHelper {
 
     /** 經手人下拉選單：員工＋管理員，只給 id、姓名 */
     public List<Map<String, Object>> staffOptions() {
-        List<User> all = new ArrayList<>(userService.getAllStaffEntities());
-        all.addAll(userService.getAllAdminEntities());
-        List<Map<String, Object>> list = new ArrayList<>();
-        for (User u : all) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", u.getId());
-            m.put("name", u.getName() == null || u.getName().isBlank() ? u.getUsername() : u.getName());
-            list.add(m);
-        }
-        return list;
+        return userService.operatorOptions();
     }
 
     // ── 各種項目資料 → MobileLineItemView ────────────────────────────────────

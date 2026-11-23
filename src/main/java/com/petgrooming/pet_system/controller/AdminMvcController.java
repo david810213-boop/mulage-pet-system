@@ -108,6 +108,64 @@ public class AdminMvcController {
         }
     }
 
+    /** 新增代班（只填姓名、選填電話，不能登入，只供選為經手人記積分）。 */
+    @PostMapping("/staff/part-time")
+    public String createPartTimeStaff(@RequestParam String name,
+                                      @RequestParam(required = false) String phone,
+                                      HttpServletRequest request,
+                                      RedirectAttributes redirectAttributes) {
+        if (!isAdmin(request)) return "redirect:/dashboard";
+        try {
+            userService.createPartTimeStaff(name, phone);
+            redirectAttributes.addFlashAttribute("successMsg", "已新增代班：" + name.trim());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
+    /** 停用員工：不能登入、不出現在經手人選單，積分紀錄保留。 */
+    @PostMapping("/staff/{id}/deactivate")
+    public String deactivateStaff(@PathVariable Long id, HttpServletRequest request,
+                                  RedirectAttributes redirectAttributes, @CurrentUser User user) {
+        return setStaffActive(id, false, request, redirectAttributes, user);
+    }
+
+    @PostMapping("/staff/{id}/activate")
+    public String activateStaff(@PathVariable Long id, HttpServletRequest request,
+                                RedirectAttributes redirectAttributes, @CurrentUser User user) {
+        return setStaffActive(id, true, request, redirectAttributes, user);
+    }
+
+    private String setStaffActive(Long id, boolean active, HttpServletRequest request,
+                                  RedirectAttributes redirectAttributes, User user) {
+        if (!isAdmin(request)) return "redirect:/dashboard";
+        try {
+            userService.setStaffActive(id, active, user);
+            redirectAttributes.addFlashAttribute("successMsg", active ? "已重新啟用" : "已停用");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
+    /** 代班轉正職：補設登入帳號密碼。 */
+    @PostMapping("/staff/{id}/promote")
+    public String promotePartTimeStaff(@PathVariable Long id,
+                                       @RequestParam String username,
+                                       @RequestParam String password,
+                                       HttpServletRequest request,
+                                       RedirectAttributes redirectAttributes) {
+        if (!isAdmin(request)) return "redirect:/dashboard";
+        try {
+            userService.promotePartTimeStaff(id, username, password);
+            redirectAttributes.addFlashAttribute("successMsg", "已轉為正職，可以用新帳號登入");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
     /**
      * 重設員工／管理員密碼（ADMIN 限定，不需驗證舊密碼）
      */

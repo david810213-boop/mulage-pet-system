@@ -49,12 +49,12 @@ public class AppointmentQueryService {
     private final TransactionRepository transactionRepository; // 消費明細用
     private final UserRepository userRepository;
     private final PetRepository petRepository;
-    private final GroomingItemRepository groomingItemRepository; // 服務項目價格
     private final SlotCapacityService slotCapacityService; // 時段名額控管
     private final ClosedDateService closedDateService; // 公休日設定
     private final AppointmentItemRepository appointmentItemRepository; // 現場開單（依預約編號）
     private final PetConsumptionHistoryService petConsumptionHistoryService; // 僅限既有客戶項目判斷
     private final CompanySignatureRepository companySignatureRepository; // 契約副本
+    private final PetComboLockService petComboLockService; // 固定組合（客製化鎖定）
 
     // 營業時間／時段格線（共用 BusinessHours，跟預設時段容量範本同一份）
     private static final LocalTime OPENING = BusinessHours.OPENING;
@@ -244,10 +244,7 @@ public class AppointmentQueryService {
         var pet = petRepository.findByOwnerUsernameAndName(
                 appointment.getUser().getUsername(), appointment.getPetName()).orElse(null);
         if (pet == null) return null;
-        var lockedItem = pet.getLockedGroomingItemId() != null
-                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
-                : null;
-        return PetResponse.from(pet, lockedItem);
+        return petComboLockService.toResponse(pet);
     }
 
     // ── 2. 取得使用者的寵物清單（預約表單下拉選單用）──────────────────

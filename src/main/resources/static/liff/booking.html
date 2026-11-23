@@ -374,8 +374,9 @@
         return closedDatesCache;
       }
       let selectedItemCodes = new Set();
-      let currentLockedItemCode = null; // 目前鎖定套餐對應的 itemCode（給 currentTotal() 保底用）
-      let currentLockedItemPrice = 0; // 目前鎖定套餐的金額（給 currentTotal() 保底用）
+      // 固定組合（店家幫這隻狗鎖定的項目，價格是鎖定當時的固定價）：
+      // 一律帶入、顧客不能移除，畫面上另外列出，不放在可勾選的清單裡
+      let currentComboItems = [];
       let hasSigned = false;
       let signatureCanvas = null;
       let signatureCtx = null;
@@ -861,6 +862,7 @@
           if (locked) locked.style.display = "none";
           items.querySelectorAll("input[type=checkbox]").forEach((cb) => (cb.checked = false));
           selectedItemCodes.clear();
+          currentComboItems = [];
         } else {
           note.style.display = "none";
           items.style.display = "";
@@ -988,25 +990,26 @@
           : null;
 
         const lockedBanner = document.getElementById("dogLockedBanner");
-        if (dogLockedItemId && pet.lockedItemName) {
-          const lockedName = lockedItem ? lockedItem.name : pet.lockedItemName;
-          const lockedPrice = lockedItem
-            ? lockedItem.price
-            : pet.lockedItemPrice;
+        currentComboItems =
+          dogLockedItemId && pet.lockedItems && pet.lockedItems.length
+            ? pet.lockedItems
+            : dogLockedItemId && lockedItem
+              ? [{ groomingItemId: lockedItem.id, itemCode: lockedItem.itemCode, name: lockedItem.name, price: lockedItem.price }]
+              : [];
+        const comboIds = new Set(currentComboItems.map((c) => String(c.groomingItemId)));
+        if (currentComboItems.length) {
           if (lockedBanner) {
+            const lines = currentComboItems
+              .map((c) => `<div>・${escapeHtml(c.name)}　$${c.price}</div>`)
+              .join("");
             lockedBanner.style.display = "block";
-            lockedBanner.innerHTML = `已為毛孩安排固定套餐：<strong>${escapeHtml(lockedName)}</strong>　$${lockedPrice}`;
+            lockedBanner.innerHTML =
+              `<div style="margin-bottom:4px;">🔒 已為毛孩安排<strong>固定組合</strong>（每次都會包含）：</div>${lines}` +
+              `<div style="margin-top:6px; color:#8a7a5c;">需要的話，可以在下方另外加購其他項目</div>`;
           }
           selectedItemCodes.clear();
-          if (lockedItem) {
-            selectedItemCodes.add(lockedItem.itemCode);
-          }
-          currentLockedItemCode = lockedItem ? lockedItem.itemCode : null;
-          currentLockedItemPrice = lockedPrice || 0;
-        } else {
-          if (lockedBanner) lockedBanner.style.display = "none";
-          currentLockedItemCode = null;
-          currentLockedItemPrice = 0;
+        } else if (lockedBanner) {
+          lockedBanner.style.display = "none";
         }
 
         document
@@ -1038,9 +1041,12 @@
             // 沒有標 dogWeightTier 的項目維持原本篩選邏輯」，現在改成「已鎖定
             // 套餐時，除了鎖定的那一項，其餘全部隱藏，不分有沒有標體重級距」。
             // 還沒鎖定的狗（依體重篩選中）維持原樣，加購項目不受影響。
+            // 有固定組合時：組合裡的項目另外列在上方（不能取消），清單裡不重複顯示；
+            // 其他體型套餐（精緻洗）也隱藏，但加購項目可以另外加
             let blockedByDogLock = false;
-            if (dogLockedItemId && !isTierAddon) {
-              blockedByDogLock = String(itemId) !== String(dogLockedItemId);
+            if (currentComboItems.length) {
+              blockedByDogLock =
+                comboIds.has(String(itemId)) || (!!itemDogTier && !isTierAddon);
             }
             // 依體型的加購：不管有沒有鎖定，都依體重級距與毛長篩選；沒有體重就不顯示
             let blockedByAddonShape = false;
@@ -1083,15 +1089,6 @@
               if (cb) cb.checked = false;
             } else {
               row.style.display = "";
-              // 已鎖定套餐的那一項，畫面重畫後自動勾選（避免每次切換毛孩都要手動點）
-              if (
-                dogLockedItemId &&
-                String(itemId) === String(dogLockedItemId) &&
-                cb
-              ) {
-                cb.checked = true;
-                selectedItemCodes.add(cb.value);
-              }
             }
           });
 
@@ -1358,20 +1355,14 @@
 
       function currentTotal() {
         let total = 0;
-        let lockedCounted = false;
         document
           .querySelectorAll("#itemsContainer input[type=checkbox]:checked")
           .forEach((cb) => {
             total += parseFloat(cb.dataset.price) || 0;
-            if (currentLockedItemCode && cb.value === currentLockedItemCode) {
-              lockedCounted = true;
-            }
           });
-        // 保底：固定套餐項目若因故沒有對應到清單裡的 checkbox（找不到該筆項目），
-        // 仍然把鎖定套餐的金額加回總金額，避免畫面顯示 $0。
-        if (currentLockedItemPrice && !lockedCounted) {
-          total += currentLockedItemPrice;
-        }
+        currentComboItems.forEach((c) => {
+          total += Number(c.price) || 0;
+        });
         return total;
       }
 
@@ -1408,7 +1399,9 @@
           showToast("這隻毛孩已經有一筆初次預約還沒完成", "error");
           return;
         }
-        selectedItemCodes = isFirstVisit ? new Set() : new Set(checkedItemCodes());
+        selectedItemCodes = isFirstVisit
+          ? new Set()
+          : new Set(checkedItemCodes().concat(currentComboItems.map((c) => c.itemCode)));
         if (!isFirstVisit && !selectedItemCodes.size) {
           showToast("請至少選擇一項服務", "error");
           return;

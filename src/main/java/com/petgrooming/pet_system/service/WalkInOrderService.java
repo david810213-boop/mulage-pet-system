@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.enums.PerformanceCategory;
 import com.petgrooming.pet_system.exception.ErrorCode;
 import com.petgrooming.pet_system.exception.PaymentException;
 import com.petgrooming.pet_system.model.GroomingItem;
+import com.petgrooming.pet_system.model.Pet;
 import com.petgrooming.pet_system.model.RetailProduct;
 import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.model.WalkInOrder;
@@ -23,6 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 現場開單——建立、結帳前編輯項目、查詢。
@@ -47,6 +52,7 @@ public class WalkInOrderService {
     private final GroomingItemComponentRepository groomingItemComponentRepository; // 套餐組成
     private final PetRepository petRepository; // 查現場單寵物物種
     private final RetailProductService retailProductService; // 零售商品加購
+    private final PetComboLockService petComboLockService; // 固定組合（客製化鎖定）
 
     // ── 建立現場單 ───────────────────────────────────────────────────────
     /**
@@ -63,7 +69,19 @@ public class WalkInOrderService {
         User creator = userRepository.findByUsername(createdByUsername).orElse(null);
         WalkInOrder order = newOrder(req, creator);
         if (hasServiceItems) {
-            req.getItems().forEach(line -> addServiceItem(order, line, req.getPetName()));
+            Pet pet = petComboLockService.findPet(order.getMember(), req.getPetName()).orElse(null);
+            Map<Long, Integer> locked = petComboLockService.lockedPrices(pet);
+            req.getItems().forEach(line -> addServiceItem(order, line, req.getPetName(), locked));
+            // 固定組合一律帶入（店員核對時可以再移除），照鎖定時的固定價
+            Set<Long> present = order.getItems().stream().map(WalkInOrderItem::getGroomingItemId)
+                    .filter(Objects::nonNull).collect(Collectors.toSet());
+            for (GroomingItem comboItem : petComboLockService.activeComboItems(pet)) {
+                if (!present.contains(comboItem.getId())) {
+                    WalkInOrderCreateRequest.Item line = new WalkInOrderCreateRequest.Item();
+                    line.setItemCode(comboItem.getItemCode());
+                    addServiceItem(order, line, req.getPetName(), locked);
+                }
+            }
         }
         if (hasRetailItems) {
             req.getRetailItems().forEach(line -> addRetailItems(order, line));
@@ -104,16 +122,18 @@ public class WalkInOrderService {
      * 加入一個服務項目（名稱、價格、積分存快照）。套餐的副組成展開成價格 0 的明細列，
      * 只供經手人分別計分；主項目名稱此時加上積分分類標籤，避免店家誤以為主分類的積分不見了。
      */
-    private void addServiceItem(WalkInOrder order, WalkInOrderCreateRequest.Item line, String petName) {
+    private void addServiceItem(WalkInOrder order, WalkInOrderCreateRequest.Item line, String petName,
+                                Map<Long, Integer> lockedPrices) {
         GroomingItem gi = groomingItemRepository.findByItemCode(line.getItemCode())
                 .orElseThrow(() -> new PaymentException("找不到項目代碼：" + line.getItemCode()));
         requireExistingCustomerIfRestricted(gi, order.getMember(), petName);
         var components = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
 
+        String name = components.isEmpty() ? gi.getName() : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
         WalkInOrderItem item = WalkInOrderItem.builder()
                 .groomingItemId(gi.getId())
-                .itemName(components.isEmpty() ? gi.getName() : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）")
-                .price((int) Math.round(gi.getPrice()))
+                .itemName(PetComboLockService.labelIfLocked(lockedPrices, gi, name))
+                .price(PetComboLockService.priceFor(lockedPrices, gi))
                 .points(gi.getPoints())
                 .performanceCategory(gi.getPerformanceCategory())
                 .discountEligible(gi.isDiscountEligible())
@@ -235,10 +255,7 @@ public class WalkInOrderService {
         var pet = petRepository.findByOwnerUsernameAndName(order.getMember().getUsername(), order.getPetName())
                 .orElse(null);
         if (pet == null) return null;
-        var lockedItem = pet.getLockedGroomingItemId() != null
-                ? groomingItemRepository.findById(pet.getLockedGroomingItemId()).orElse(null)
-                : null;
-        return PetResponse.from(pet, lockedItem);
+        return petComboLockService.toResponse(pet);
     }
 
     // 編輯訂單——結帳前補一筆漏開/開錯的美容服務項目
@@ -294,10 +311,13 @@ public class WalkInOrderService {
         // 也標一下「（自訂價格）」，方便日後對帳時一眼看出這筆不是原價。
         var itemComponents = groomingItemComponentRepository.findByGroomingItemId(gi.getId());
         boolean hasCustomPrice = customPrice != null && customPrice >= 0;
-        String mainItemName = (itemComponents.isEmpty() ? gi.getName()
-                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）")
-                + (hasCustomPrice ? "（自訂價格）" : "");
-        int actualPrice = hasCustomPrice ? customPrice : (int) Math.round(gi.getPrice());
+        Map<Long, Integer> locked = hasCustomPrice ? Map.of() : petComboLockService.lockedPrices(
+                petComboLockService.findPet(order.getMember(), order.getPetName()).orElse(null));
+        String baseName = itemComponents.isEmpty() ? gi.getName()
+                : gi.getName() + "（" + gi.getPerformanceCategory().getLabel() + "）";
+        String mainItemName = hasCustomPrice ? baseName + "（自訂價格）"
+                : PetComboLockService.labelIfLocked(locked, gi, baseName);
+        int actualPrice = hasCustomPrice ? customPrice : PetComboLockService.priceFor(locked, gi);
 
         WalkInOrderItem item = WalkInOrderItem.builder()
                 .groomingItemId(gi.getId())

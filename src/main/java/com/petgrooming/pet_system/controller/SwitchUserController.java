@@ -50,6 +50,8 @@ public class SwitchUserController {
 
         List<User> switchable = userService.getAllStaffEntities().stream()
                 .filter(u -> u.getSwitchPin() != null)
+                .filter(User::isActiveAccount)
+                .filter(u -> !u.isPartTime())
                 .toList();
 
         model.addAttribute("user", currentUser);
@@ -69,7 +71,7 @@ public class SwitchUserController {
         }
 
         User target = userService.getUserEntityById(targetUserId);
-        if (target == null || target.getSwitchPin() == null) {
+        if (target == null || target.getSwitchPin() == null || !target.isActiveAccount() || target.isPartTime()) {
             ra.addFlashAttribute("errorMsg", "找不到這個帳號，或對方尚未設定 PIN 碼");
             return "redirect:/auth/switch-user";
         }
