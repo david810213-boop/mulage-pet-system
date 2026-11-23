@@ -53,6 +53,23 @@ class StaffPartTimeTest extends IntegrationTestBase {
     }
 
     @Test
+    void adminRoleCanBeGrantedAndRevokedButNotOnSelfOrPartTime() {
+        User admin = testData.admin();
+        User staff = testData.staff();
+
+        userService.setStaffAdmin(staff.getId(), true, admin);
+        assertThat(userService.getUserEntityById(staff.getId()).isAdmin()).isTrue();
+        userService.setStaffAdmin(staff.getId(), false, admin);
+        assertThat(userService.getUserEntityById(staff.getId()).isAdmin()).isFalse();
+
+        assertThatThrownBy(() -> userService.setStaffAdmin(admin.getId(), false, admin))
+                .isInstanceOf(MemberException.class);
+        UserResponse partTime = userService.createPartTimeStaff("小安", null);
+        assertThatThrownBy(() -> userService.setStaffAdmin(partTime.getId(), true, admin))
+                .isInstanceOf(MemberException.class);
+    }
+
+    @Test
     void promotedPartTimeStaffCanLogInAndLosesLabel() {
         UserResponse partTime = userService.createPartTimeStaff("小華", null);
         String username = "promoted-" + UUID.randomUUID().toString().substring(0, 8) + "@pet.com";

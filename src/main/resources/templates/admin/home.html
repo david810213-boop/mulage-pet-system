@@ -667,7 +667,7 @@
                 </th>
                 <th style="padding: 12px 16px; font-weight: 600">姓名</th>
                 <th style="padding: 12px 16px; font-weight: 600">帳號</th>
-                <th style="padding: 12px 16px; font-weight: 600; width: 120px">
+                <th style="padding: 12px 16px; font-weight: 600; width: 170px">
                   角色
                 </th>
                 <th style="padding: 12px 16px; font-weight: 600; width: 220px">
@@ -715,8 +715,18 @@
                       border: 1px solid var(--cream-300);
                       border-radius: 4px;
                     "
-                    th:text="${s.role}"
+                    th:text="${s.role.name() == 'ADMIN'} ? '管理員' : (${s.partTime} ? '代班' : '員工')"
                   ></span>
+                  <form th:if="${!s.partTime and s.id != user?.id}"
+                        th:action="@{/admin/staff/{id}/admin(id=${s.id})}" method="post"
+                        style="display: inline; margin-left: 6px"
+                        th:data-name="${s.name}"
+                        th:data-to-admin="${s.role.name() != 'ADMIN'}"
+                        onsubmit="return confirm((this.dataset.toAdmin === 'true' ? '確定要把「' + this.dataset.name + '」設為管理員嗎？管理員可以管理員工、服務項目與財務報表。' : '確定要取消「' + this.dataset.name + '」的管理員權限嗎？') + '\n對方要登出再重新登入才會套用。');">
+                    <input type="hidden" name="admin" th:value="${s.role.name() != 'ADMIN'}" />
+                    <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11.5px; white-space: nowrap"
+                            th:text="${s.role.name() == 'ADMIN'} ? '取消管理員' : '設為管理員'">設為管理員</button>
+                  </form>
                 </td>
                 <td style="padding: 10px 16px" th:if="${s.partTime}">
                   <form
@@ -767,7 +777,7 @@
                   </form>
                 </td>
                 <td style="padding: 10px 16px">
-                  <form th:if="${s.active}" th:action="@{/admin/staff/{id}/deactivate(id=${s.id})}" method="post"
+                  <form th:if="${s.active and s.id != user?.id}" th:action="@{/admin/staff/{id}/deactivate(id=${s.id})}" method="post"
                         th:data-name="${s.name}"
                         onsubmit="return confirm('確定要停用「' + this.dataset.name + '」嗎？停用後不能登入、不會出現在經手人選單，過去的積分會保留。');">
                     <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; color: #c62828; border-color: #e0a8a8">停用</button>

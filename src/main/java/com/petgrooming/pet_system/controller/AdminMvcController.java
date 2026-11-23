@@ -66,7 +66,7 @@ public class AdminMvcController {
         
         model.addAttribute("user", user);
         model.addAttribute("allUsers", userService.getAllUsers());
-        model.addAttribute("allStaff", userService.getAllStaff());
+        model.addAttribute("allStaff", userService.getStaffAndAdmins());
         model.addAttribute("createStaffRequest", new CreateStaffRequest());
         model.addAttribute("groomingItems", groomingService.getAllItems());
         //接收服務項目的空物件
@@ -89,7 +89,7 @@ public class AdminMvcController {
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
             model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getAllStaff());
+            model.addAttribute("allStaff", userService.getStaffAndAdmins());
             model.addAttribute("groomingItems", groomingService.getAllItems());
             return "admin/home";
         }
@@ -101,7 +101,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
             model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getAllStaff());
+            model.addAttribute("allStaff", userService.getStaffAndAdmins());
             model.addAttribute("groomingItems", groomingService.getAllItems());
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
@@ -143,6 +143,22 @@ public class AdminMvcController {
         try {
             userService.setStaffActive(id, active, user);
             redirectAttributes.addFlashAttribute("successMsg", active ? "已重新啟用" : "已停用");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
+    /** 設為管理員／取消管理員（員工要登出再登入才會套用新權限）。 */
+    @PostMapping("/staff/{id}/admin")
+    public String setStaffAdmin(@PathVariable Long id, @RequestParam boolean admin,
+                                HttpServletRequest request, RedirectAttributes redirectAttributes,
+                                @CurrentUser User user) {
+        if (!isAdmin(request)) return "redirect:/dashboard";
+        try {
+            userService.setStaffAdmin(id, admin, user);
+            redirectAttributes.addFlashAttribute("successMsg",
+                    (admin ? "已設為管理員" : "已取消管理員") + "，請對方登出再重新登入才會套用");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -205,7 +221,7 @@ public class AdminMvcController {
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
             model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getAllStaff());
+            model.addAttribute("allStaff", userService.getStaffAndAdmins());
             model.addAttribute("groomingItems", groomingService.getAllItems());
             model.addAttribute("errorMsg", "修改失敗：" + describeErrors(bindingResult));
             return "admin/home"; // 留在原地
@@ -218,7 +234,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
             model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getAllStaff());
+            model.addAttribute("allStaff", userService.getStaffAndAdmins());
             model.addAttribute("groomingItems", groomingService.getAllItems());
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
@@ -285,7 +301,7 @@ public class AdminMvcController {
         if (bindingResult.hasErrors()) {
             model.addAttribute("user", user);
             model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getAllStaff());
+            model.addAttribute("allStaff", userService.getStaffAndAdmins());
             model.addAttribute("groomingItems", groomingService.getAllItems());
             model.addAttribute("errorMsg", "新增失敗：" + describeErrors(bindingResult));
             return "admin/home"; // 留在原地改考卷
@@ -298,7 +314,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("user", user);
             model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getAllStaff());
+            model.addAttribute("allStaff", userService.getStaffAndAdmins());
             model.addAttribute("groomingItems", groomingService.getAllItems());
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
