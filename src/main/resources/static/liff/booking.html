@@ -783,7 +783,7 @@
           status.specialDiscountRate &&
           ((status.specialDiscountCategories &&
             status.specialDiscountCategories.indexOf(item.performanceCategory) !== -1) ||
-            (status.specialDiscountTierAddons && item.tierAddon));
+            (status.specialDiscountTierAddons && item.tierAddon && item.performanceCategory !== "TRIM"));
         const memberApplicable =
           item.discountEligible &&
           typeof status.memberDiscountRate === "number" &&
@@ -808,7 +808,10 @@
       function itemRowHtml(item) {
         const resolved = resolveDiscountedPrice(item);
         const hasDiscount = resolved.price < Number(item.price) - 0.01;
-        const priceHtml = hasDiscount
+        // 大美容「到店面議」的加購價格是 0，到店報價後由店員補收
+        const priceHtml = item.tierAddon && Number(item.price) === 0
+          ? `<div class="item-price" style="font-size:13px;">到店面議</div>`
+          : hasDiscount
           ? `<div class="item-price">
                <span style="text-decoration: line-through; color: #a89f8c; font-size: 12px; margin-right: 4px;">$${item.price}</span>
                <span style="color: #d9822b; font-weight: 700;">$${Math.round(resolved.price)}</span>
