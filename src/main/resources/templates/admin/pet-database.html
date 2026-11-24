@@ -13,9 +13,9 @@
         </div>
 
         <p style="font-size: 13px; color: var(--brown-light); margin-bottom: 1.25rem;">
-          這裡集中列出全站所有寵物，狗狗的「鎖定固定套餐」可以直接在這裡操作，
-          不用先找到會員或跳去現場開單頁面。毛長（短毛/長毛）要先到「會員信息」
-          裡對應寵物的完整編輯頁定義，這裡只負責顯示跟鎖定套餐，不能改毛長。
+          這裡集中列出全站所有寵物，狗狗的固定組合（精緻洗＋加購，價格固定）可以直接在這裡鎖定、編輯或解鎖，
+          不用等到結帳核對。毛長（短毛/長毛）要先到「會員信息」
+          裡對應寵物的完整編輯頁定義，這裡不能改毛長。
         </p>
 
         <div class="card" style="margin-bottom: 1.25rem;">
@@ -50,6 +50,28 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="comboModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; align-items:center; justify-content:center;">
+      <div class="card" style="width:min(560px, 94vw); max-height:90vh; overflow:auto; margin:0;">
+        <h3 id="comboTitle" style="margin-top:0">編輯固定組合</h3>
+        <p style="font-size:12.5px; color:var(--brown-light); margin:0 0 .75rem;">
+          一項精緻洗＋任意加購，價格固定為這裡填的金額，之後預約、開單都會整組帶入。店家調整服務項目價格不影響這隻狗。
+        </p>
+        <label style="font-size:13px; font-weight:600;">精緻洗</label>
+        <div style="display:flex; gap:8px; margin:4px 0 12px;">
+          <select id="comboMain" style="flex:1; min-width:0;"></select>
+          <input id="comboMainPrice" type="number" min="0" step="1" style="width:90px;" />
+        </div>
+        <label style="font-size:13px; font-weight:600;">加購</label>
+        <div id="comboAddons" style="margin:4px 0 8px;"></div>
+        <button type="button" class="btn" id="comboAddBtn" style="font-size:12px;">＋ 加購項目</button>
+        <div style="margin-top:12px; font-size:14px;">合計 <strong id="comboTotal">$0</strong></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+          <button type="button" class="btn" id="comboCancelBtn">取消</button>
+          <button type="button" class="btn btn-primary" id="comboSaveBtn">儲存並鎖定</button>
         </div>
       </div>
     </div>
@@ -108,9 +130,14 @@
           return '<span style="color: var(--brown-light); font-size: 12.5px;">不適用（僅狗狗適用）</span>';
         }
         if (pet.lockedGroomingItemId) {
-          return `<span style="display: inline-block; width: 230px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）">
-            🔒 ${escapeHtml(pet.lockedItemName)}（$${pet.lockedItemPrice}）
-          </span>`;
+          const items = pet.lockedItems && pet.lockedItems.length
+            ? pet.lockedItems
+            : [{ name: pet.lockedItemName, price: pet.lockedItemPrice }];
+          const total = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
+          return `<div style="font-size: 12px; line-height: 1.5;">
+            ${items.map((i) => `🔒 ${escapeHtml(i.name)}（$${i.price}）`).join("<br>")}
+            ${items.length > 1 ? `<br><strong>合計 $${total}</strong>` : ""}
+          </div>`;
         }
         const candidates = candidateItemsForDog(pet);
         if (!candidates.length) {
@@ -124,15 +151,192 @@
         </select>`;
       }
 
+      const SMALL_BTN = "width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; text-align: center;";
+
       function lockActionButtonHtml(pet) {
         if (pet.petType !== "DOG") return "";
+        const editBtn = `<button type="button" class="btn" style="${SMALL_BTN}" onclick="openComboEditor(${pet.id})">✏️ 編輯</button>`;
         if (pet.lockedGroomingItemId) {
-          return `<button type="button" style="width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer; text-align: center;" onclick="unlockPet(${pet.id})">解鎖</button>`;
+          return `<div style="display:flex; flex-direction:column; gap:4px;">${editBtn}
+            <button type="button" style="${SMALL_BTN} border-radius: 999px; border: 1px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer;" onclick="unlockPet(${pet.id})">解鎖</button></div>`;
         }
-        const candidates = candidateItemsForDog(pet);
-        if (!candidates.length) return "";
-        return `<button type="button" class="btn btn-primary" style="width: 68px; padding: 4px 0; font-size: 12px; white-space: nowrap; min-height: auto; text-align: center;" onclick="lockPet(${pet.id})">🔒 鎖定</button>`;
+        const quickLock = candidateItemsForDog(pet).length
+          ? `<button type="button" class="btn btn-primary" style="${SMALL_BTN}" onclick="lockPet(${pet.id})">🔒 鎖定</button>`
+          : "";
+        return `<div style="display:flex; flex-direction:column; gap:4px;">${quickLock}${editBtn}</div>`;
       }
+
+      // ── 固定組合編輯 ──
+      // 精緻洗：依體型篩選的套餐（不是加購）；加購：同體型的加購與不分體型的狗狗項目。
+      // 符合這隻狗體重/毛長的排前面，其他放「其他體型」群組，方便體型特殊的狗手動挑。
+      const ITEM_BY_ID = new Map(GROOMING_ITEMS.map((i) => [i.id, i]));
+      let editingPet = null;
+
+      function isDogItem(i) {
+        return !i.applicablePetType || i.applicablePetType === "DOG";
+      }
+
+      function matchesDog(i, pet) {
+        if (i.dogWeightTier !== computeDogWeightTier(pet.weight)) return false;
+        const coatDefined = ["SHORT", "LONG", "MEDIUM"].includes(pet.coatType);
+        return !(coatDefined && i.dogCoatLength && i.dogCoatLength !== pet.coatType);
+      }
+
+      function optionsHtml(groups, selectedId) {
+        return groups
+          .filter((g) => g.items.length)
+          .map((g) => `<optgroup label="${escapeHtml(g.label)}">${g.items
+            .map((i) => `<option value="${i.id}"${i.id === selectedId ? " selected" : ""}>${escapeHtml(i.name)}（$${i.price}）</option>`)
+            .join("")}</optgroup>`)
+          .join("");
+      }
+
+      function mainOptions(pet, selectedId) {
+        const all = GROOMING_ITEMS.filter((i) => isDogItem(i) && i.dogWeightTier && !i.tierAddon);
+        return optionsHtml([
+          { label: "符合體重/毛長", items: all.filter((i) => matchesDog(i, pet)) },
+          { label: "其他體型", items: all.filter((i) => !matchesDog(i, pet)) },
+        ], selectedId);
+      }
+
+      function addonOptions(pet, selectedId) {
+        const addons = GROOMING_ITEMS.filter((i) => isDogItem(i) && i.tierAddon);
+        const general = GROOMING_ITEMS.filter((i) => isDogItem(i) && !i.dogWeightTier && !i.catCoatCategory);
+        return optionsHtml([
+          { label: "同體型加購", items: addons.filter((i) => matchesDog(i, pet)) },
+          { label: "狗狗單項", items: general },
+          { label: "其他體型加購", items: addons.filter((i) => !matchesDog(i, pet)) },
+        ], selectedId);
+      }
+
+      function addonRow(pet, itemId, price) {
+        const row = document.createElement("div");
+        row.className = "combo-addon";
+        row.style.cssText = "display:flex; gap:8px; margin-bottom:6px;";
+        row.innerHTML = `<select style="flex:1; min-width:0;">${addonOptions(pet, itemId)}</select>
+          <input type="number" min="0" step="1" style="width:90px;" />
+          <button type="button" class="btn" style="padding:2px 10px;" title="移除">✕</button>`;
+        const select = row.querySelector("select");
+        const input = row.querySelector("input");
+        if (itemId != null && Number(select.value) !== itemId) {
+          const item = ITEM_BY_ID.get(itemId);
+          select.insertAdjacentHTML("afterbegin",
+            `<option value="${itemId}" selected>${escapeHtml(item ? item.name : "#" + itemId)}</option>`);
+        }
+        if (itemId == null) select.selectedIndex = 0;
+        input.value = price != null ? price : (ITEM_BY_ID.get(Number(select.value)) || {}).price || 0;
+        select.addEventListener("change", () => {
+          input.value = (ITEM_BY_ID.get(Number(select.value)) || {}).price || 0;
+          updateComboTotal();
+        });
+        input.addEventListener("input", updateComboTotal);
+        row.querySelector("button").addEventListener("click", () => {
+          row.remove();
+          updateComboTotal();
+        });
+        document.getElementById("comboAddons").appendChild(row);
+      }
+
+      function updateComboTotal() {
+        let total = Number(document.getElementById("comboMainPrice").value || 0);
+        document.querySelectorAll("#comboAddons .combo-addon input").forEach((i) => (total += Number(i.value || 0)));
+        document.getElementById("comboTotal").textContent = "$" + total;
+      }
+
+      function openComboEditor(petId) {
+        const pet = PETS.find((p) => p.id === petId);
+        if (!pet) return;
+        editingPet = pet;
+        document.getElementById("comboTitle").textContent = "編輯固定組合：" + pet.name + "（" + pet.ownerName + "）";
+        const locked = pet.lockedGroomingItemId ? pet.lockedItems || [] : [];
+        const main = locked.find((i) => i.groomingItemId === pet.lockedGroomingItemId);
+        const mainSelect = document.getElementById("comboMain");
+        mainSelect.innerHTML = mainOptions(pet, main ? main.groomingItemId : null);
+        if (!main && !mainSelect.value) {
+          alert("找不到可用的精緻洗套餐");
+          return;
+        }
+        document.getElementById("comboMainPrice").value = main
+          ? main.price
+          : (ITEM_BY_ID.get(Number(mainSelect.value)) || {}).price || 0;
+        const addons = document.getElementById("comboAddons");
+        addons.innerHTML = "";
+        locked.filter((i) => i !== main).forEach((i) => addonRow(pet, i.groomingItemId, i.price));
+        updateComboTotal();
+        document.getElementById("comboModal").style.display = "flex";
+      }
+
+      function closeComboEditor() {
+        document.getElementById("comboModal").style.display = "none";
+        editingPet = null;
+      }
+
+      async function saveCombo() {
+        if (!editingPet) return;
+        const items = [{
+          groomingItemId: Number(document.getElementById("comboMain").value),
+          price: Number(document.getElementById("comboMainPrice").value),
+        }];
+        document.querySelectorAll("#comboAddons .combo-addon").forEach((row) => {
+          items.push({
+            groomingItemId: Number(row.querySelector("select").value),
+            price: Number(row.querySelector("input").value),
+          });
+        });
+        if (items.some((i) => !Number.isInteger(i.price) || i.price < 0)) {
+          alert("固定價要填 0 以上的整數");
+          return;
+        }
+        const ids = items.map((i) => i.groomingItemId);
+        if (new Set(ids).size !== ids.length) {
+          alert("同一個項目不能重複加入");
+          return;
+        }
+        const petId = editingPet.id;
+        try {
+          const res = await fetch("/api/admin/pets/" + petId + "/locked-combo", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items }),
+          });
+          const rawBody = await res.text();
+          let data = null;
+          try {
+            data = JSON.parse(rawBody);
+          } catch (e) {
+            data = null;
+          }
+          if (!res.ok) {
+            alert("儲存失敗：" + ((data && data.message) || rawBody));
+            return;
+          }
+          replacePet(petId, data);
+          closeComboEditor();
+        } catch (e) {
+          alert("儲存失敗：" + e.message);
+        }
+      }
+
+      function replacePet(petId, updated) {
+        const idx = PETS.findIndex((p) => p.id === petId);
+        if (idx !== -1) PETS[idx] = updated;
+        document.getElementById("statusCell-" + petId).innerHTML = statusDisplayHtml(updated);
+        document.getElementById("actionCell-" + petId).innerHTML = lockActionButtonHtml(updated);
+      }
+
+      document.getElementById("comboMain").addEventListener("change", function () {
+        document.getElementById("comboMainPrice").value = (ITEM_BY_ID.get(Number(this.value)) || {}).price || 0;
+        updateComboTotal();
+      });
+      document.getElementById("comboMainPrice").addEventListener("input", updateComboTotal);
+      document.getElementById("comboAddBtn").addEventListener("click", () => {
+        if (editingPet) {
+          addonRow(editingPet, null, null);
+          updateComboTotal();
+        }
+      });
+      document.getElementById("comboCancelBtn").addEventListener("click", closeComboEditor);
+      document.getElementById("comboSaveBtn").addEventListener("click", saveCombo);
 
       function petRowHtml(pet) {
         const coatLabelMap = { SHORT: "短毛", LONG: "長毛", MEDIUM: "中長毛", UNDEFINED: "未定義" };
@@ -157,7 +361,7 @@
         const tbody = document.getElementById("petsTableBody");
         if (!PETS.length) {
           tbody.innerHTML =
-            '<tr><td colspan="7" style="text-align:center; color:var(--brown-light); padding:20px;">目前沒有任何寵物資料</td></tr>';
+            '<tr><td colspan="9" style="text-align:center; color:var(--brown-light); padding:20px;">目前沒有任何寵物資料</td></tr>';
           return;
         }
         tbody.innerHTML = PETS.map(petRowHtml).join("");
@@ -178,17 +382,14 @@
             alert("鎖定失敗：" + rawBody);
             return;
           }
-          const updated = JSON.parse(rawBody);
-          const idx = PETS.findIndex((p) => p.id === petId);
-          if (idx !== -1) PETS[idx] = updated;
-          document.getElementById("statusCell-" + petId).innerHTML = statusDisplayHtml(updated);
-          document.getElementById("actionCell-" + petId).innerHTML = lockActionButtonHtml(updated);
+          replacePet(petId, JSON.parse(rawBody));
         } catch (e) {
           alert("鎖定失敗：" + e.message);
         }
       }
 
       async function unlockPet(petId) {
+        if (!window.confirm("解鎖後會恢復依體重自動篩選，固定價也會失效，確定嗎？")) return;
         try {
           const res = await fetch("/api/admin/pets/" + petId + "/locked-item", {
             method: "DELETE",
@@ -198,11 +399,7 @@
             alert("解鎖失敗：" + rawBody);
             return;
           }
-          const updated = JSON.parse(rawBody);
-          const idx = PETS.findIndex((p) => p.id === petId);
-          if (idx !== -1) PETS[idx] = updated;
-          document.getElementById("statusCell-" + petId).innerHTML = statusDisplayHtml(updated);
-          document.getElementById("actionCell-" + petId).innerHTML = lockActionButtonHtml(updated);
+          replacePet(petId, JSON.parse(rawBody));
         } catch (e) {
           alert("解鎖失敗：" + e.message);
         }
