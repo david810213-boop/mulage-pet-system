@@ -14,6 +14,7 @@ import com.petgrooming.pet_system.model.User;
 import com.petgrooming.pet_system.repository.AppointmentRepository;
 import com.petgrooming.pet_system.repository.GroomingItemRepository;
 import com.petgrooming.pet_system.repository.PetRepository;
+import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.WalkInOrderService;
 import com.petgrooming.pet_system.service.WalletService;
 import com.petgrooming.pet_system.support.IntegrationTestBase;
@@ -55,6 +56,7 @@ class CheckoutPageTest extends IntegrationTestBase {
     @Autowired private GroomingItemRepository groomingItemRepository;
     @Autowired private WalletService walletService;
     @Autowired private WalkInOrderService walkInOrderService;
+    @Autowired private AppointmentQueryService appointmentQueryService;
 
     private MockMvc mvc;
 
@@ -112,6 +114,52 @@ class CheckoutPageTest extends IntegrationTestBase {
 
         assertThat((String) result.getModelAndView().getModel().get("errorMsg")).contains("核對");
         assertThat(result.getResponse().getContentAsString()).contains("核對");
+    }
+
+    @Test
+    void appointmentNotCheckedYetCannotOpenCheckoutPage() throws Exception {
+        User customer = testData.customer();
+        PetResponse dog = testData.dog(customer);
+        Appointment appointment = appointment(customer, dog.getName());
+        appointment.setStatus(AppointmentStatus.CONFIRMED); // 還沒開單
+        appointment.setFinalCheckDone(false);
+        appointmentRepository.save(appointment);
+        User staff = testData.staff();
+
+        mvc.perform(get("/payments/checkout/" + appointment.getId()).cookie(WebLogin.cookie(jwtUtils, staff)))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void lateCancelChargeSuggestsThirtyPercentOfFineBathOnly() {
+        User customer = testData.customer();
+        PetResponse dog = testData.dog(customer);
+        Appointment appointment = appointment(customer, dog.getName());
+        GroomingItem bath = groomingItem(1200);
+        bath.setName("中型犬-長毛-精緻洗" + bath.getItemCode());
+        groomingItemRepository.save(bath);
+        appointment.setSelectedItems(new ArrayList<>(List.of(bath, groomingItem(800)))); // 加購不算
+        appointmentRepository.save(appointment);
+
+        assertThat(appointmentQueryService.suggestedLateCancelCharge(appointment.getId())).isEqualTo(360);
+    }
+
+    @Test
+    void paidDepositIsDeductedFromTheAmountToCollect() throws Exception {
+        User customer = testData.customer();
+        PetResponse dog = testData.dog(customer);
+        Appointment appointment = appointment(customer, dog.getName());
+        appointment.setTotalAmount(1000);
+        appointment.setSelectedItems(new ArrayList<>(List.of(groomingItem(1000))));
+        appointment.setDepositShare(500);
+        appointment.setDepositPaid(500);
+        appointmentRepository.save(appointment);
+
+        Map<String, Object> model = checkout(appointment).getModelAndView().getModel();
+
+        assertThat(model.get("depositCredit")).isEqualTo(500);
+        assertThat(model.get("standardCollect")).isEqualTo(500);
+        assertThat(model.get("depositUnpaid")).isEqualTo(0);
     }
 
     @Test

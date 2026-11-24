@@ -304,7 +304,8 @@ public class AppointmentService {
             throw new AppointmentException("店家因素取消不扣儲值金");
         }
         // 店家規範：儲值金會員（免付訂金）24 小時內取消或未到店，從儲值金扣精緻洗（或大美容）費用的三成。
-        // 扣多少由店員依預約項目判斷，所以 24 小時內的取消改由店員處理
+        // 扣多少由店員確認（取消表單會帶入建議金額，見 AppointmentQueryService.suggestedLateCancelCharge），
+        // 所以 24 小時內的取消改由店員處理
         if (!isStaffOrAdmin && isWithinLateCancelWindow(appointment)
                 && hasWalletBalance(appointment.getUser().getUsername())) {
             throw new AppointmentException("預約前 24 小時內取消，儲值金會員請聯繫官方 LINE 客服，由店家協助辦理");
