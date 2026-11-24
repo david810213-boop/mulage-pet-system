@@ -6,6 +6,7 @@ import com.petgrooming.pet_system.enums.PetSizeCategory;
 import com.petgrooming.pet_system.enums.PetType;
 import com.petgrooming.pet_system.model.GroomingItem;
 import com.petgrooming.pet_system.model.Pet;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -55,6 +56,12 @@ public class PetResponse {
     private List<LockedItemView> lockedItems = new ArrayList<>();
 
     public record LockedItemView(Long groomingItemId, String itemCode, String name, int price) {
+    }
+
+    /** 網頁版代客預約頁用：固定組合的項目代碼，逗號分隔。 */
+    @JsonIgnore
+    public String getLockedItemCodesCsv() {
+        return String.join(",", lockedItems.stream().map(LockedItemView::itemCode).toList());
     }
 
     /** 套用固定組合：整組名稱用「＋」串起來、價格加總，空清單代表沒有鎖定。 */

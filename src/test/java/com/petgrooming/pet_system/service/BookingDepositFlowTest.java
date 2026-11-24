@@ -238,6 +238,19 @@ class BookingDepositFlowTest extends IntegrationTestBase {
     }
 
     @Test
+    void waivingTwoPetsSameDayConfirmsBoth() {
+        User customer = testData.customer();
+        LocalDate date = testData.openFutureDate();
+        AppointmentResponse first = book(customer, testData.dog(customer), date, NOON);
+        AppointmentResponse second = book(customer, testData.cat(customer), date, TWO_PM);
+
+        assertThat(bookingDepositService.waive(customer.getId(), date)).isEqualTo(2);
+
+        assertThat(reload(first).getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
+        assertThat(reload(second).getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
+    }
+
+    @Test
     void paidBookingCanBeRescheduledOnlyOnceAndDepositMoves() {
         User customer = testData.customer();
         User staff = testData.staff();

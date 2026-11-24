@@ -95,7 +95,7 @@ public class PerformanceSplitService {
     }
 
     // ── 算出「已經拆分過」的紀錄 id 集合（原始來源 + 拆分產生的新紀錄都算）──
-    // 用來從候選清單、日報顯示中排除，這些紀錄之後只在「拆分歷史」看得到。
+    // 用來從待拆分候選清單排除，避免同一筆再拆一次。
     private Set<Long> getSplitInvolvedRecordIds() {
         Set<Long> involved = new HashSet<>();
         for (PerformanceRecord r : recordRepo.findBySplitFromRecordIdIsNotNull()) {
@@ -105,12 +105,9 @@ public class PerformanceSplitService {
         return involved;
     }
 
-    // ── 日報用——當日績效紀錄，排除已拆分過的（只在拆分歷史顯示）───
+    // ── 日報用——當日全部績效紀錄；拆分或雙人經手的兩半各列一筆（店家要求日報看得到每個人實際拿到的分數）───
     public List<PerformanceRecord> getDailyRecordsForDisplay(LocalDate date) {
-        Set<Long> involved = getSplitInvolvedRecordIds();
-        return performanceService.getDailyRecords(date).stream()
-                .filter(r -> !involved.contains(r.getId()))
-                .toList();
+        return performanceService.getDailyRecords(date);
     }
 
     // ── 解析一筆績效紀錄對應的寵物名稱（預約或現場單擇一查）───

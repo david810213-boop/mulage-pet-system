@@ -87,6 +87,18 @@ class CheckoutTest extends IntegrationTestBase {
     }
 
     @Test
+    void cancelledAppointmentCannotBeCheckedOut() {
+        User staff = testData.staff();
+        Appointment appointment = readyForCheckout(testData.customer(), "CAT", item(1000, PerformanceCategory.OTHER));
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointmentRepository.save(appointment);
+
+        assertThatThrownBy(() -> paymentService.checkout(appointment.getId(), pay(PaymentMethod.CASH), staff.getUsername()))
+                .isInstanceOf(PaymentException.class)
+                .hasMessageContaining("取消");
+    }
+
+    @Test
     void customerCannotCheckOutAnotherCustomersAppointment() {
         Appointment appointment = readyForCheckout(testData.customer(), "CAT", item(1000, PerformanceCategory.OTHER));
         User stranger = testData.customer();
