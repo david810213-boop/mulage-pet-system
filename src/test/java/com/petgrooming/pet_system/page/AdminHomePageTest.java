@@ -60,8 +60,8 @@ class AdminHomePageTest extends IntegrationTestBase {
         int row = html.indexOf(">CUT003<");
         assertThat(row).isPositive();
         String cut003 = html.substring(row, html.indexOf("</tr>", row));
-        assertThat(cut003).containsPattern("<option value=\"25\" selected[^>]*>25分</option>");
-        assertThat(cut003).doesNotContainPattern("<option value=\"0\" selected");
+        assertThat(cut003).containsPattern("<option value=\"25\"\\s+selected[^>]*>25分</option>");
+        assertThat(cut003).doesNotContainPattern("<option value=\"0\"\\s+selected");
         assertThat(html).contains("id=\"staff\"", "id=\"add-staff\"", "id=\"items\"", "id=\"users\"",
                 "href=\"#items\"", "id=\"catChips\"");
     }
