@@ -49,7 +49,7 @@ public class PerformanceMvcController {
         if (date == null) date = LocalDate.now();
         model.addAttribute("user", loginUser);
         model.addAttribute("date", date);
-        // 當日績效紀錄排除已拆分過的（只在拆分歷史顯示，避免同一筆看起來出現兩次）
+        // 拆分、雙人經手的兩半各列一筆
         model.addAttribute("records", performanceSplitService.getDailyRecordsForDisplay(date));
         model.addAttribute("staffList", userService.getAllStaffEntities());
         model.addAttribute("categories", Arrays.stream(PerformanceCategory.values())

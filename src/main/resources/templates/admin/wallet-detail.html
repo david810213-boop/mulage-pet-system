@@ -111,7 +111,8 @@
               <span style="font-size: 13px; color: #666">服務折扣</span>
               <span
                 style="font-size: 15px; font-weight: 700; color: #c9a84c"
-                th:text="${wallet.discount < 1.0 ? (wallet.cardActive ? (wallet.discount * 100 + '折') : '已到期') : '無折扣'}"
+                th:with="pct=${#numbers.formatInteger(wallet.discount * 100, 0)}"
+                th:text="${wallet.discount < 1.0 ? (wallet.cardActive ? ((pct.endsWith('0') ? pct.substring(0, pct.length() - 1) : pct) + '折') : '已到期') : '無折扣'}"
                 >折扣</span
               >
             </div>

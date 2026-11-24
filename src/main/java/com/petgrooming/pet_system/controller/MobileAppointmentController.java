@@ -406,7 +406,7 @@ public class MobileAppointmentController {
         if (a == null || a.isCancelled()) {
             return "redirect:/m/appointments";
         }
-        boolean canCheckout = !a.isPaid() && !a.isPendingWireTransfer() && a.isFinalCheckDone();
+        boolean canCheckout = !a.isCancelled() && !a.isPaid() && !a.isPendingWireTransfer() && a.isFinalCheckDone();
         if (!canCheckout) {
             return "redirect:/m/appointments/" + id;
         }

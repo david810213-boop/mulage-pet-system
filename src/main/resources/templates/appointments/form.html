@@ -111,7 +111,7 @@
                   th:each="pet : ${myPets}"
                   th:value="${pet.id}"
                   th:text="${pet.name + '（' + pet.sizeCategoryLabel + '・' + pet.coatTypeLabel + '）'}"
-                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')},data-existing=${pet.isExistingCustomer},data-pettype=${pet.petType},data-weight=${pet.weight},data-coat-type=${pet.coatType},data-cat-coat-category=${pet.catCoatCategory},data-locked-item-id=${pet.lockedGroomingItemId}"
+                  th:attr="data-recommend=${#strings.listJoin(pet.recommendedItemCodes, ',')},data-existing=${pet.isExistingCustomer},data-pettype=${pet.petType},data-weight=${pet.weight},data-coat-type=${pet.coatType},data-cat-coat-category=${pet.catCoatCategory},data-locked-item-id=${pet.lockedGroomingItemId},data-locked-codes=${pet.lockedItemCodesCsv}"
                 ></option>
               </select>
               <p
@@ -219,7 +219,7 @@
                   th:each="item : ${groomingItems}"
                   th:if="${item.performanceCategory != 'OTHER'}"
                   th:class="${item.performanceCategory == 'SPECIAL'} ? 'special-trigger-label' : ''"
-                  th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType},data-item-id=${item.id},data-dog-weight-tier=${item.dogWeightTier},data-dog-coat-length=${item.dogCoatLength},data-cat-coat-category=${item.catCoatCategory}"
+                  th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType},data-item-id=${item.id},data-dog-weight-tier=${item.dogWeightTier},data-dog-coat-length=${item.dogCoatLength},data-cat-coat-category=${item.catCoatCategory},data-tier-addon=${item.tierAddon}"
                   style="
                     display: flex;
                     align-items: center;
@@ -279,7 +279,7 @@
                   <label
                     th:each="item : ${groomingItems}"
                     th:if="${item.performanceCategory == 'OTHER'}"
-                    th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType},data-item-id=${item.id},data-dog-weight-tier=${item.dogWeightTier},data-dog-coat-length=${item.dogCoatLength},data-cat-coat-category=${item.catCoatCategory}"
+                    th:attr="data-requires-existing=${item.requiresExistingCustomer},data-applicable-pet-type=${item.applicablePetType},data-item-id=${item.id},data-dog-weight-tier=${item.dogWeightTier},data-dog-coat-length=${item.dogCoatLength},data-cat-coat-category=${item.catCoatCategory},data-tier-addon=${item.tierAddon}"
                     style="
                       display: flex;
                       align-items: center;
@@ -749,6 +749,12 @@
         const coatType = (selected.dataset.coatType || "").toUpperCase();
         const catCoatCategory = (selected.dataset.catCoatCategory || "").toUpperCase();
         const lockedItemId = selected.dataset.lockedItemId || "";
+        // 固定組合的狗：精緻洗只留鎖定那一項，同體型×毛長的加購（AD／HC／大美容）照樣可以另外加
+        const lockedLabel = lockedItemId
+          ? document.querySelector(`label[data-requires-existing][data-item-id="${lockedItemId}"]`)
+          : null;
+        const lockedTier = lockedLabel ? lockedLabel.dataset.dogWeightTier || "" : "";
+        const lockedCoat = lockedLabel ? (lockedLabel.dataset.dogCoatLength || "").toUpperCase() : "";
         const isDog = petType === "DOG";
         const dogTier =
           isDog && !lockedItemId && weight !== null && !isNaN(weight)
@@ -771,7 +777,12 @@
 
           let blockedByShape = false;
           if (isDog && dogWeightTier) {
-            if (lockedItemId) {
+            if (lockedItemId && label.dataset.tierAddon === "true") {
+              blockedByShape =
+                !lockedTier ||
+                dogWeightTier !== lockedTier ||
+                (lockedCoat && dogCoatLength && dogCoatLength.toUpperCase() !== lockedCoat);
+            } else if (lockedItemId) {
               blockedByShape = (label.dataset.itemId || "") !== lockedItemId;
             } else if (dogTier && dogWeightTier !== dogTier) {
               blockedByShape = true;
@@ -804,6 +815,7 @@
           .querySelectorAll('input[name="selectedItems"]')
           .forEach((cb) => {
             cb.checked = false;
+            delete cb.dataset.locked;
             cb.closest("label").style.background = "#ffffff";
             cb.closest("label").style.borderColor = "var(--cream-200)";
           });
@@ -830,11 +842,31 @@
         } else {
           document.getElementById("autoHint").style.display = "none";
         }
+
+        // 固定組合整組帶入、不能移除（送出時後端也會補上整組）
+        (selected.dataset.lockedCodes || "")
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean)
+          .forEach((code) => {
+            const cb = document.querySelector(`input[name="selectedItems"][value="${code}"]`);
+            if (!cb) return;
+            cb.closest("label").style.display = "flex";
+            cb.checked = true;
+            cb.dataset.locked = "true";
+            cb.closest("label").style.background = "#fff8f0";
+            cb.closest("label").style.borderColor = "#c9a84c";
+            cb.closest("label").title = "固定組合項目，要調整請先到寵物資料解鎖";
+          });
       }
 
       // 讓已勾選的 checkbox 視覺上高亮
       document.querySelectorAll('input[name="selectedItems"]').forEach((cb) => {
         cb.addEventListener("change", function () {
+          if (this.dataset.locked === "true" && !this.checked) {
+            this.checked = true;
+            alert("這是固定組合的項目，不能移除；要調整請先到寵物資料解鎖");
+          }
           this.closest("label").style.background = this.checked
             ? "#fff8f0"
             : "#ffffff";

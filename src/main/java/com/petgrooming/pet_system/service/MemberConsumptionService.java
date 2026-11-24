@@ -99,7 +99,7 @@ public class MemberConsumptionService {
                     .time(w.getPaymentTime())
                     .handledBy(w.getCreatedBy())
                     .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
-                    .amount(w.getTotalAmount())
+                    .amount(paidAmount(w))
                     .paid(true)
                     .items(items)
                     .build());
@@ -154,7 +154,7 @@ public class MemberConsumptionService {
                     .time(w.getPaymentTime())
                     .handledBy(w.getCreatedBy())
                     .paymentMethodLabel(w.getPaymentMethod() != null ? w.getPaymentMethod().getDisplayName() : "—")
-                    .amount(w.getTotalAmount())
+                    .amount(paidAmount(w))
                     .paid(true)
                     .build());
         }
@@ -166,5 +166,10 @@ public class MemberConsumptionService {
             return b.getTime().compareTo(a.getTime());
         });
         return records;
+    }
+
+    /** 現場單實收金額（儲值金折扣後）；舊資料沒有 chargedAmount 時用帳面金額。 */
+    private static int paidAmount(WalkInOrder w) {
+        return w.getChargedAmount() != null ? w.getChargedAmount() : w.getTotalAmount();
     }
 }

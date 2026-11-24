@@ -50,6 +50,7 @@ class DiscountCheckoutTest extends IntegrationTestBase {
     @Autowired private AppointmentDetailService appointmentDetailService;
     @Autowired private WalkInOrderService walkInOrderService;
     @Autowired private WalkInPaymentService walkInPaymentService;
+    @Autowired private MemberConsumptionService memberConsumptionService;
     @Autowired private CheckoutPreviewService checkoutPreviewService;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private AppointmentItemRepository appointmentItemRepository;
@@ -157,6 +158,20 @@ class DiscountCheckoutTest extends IntegrationTestBase {
         assertThat(result.getItems()).extracting(ItemLine::isFirstVisitEligible).containsExactly(true, false);
         assertThat(result.getItems()).extracting(ItemLine::getAppliedDiscountType)
                 .containsExactly(DiscountType.FIRST_VISIT, DiscountType.NONE);
+    }
+
+    @Test
+    void transactionListShowsTheChargedAmountOfDiscountedWalkIns() {
+        User owner = testData.customer();
+        PetResponse dog = testData.dog(owner);
+        Long orderId = walkIn(owner, dog.getName(),
+                item(1000, PerformanceCategory.BATH_SMALL), item(300, PerformanceCategory.OTHER));
+        walkInPaymentService.checkout(orderId, PaymentMethod.CASH, testData.staff().getUsername());
+
+        var record = memberConsumptionService.buildCombinedRecords(List.of(),
+                        List.of(walkInOrderRepository.findById(orderId).orElseThrow())).get(0);
+
+        assertThat(record.getAmount()).isEqualTo(900 + 300); // 實收，不是帳面 1300
     }
 
     @Test

@@ -47,7 +47,7 @@
               </tr>
               <tr th:each="r : ${records}">
                 <td th:text="${r.staff.name}">員工</td>
-                <td th:text="'#' + ${r.appointmentId}">編號</td>
+                <td th:text="${r.appointmentId != null} ? '#' + ${r.appointmentId} : (${r.walkInOrderId != null} ? '現場單#' + ${r.walkInOrderId} : '—')">編號</td>
                 <td th:text="${r.category.label}">大項</td>
                 <td style="font-weight:700; color:#c9a84c;" th:text="${r.points}">分</td>
                 <td th:text="${r.note}">備註</td>
