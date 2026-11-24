@@ -94,6 +94,10 @@ public class PaymentMvcController {
             redirectAttributes.addFlashAttribute("errorMsg", "這筆預約還沒完成開單、服務與核對，不能結帳");
             return "redirect:/appointments";
         }
+        if (target != null && !target.isPaid() && target.isCancelled()) {
+            redirectAttributes.addFlashAttribute("errorMsg", "這筆預約已取消，不能結帳");
+            return "redirect:/appointments";
+        }
         model.addAttribute("checkoutRequest", new CheckoutRequest());
         addCheckoutBasics(model, appointmentId, user);
         addMenuAndPreview(model, appointmentId, user);

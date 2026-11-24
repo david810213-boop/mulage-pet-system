@@ -110,6 +110,9 @@ public class PaymentService {
         if (paid) {
             throw new PaymentException("此預約已完成結帳");
         }
+        if (appointment.isCancelled()) {
+            throw new PaymentException("此預約已取消，不能結帳");
+        }
         if (!appointment.isFinalCheckDone()) {
             throw new PaymentException("請先完成進行中預約的核對（美容狀況備註 + 家長簽名）後才能結帳");
         }

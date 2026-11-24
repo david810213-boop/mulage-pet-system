@@ -230,9 +230,11 @@ public class BookingDepositService {
         if (group.isEmpty()) {
             throw new AppointmentException("這一天沒有有效的預約");
         }
+        // 先記下需要訂金的預約：免收後份額歸零，事後就分不出哪幾筆原本在等訂金
+        List<Appointment> waiting = group.stream().filter(BookingDepositService::waitingForDeposit).toList();
         group.forEach(a -> a.setDepositWaived(true));
         recalculate(group);
-        int confirmed = confirmGroup(group);
+        int confirmed = confirmAll(waiting);
         appointmentRepository.saveAll(group);
         return confirmed;
     }
@@ -407,13 +409,17 @@ public class BookingDepositService {
 
     /** 付清（或免收）後：當天需要訂金、還沒確認的預約轉為已確認並通知顧客，回傳轉換的筆數。 */
     private int confirmGroup(List<Appointment> group) {
+        return confirmAll(group.stream().filter(BookingDepositService::waitingForDeposit).toList());
+    }
+
+    private static boolean waitingForDeposit(Appointment a) {
+        return a.isAwaitingDeposit()
+                || (a.getStatus() == AppointmentStatus.PENDING_CONFIRM && a.getDepositShare() > 0);
+    }
+
+    private int confirmAll(List<Appointment> appointments) {
         int count = 0;
-        for (Appointment a : group) {
-            boolean needsConfirm = a.isAwaitingDeposit()
-                    || (a.getStatus() == AppointmentStatus.PENDING_CONFIRM && a.getDepositShare() > 0);
-            if (!needsConfirm) {
-                continue;
-            }
+        for (Appointment a : appointments) {
             a.setStatus(AppointmentStatus.CONFIRMED);
             a.setConfirmedTime(LocalDateTime.now());
             a.setDepositDueAt(null);

@@ -73,7 +73,7 @@ class PerformanceSplitTest extends IntegrationTestBase {
         assertThat(performanceSplitService.getSplitSourceRecordIds()).contains(bath.getId());
         List<PerformanceRecord> daily = transactionTemplate.execute(s -> performanceSplitService.getDailyRecordsForDisplay(date));
         assertThat(daily).extracting(PerformanceRecord::getId)
-                .contains(checkin.getId()).doesNotContain(bath.getId(), split.getId());
+                .contains(checkin.getId(), bath.getId(), split.getId()); // 日報兩半各列一筆
 
         List<SplitHistoryResponse> history = history(date, petName, null);
         assertThat(history).singleElement().satisfies(h -> {

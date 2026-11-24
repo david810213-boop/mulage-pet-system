@@ -1477,6 +1477,12 @@
           const bookedPet = myPets.find(
             (p) => String(p.id) === String(selectedPetId),
           );
+          // 需要訂金時直接打開「我的預約」的匯款資訊視窗，家長送出後就能看到帳號、回報後五碼
+          if (data.status === "AWAITING_DEPOSIT" && data.date) {
+            window.location.href =
+              "/liff/my-appointments.html?deposit=" + encodeURIComponent(data.date);
+            return;
+          }
           showBookingSubmittedModal(
             data.appointmentCode,
             bookedPet && !bookedPet.isExistingCustomer,

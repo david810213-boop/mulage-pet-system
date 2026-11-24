@@ -44,6 +44,7 @@ public class AdminMvcController {
     // 存檔後回到原本的區塊，不用從頁首重新往下捲
     private static final String STAFF_SECTION = "redirect:/admin#staff";
     private static final String ITEMS_SECTION = "redirect:/admin#items";
+    private static final List<Integer> POINT_OPTIONS = List.of(0, 5, 10, 15, 20, 25, 30, 35);
 
 
     private final UserService userService;
@@ -334,6 +335,7 @@ public class AdminMvcController {
                 .map(c -> new GroomingCategoryView(c.name(), c.getLabel(), counts.getOrDefault(c, 0L), c.isDog()))
                 .toList());
         model.addAttribute("dogTiers", DogWeightTier.values());
+        model.addAttribute("pointOptions", POINT_OPTIONS);
     }
 
     private static final Map<String, String> GROOMING_FIELD_LABELS = Map.of(
