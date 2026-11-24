@@ -48,17 +48,23 @@ public class AdminPetController {
         return ResponseEntity.ok(petService.lockGroomingItem(petId, body.groomingItemId()));
     }
 
-    /** 結帳核對時，把這張單的服務項目（照這張單的價格）鎖定成固定組合。 */
+    /** 鎖定固定組合：寵物資料庫直接編輯項目與固定價，或結帳核對時照這張單的服務項目與價格。 */
     @RequireRole({UserRole.ADMIN, UserRole.STAFF})
     @PutMapping("/{petId}/locked-combo")
-    public ResponseEntity<PetResponse> lockCombo(@PathVariable Long petId, @RequestBody LockComboRequest body) {
+    public ResponseEntity<PetResponse> lockCombo(@PathVariable Long petId,
+                                                 @Valid @RequestBody LockComboRequest body) {
+        if (body.items() != null && !body.items().isEmpty()) {
+            return ResponseEntity.ok(petComboLockService.lockCombo(petId, body.items().stream()
+                    .map(i -> new PetComboLockService.ComboLine(i.groomingItemId(), i.price()))
+                    .toList()));
+        }
         if (body.walkInOrderId() != null) {
             return ResponseEntity.ok(petComboLockService.lockFromWalkInOrder(petId, body.walkInOrderId()));
         }
         if (body.appointmentId() != null) {
             return ResponseEntity.ok(petComboLockService.lockFromAppointment(petId, body.appointmentId()));
         }
-        throw new PetException("請提供現場單或預約編號");
+        throw new PetException("請提供組合項目、現場單或預約編號");
     }
 
     /** 狗狗生病消瘦、換季毛況差很多、或當初選錯了，店員手動解鎖，恢復依體重自動篩選。 */

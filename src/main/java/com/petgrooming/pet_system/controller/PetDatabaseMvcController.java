@@ -11,12 +11,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * 寵物信息管理頁面：集中列出全站所有寵物（跨會員）與固定套餐鎖定狀態，
- * 不用先找到會員或那張單才能鎖定／解鎖。
- *
- * 鎖定/解鎖用的還是既有的 API（AdminPetController 的
- * PUT /api/admin/pets/{petId}/lock-grooming-item、.../unlock-grooming-item），
- * 這裡沒有新增任何寫入邏輯，純粹是多一個看得到、操作得到的入口。
+ * 寵物信息管理頁面：集中列出全站所有寵物（跨會員）與固定組合，
+ * 不用等到結帳核對就能鎖定、編輯或解鎖。寫入走 AdminPetController 的 API。
  */
 @Controller
 @RequestMapping("/admin/pet-database")
