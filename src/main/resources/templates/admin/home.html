@@ -8,6 +8,24 @@
       <div th:replace="~{fragments/nav :: nav}"></div>
 
       <div class="content">
+    <style>
+      .admin-sticky { position: sticky; top: 0; z-index: 40; background: var(--ground); padding: 0.6rem 0; margin-bottom: 1rem; }
+      .admin-sticky .alert { margin-bottom: 0.6rem; }
+      .admin-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .admin-nav a { text-decoration: none; padding: 6px 14px; font-size: 14px; border-radius: 999px; }
+      .admin-nav .nav-link { border: 1px solid var(--cream-300); color: var(--brown-dark); background: #fff; }
+      .admin-nav .nav-link.active { background: var(--brown-dark); color: #fff; border-color: var(--brown-dark); }
+      .admin-nav .nav-report { margin-right: 6px; }
+      .admin-section { scroll-margin-top: 90px; }
+      .items-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 1.2rem 1.5rem 0.8rem; }
+      .items-filter { display: flex; flex-direction: column; gap: 8px; padding: 1rem 1.5rem; border-bottom: 1px solid var(--cream-300); }
+      .chip-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .chip { border: 1px solid var(--cream-300); background: #fff; color: var(--brown-dark); border-radius: 999px; padding: 5px 14px; font-size: 13px; cursor: pointer; }
+      .chip-sm { padding: 3px 10px; font-size: 12px; }
+      .chip.active { background: var(--brown-dark); color: #fff; border-color: var(--brown-dark); }
+      #backToTop { position: fixed; right: 24px; bottom: 24px; z-index: 45; display: none; border: none; border-radius: 999px; padding: 10px 16px; background: var(--brown-dark); color: #fff; font-size: 14px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.2); }
+    </style>
+        <div class="admin-sticky">
         <div
           class="alert alert-success"
           th:if="${successMsg}"
@@ -18,16 +36,184 @@
           th:if="${errorMsg}"
           th:text="${errorMsg}"
         ></div>
-
-        <div class="action-bar" style="margin-bottom: 1.5rem">
-          <a
-            th:href="@{/admin/report}"
-            class="btn btn-outline"
-            style="text-decoration: none; padding: 8px 16px"
-            >📊 財務報告</a
-          >
+          <nav class="admin-nav" aria-label="管理後台區塊">
+            <a th:href="@{/admin/report}" class="btn btn-outline nav-report">📊 財務報告</a>
+            <a href="#staff" class="nav-link">👥 員工清單</a>
+            <a href="#add-staff" class="nav-link">➕ 新增員工／代班</a>
+            <a href="#items" class="nav-link">✂️ 美容項目</a>
+            <a href="#users" class="nav-link">👤 所有使用者</a>
+          </nav>
         </div>
 
+        <section id="staff" class="admin-section">
+        <div
+          class="card"
+          style="
+            margin-bottom: 2rem;
+            padding: 0;
+            overflow: hidden;
+            border: 1px solid var(--cream-300);
+          "
+        >
+          <h3
+            style="
+              color: var(--brown-dark);
+              padding: 1.2rem 1.5rem 0.5rem 1.5rem;
+              font-size: 18px;
+              font-weight: 600;
+            "
+          >
+            員工清單
+          </h3>
+          <table
+            style="
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 14px;
+              text-align: left;
+              margin-top: 0.5rem;
+            "
+          >
+            <thead>
+              <tr
+                style="
+                  background-color: var(--cream-200);
+                  color: var(--brown-dark);
+                  border-bottom: 1px solid var(--cream-300);
+                "
+              >
+                <th style="padding: 12px 16px; font-weight: 600; width: 80px">
+                  ID
+                </th>
+                <th style="padding: 12px 16px; font-weight: 600">姓名</th>
+                <th style="padding: 12px 16px; font-weight: 600">帳號</th>
+                <th style="padding: 12px 16px; font-weight: 600; width: 170px">
+                  角色
+                </th>
+                <th style="padding: 12px 16px; font-weight: 600; width: 220px">
+                  密碼管理
+                </th>
+                <th style="padding: 12px 16px; font-weight: 600; width: 110px">
+                  狀態
+                </th>
+              </tr>
+            </thead>
+            <tbody style="color: var(--brown-mid)">
+              <tr th:if="${allStaff == null or allStaff.isEmpty()}">
+                <td
+                  colspan="6"
+                  style="
+                    text-align: center;
+                    color: var(--brown-light);
+                    padding: 2rem 16px;
+                    background: #fff;
+                  "
+                >
+                  📭 目前沒有員工
+                </td>
+              </tr>
+              <tr
+                th:each="s : ${allStaff}"
+                th:style="'border-bottom: 1px solid var(--cream-200); background: ' + (${s.active} ? '#fff' : '#f3f1ee; opacity: 0.7')"
+              >
+                <td style="padding: 12px 16px" th:text="${s.id}"></td>
+                <td
+                  style="
+                    padding: 12px 16px;
+                    font-weight: 600;
+                    color: var(--brown-dark);
+                  "
+                  th:text="${s.name}"
+                ></td>
+                <td style="padding: 12px 16px" th:text="${s.partTime} ? '—（不能登入）' : ${s.username}"></td>
+                <td style="padding: 12px 16px">
+                  <span
+                    style="
+                      font-size: 12px;
+                      padding: 2px 8px;
+                      background-color: var(--cream-100);
+                      border: 1px solid var(--cream-300);
+                      border-radius: 4px;
+                    "
+                    th:text="${s.role.name() == 'ADMIN'} ? '管理員' : (${s.partTime} ? '代班' : '員工')"
+                  ></span>
+                  <form th:if="${!s.partTime and s.id != user?.id}"
+                        th:action="@{/admin/staff/{id}/admin(id=${s.id})}" method="post"
+                        style="display: inline; margin-left: 6px"
+                        th:data-name="${s.name}"
+                        th:data-to-admin="${s.role.name() != 'ADMIN'}"
+                        onsubmit="return confirm((this.dataset.toAdmin === 'true' ? '確定要把「' + this.dataset.name + '」設為管理員嗎？管理員可以管理員工、服務項目與財務報表。' : '確定要取消「' + this.dataset.name + '」的管理員權限嗎？') + '\n對方要登出再重新登入才會套用。');">
+                    <input type="hidden" name="admin" th:value="${s.role.name() != 'ADMIN'}" />
+                    <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11.5px; white-space: nowrap"
+                            th:text="${s.role.name() == 'ADMIN'} ? '取消管理員' : '設為管理員'">設為管理員</button>
+                  </form>
+                </td>
+                <td style="padding: 10px 16px" th:if="${s.partTime}">
+                  <form
+                    th:action="@{/admin/staff/{id}/promote(id=${s.id})}"
+                    method="post"
+                    style="display: flex; flex-wrap: wrap; gap: 6px"
+                    onsubmit="return confirm('確定要把這位代班轉為正職、開放登入嗎？');"
+                  >
+                    <input type="email" name="username" required placeholder="登入帳號 Email"
+                           style="padding: 4px 8px; font-size: 13px; border: 1px solid var(--cream-300); border-radius: 4px; width: 150px" />
+                    <input type="text" name="password" required minlength="4" placeholder="密碼"
+                           style="padding: 4px 8px; font-size: 13px; border: 1px solid var(--cream-300); border-radius: 4px; width: 90px" />
+                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; white-space: nowrap">轉正職</button>
+                  </form>
+                </td>
+                <td style="padding: 10px 16px" th:unless="${s.partTime}">
+                  <form
+                    th:action="@{/admin/staff/{id}/reset-password(id=${s.id})}"
+                    method="post"
+                    style="display: flex; gap: 6px"
+                    onsubmit="return confirm('確定要重設這位員工的密碼嗎？');"
+                  >
+                    <input
+                      type="text"
+                      name="newPassword"
+                      required
+                      minlength="4"
+                      placeholder="輸入新密碼"
+                      style="
+                        padding: 4px 8px;
+                        font-size: 13px;
+                        border: 1px solid var(--cream-300);
+                        border-radius: 4px;
+                        width: 120px;
+                      "
+                    />
+                    <button
+                      type="submit"
+                      class="btn btn-outline"
+                      style="
+                        padding: 4px 10px;
+                        font-size: 12px;
+                        white-space: nowrap;
+                      "
+                    >
+                      重設密碼
+                    </button>
+                  </form>
+                </td>
+                <td style="padding: 10px 16px">
+                  <form th:if="${s.active and s.id != user?.id}" th:action="@{/admin/staff/{id}/deactivate(id=${s.id})}" method="post"
+                        th:data-name="${s.name}"
+                        onsubmit="return confirm('確定要停用「' + this.dataset.name + '」嗎？停用後不能登入、不會出現在經手人選單，過去的積分會保留。');">
+                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; color: #c62828; border-color: #e0a8a8">停用</button>
+                  </form>
+                  <form th:unless="${s.active}" th:action="@{/admin/staff/{id}/activate(id=${s.id})}" method="post">
+                    <span style="font-size: 12px; color: #999; margin-right: 6px">已停用</span>
+                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px">重新啟用</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        </section>
+
+        <section id="add-staff" class="admin-section">
         <div class="card" style="margin-bottom: 2rem; padding: 2rem">
           <h3
             style="
@@ -149,7 +335,9 @@
             <button type="submit" class="btn btn-primary" style="padding: 10px 24px; white-space: nowrap">新增代班</button>
           </form>
         </div>
+        </section>
 
+        <section id="items" class="admin-section">
         <div
           class="card"
           style="
@@ -159,42 +347,27 @@
             border: 1px solid var(--cream-300);
           "
         >
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              padding: 1.2rem 1.5rem 0.5rem 1.5rem;
-            "
-          >
-            <h3
-              style="
-                color: var(--brown-dark);
-                font-size: 18px;
-                font-weight: 600;
-                margin: 0;
-              "
-            >
+          <div class="items-head">
+            <h3 style="color: var(--brown-dark); font-size: 18px; font-weight: 600; margin: 0;">
               ✂️ 美容服務項目價目管理
+              <span style="font-size: 13px; font-weight: 400; color: var(--brown-light);"
+                    th:text="'（共 ' + ${groomingItems == null ? 0 : groomingItems.size()} + ' 項）'"></span>
             </h3>
+            <button type="button" id="itemsToggle" class="btn btn-outline" aria-expanded="true"
+                    aria-controls="itemsBody" style="padding: 4px 12px; font-size: 13px;">收合 ▲</button>
           </div>
-
-          <div
+          <div id="itemsBody">
+          <details id="itemCreate"
             style="
               background-color: var(--cream-100);
               padding: 1rem 1.5rem;
               border-bottom: 1px solid var(--cream-300);
             "
           >
-            <h4
-              style="
-                font-size: 13px;
-                color: var(--brown-dark);
-                margin-bottom: 0.8rem;
-                font-weight: 600;
-              "
-            >
-              ➕ 新增美容項目
+            <summary style="font-size: 13px; color: var(--brown-dark); font-weight: 600; cursor: pointer;">
+              ➕ 新增美容項目（點這裡展開表單）
+            </summary>
+            <div style="height: 0.8rem"></div>
             </h4>
             <form
               method="post"
@@ -421,6 +594,24 @@
                 </button>
               </div>
             </form>
+          </details>
+
+          <div class="items-filter">
+            <div class="chip-row" id="catChips">
+              <button type="button" class="chip" th:each="c : ${itemCategories}"
+                      th:attr="data-cat=${c.key()},data-dog=${c.dog()}"
+                      th:text="${c.label()} + ' ' + ${c.count()}">狗狗精緻洗 54</button>
+              <button type="button" class="chip" data-cat="ALL">全部</button>
+            </div>
+            <div class="chip-row" id="tierChips" hidden>
+              <span style="font-size: 12px; color: var(--brown-light);">體型：</span>
+              <button type="button" class="chip chip-sm" data-tier="">全部</button>
+              <button type="button" class="chip chip-sm" th:each="t : ${dogTiers}"
+                      th:attr="data-tier=${t.name()}" th:text="${t.label}">小型犬</button>
+            </div>
+            <input type="search" id="itemSearch" placeholder="搜尋名稱或代碼（會搜尋全部分類）"
+                   style="width: 100%; max-width: 320px; padding: 6px 10px; font-size: 13px;
+                          border: 1px solid var(--cream-300); border-radius: 4px;" />
           </div>
 
           <table
@@ -480,6 +671,8 @@
               </tr>
               <tr
                 th:each="item : ${groomingItems}"
+                class="item-row"
+                th:attr="data-cat=${itemCategoryOf[item.id]},data-tier=${item.dogWeightTier},data-search=${item.name + ' ' + item.itemCode}"
                 style="
                   border-bottom: 1px solid var(--cream-200);
                   background: #fff;
@@ -622,176 +815,18 @@
                   </form>
                 </td>
               </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div
-          class="card"
-          style="
-            margin-bottom: 2rem;
-            padding: 0;
-            overflow: hidden;
-            border: 1px solid var(--cream-300);
-          "
-        >
-          <h3
-            style="
-              color: var(--brown-dark);
-              padding: 1.2rem 1.5rem 0.5rem 1.5rem;
-              font-size: 18px;
-              font-weight: 600;
-            "
-          >
-            員工清單
-          </h3>
-          <table
-            style="
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 14px;
-              text-align: left;
-              margin-top: 0.5rem;
-            "
-          >
-            <thead>
-              <tr
-                style="
-                  background-color: var(--cream-200);
-                  color: var(--brown-dark);
-                  border-bottom: 1px solid var(--cream-300);
-                "
-              >
-                <th style="padding: 12px 16px; font-weight: 600; width: 80px">
-                  ID
-                </th>
-                <th style="padding: 12px 16px; font-weight: 600">姓名</th>
-                <th style="padding: 12px 16px; font-weight: 600">帳號</th>
-                <th style="padding: 12px 16px; font-weight: 600; width: 170px">
-                  角色
-                </th>
-                <th style="padding: 12px 16px; font-weight: 600; width: 220px">
-                  密碼管理
-                </th>
-                <th style="padding: 12px 16px; font-weight: 600; width: 110px">
-                  狀態
-                </th>
-              </tr>
-            </thead>
-            <tbody style="color: var(--brown-mid)">
-              <tr th:if="${allStaff == null or allStaff.isEmpty()}">
-                <td
-                  colspan="6"
-                  style="
-                    text-align: center;
-                    color: var(--brown-light);
-                    padding: 2rem 16px;
-                    background: #fff;
-                  "
-                >
-                  📭 目前沒有員工
-                </td>
-              </tr>
-              <tr
-                th:each="s : ${allStaff}"
-                th:style="'border-bottom: 1px solid var(--cream-200); background: ' + (${s.active} ? '#fff' : '#f3f1ee; opacity: 0.7')"
-              >
-                <td style="padding: 12px 16px" th:text="${s.id}"></td>
-                <td
-                  style="
-                    padding: 12px 16px;
-                    font-weight: 600;
-                    color: var(--brown-dark);
-                  "
-                  th:text="${s.name}"
-                ></td>
-                <td style="padding: 12px 16px" th:text="${s.partTime} ? '—（不能登入）' : ${s.username}"></td>
-                <td style="padding: 12px 16px">
-                  <span
-                    style="
-                      font-size: 12px;
-                      padding: 2px 8px;
-                      background-color: var(--cream-100);
-                      border: 1px solid var(--cream-300);
-                      border-radius: 4px;
-                    "
-                    th:text="${s.role.name() == 'ADMIN'} ? '管理員' : (${s.partTime} ? '代班' : '員工')"
-                  ></span>
-                  <form th:if="${!s.partTime and s.id != user?.id}"
-                        th:action="@{/admin/staff/{id}/admin(id=${s.id})}" method="post"
-                        style="display: inline; margin-left: 6px"
-                        th:data-name="${s.name}"
-                        th:data-to-admin="${s.role.name() != 'ADMIN'}"
-                        onsubmit="return confirm((this.dataset.toAdmin === 'true' ? '確定要把「' + this.dataset.name + '」設為管理員嗎？管理員可以管理員工、服務項目與財務報表。' : '確定要取消「' + this.dataset.name + '」的管理員權限嗎？') + '\n對方要登出再重新登入才會套用。');">
-                    <input type="hidden" name="admin" th:value="${s.role.name() != 'ADMIN'}" />
-                    <button type="submit" class="btn btn-outline" style="padding: 2px 8px; font-size: 11.5px; white-space: nowrap"
-                            th:text="${s.role.name() == 'ADMIN'} ? '取消管理員' : '設為管理員'">設為管理員</button>
-                  </form>
-                </td>
-                <td style="padding: 10px 16px" th:if="${s.partTime}">
-                  <form
-                    th:action="@{/admin/staff/{id}/promote(id=${s.id})}"
-                    method="post"
-                    style="display: flex; flex-wrap: wrap; gap: 6px"
-                    onsubmit="return confirm('確定要把這位代班轉為正職、開放登入嗎？');"
-                  >
-                    <input type="email" name="username" required placeholder="登入帳號 Email"
-                           style="padding: 4px 8px; font-size: 13px; border: 1px solid var(--cream-300); border-radius: 4px; width: 150px" />
-                    <input type="text" name="password" required minlength="4" placeholder="密碼"
-                           style="padding: 4px 8px; font-size: 13px; border: 1px solid var(--cream-300); border-radius: 4px; width: 90px" />
-                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; white-space: nowrap">轉正職</button>
-                  </form>
-                </td>
-                <td style="padding: 10px 16px" th:unless="${s.partTime}">
-                  <form
-                    th:action="@{/admin/staff/{id}/reset-password(id=${s.id})}"
-                    method="post"
-                    style="display: flex; gap: 6px"
-                    onsubmit="return confirm('確定要重設這位員工的密碼嗎？');"
-                  >
-                    <input
-                      type="text"
-                      name="newPassword"
-                      required
-                      minlength="4"
-                      placeholder="輸入新密碼"
-                      style="
-                        padding: 4px 8px;
-                        font-size: 13px;
-                        border: 1px solid var(--cream-300);
-                        border-radius: 4px;
-                        width: 120px;
-                      "
-                    />
-                    <button
-                      type="submit"
-                      class="btn btn-outline"
-                      style="
-                        padding: 4px 10px;
-                        font-size: 12px;
-                        white-space: nowrap;
-                      "
-                    >
-                      重設密碼
-                    </button>
-                  </form>
-                </td>
-                <td style="padding: 10px 16px">
-                  <form th:if="${s.active and s.id != user?.id}" th:action="@{/admin/staff/{id}/deactivate(id=${s.id})}" method="post"
-                        th:data-name="${s.name}"
-                        onsubmit="return confirm('確定要停用「' + this.dataset.name + '」嗎？停用後不能登入、不會出現在經手人選單，過去的積分會保留。');">
-                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; color: #c62828; border-color: #e0a8a8">停用</button>
-                  </form>
-                  <form th:unless="${s.active}" th:action="@{/admin/staff/{id}/activate(id=${s.id})}" method="post">
-                    <span style="font-size: 12px; color: #999; margin-right: 6px">已停用</span>
-                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px">重新啟用</button>
-                  </form>
+              <tr id="itemsNoMatch" hidden>
+                <td colspan="6" style="text-align: center; color: var(--brown-light); padding: 2rem 16px; background: #fff;">
+                  這個分類沒有符合的項目
                 </td>
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
+        </section>
 
+        <section id="users" class="admin-section">
         <div
           class="card"
           style="
@@ -871,6 +906,7 @@
             </tbody>
           </table>
         </div>
+        </section>
       </div>
     </div>
     <!-- 改了好幾項時可以一次儲存，不用每存一項就整頁重新載入 -->
@@ -952,6 +988,107 @@
         forms.forEach(function (f) {
           f.addEventListener("submit", function () { f.dataset.original = snapshot(f); });
         });
+      })();
+    </script>
+    <button type="button" id="backToTop" aria-label="回到頁面頂端">⬆ 回頂端</button>
+    <script>
+      (function () {
+        // 導覽列：捲到哪一區就反白對應按鈕
+        var links = Array.prototype.slice.call(document.querySelectorAll(".admin-nav .nav-link"));
+        var sections = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+        function markActive() {
+          var current = null;
+          sections.forEach(function (s, i) {
+            if (s && s.getBoundingClientRect().top <= 120) current = i;
+          });
+          links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
+          document.getElementById("backToTop").style.display = window.scrollY > 600 ? "block" : "none";
+        }
+        window.addEventListener("scroll", markActive, { passive: true });
+        markActive();
+        links.forEach(function (a) {
+          a.addEventListener("click", function (e) {
+            var target = document.querySelector(a.getAttribute("href"));
+            if (!target) return;
+            e.preventDefault();
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+            history.replaceState(null, "", a.getAttribute("href"));
+          });
+        });
+        document.getElementById("backToTop").addEventListener("click", function () {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        // 美容項目：收合、分類、體型、搜尋。選過的分類記在瀏覽器，存檔重新載入後停在同一類
+        function load(key, fallback) {
+          try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; }
+        }
+        function save(key, value) {
+          try { localStorage.setItem(key, value); } catch (e) { /* 無痕模式等情況存不了，不影響操作 */ }
+        }
+        var body = document.getElementById("itemsBody");
+        var toggle = document.getElementById("itemsToggle");
+        if (!body || !toggle) return;
+        function setCollapsed(collapsed) {
+          body.hidden = collapsed;
+          toggle.textContent = collapsed ? "展開 ▼" : "收合 ▲";
+          toggle.setAttribute("aria-expanded", String(!collapsed));
+          save("admin.items.collapsed", collapsed ? "1" : "0");
+        }
+        toggle.addEventListener("click", function () { setCollapsed(!body.hidden); });
+        // 從其他頁直接跳到 #items（例如存檔後）一定展開
+        setCollapsed(location.hash === "#items" ? false : load("admin.items.collapsed", "0") === "1");
+
+        var rows = Array.prototype.slice.call(document.querySelectorAll("tr.item-row"));
+        var catChips = Array.prototype.slice.call(document.querySelectorAll("#catChips .chip"));
+        var tierRow = document.getElementById("tierChips");
+        var tierChips = Array.prototype.slice.call(tierRow.querySelectorAll(".chip"));
+        var search = document.getElementById("itemSearch");
+        var noMatch = document.getElementById("itemsNoMatch");
+        var state = {
+          cat: load("admin.items.cat", catChips.length ? catChips[0].dataset.cat : "ALL"),
+          tier: load("admin.items.tier", "")
+        };
+        if (!catChips.some(function (c) { return c.dataset.cat === state.cat; })) state.cat = "ALL";
+
+        function apply() {
+          var keyword = search.value.trim().toLowerCase();
+          var activeCat = catChips.filter(function (c) { return c.dataset.cat === state.cat; })[0];
+          var dogCat = activeCat && activeCat.dataset.dog === "true";
+          tierRow.hidden = !dogCat || keyword !== "";
+          catChips.forEach(function (c) { c.classList.toggle("active", c === activeCat && keyword === ""); });
+          tierChips.forEach(function (c) { c.classList.toggle("active", c.dataset.tier === state.tier); });
+          var shown = 0;
+          rows.forEach(function (r) {
+            var visible;
+            if (keyword) {
+              visible = (r.dataset.search || "").toLowerCase().indexOf(keyword) >= 0;
+            } else {
+              visible = (state.cat === "ALL" || r.dataset.cat === state.cat)
+                  && (!dogCat || !state.tier || r.dataset.tier === state.tier);
+            }
+            r.hidden = !visible;
+            if (visible) shown++;
+          });
+          noMatch.hidden = shown > 0 || rows.length === 0;
+        }
+        catChips.forEach(function (c) {
+          c.addEventListener("click", function () {
+            state.cat = c.dataset.cat;
+            search.value = "";
+            save("admin.items.cat", state.cat);
+            apply();
+          });
+        });
+        tierChips.forEach(function (c) {
+          c.addEventListener("click", function () {
+            state.tier = c.dataset.tier;
+            save("admin.items.tier", state.tier);
+            apply();
+          });
+        });
+        search.addEventListener("input", apply);
+        apply();
       })();
     </script>
   </body>
