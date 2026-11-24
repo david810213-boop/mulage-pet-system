@@ -178,10 +178,13 @@
     <div class="field" th:if="${walletBalance != null and walletBalance > 0}">
       <label for="cCharge">臨時取消扣儲值金（選填）</label>
       <input type="number" name="lateCancelCharge" id="cCharge" min="0" th:max="${walletBalance}" step="1"
-             inputmode="numeric" placeholder="不扣請留空" />
+             inputmode="numeric" placeholder="不扣請留空"
+             th:value="${lateCancelSuggested != null and lateCancelSuggested > 0}
+                 ? ${lateCancelSuggested > walletBalance ? walletBalance : lateCancelSuggested} : ''" />
       <p style="margin:6px 0 0;font-size:13px;color:var(--mute)"
-         th:text="(${lateCancelWindow} ? '已在預約前 24 小時內。' : '') + '儲值金會員 24 小時內取消或未到店：扣精緻洗費用的三成；預約大美容則扣大美容費用的三成。目前餘額 NT$ ' + ${walletBalance} + '。'">
-        儲值金會員 24 小時內取消或未到店：扣精緻洗費用的三成。</p>
+         th:text="(${lateCancelWindow} ? '已在預約前 24 小時內，系統已帶入原價精緻洗的三成，可以修改；不扣請清空。' : '')
+             + '儲值金會員 24 小時內取消或未到店：扣原價精緻洗費用的三成。目前餘額 NT$ ' + ${walletBalance} + '。'">
+        儲值金會員 24 小時內取消或未到店：扣原價精緻洗費用的三成。</p>
     </div>
     <div class="btn-row">
       <button type="button" class="btn sec" data-close-sheet>返回</button>

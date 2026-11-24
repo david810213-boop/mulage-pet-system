@@ -121,7 +121,7 @@ class StaffPagesSmokeTest extends IntegrationTestBase {
         assertThat(card.getSpecies()).isEqualTo("dog");
         assertThat(card.getSpeciesLabel()).isEqualTo("狗狗");
         assertThat(card.getDateLabel()).startsWith(LocalDate.now().getMonthValue() + "/" + LocalDate.now().getDayOfMonth() + " 週");
-        assertThat(model).containsEntry("step", 0).containsEntry("canCheckout", true).containsEntry("canCancel", true);
+        assertThat(model).containsEntry("step", 0).containsEntry("canCheckout", false).containsEntry("canCancel", true); // 還沒核對不能結帳
 
         mvc.perform(as(staff, get("/m/appointments/999999999"))).andExpect(redirectedUrl("/m/appointments"));
     }

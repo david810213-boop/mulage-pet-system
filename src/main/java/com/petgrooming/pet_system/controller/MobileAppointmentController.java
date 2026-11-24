@@ -112,8 +112,9 @@ public class MobileAppointmentController {
         model.addAttribute("card", card);
         model.addAttribute("pet", pet);
         model.addAttribute("step", cards.stepIndex(card.getStage()));
+        // 結帳一定要先開單、服務、核對（PaymentService 也會擋），還沒核對的不顯示結帳
         model.addAttribute("canCheckout", !a.isCancelled() && !a.isPaid() && !a.isPendingWireTransfer()
-                && (a.getStatus() != AppointmentStatus.IN_PROGRESS || a.isFinalCheckDone()));
+                && a.isFinalCheckDone());
         model.addAttribute("canCancel", !a.isCancelled() && !a.isPaid());
         model.addAttribute("canReschedule", !a.isCancelled() && !a.isPaid()
                 && a.getStatus() != AppointmentStatus.IN_PROGRESS && a.getStatus() != AppointmentStatus.COMPLETED);
@@ -123,9 +124,12 @@ public class MobileAppointmentController {
         if (!a.isCancelled() && !a.isPaid()) {
             // 儲值金會員臨時取消扣款：取消表單顯示餘額與規範，預約前 24 小時內特別標示
             model.addAttribute("walletBalance", walletService.getWallet(a.getOwnerEmail()).getBalance());
-            model.addAttribute("lateCancelWindow", a.getDate() != null && a.getStartTime() != null
+            boolean lateWindow = a.getDate() != null && a.getStartTime() != null
                     && !java.time.LocalDateTime.now().isBefore(
-                            java.time.LocalDateTime.of(a.getDate(), a.getStartTime()).minusHours(24)));
+                            java.time.LocalDateTime.of(a.getDate(), a.getStartTime()).minusHours(24));
+            model.addAttribute("lateCancelWindow", lateWindow);
+            model.addAttribute("lateCancelSuggested", lateWindow
+                    ? appointmentQueryService.suggestedLateCancelCharge(id) : 0);
         }
         model.addAttribute("activeTab", "appointments");
         return "m/appointment-detail";
@@ -402,8 +406,7 @@ public class MobileAppointmentController {
         if (a == null || a.isCancelled()) {
             return "redirect:/m/appointments";
         }
-        boolean canCheckout = !a.isPaid() && !a.isPendingWireTransfer()
-                && (a.getStatus() != AppointmentStatus.IN_PROGRESS || a.isFinalCheckDone());
+        boolean canCheckout = !a.isPaid() && !a.isPendingWireTransfer() && a.isFinalCheckDone();
         if (!canCheckout) {
             return "redirect:/m/appointments/" + id;
         }

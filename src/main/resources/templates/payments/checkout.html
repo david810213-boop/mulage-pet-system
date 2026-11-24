@@ -159,6 +159,25 @@
           </p>
         </div>
 
+        <!-- 應收金額：已付訂金在結帳時自動折抵 -->
+        <div class="card" th:if="${standardCollect != null}" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 15px; margin-bottom: 10px;">💵 應收金額</h3>
+          <p style="margin: 0; font-size: 14px;">原價合計 $<span th:text="${baseAmount}"></span></p>
+          <p th:if="${depositCredit != null and depositCredit > 0}" style="margin: 4px 0 0; font-size: 14px; color: #2e7d32; font-weight: 600;">
+            已付訂金 −$<span th:text="${depositCredit}"></span>（結帳時自動折抵，下面的金額已扣除）
+          </p>
+          <p style="margin: 4px 0 0; font-size: 14px;">
+            現金／Line Pay／匯款：實收 <strong th:text="'$' + ${standardCollect}"></strong>
+          </p>
+          <p th:if="${walletCollect != null}" style="margin: 4px 0 0; font-size: 14px;">
+            儲值金：扣 <strong th:text="'$' + ${walletCollect}"></strong>（含會員折扣）
+          </p>
+          <p th:if="${depositUnpaid != null and depositUnpaid > 0}" style="margin: 8px 0 0; font-size: 13px; color: #c62828; font-weight: 600;">
+            ⚠ 這筆預約還有訂金 $<span th:text="${depositUnpaid}"></span> 沒有核帳，沒核帳的部分不會折抵。
+            顧客如果已經匯款，請先到「訂金核帳」確認入帳再結帳。
+          </p>
+        </div>
+
         <div class="card">
           <form
             method="post"

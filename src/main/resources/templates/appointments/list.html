@@ -668,7 +668,7 @@
                     >
                     <!-- 結帳按鈕改成跟現場開單一致的按鈕樣式（原本是純文字底線連結） -->
                     <a
-                      th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and (a.status.name() != 'IN_PROGRESS' or a.finalCheckDone)}"
+                      th:if="${!a.paid and (!user.staffOrAdmin or !a.pendingWireTransfer) and a.finalCheckDone}"
                       th:href="@{/payments/checkout/{id}(id=${a.id})}"
                       class="btn"
                       style="
