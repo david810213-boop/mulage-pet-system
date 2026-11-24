@@ -14,11 +14,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * 啟動時建立「建立一次、之後由店家在後台自行調整」的種子資料：預設帳號、積分獎勵金級距、
+ * 啟動時建立「建立一次、之後由店家在後台自行調整」的種子資料：第一個管理員帳號、積分獎勵金級距、
  * 匯款收款帳戶、固定公休星期，一律逐筆檢查是否已存在才建立。
  *
  * 服務項目（GroomingItem）與套餐組成的種子資料由 Flyway 遷移檔管理（db/migration），不要加在這裡：
@@ -36,23 +37,14 @@ public class DataInitializer implements ApplicationRunner {
     private final WeeklyClosureSettingRepository weeklyClosureSettingRepository; // 固定公休星期
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${INITIAL_ADMIN_PASSWORD:}")
+    private String initialAdminPassword;
+
+    private static final String INITIAL_ADMIN_USERNAME = "admin@pet.com";
+
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        // 1. 初始化預設帳號
-        createIfNotExists("admin@pet.com", "admin123", "系統管理員", UserRole.ADMIN);
-        createIfNotExists("staff@pet.com", "staff123", "美容師小洪", UserRole.STAFF);
-        createIfNotExists("user@pet.com", "user123", "測試會員", UserRole.CUSTOMER);
-        log.info("預設帳號初始化完成");
-
-        // 資安修正：這三組帳密是寫死在原始碼裡的固定值，而且這個 repo 是公開的，
-        // 任何人都能在 GitHub 上看到。只在「本來就沒有這個帳號」時才會建立
-        // （createIfNotExists 本身已經保證這件事），但如果店家從來沒有登入
-        // 把密碼改掉，正式站等於任何人都能直接用這組公開密碼登入拿到對應權限。
-        // 每次啟動都檢查一次目前密碼是否仍是這組已公開的預設值，是的話在啟動
-        // log 印出無法忽略的警告，提醒店家立刻上後台改密碼。
-        warnIfDefaultPasswordStillActive("admin@pet.com", "admin123", "系統管理員（ADMIN，權限最高）");
-        warnIfDefaultPasswordStillActive("staff@pet.com", "staff123", "美容師小洪（STAFF）");
-        warnIfDefaultPasswordStillActive("user@pet.com", "user123", "測試會員（CUSTOMER）");
+        createInitialAdminIfNone();
 
         // 積分獎勵金級距：種子資料，僅在資料表是空的時候建立一次，之後由店家在後台編輯
         if (bonusTierRepository.count() == 0) {
@@ -100,30 +92,26 @@ public class DataInitializer implements ApplicationRunner {
         }
     }
 
-    // 資安修正：檢查目前密碼是否仍等於原始碼裡寫死、且已公開在 GitHub 上的預設值。
-    // 用 passwordEncoder.matches() 而不是直接比對雜湊字串，因為 bcrypt 每次加鹽結果不同，
-    // 沒辦法用字串相等判斷，一定要透過 encoder 本身的比對方法。
-    private void warnIfDefaultPasswordStillActive(String username, String defaultPassword, String roleDescription) {
-        userRepository.findByUsername(username).ifPresent(user -> {
-            if (passwordEncoder.matches(defaultPassword, user.getPassword())) {
-                log.warn("帳號 {}（{}）目前密碼仍是原始碼裡的預設值，這組帳密已經公開在 GitHub repo 上，" +
-                        "任何人都看得到！請立刻登入後台（帳號設定 → 修改密碼）改成一組別人猜不到的新密碼。",
-                        username, roleDescription);
-            }
-        });
-    }
-
-    private void createIfNotExists(String username, String password, String name, UserRole role) {
-        if (userRepository.existsByUsername(username))
+    /**
+     * 全新資料庫還沒有任何管理員時，用環境變數 INITIAL_ADMIN_PASSWORD 建立第一個管理員 admin@pet.com。
+     * 密碼不寫在原始碼裡（repo 是公開的）；已經有管理員就不建立任何帳號，刪掉的帳號不會在重新部署後又出現。
+     */
+    private void createInitialAdminIfNone() {
+        if (userRepository.countByRole(UserRole.ADMIN) > 0) {
             return;
-        User user = User.builder()
-                .username(username)
-                .password(passwordEncoder.encode(password))
-                .name(name)
-                .role(role)
+        }
+        if (initialAdminPassword == null || initialAdminPassword.isBlank()) {
+            log.warn("系統還沒有管理員帳號，請設定環境變數 INITIAL_ADMIN_PASSWORD 後重新啟動，"
+                    + "會建立管理員 {}", INITIAL_ADMIN_USERNAME);
+            return;
+        }
+        userRepository.save(User.builder()
+                .username(INITIAL_ADMIN_USERNAME)
+                .password(passwordEncoder.encode(initialAdminPassword))
+                .name("系統管理員")
+                .role(UserRole.ADMIN)
                 .isActive(true)
-                .build();
-        userRepository.save(user);
-        log.info("建立預設帳號：{} ({})", username, role);
+                .build());
+        log.info("已建立第一個管理員帳號 {}，登入後請到帳號設定改密碼", INITIAL_ADMIN_USERNAME);
     }
 }
