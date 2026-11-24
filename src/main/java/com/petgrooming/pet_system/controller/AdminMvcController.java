@@ -2,9 +2,13 @@ package com.petgrooming.pet_system.controller;
 
 import com.petgrooming.pet_system.annotation.CurrentUser;
 import com.petgrooming.pet_system.dto.CreateStaffRequest;
+import com.petgrooming.pet_system.dto.GroomingCategoryView;
+import com.petgrooming.pet_system.dto.GroomingItemResponse;
 import com.petgrooming.pet_system.dto.GroomingItemRequest;
 import com.petgrooming.pet_system.dto.ResetPasswordRequest;
 import com.petgrooming.pet_system.dto.UpdateGroomingItemRequest;
+import com.petgrooming.pet_system.enums.AdminGroomingCategory;
+import com.petgrooming.pet_system.enums.DogWeightTier;
 import com.petgrooming.pet_system.export.ExcelSupport;
 import com.petgrooming.pet_system.export.FinancialReportExcel;
 import com.petgrooming.pet_system.model.User;
@@ -25,6 +29,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -32,6 +40,11 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 public class AdminMvcController {
+
+    // 存檔後回到原本的區塊，不用從頁首重新往下捲
+    private static final String STAFF_SECTION = "redirect:/admin#staff";
+    private static final String ITEMS_SECTION = "redirect:/admin#items";
+
 
     private final UserService userService;
     private final FinancialReportService financialReportService;
@@ -64,14 +77,7 @@ public class AdminMvcController {
     public String adminHome(HttpServletRequest request, Model model, @CurrentUser User user) {
         if (!isAdmin(request)) return "redirect:/dashboard";
         
-        model.addAttribute("user", user);
-        model.addAttribute("allUsers", userService.getAllUsers());
-        model.addAttribute("allStaff", userService.getStaffAndAdmins());
-        model.addAttribute("createStaffRequest", new CreateStaffRequest());
-        model.addAttribute("groomingItems", groomingService.getAllItems());
-        //接收服務項目的空物件
-        model.addAttribute("groomingItemRequest", new GroomingItemRequest());
-        
+        addHomeModel(model, user);
         return "admin/home";
     }
 
@@ -87,22 +93,16 @@ public class AdminMvcController {
         if (!isAdmin(request)) return "redirect:/dashboard";
 
         if (bindingResult.hasErrors()) {
-            model.addAttribute("user", user);
-            model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getStaffAndAdmins());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            addHomeModel(model, user);
             return "admin/home";
         }
 
         try {
             userService.createStaff(req);
             redirectAttributes.addFlashAttribute("successMsg", "員工帳號新增成功");
-            return "redirect:/admin";
+            return STAFF_SECTION;
         } catch (IllegalArgumentException e) {
-            model.addAttribute("user", user);
-            model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getStaffAndAdmins());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            addHomeModel(model, user);
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
         }
@@ -121,7 +121,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/admin";
+        return STAFF_SECTION;
     }
 
     /** 停用員工：不能登入、不出現在經手人選單，積分紀錄保留。 */
@@ -146,7 +146,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/admin";
+        return STAFF_SECTION;
     }
 
     /** 設為管理員／取消管理員（員工要登出再登入才會套用新權限）。 */
@@ -162,7 +162,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/admin";
+        return STAFF_SECTION;
     }
 
     /** 代班轉正職：補設登入帳號密碼。 */
@@ -179,7 +179,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/admin";
+        return STAFF_SECTION;
     }
 
     /**
@@ -200,7 +200,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/admin";
+        return STAFF_SECTION;
     }
 
     /**
@@ -219,10 +219,7 @@ public class AdminMvcController {
 
         // 如果管理員欄位填錯（例如價格填負數）
         if (bindingResult.hasErrors()) {
-            model.addAttribute("user", user);
-            model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getStaffAndAdmins());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            addHomeModel(model, user);
             model.addAttribute("errorMsg", "修改失敗：" + describeErrors(bindingResult));
             return "admin/home"; // 留在原地
         }
@@ -230,12 +227,9 @@ public class AdminMvcController {
         try {
             groomingService.updateItem(id, req);
             redirectAttributes.addFlashAttribute("successMsg", "服務項目修改成功！");
-            return "redirect:/admin"; // PRG 模式：重導向回管理首頁
+            return ITEMS_SECTION;
         } catch (IllegalArgumentException e) {
-            model.addAttribute("user", user);
-            model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getStaffAndAdmins());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            addHomeModel(model, user);
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
         }
@@ -258,7 +252,7 @@ public class AdminMvcController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }
-        return "redirect:/admin"; // 刪除完畢後刷新首頁
+        return ITEMS_SECTION;
     }
 
     // 財務報表頁面
@@ -299,10 +293,7 @@ public class AdminMvcController {
 
         // 欄位校正，萬一管理員沒填名稱或價格寫負數
         if (bindingResult.hasErrors()) {
-            model.addAttribute("user", user);
-            model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getStaffAndAdmins());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            addHomeModel(model, user);
             model.addAttribute("errorMsg", "新增失敗：" + describeErrors(bindingResult));
             return "admin/home"; // 留在原地改考卷
         }
@@ -310,15 +301,39 @@ public class AdminMvcController {
         try {
             groomingService.createItem(req);
             redirectAttributes.addFlashAttribute("successMsg", "\u2728 成功建立新的美容項目！");
-            return "redirect:/admin";
+            return ITEMS_SECTION;
         } catch (IllegalArgumentException e) {
-            model.addAttribute("user", user);
-            model.addAttribute("allUsers", userService.getAllUsers());
-            model.addAttribute("allStaff", userService.getStaffAndAdmins());
-            model.addAttribute("groomingItems", groomingService.getAllItems());
+            addHomeModel(model, user);
             model.addAttribute("errorMsg", e.getMessage());
             return "admin/home";
         }
+    }
+
+    /** 管理首頁需要的資料；表單驗證失敗重新顯示時保留使用者剛填的內容。 */
+    private void addHomeModel(Model model, User user) {
+        model.addAttribute("user", user);
+        model.addAttribute("allUsers", userService.getAllUsers());
+        model.addAttribute("allStaff", userService.getStaffAndAdmins());
+        if (!model.containsAttribute("createStaffRequest")) {
+            model.addAttribute("createStaffRequest", new CreateStaffRequest());
+        }
+        if (!model.containsAttribute("groomingItemRequest")) {
+            model.addAttribute("groomingItemRequest", new GroomingItemRequest());
+        }
+        List<GroomingItemResponse> items = groomingService.getAllItems();
+        model.addAttribute("groomingItems", items);
+        Map<Long, String> categoryOf = new HashMap<>();
+        Map<AdminGroomingCategory, Long> counts = new EnumMap<>(AdminGroomingCategory.class);
+        for (GroomingItemResponse item : items) {
+            AdminGroomingCategory c = AdminGroomingCategory.of(item);
+            categoryOf.put(item.getId(), c.name());
+            counts.merge(c, 1L, Long::sum);
+        }
+        model.addAttribute("itemCategoryOf", categoryOf);
+        model.addAttribute("itemCategories", Arrays.stream(AdminGroomingCategory.values())
+                .map(c -> new GroomingCategoryView(c.name(), c.getLabel(), counts.getOrDefault(c, 0L), c.isDog()))
+                .toList());
+        model.addAttribute("dogTiers", DogWeightTier.values());
     }
 
     private static final Map<String, String> GROOMING_FIELD_LABELS = Map.of(
