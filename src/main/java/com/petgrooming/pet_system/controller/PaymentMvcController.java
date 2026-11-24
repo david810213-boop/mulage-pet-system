@@ -15,6 +15,7 @@ import com.petgrooming.pet_system.model.WalkInOrder;
 import com.petgrooming.pet_system.service.AppointmentQueryService;
 import com.petgrooming.pet_system.service.AppointmentDetailService;
 import com.petgrooming.pet_system.service.AppointmentItemService;
+import com.petgrooming.pet_system.service.BookingDepositService;
 import com.petgrooming.pet_system.service.CheckoutPreviewService;
 import com.petgrooming.pet_system.service.GroomingMenuFilter;
 import com.petgrooming.pet_system.service.MemberConsumptionService;
@@ -55,6 +56,7 @@ public class PaymentMvcController {
     private final MemberConsumptionService memberConsumptionService;
     private final WalkInOrderService walkInOrderService;
     private final GroomingMenuFilter groomingMenuFilter;
+    private final BookingDepositService bookingDepositService; // 結帳頁顯示訂金折抵
 
     // 交易紀錄：預約結帳（Transaction）跟現場開單（WalkInOrder）是兩張資料表，
     // 「交易紀錄」頁面要呈現完整消費全貌，合併成同一份清單並依付款時間排序
@@ -83,8 +85,15 @@ public class PaymentMvcController {
 
     // 結帳頁面（從預約列表點「結帳」連過來）
     @GetMapping("/checkout/{appointmentId}")
-    public String checkoutPage(@PathVariable Long appointmentId, Model model, @CurrentUser User user) {
+    public String checkoutPage(@PathVariable Long appointmentId, Model model, @CurrentUser User user,
+                               RedirectAttributes redirectAttributes) {
         if (user == null) return "redirect:/auth/login";
+        // 結帳一定要先開單、服務、核對（PaymentService 也會擋），還沒核對的不進結帳頁
+        Appointment target = appointmentQueryService.findAppointment(appointmentId).orElse(null);
+        if (target != null && !target.isPaid() && !target.isFinalCheckDone()) {
+            redirectAttributes.addFlashAttribute("errorMsg", "這筆預約還沒完成開單、服務與核對，不能結帳");
+            return "redirect:/appointments";
+        }
         model.addAttribute("checkoutRequest", new CheckoutRequest());
         addCheckoutBasics(model, appointmentId, user);
         addMenuAndPreview(model, appointmentId, user);
@@ -120,8 +129,27 @@ public class PaymentMvcController {
         Appointment appointment = appointmentQueryService.findAppointment(appointmentId).orElse(null);
         if (appointment != null && appointment.getUser() != null) {
             model.addAttribute("baseAmount", appointment.getTotalAmount());
+            addDepositPreview(model, appointment);
             CheckoutPageSupport.addWalletPreview(model, checkoutPreviewService.forAppointment(
                     appointment.getUser().getUsername(), detail.getItems(), petType));
+        }
+    }
+
+    /**
+     * 已付訂金在結帳時自動折抵（PaymentService.chargeAmount），畫面上的應收金額要先扣掉，
+     * 店員才不會照原價收錢；訂金還沒核帳的另外提醒，沒付的部分不會折抵。
+     */
+    private void addDepositPreview(Model model, Appointment appointment) {
+        int credit = bookingDepositService.creditFor(appointment.getId());
+        int unpaid = appointment.isDepositWaived() ? 0
+                : Math.max(0, appointment.getDepositShare() - appointment.getDepositPaid());
+        model.addAttribute("depositCredit", credit);
+        model.addAttribute("depositUnpaid", unpaid);
+        model.addAttribute("standardCollect",
+                Math.max(0, paymentService.previewStandardAmount(appointment.getId()) - credit));
+        if (appointment.getUser() != null) {
+            model.addAttribute("walletCollect",
+                    Math.max(0, paymentService.previewWalletAmount(appointment.getId()) - credit));
         }
     }
 

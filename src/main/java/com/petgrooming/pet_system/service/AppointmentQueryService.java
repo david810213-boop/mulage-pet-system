@@ -294,4 +294,34 @@ public class AppointmentQueryService {
                 .mapToInt(Appointment::cancellationIncome)
                 .sum();
     }
+
+    /**
+     * 儲值金會員臨時取消的建議扣款：原價精緻洗的三成（店家規定，四捨五入到元）。
+     * 已開單的用開單項目，還沒開單的用預約時選的項目；沒有精緻洗（例如初次體驗只選時段）回傳 0，由店員自己填。
+     */
+    @Transactional(readOnly = true)
+    public int suggestedLateCancelCharge(Long appointmentId) {
+        Appointment a = appointmentRepository.findById(appointmentId).orElse(null);
+        if (a == null) {
+            return 0;
+        }
+        List<AppointmentItem> opened = appointmentItemRepository.findByAppointmentId(appointmentId);
+        double base;
+        if (!opened.isEmpty()) {
+            base = opened.stream()
+                    .filter(it -> it.getRetailProductId() == null && isFineBath(it.getItemName()))
+                    .mapToDouble(AppointmentItem::getPrice).sum();
+        } else {
+            base = a.getSelectedItems() == null ? 0 : a.getSelectedItems().stream()
+                    .filter(it -> it.getPrice() != null && isFineBath(it.getName()))
+                    .mapToDouble(GroomingItem::getPrice).sum();
+        }
+        return (int) Math.round(base * LATE_CANCEL_RATE);
+    }
+
+    private static final double LATE_CANCEL_RATE = 0.3;
+
+    private static boolean isFineBath(String name) {
+        return name != null && name.contains("精緻洗");
+    }
 }
